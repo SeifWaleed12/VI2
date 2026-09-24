@@ -1,0 +1,145 @@
+.section {
+  width: 100%;
+
+  overflow: hidden;
+
+  background: #1b1d19;
+
+  border-top:
+    1px solid
+    rgba(
+      247,
+      243,
+      237,
+      0.07
+    );
+
+  border-bottom:
+    1px solid
+    rgba(
+      247,
+      243,
+      237,
+      0.07
+    );
+}
+
+.marquee {
+  width: 100%;
+
+  overflow: hidden;
+}
+
+.track {
+  width: max-content;
+
+  min-height: 34px;
+
+  display: flex;
+  align-items: center;
+
+  will-change: transform;
+
+  animation:
+    vi2BrandTicker
+    24s
+    linear
+    infinite;
+}
+
+.item {
+  flex: 0 0 auto;
+
+  padding-right: 34px;
+
+  display: inline-flex;
+  align-items: center;
+
+  gap: 34px;
+
+  white-space: nowrap;
+}
+
+.item span {
+  display: inline-block;
+
+  color:
+    rgba(
+      247,
+      243,
+      237,
+      0.92
+    );
+
+  font-size: 8px;
+  font-weight: 800;
+  line-height: 1;
+
+  letter-spacing: 0.08em;
+
+  text-transform: uppercase;
+
+  text-rendering:
+    geometricPrecision;
+}
+
+.item i {
+  width: 4px;
+  height: 4px;
+
+  display: inline-block;
+
+  flex: 0 0 auto;
+
+  border-radius: 999px;
+
+  background: #788163;
+}
+
+@keyframes vi2BrandTicker {
+  from {
+    transform:
+      translateX(0);
+  }
+
+  to {
+    transform:
+      translateX(-50%);
+  }
+}
+
+@media (
+  prefers-reduced-motion:
+    reduce
+) {
+  .track {
+    animation: none;
+  }
+}
+
+@media (max-width: 700px) {
+  .track {
+    min-height: 31px;
+
+    animation-duration: 19s;
+  }
+
+  .item {
+    padding-right: 27px;
+
+    gap: 27px;
+  }
+
+  .item span {
+    font-size: 7.2px;
+    font-weight: 780;
+    letter-spacing: 0.13em;
+
+    transform: scaleX(1.07);
+  }
+
+  .item i {
+    width: 3px;
+    height: 3px;
+  }
+}

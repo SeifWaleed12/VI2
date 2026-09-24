@@ -1,0 +1,319 @@
+.section {
+  width: min(calc(100% - 64px), 1440px);
+
+  margin: 70px auto;
+
+  display: grid;
+  grid-template-columns: 0.8fr 1.2fr;
+
+  border: 1px solid rgba(24, 25, 22, 0.12);
+
+  color: #181916;
+  background: #f4eee6;
+}
+
+.summary {
+  padding: 35px;
+
+  border-right: 1px solid rgba(24, 25, 22, 0.12);
+}
+
+.summary > span,
+.formHeading span,
+.ratingPicker > span,
+.fields label > span,
+.reviewText > span {
+  font-size: 7px;
+  font-weight: 800;
+  letter-spacing: 0.11em;
+}
+
+.ratingValue {
+  margin-top: 25px;
+
+  display: flex;
+  align-items: center;
+
+  gap: 19px;
+}
+
+.ratingValue > strong {
+  font-family: var(--font-display), sans-serif;
+  font-size: 88px;
+  font-weight: 400;
+  line-height: 0.8;
+}
+
+.ratingValue > div {
+  display: flex;
+  flex-direction: column;
+
+  gap: 7px;
+}
+
+.stars {
+  display: flex;
+  gap: 2px;
+}
+
+.ratingValue > div > span {
+  color: #706a62;
+
+  font-size: 8px;
+}
+
+.summary > p {
+  max-width: 410px;
+
+  margin: 27px 0 0;
+
+  color: #746e66;
+
+  font-size: 9px;
+  line-height: 1.7;
+}
+
+.trustRow {
+  margin-top: 22px;
+  padding-top: 18px;
+
+  display: flex;
+  align-items: flex-start;
+
+  gap: 8px;
+
+  border-top: 1px solid rgba(24, 25, 22, 0.12);
+
+  color: #646057;
+
+  font-size: 8px;
+  line-height: 1.55;
+}
+
+.trustRow svg {
+  flex: 0 0 auto;
+}
+
+.formWrap {
+  padding: 35px;
+}
+
+.formHeading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+
+  gap: 20px;
+}
+
+.formHeading h2 {
+  margin: 7px 0 0;
+
+  font-family: var(--font-display), sans-serif;
+  font-size: 52px;
+  font-weight: 400;
+  line-height: 0.85;
+}
+
+.form {
+  margin-top: 27px;
+}
+
+.ratingPicker {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  gap: 20px;
+}
+
+.ratingPicker > div {
+  display: flex;
+}
+
+.ratingPicker button {
+  width: 35px;
+  height: 35px;
+
+  display: grid;
+  place-items: center;
+
+  border: 0;
+
+  color: #181916;
+  background: transparent;
+
+  cursor: pointer;
+}
+
+.fields {
+  margin-top: 18px;
+
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+
+  gap: 9px;
+}
+
+.fields label,
+.reviewText {
+  display: flex;
+  flex-direction: column;
+
+  gap: 8px;
+}
+
+.fields select,
+.reviewText textarea {
+  width: 100%;
+
+  border: 1px solid rgba(24, 25, 22, 0.15);
+  outline: 0;
+
+  color: #181916;
+  background: #fbfaf7;
+
+  font: inherit;
+  font-size: 9px;
+}
+
+.fields select {
+  min-height: 47px;
+  padding: 0 11px;
+}
+
+.reviewText {
+  margin-top: 12px;
+}
+
+.reviewText textarea {
+  padding: 12px;
+
+  resize: vertical;
+}
+
+.upload {
+  position: relative;
+
+  min-height: 70px;
+
+  margin-top: 12px;
+  padding: 13px;
+
+  display: flex;
+  align-items: center;
+
+  gap: 10px;
+
+  border: 1px dashed rgba(24, 25, 22, 0.28);
+
+  cursor: pointer;
+}
+
+.upload > div {
+  display: flex;
+  flex-direction: column;
+
+  gap: 3px;
+}
+
+.upload strong {
+  font-size: 7px;
+  letter-spacing: 0.08em;
+}
+
+.upload span {
+  color: #79736b;
+  font-size: 7px;
+}
+
+.upload input {
+  position: absolute;
+  inset: 0;
+
+  opacity: 0;
+  cursor: pointer;
+}
+
+.submit {
+  width: 100%;
+  min-height: 51px;
+
+  margin-top: 13px;
+
+  border: 0;
+
+  color: #f7f2ea;
+  background: #181916;
+
+  cursor: pointer;
+
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+}
+
+.success {
+  min-height: 315px;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+
+  gap: 10px;
+
+  text-align: center;
+}
+
+.success strong {
+  margin-top: 7px;
+
+  font-size: 9px;
+  letter-spacing: 0.1em;
+}
+
+.success span {
+  max-width: 390px;
+
+  color: #746e66;
+
+  font-size: 9px;
+  line-height: 1.6;
+}
+
+@media (max-width: 850px) {
+  .section {
+    grid-template-columns: 1fr;
+  }
+
+  .summary {
+    border-right: 0;
+    border-bottom: 1px solid rgba(24, 25, 22, 0.12);
+  }
+}
+
+@media (max-width: 700px) {
+  .section {
+    width: calc(100% - 28px);
+
+    margin: 44px auto;
+  }
+
+  .summary,
+  .formWrap {
+    padding: 22px 17px;
+  }
+
+  .ratingValue > strong {
+    font-size: 67px;
+  }
+
+  .formHeading h2 {
+    font-size: 42px;
+  }
+
+  .fields {
+    grid-template-columns: 1fr;
+  }
+}

@@ -1,0 +1,328 @@
+.card {
+  min-width: 0;
+}
+
+.imageArea {
+  position: relative;
+
+  aspect-ratio: 0.86;
+
+  display: grid;
+  place-items: center;
+
+  overflow: hidden;
+
+  background:
+    linear-gradient(
+      145deg,
+      #f1e9de 0%,
+      #e8ded1 100%
+    );
+}
+
+.image {
+  width: 80%;
+  height: 80%;
+
+  display: block;
+
+  object-fit: contain;
+
+  mix-blend-mode: multiply;
+
+  transition:
+    transform 420ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.badge {
+  position: absolute;
+  z-index: 3;
+
+  top: 14px;
+  left: 14px;
+
+  padding: 8px 10px;
+
+  color: #f7f3ed;
+  background: #181916;
+
+  font-size: 7px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.content {
+  padding: 15px 1px 8px;
+}
+
+.topLine {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  gap: 12px;
+}
+
+.brand {
+  overflow: hidden;
+
+  color: #777269;
+
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.rating {
+  flex: 0 0 auto;
+
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+
+  color: #292a26;
+
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.reviewCount {
+  font-size: 7.5px;
+  font-weight: 600;
+  color: #8c877f;
+}
+
+.name {
+  margin-top: 7px;
+
+  display: inline-block;
+
+  color: #191a17;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.meta {
+  min-height: 15px;
+
+  margin: 7px 0 0;
+
+  overflow: hidden;
+
+  color: #8c877f;
+
+  font-size: 9px;
+  font-weight: 400;
+
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bottom {
+  margin-top: 14px;
+
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+
+  gap: 12px;
+}
+
+.price {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.price strong {
+  color: #181916;
+  font-size: 12px;
+}
+
+.price span {
+  color: #aaa59d;
+
+  font-size: 9px;
+
+  text-decoration: line-through;
+}
+
+.addButton {
+  width: 40px;
+  height: 40px;
+
+  padding: 0;
+
+  flex: 0 0 auto;
+
+  display: grid;
+  place-items: center;
+
+  border: 1px solid #181916;
+
+  color: #181916;
+  background: transparent;
+
+  cursor: pointer;
+
+  transition:
+    color 180ms ease,
+    background-color 180ms ease,
+    transform 180ms ease;
+}
+
+.addButton:hover {
+  color: #f7f3ed;
+  background: #181916;
+
+  transform: translateY(-2px);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .card:hover .image {
+    transform: scale(1.045);
+  }
+}
+
+@media (max-width: 700px) {
+  .imageArea {
+    aspect-ratio: 0.9;
+  }
+
+  .image {
+    width: 82%;
+    height: 82%;
+  }
+
+  .content {
+    padding:
+      10px
+      1px
+      5px;
+  }
+
+  .badge {
+    top: 8px;
+    left: 8px;
+
+    max-width: calc(100% - 16px);
+
+    padding:
+      6px
+      7px;
+
+    overflow: hidden;
+
+    font-size: 5.5px;
+    letter-spacing: 0.08em;
+
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .brand {
+    max-width: 75%;
+
+    font-size: 6.5px;
+  }
+
+  .rating {
+    gap: 2px;
+
+    font-size: 7px;
+  }
+
+  .rating svg {
+    width: 9px;
+    height: 9px;
+  }
+
+  .name {
+    min-height: 31px;
+
+    margin-top: 5px;
+
+    font-size: 10.5px;
+    line-height: 1.35;
+  }
+
+  .meta {
+    min-height: 13px;
+
+    margin-top: 4px;
+
+    font-size: 7px;
+  }
+
+  .bottom {
+    margin-top: 9px;
+
+    align-items: center;
+  }
+
+  .price strong {
+    font-size: 9.5px;
+  }
+
+  .price span {
+    font-size: 7px;
+  }
+
+  .addButton {
+    width: 34px;
+    height: 34px;
+  }
+}
+
+@media (max-width: 380px) {
+  .name {
+    font-size: 10px;
+  }
+
+  .addButton {
+    width: 32px;
+    height: 32px;
+  }
+}
+
+
+.stockLine {
+  min-height: 18px;
+
+  margin-top: 8px;
+
+  display: flex;
+  align-items: center;
+  gap: 6px;
+
+  color: #697153;
+
+  font-size: 7.5px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.stockLine > span {
+  width: 5px;
+  height: 5px;
+
+  border-radius: 50%;
+
+  background: #697153;
+}
+
+.stockLine > span.lowStock {
+  background: #92583b;
+}
+
+.stockLine:has(.lowStock) {
+  color: #92583b;
+}

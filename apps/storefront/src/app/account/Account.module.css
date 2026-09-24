@@ -1,0 +1,493 @@
+.page {
+  min-height: 100vh;
+
+  color: #181916;
+  background: #fbfaf7;
+}
+
+.hero {
+  min-height: 510px;
+
+  padding:
+    76px
+    max(32px, calc((100vw - 1440px) / 2));
+
+  display: grid;
+  grid-template-columns: 1.15fr 0.85fr;
+  align-items: end;
+
+  gap: 60px;
+
+  background:
+    linear-gradient(
+      120deg,
+      #eee5d9,
+      #d8cdbf
+    );
+}
+
+.hero > div:first-child > span,
+.sectionHeading > div > span {
+  display: block;
+
+  margin-bottom: 14px;
+
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+}
+
+.hero h1,
+.sectionHeading h2,
+.emptyOrder h3 {
+  margin: 0;
+
+  font-family: var(--font-display), sans-serif;
+  font-weight: 400;
+  line-height: 0.8;
+}
+
+.hero h1 {
+  font-size: clamp(92px, 10vw, 160px);
+}
+
+.hero > div:first-child > p {
+  max-width: 470px;
+
+  margin: 28px 0 0;
+
+  color: #655f57;
+
+  font-size: 11px;
+  line-height: 1.7;
+}
+
+.pointsCard {
+  min-height: 300px;
+
+  padding: 30px;
+
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-end;
+
+  color: #f8f3ea;
+  background: #1c1e1a;
+}
+
+.pointsCard > span {
+  margin-top: 26px;
+
+  font-size: 7px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+}
+
+.pointsCard > strong {
+  margin-top: 4px;
+
+  font-family: var(--font-display), sans-serif;
+  font-size: 86px;
+  font-weight: 400;
+  line-height: 0.9;
+}
+
+.pointsCard p {
+  max-width: 300px;
+
+  margin: 16px 0 0;
+
+  color: rgba(248, 243, 234, 0.6);
+
+  font-size: 9px;
+  line-height: 1.6;
+}
+
+.quickGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+
+  background: #eee7dd;
+}
+
+.quickGrid > div {
+  min-height: 135px;
+
+  padding: 25px;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+
+  gap: 7px;
+
+  border-right: 1px solid rgba(24, 25, 22, 0.12);
+
+  text-align: center;
+}
+
+.quickGrid > div:last-child {
+  border-right: 0;
+}
+
+.quickGrid strong {
+  margin-top: 5px;
+
+  font-size: 8px;
+  letter-spacing: 0.1em;
+}
+
+.quickGrid span {
+  max-width: 260px;
+
+  color: #777168;
+
+  font-size: 9px;
+  line-height: 1.55;
+}
+
+.reorder {
+  padding:
+    80px
+    max(32px, calc((100vw - 1440px) / 2));
+}
+
+.sectionHeading {
+  margin-bottom: 30px;
+
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+
+  gap: 25px;
+}
+
+.sectionHeading h2 {
+  font-size: clamp(64px, 7vw, 110px);
+}
+
+.sectionHeading > a {
+  padding-bottom: 7px;
+
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+
+  border-bottom: 1px solid #181916;
+
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+}
+
+.reorderGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+
+  gap: 1px;
+
+  background: rgba(24, 25, 22, 0.12);
+}
+
+.reorderCard {
+  background: #f2eae0;
+}
+
+.imageArea {
+  min-height: 310px;
+
+  padding: 25px;
+
+  display: grid;
+  place-items: center;
+}
+
+.imageArea img {
+  width: auto;
+  max-width: 76%;
+
+  height: 235px;
+
+  object-fit: contain;
+
+  filter:
+    drop-shadow(
+      0 22px 18px
+      rgba(20, 20, 18, 0.13)
+    );
+}
+
+.reorderContent {
+  padding: 22px;
+
+  border-top: 1px solid rgba(24, 25, 22, 0.1);
+}
+
+.reorderContent > span {
+  color: #79736b;
+
+  font-size: 7px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.reorderContent h3 {
+  margin: 7px 0 0;
+
+  font-family: var(--font-display), sans-serif;
+  font-size: 35px;
+  font-weight: 400;
+}
+
+.reorderMeta {
+  margin-top: 18px;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  gap: 12px;
+
+  color: #777168;
+
+  font-size: 7px;
+}
+
+.reorderMeta strong {
+  color: #181916;
+
+  font-size: 9px;
+}
+
+.reorderContent button {
+  width: 100%;
+  min-height: 48px;
+
+  margin-top: 15px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  gap: 8px;
+
+  border: 1px solid #181916;
+
+  color: #f8f3ea;
+  background: #181916;
+
+  cursor: pointer;
+
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.recommended {
+  display: grid;
+  grid-template-columns: 0.85fr 1.15fr;
+
+  border: 1px solid rgba(24, 25, 22, 0.12);
+}
+
+.emptyOrder {
+  min-height: 380px;
+
+  padding: 36px;
+
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+
+  background: #d8d0c5;
+}
+
+.emptyOrder > span {
+  font-size: 7px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+}
+
+.emptyOrder h3 {
+  max-width: 450px;
+
+  margin-top: 10px;
+
+  font-size: clamp(50px, 5vw, 80px);
+}
+
+.emptyOrder p {
+  max-width: 390px;
+
+  margin: 20px 0 0;
+
+  color: #6f6961;
+
+  font-size: 9px;
+  line-height: 1.6;
+}
+
+.miniProducts {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.miniProducts > a {
+  padding: 18px;
+
+  display: flex;
+  flex-direction: column;
+
+  border-left: 1px solid rgba(24, 25, 22, 0.1);
+
+  color: #181916;
+  background: #f5efe7;
+}
+
+.miniProducts img {
+  width: 100%;
+  height: 220px;
+
+  object-fit: contain;
+}
+
+.miniProducts > a > div {
+  margin-top: 18px;
+
+  display: flex;
+  flex-direction: column;
+
+  gap: 5px;
+}
+
+.miniProducts span {
+  color: #7d7770;
+
+  font-size: 6px;
+  font-weight: 800;
+}
+
+.miniProducts strong {
+  font-family: var(--font-display), sans-serif;
+  font-size: 27px;
+  font-weight: 400;
+}
+
+.miniProducts small {
+  display: flex;
+  align-items: center;
+
+  gap: 4px;
+
+  font-size: 8px;
+}
+
+@media (max-width: 900px) {
+  .hero {
+    grid-template-columns: 1fr;
+  }
+
+  .pointsCard {
+    min-height: 220px;
+  }
+
+  .reorderGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .recommended {
+    grid-template-columns: 1fr;
+  }
+
+  .miniProducts > a:first-child {
+    border-left: 0;
+  }
+}
+
+@media (max-width: 700px) {
+  .hero {
+    min-height: 0;
+
+    padding:
+      54px
+      16px
+      24px;
+
+    gap: 35px;
+  }
+
+  .hero h1 {
+    font-size: clamp(74px, 23vw, 104px);
+  }
+
+  .pointsCard {
+    min-height: 190px;
+
+    padding: 20px;
+  }
+
+  .pointsCard > strong {
+    font-size: 68px;
+  }
+
+  .quickGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .quickGrid > div {
+    min-height: 110px;
+
+    border-right: 0;
+    border-bottom: 1px solid rgba(24, 25, 22, 0.12);
+  }
+
+  .reorder {
+    padding:
+      58px
+      14px;
+  }
+
+  .sectionHeading h2 {
+    font-size: 56px;
+  }
+
+  .reorderGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .recommended {
+    display: block;
+  }
+
+  .emptyOrder {
+    min-height: 300px;
+
+    padding: 22px;
+  }
+
+  .miniProducts {
+    grid-template-columns: 1fr;
+  }
+
+  .miniProducts > a {
+    min-height: 150px;
+
+    display: grid;
+    grid-template-columns: 120px 1fr;
+
+    align-items: center;
+
+    border-left: 0;
+    border-top: 1px solid rgba(24, 25, 22, 0.1);
+  }
+
+  .miniProducts img {
+    height: 120px;
+  }
+
+  .miniProducts > a > div {
+    margin-top: 0;
+  }
+}

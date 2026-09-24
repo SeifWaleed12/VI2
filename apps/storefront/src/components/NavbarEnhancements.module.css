@@ -1,0 +1,259 @@
+.marketWrap {
+  position: relative;
+
+  display: flex;
+  align-items: center;
+}
+
+.marketButton {
+  min-width: 48px;
+  min-height: 34px;
+
+  padding: 0 7px;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  gap: 4px;
+
+  border: 0;
+  border-left: 1px solid rgba(24, 25, 22, 0.12);
+  border-right: 1px solid rgba(24, 25, 22, 0.12);
+
+  color: #181916;
+  background: transparent;
+
+  cursor: pointer;
+}
+
+.marketButton span {
+  font-size: 6px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.marketButton strong {
+  font-size: 7px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+}
+
+.marketPanel {
+  position: absolute;
+  top: calc(100% + 15px);
+  right: 0;
+
+  z-index: 260;
+
+  width: 245px;
+
+  padding: 18px;
+
+  display: flex;
+  flex-direction: column;
+
+  border: 1px solid rgba(24, 25, 22, 0.12);
+
+  color: #181916;
+  background: #f7f2eb;
+
+  box-shadow:
+    0 24px 60px
+    rgba(20, 20, 18, 0.14);
+}
+
+.marketPanel > span {
+  margin-bottom: 12px;
+
+  color: #8a847b;
+
+  font-size: 6px;
+  font-weight: 800;
+  letter-spacing: 0.13em;
+}
+
+.marketPanel > strong {
+  font-family:
+    var(--font-display),
+    sans-serif;
+
+  font-size: 31px;
+  font-weight: 400;
+  line-height: 1;
+}
+
+.marketPanel > small {
+  margin-top: 4px;
+
+  color: #777168;
+
+  font-size: 8px;
+}
+
+.languageChoice {
+  margin-top: 17px;
+
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+
+  gap: 1px;
+
+  background:
+    rgba(24, 25, 22, 0.13);
+}
+
+.languageChoice button {
+  min-height: 39px;
+
+  border: 0;
+
+  color: #5f5a53;
+  background: #eee7dd;
+
+  cursor: pointer;
+
+  font-size: 7px;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+}
+
+.languageChoice .languageActive {
+  color: #f8f3ea;
+  background: #181916;
+}
+
+.mobileUtilities {
+  margin:
+    18px
+    18px
+    0;
+
+  padding-top: 16px;
+
+  display: grid;
+  grid-template-columns:
+    repeat(2, 1fr);
+
+  gap: 7px;
+
+  border-top:
+    1px solid
+    rgba(24, 25, 22, 0.12);
+}
+
+.mobileUtilities > button,
+.mobileUtilities > a,
+.mobileMarket {
+  min-height: 46px;
+
+  padding: 0 13px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  gap: 8px;
+
+  border:
+    1px solid
+    rgba(24, 25, 22, 0.12);
+
+  color: #181916;
+  background: #f5efe7;
+
+  font-size: 8px;
+  font-weight: 800;
+}
+
+.mobileUtilities > button {
+  cursor: pointer;
+}
+
+.mobileMarket {
+  justify-content: space-between;
+}
+
+.mobileMarket span {
+  font-weight: 600;
+}
+
+.mobileMarket strong {
+  letter-spacing: 0.08em;
+}
+
+@media (max-width: 1050px) {
+  .marketWrap {
+    display: none;
+  }
+}
+
+
+/* ============================================================
+   SARAH DEADLINE CLOSEOUT — PROMINENT STICKY SEARCH
+   ============================================================ */
+
+.desktopSearchTrigger {
+  min-width: 122px;
+  height: 36px;
+
+  padding: 0 11px;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+
+  gap: 8px;
+
+  border:
+    1px solid
+    rgba(24, 25, 22, 0.14);
+
+  color: #181916;
+  background:
+    rgba(255, 255, 255, 0.34);
+
+  cursor: pointer;
+
+  transition:
+    border-color 160ms ease,
+    background-color 160ms ease,
+    transform 160ms ease;
+}
+
+.desktopSearchTrigger span {
+  font-size: 7px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+}
+
+.desktopSearchTrigger:hover {
+  border-color: #181916;
+  background: #fffdf9;
+  transform: translateY(-1px);
+}
+
+@media (max-width: 1250px) {
+  .desktopSearchTrigger {
+    min-width: 38px;
+    width: 38px;
+    padding: 0;
+
+    justify-content: center;
+
+    border-color: transparent;
+    background: transparent;
+  }
+
+  .desktopSearchTrigger span {
+    display: none;
+  }
+}
+
+@media (max-width: 700px) {
+  .desktopSearchTrigger {
+    width: 38px;
+    height: 38px;
+  }
+}

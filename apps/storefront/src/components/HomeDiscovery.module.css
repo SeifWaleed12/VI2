@@ -1,0 +1,819 @@
+.section {
+  overflow: hidden;
+
+  color: #181916;
+  background:
+    radial-gradient(
+      circle at 50% 66%,
+      rgba(
+        98,
+        106,
+        85,
+        0.07
+      ),
+      transparent 25%
+    ),
+    #f6f1e9;
+
+  border-top:
+    1px solid
+    rgba(
+      24,
+      25,
+      22,
+      0.08
+    );
+
+  border-bottom:
+    1px solid
+    rgba(
+      24,
+      25,
+      22,
+      0.08
+    );
+}
+
+.shell {
+  width:
+    min(
+      calc(
+        100% - 64px
+      ),
+      1440px
+    );
+
+  margin: 0 auto;
+
+  padding:
+    42px
+    0
+    46px;
+}
+
+.header {
+  display: flex;
+  align-items: flex-end;
+  justify-content:
+    space-between;
+
+  gap: 40px;
+}
+
+.heading > span {
+  display: block;
+
+  margin-bottom: 8px;
+
+  color: #626a55;
+
+  font-size: 7px;
+  font-weight: 850;
+  letter-spacing: 0.18em;
+}
+
+.headingLine {
+  display: flex;
+  align-items: flex-end;
+
+  gap: 31px;
+}
+
+.heading h2 {
+  margin: 0;
+
+  font-family:
+    var(--font-display),
+    sans-serif;
+
+  font-size:
+    clamp(
+      64px,
+      6.4vw,
+      108px
+    );
+
+  font-weight: 400;
+  line-height: 0.82;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+}
+
+.promise {
+  margin-bottom: 3px;
+
+  display: flex;
+  align-items: stretch;
+
+  gap: 18px;
+}
+
+.promise i {
+  width: 1px;
+
+  background:
+    rgba(
+      24,
+      25,
+      22,
+      0.2
+    );
+}
+
+.promise p {
+  margin: 0;
+
+  color: #5f5c55;
+
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.viewAll {
+  padding-bottom: 8px;
+
+  display: inline-flex;
+  align-items: center;
+
+  gap: 10px;
+
+  border-bottom:
+    1px solid
+    #181916;
+
+  color: #181916;
+
+  font-size: 7px;
+  font-weight: 850;
+  letter-spacing: 0.12em;
+}
+
+.orbit {
+  position: relative;
+
+  margin-top: 34px;
+
+  padding:
+    17px
+    0
+    0;
+}
+
+.orbitLine {
+  position: absolute;
+
+  z-index: 0;
+
+  top: 80px;
+  left: 2.5%;
+  right: 2.5%;
+
+  height: 1px;
+
+  background:
+    linear-gradient(
+      90deg,
+      rgba(
+        98,
+        106,
+        85,
+        0.08
+      ),
+      rgba(
+        98,
+        106,
+        85,
+        0.55
+      ) 15%,
+      rgba(
+        98,
+        106,
+        85,
+        0.55
+      ) 85%,
+      rgba(
+        98,
+        106,
+        85,
+        0.08
+      )
+    );
+}
+
+.orbitLine::before {
+  content: "";
+
+  position: absolute;
+
+  top: -11px;
+  left: 50%;
+
+  width: 72%;
+  height: 22px;
+
+  border-top:
+    1px solid
+    rgba(
+      98,
+      106,
+      85,
+      0.2
+    );
+
+  border-radius:
+    50%;
+
+  transform:
+    translateX(-50%);
+}
+
+.orbitLine span {
+  position: absolute;
+
+  top: 50%;
+
+  width: 7px;
+  height: 7px;
+
+  border-radius: 50%;
+
+  background: #626a55;
+
+  transform:
+    translateY(-50%);
+}
+
+.orbitLine span:nth-child(1) {
+  left: 0;
+}
+
+.orbitLine span:nth-child(2) {
+  left: 50%;
+}
+
+.orbitLine span:nth-child(3) {
+  right: 0;
+}
+
+.goalRail {
+  position: relative;
+
+  z-index: 1;
+
+  display: grid;
+  grid-template-columns:
+    repeat(
+      6,
+      minmax(
+        0,
+        1fr
+      )
+    );
+
+  align-items: start;
+
+  gap: 7px;
+}
+
+.goal {
+  position: relative;
+
+  min-width: 0;
+
+  padding: 0;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+
+  border: 0;
+
+  color: inherit;
+  background: transparent;
+
+  cursor: pointer;
+}
+
+.iconCircle {
+  position: relative;
+
+  z-index: 4;
+
+  width: 80px;
+  height: 80px;
+
+  display: grid;
+  place-items: center;
+
+  border:
+    1px solid
+    rgba(
+      24,
+      25,
+      22,
+      0.08
+    );
+
+  border-radius: 50%;
+
+  color: #181916;
+  background: #ede6dc;
+
+  box-shadow:
+    0 7px 20px
+    rgba(
+      24,
+      25,
+      22,
+      0.04
+    );
+
+  transition:
+    color 220ms ease,
+    background 220ms ease,
+    transform 220ms ease,
+    box-shadow 220ms ease;
+}
+
+.goal:hover
+.iconCircle {
+  transform:
+    translateY(-4px);
+
+  box-shadow:
+    0 13px 26px
+    rgba(
+      24,
+      25,
+      22,
+      0.08
+    );
+}
+
+.goal > strong {
+  position: relative;
+
+  z-index: 5;
+
+  margin-top: 17px;
+
+  font-size: clamp(20px, 2vw, 25px);
+  line-height: 1.0;
+  text-transform: uppercase;
+  font-weight: 700;
+
+  text-align: center;
+}
+
+.short {
+  position: relative;
+
+  z-index: 5;
+
+  margin-top: 6px;
+
+  color: #777167;
+
+  font-size: 8px;
+  line-height: 1.4;
+
+  text-align: center;
+}
+
+.activeGoal {
+  z-index: 7;
+}
+
+.activeGoal
+.iconCircle {
+  width: 94px;
+  height: 94px;
+
+  margin-top: -7px;
+
+  color: #f7f2ea;
+  background: #4f5943;
+
+  border-color:
+    rgba(
+      255,
+      255,
+      255,
+      0.6
+    );
+
+  box-shadow:
+    0 18px 45px
+    rgba(
+      54,
+      62,
+      46,
+      0.23
+    );
+}
+
+.activeBackdrop {
+  position: absolute;
+
+  z-index: 1;
+
+  top: -69px;
+  left: 50%;
+
+  width: 188px;
+  height: 188px;
+
+  border-radius: 50%;
+
+  transform:
+    translateX(-50%);
+
+  pointer-events: none;
+}
+
+.ringOne,
+.ringTwo {
+  position: absolute;
+
+  left: 50%;
+  top: 50%;
+
+  border-radius: 50%;
+
+  transform:
+    translate(
+      -50%,
+      -50%
+    );
+}
+
+.ringOne {
+  width: 176px;
+  height: 176px;
+
+  background:
+    rgba(
+      98,
+      106,
+      85,
+      0.08
+    );
+}
+
+.ringTwo {
+  width: 153px;
+  height: 153px;
+
+  border:
+    12px solid
+    rgba(
+      98,
+      106,
+      85,
+      0.1
+    );
+}
+
+.athlete {
+  position: absolute;
+
+  inset:
+    14px
+    13px
+    34px
+    13px;
+
+  overflow: hidden;
+
+  border-radius:
+    50%
+    50%
+    46%
+    46%;
+
+  opacity: 0.95;
+}
+
+.athleteImage {
+  object-fit: cover;
+  object-position:
+    59% 40%;
+
+  filter:
+    grayscale(1)
+    contrast(1.04);
+}
+
+.stronger {
+  position: absolute;
+
+  z-index: 3;
+
+  top: 32px;
+  left: 27px;
+
+  color:
+    rgba(
+      248,
+      244,
+      237,
+      0.92
+    );
+
+  font-size: 7px;
+  font-weight: 850;
+  line-height: 1.5;
+  letter-spacing: 0.24em;
+}
+
+.activeSummary {
+  width:
+    min(
+      520px,
+      100%
+    );
+
+  margin:
+    24px auto
+    0;
+
+  display: grid;
+  grid-template-columns:
+    auto
+    1fr
+    auto;
+
+  align-items: center;
+
+  gap: 16px;
+
+  padding:
+    12px
+    14px;
+
+  border:
+    1px solid
+    rgba(
+      24,
+      25,
+      22,
+      0.08
+    );
+
+  border-radius: 999px;
+
+  background:
+    rgba(
+      255,
+      252,
+      247,
+      0.78
+    );
+
+  backdrop-filter:
+    blur(10px);
+}
+
+.activeMeta {
+  display: inline-flex;
+  align-items: center;
+
+  gap: 6px;
+
+  color: #626a55;
+
+  font-size: 5.3px;
+  font-weight: 850;
+  letter-spacing: 0.11em;
+}
+
+.activeCopy {
+  display: flex;
+  align-items: center;
+
+  gap: 9px;
+}
+
+.activeCopy p {
+  margin: 0;
+
+  color: #5d5952;
+
+  font-size: 7px;
+  line-height: 1.45;
+}
+
+.shopNow {
+  min-height: 34px;
+
+  padding:
+    0
+    16px;
+
+  display: inline-flex;
+  align-items: center;
+
+  gap: 8px;
+
+  border-radius: 999px;
+
+  color: #f7f2ea;
+  background: #4f5943;
+
+  font-size: 6px;
+  font-weight: 850;
+  letter-spacing: 0.1em;
+}
+
+@media (max-width: 980px) {
+  .shell {
+    width:
+      calc(
+        100% - 36px
+      );
+  }
+
+  .headingLine {
+    gap: 22px;
+  }
+
+  .promise {
+    display: none;
+  }
+
+  .goal > strong {
+    font-size: clamp(18px, 4.5vw, 20px);
+    line-height: 1.0;
+  }
+
+  .short {
+    font-size: 7px;
+  }
+}
+
+@media (max-width: 700px) {
+  .shell {
+    width: 100%;
+
+    padding:
+      28px
+      0
+      31px;
+  }
+
+  .header {
+    padding:
+      0
+      14px;
+
+    align-items: flex-end;
+
+    gap: 13px;
+  }
+
+  .heading > span {
+    margin-bottom: 6px;
+
+    font-size: 5.5px;
+  }
+
+  .heading h2 {
+    font-size: clamp(50px, 14vw, 64px);
+    line-height: 0.82;
+    letter-spacing: -0.02em;
+  }
+
+  .viewAll {
+    font-size: 5.5px;
+  }
+
+  .orbit {
+    margin-top: 24px;
+
+    padding-top: 0;
+  }
+
+  .orbitLine {
+    display: none;
+  }
+
+  .goalRail {
+    padding:
+      38px
+      14px
+      12px;
+
+    display: flex;
+
+    gap: 10px;
+
+    overflow-x: auto;
+
+    scroll-snap-type:
+      x mandatory;
+
+    scrollbar-width: none;
+  }
+
+  .goalRail::-webkit-scrollbar {
+    display: none;
+  }
+
+  .goal {
+    flex:
+      0 0
+      118px;
+
+    scroll-snap-align:
+      center;
+  }
+
+  .iconCircle {
+    width: 68px;
+    height: 68px;
+  }
+
+  .activeGoal
+  .iconCircle {
+    width: 78px;
+    height: 78px;
+
+    margin-top: -5px;
+  }
+
+  .activeBackdrop {
+    top: -42px;
+
+    width: 135px;
+    height: 135px;
+  }
+
+  .ringOne {
+    width: 128px;
+    height: 128px;
+  }
+
+  .ringTwo {
+    width: 111px;
+    height: 111px;
+
+    border-width: 9px;
+  }
+
+  .athlete {
+    inset:
+      10px
+      10px
+      25px;
+  }
+
+  .stronger {
+    top: 22px;
+    left: 18px;
+
+    font-size: 5px;
+  }
+
+  .goal > strong {
+    margin-top: 13px;
+
+    font-size: 6.2px;
+  }
+
+  .short {
+    font-size: 6.1px;
+  }
+
+  .activeSummary {
+    width:
+      calc(
+        100% - 28px
+      );
+
+    margin-top: 10px;
+
+    grid-template-columns:
+      1fr
+      auto;
+
+    border-radius: 18px;
+  }
+
+  .activeMeta {
+    display: none;
+  }
+
+  .activeCopy p {
+    font-size: 6.5px;
+  }
+
+  .shopNow {
+    min-height: 32px;
+
+    padding:
+      0
+      13px;
+
+    font-size: 5.5px;
+  }
+}

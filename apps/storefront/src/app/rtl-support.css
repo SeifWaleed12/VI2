@@ -1,0 +1,145 @@
+html,
+body {
+  overflow-x: clip;
+}
+
+[dir="rtl"],
+html[dir="rtl"] body {
+  direction: rtl;
+  font-family: var(--font-arabic), Arial, sans-serif;
+  text-align: right;
+}
+
+/* Arabic Headings: Never Bebas Neue, use Cairo 800, line-height 1.15, zero letter spacing */
+[dir="rtl"] h1,
+[dir="rtl"] h2,
+[dir="rtl"] h3,
+[dir="rtl"] .font-display {
+  font-family: var(--font-arabic), Arial, sans-serif !important;
+  letter-spacing: 0 !important;
+  font-weight: 800 !important;
+  line-height: 1.15 !important;
+}
+
+/* Arabic Body copy: line-height 1.7 - 1.8 */
+[dir="rtl"] p,
+[dir="rtl"] .body-copy {
+  line-height: 1.75;
+}
+
+/* Arabic letter-spacing reset (cursive), eyebrows may have slight tracking */
+[dir="rtl"] :is(
+  p,
+  span,
+  strong,
+  small,
+  a,
+  button,
+  label,
+  input,
+  select,
+  textarea
+) {
+  letter-spacing: 0;
+}
+
+[dir="rtl"] .eyebrow {
+  letter-spacing: 0.06em !important;
+}
+
+/* Keep form fields aligned correctly */
+html[dir="rtl"] input,
+html[dir="rtl"] textarea,
+html[dir="rtl"] select {
+  direction: rtl;
+  text-align: right;
+}
+
+/* Numbers, prices, order references, emails and phone numbers stay LTR */
+html[dir="rtl"] input[type="email"],
+html[dir="rtl"] input[type="tel"],
+html[dir="rtl"] input[type="url"],
+html[dir="rtl"] input[type="password"],
+html[dir="rtl"] [data-price],
+html[dir="rtl"] [data-order-reference] {
+  direction: ltr;
+  text-align: left;
+  unicode-bidi: isolate;
+}
+
+/* Cart drawer opens from the left in Arabic */
+html[dir="rtl"] .cart-drawer {
+  right: auto;
+  left: 0;
+
+  box-shadow:
+    30px 0 80px
+    rgba(0, 0, 0, 0.13);
+
+  transform: translateX(-100%);
+}
+
+html[dir="rtl"] .cart-drawer-open {
+  transform: translateX(0);
+}
+
+/* Flip directional icons */
+html[dir="rtl"] :is(
+  .lucide-arrow-right,
+  .lucide-arrow-left,
+  .lucide-arrow-up-right,
+  .lucide-chevron-right,
+  .lucide-chevron-left
+) {
+  transform: scaleX(-1);
+}
+
+/* Arabic buttons and links should not use the condensed English font */
+html[dir="rtl"] button,
+html[dir="rtl"] a {
+  font-family:
+    var(--font-arabic),
+    var(--font-body),
+    Arial,
+    sans-serif;
+}
+
+/* Product/card text spacing in Arabic */
+html[dir="rtl"] .cart-item-name,
+html[dir="rtl"] .product-title,
+html[dir="rtl"] .product-name {
+  line-height: 1.65;
+}
+
+/* ================================================================
+   ARABIC HEADING SIZE SCALE
+   Cairo is a proportional font, not condensed like Bebas Neue.
+   At equal px, Arabic text occupies ~2–3× the width of Bebas Neue.
+   Override heading sizes so Cairo text never overflows on mobile.
+   ================================================================ */
+
+/* Desktop Arabic heading scale */
+[dir="rtl"] h1 {
+  font-size: clamp(44px, 5.5vw, 86px) !important;
+}
+
+[dir="rtl"] h2 {
+  font-size: clamp(34px, 4vw, 60px) !important;
+}
+
+/* Mobile Arabic heading scale */
+@media (max-width: 760px) {
+  [dir="rtl"] h1 {
+    font-size: clamp(28px, 7.5vw, 38px) !important;
+  }
+
+  [dir="rtl"] h2 {
+    font-size: clamp(24px, 6.5vw, 32px) !important;
+  }
+
+  /* Mobile slide-in nav links: Bebas Neue 48–76px → Cairo ~26–34px */
+  [dir="rtl"] .mobile-nav a {
+    font-size: clamp(26px, 7vw, 34px) !important;
+    line-height: 1.2 !important;
+  }
+}

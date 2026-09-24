@@ -1,0 +1,408 @@
+.backdrop {
+  position: fixed;
+  top: 154px;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 112;
+  border: 0;
+  background: rgba(20, 20, 18, 0.56);
+  cursor: default;
+}
+
+.menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 116;
+  border-top: 1px solid rgba(24, 25, 22, 0.08);
+  border-bottom: 1px solid rgba(24, 25, 22, 0.12);
+  background: #fbfaf7;
+  box-shadow: 0 26px 60px rgba(20, 20, 18, 0.15);
+}
+
+.inner {
+  width: min(calc(100% - 64px), 1440px);
+  min-height: 350px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 0.8fr 3.4fr 0.9fr;
+}
+
+.intro {
+  padding: 28px 28px 28px 0;
+  border-right: 1px solid rgba(24, 25, 22, 0.1);
+}
+
+.intro > span,
+.side > span {
+  color: #8b857d;
+  font-size: 7px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+}
+
+.intro h3 {
+  margin: 9px 0 0;
+  font-family: var(--font-display), sans-serif;
+  font-size: 46px;
+  font-weight: 400;
+  line-height: 0.9;
+}
+
+.intro p {
+  max-width: 220px;
+  margin: 17px 0 0;
+  color: #777168;
+  font-size: 9px;
+  line-height: 1.6;
+}
+
+.intro > a {
+  width: fit-content;
+  margin-top: 24px;
+  padding-bottom: 5px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border-bottom: 1px solid #181916;
+  color: #181916;
+  font-size: 7px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.columns {
+  padding: 26px 28px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 32px;
+}
+
+.column > strong {
+  display: block;
+  margin-bottom: 13px;
+  color: #596149;
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+}
+
+.column > div {
+  display: flex;
+  flex-direction: column;
+}
+
+.column a {
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+  color: #484a44;
+  font-size: 9px;
+  font-weight: 500;
+  transition: color 140ms ease, transform 140ms ease;
+}
+
+.column a:hover {
+  color: #181916;
+  transform: translateX(3px);
+}
+
+.side {
+  padding: 26px 0 26px 26px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-left: 1px solid rgba(24, 25, 22, 0.1);
+}
+
+.side > span {
+  margin-bottom: 5px;
+}
+
+.side a {
+  min-height: 56px;
+  padding: 0 13px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid rgba(24, 25, 22, 0.1);
+  color: #343630;
+  background: #f2ece4;
+  font-size: 7px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+}
+
+.side a:hover {
+  background: #e7dfd3;
+}
+
+@media (max-width: 1180px) {
+  .inner {
+    grid-template-columns: 0.75fr 3fr;
+  }
+  .side {
+    display: none;
+  }
+  .columns {
+    gap: 22px;
+  }
+}
+
+@media (max-width: 980px) {
+  .backdrop,
+  .menu {
+    display: none;
+  }
+}
+
+
+/* ============================================================
+   VI2 BRANDS MEGA MENU
+   iHerb directory concept, Vi2 identity
+   ============================================================ */
+
+.brandsInner {
+  width:
+    min(
+      calc(100% - 64px),
+      1440px
+    );
+
+  min-height: 285px;
+
+  margin: 0 auto;
+
+  display: grid;
+  grid-template-columns:
+    minmax(0, 1fr)
+    265px;
+
+  gap: 30px;
+}
+
+.brandDirectory {
+  position: relative;
+
+  padding:
+    27px
+    24px
+    48px
+    0;
+
+  display: grid;
+  grid-template-columns:
+    repeat(
+      5,
+      minmax(0, 1fr)
+    );
+
+  gap: 28px;
+}
+
+.brandColumn {
+  min-width: 0;
+}
+
+.brandColumn > strong {
+  display: block;
+
+  margin-bottom: 12px;
+
+  color: #626a55;
+
+  font-family:
+    var(--font-display),
+    sans-serif;
+
+  font-size: 24px;
+  font-weight: 400;
+  line-height: 1;
+}
+
+.brandColumn > div {
+  display: flex;
+  flex-direction: column;
+}
+
+.brandColumn a {
+  min-height: 37px;
+
+  display: flex;
+  align-items: center;
+
+  color: #3c3e39;
+
+  font-size: 10px;
+  line-height: 1.25;
+
+  transition:
+    color 150ms ease,
+    transform 150ms ease;
+}
+
+.brandColumn a:hover {
+  color: #626a55;
+
+  transform:
+    translateX(3px);
+}
+
+.allBrands {
+  position: absolute;
+
+  left: 0;
+  bottom: 20px;
+
+  padding-bottom: 5px;
+
+  display: inline-flex;
+  align-items: center;
+
+  gap: 8px;
+
+  border-bottom:
+    1px solid
+    #181916;
+
+  color: #181916;
+
+  font-size: 6.5px;
+  font-weight: 850;
+  letter-spacing: 0.09em;
+}
+
+.brandsSide {
+  padding:
+    25px
+    0
+    24px
+    25px;
+
+  border-left:
+    1px solid
+    rgba(
+      24,
+      25,
+      22,
+      0.1
+    );
+}
+
+.brandsSideTitle {
+  margin-bottom: 11px;
+
+  display: flex;
+  align-items: flex-end;
+  justify-content:
+    space-between;
+
+  gap: 8px;
+}
+
+.brandsSideTitle > span {
+  color: #181916;
+
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.brandsSideTitle > small {
+  color: #817b72;
+
+  font-size: 4.5px;
+  font-weight: 850;
+  letter-spacing: 0.1em;
+}
+
+.brandLogoGrid {
+  display: grid;
+
+  gap: 7px;
+}
+
+.brandLogoTile {
+  position: relative;
+
+  height: 43px;
+
+  border:
+    1px solid
+    rgba(
+      24,
+      25,
+      22,
+      0.09
+    );
+
+  border-radius: 7px;
+
+  background: #fffdf9;
+
+  transition:
+    background 150ms ease,
+    border-color 150ms ease,
+    transform 150ms ease;
+}
+
+.brandLogoTile:hover {
+  transform:
+    translateX(3px);
+
+  border-color:
+    rgba(
+      98,
+      106,
+      85,
+      0.32
+    );
+
+  background: #f6f0e7;
+}
+
+.brandLogo {
+  object-fit: contain;
+
+  padding:
+    8px
+    18px;
+}
+
+.shopBrands {
+  margin-top: 10px;
+
+  display: inline-flex;
+  align-items: center;
+
+  gap: 6px;
+
+  color: #626a55;
+
+  font-size: 6px;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+}
+
+@media (max-width: 1180px) {
+  .brandsInner {
+    grid-template-columns:
+      minmax(0, 1fr)
+      220px;
+  }
+
+  .brandDirectory {
+    gap: 20px;
+  }
+
+  .brandColumn a {
+    font-size: 9px;
+  }
+}
+
+@media (max-width: 980px) {
+  .brandsInner {
+    display: none;
+  }
+}

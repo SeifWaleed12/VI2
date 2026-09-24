@@ -1,0 +1,162 @@
+.wrap {
+  margin-top: 12px;
+
+  border:
+    1px solid
+    rgba(24, 25, 22, 0.12);
+
+  background: #f2ebe2;
+}
+
+.heading {
+  min-height: 58px;
+
+  padding: 0 13px;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  gap: 12px;
+
+  border-bottom:
+    1px solid
+    rgba(24, 25, 22, 0.1);
+}
+
+.heading > div {
+  display: flex;
+  align-items: center;
+
+  gap: 9px;
+}
+
+.heading > div > div {
+  display: flex;
+  flex-direction: column;
+
+  gap: 3px;
+}
+
+.heading strong {
+  font-size: 7px;
+  letter-spacing: 0.08em;
+}
+
+.heading span {
+  color: #817b73;
+
+  font-size: 7px;
+}
+
+.marketTabs {
+  display: grid;
+  grid-template-columns:
+    repeat(3, 1fr);
+
+  gap: 1px;
+
+  background:
+    rgba(24, 25, 22, 0.11);
+}
+
+.marketTabs button {
+  min-height: 50px;
+
+  padding: 8px;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+
+  gap: 3px;
+
+  border: 0;
+
+  color: #69645c;
+  background: #faf7f2;
+
+  cursor: pointer;
+}
+
+.marketTabs button span {
+  font-size: 6px;
+  font-weight: 800;
+}
+
+.marketTabs button strong {
+  font-size: 8px;
+  letter-spacing: 0.06em;
+}
+
+.marketTabs .active {
+  color: #f8f3ea;
+  background: #181916;
+}
+
+.notice {
+  padding: 14px;
+
+  display: grid;
+  grid-template-columns:
+    auto 1fr;
+
+  gap: 10px;
+}
+
+.notice > svg {
+  margin-top: 2px;
+}
+
+.notice > div {
+  display: flex;
+  flex-direction: column;
+}
+
+.notice span {
+  color: #817b73;
+
+  font-size: 6px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.notice strong {
+  margin-top: 4px;
+
+  font-family:
+    var(--font-display),
+    sans-serif;
+
+  font-size: 28px;
+  font-weight: 400;
+}
+
+.notice p {
+  margin: 7px 0 0;
+
+  color: #625d56;
+
+  font-size: 8px;
+  line-height: 1.6;
+}
+
+.notice small {
+  margin-top: 9px;
+
+  color: #8a6557;
+
+  font-size: 7px;
+  line-height: 1.5;
+}
+
+@media (max-width: 700px) {
+  .marketTabs button {
+    min-height: 46px;
+  }
+
+  .notice {
+    padding: 12px;
+  }
+}

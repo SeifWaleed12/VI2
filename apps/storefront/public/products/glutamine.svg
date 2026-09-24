@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 700">
+  <rect width="600" height="700" fill="#eee7dc"/>
+  
+        <rect x="164" y="117" width="272" height="82" rx="15" fill="#23241f"/>
+        <path d="M145 199h310l-17 390c-2 44-35 72-79 72H241c-44 0-77-28-79-72z" fill="#f3ede4"/>
+        <rect x="163" y="306" width="274" height="194" fill="#d8cab7"/>
+        
+  <text x="300" y="378" text-anchor="middle" font-family="Arial, sans-serif" font-weight="900" font-size="38" fill="#1f201c">GLUTAMINE</text>
+  <text x="300" y="419" text-anchor="middle" font-family="Arial, sans-serif" font-weight="700" font-size="15" fill="#4e4e47">300 G</text>
+</svg>

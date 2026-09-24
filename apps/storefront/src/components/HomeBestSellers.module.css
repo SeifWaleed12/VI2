@@ -1,0 +1,241 @@
+.section {
+  overflow: hidden;
+
+  color: #181916;
+  background: #f7f3ed;
+
+  border-top:
+    1px solid
+    rgba(
+      24,
+      25,
+      22,
+      0.08
+    );
+
+  border-bottom:
+    1px solid
+    rgba(
+      24,
+      25,
+      22,
+      0.1
+    );
+}
+
+.shell {
+  width:
+    min(
+      calc(
+        100% - 64px
+      ),
+      1440px
+    );
+
+  margin: 0 auto;
+
+  padding:
+    38px
+    0
+    44px;
+}
+
+.heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content:
+    space-between;
+
+  gap: 24px;
+}
+
+.kicker {
+  margin-bottom: 7px;
+
+  display: flex;
+  align-items: center;
+
+  gap: 7px;
+
+  color: #68645c;
+
+  font-size: 6.6px;
+  font-weight: 850;
+  letter-spacing: 0.14em;
+}
+
+.titleWrap h2 {
+  margin: 0;
+
+  font-family:
+    var(--font-display),
+    sans-serif;
+
+  font-size:
+    clamp(
+      64px,
+      6.4vw,
+      108px
+    );
+
+  font-weight: 400;
+  line-height: 0.82;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+}
+
+.viewAll {
+  padding-bottom: 7px;
+
+  display: inline-flex;
+  align-items: center;
+
+  gap: 8px;
+
+  border-bottom:
+    1px solid
+    #181916;
+
+  color: #181916;
+  background: transparent;
+
+  font-size: 6.5px;
+  font-weight: 850;
+  letter-spacing: 0.09em;
+
+  cursor: pointer;
+}
+
+.tabs {
+  margin-top: 19px;
+
+  display: flex;
+  align-items: center;
+
+  gap: 7px;
+
+  overflow-x: auto;
+
+  scrollbar-width: none;
+}
+
+.tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.tabs button {
+  min-height: 34px;
+
+  padding:
+    0
+    14px;
+
+  display: inline-flex;
+  align-items: center;
+
+  flex: 0 0 auto;
+
+  border:
+    1px solid
+    rgba(
+      24,
+      25,
+      22,
+      0.1
+    );
+
+  border-radius: 999px;
+
+  color: #555750;
+  background: #ece6dd;
+
+  font-size: 6.4px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+
+  cursor: pointer;
+}
+
+.tabs
+.activeTab {
+  color: #f8f4ed;
+  background: #626a55;
+
+  border-color:
+    #626a55;
+}
+
+.rail {
+  margin-top: 14px;
+
+  display: flex;
+
+  gap: 9px;
+
+  overflow-x: auto;
+
+  scroll-snap-type:
+    x mandatory;
+
+  overscroll-behavior-x:
+    contain;
+
+  scrollbar-width: none;
+}
+
+.rail::-webkit-scrollbar {
+  display: none;
+}
+
+@media (max-width: 700px) {
+  .shell {
+    width: 100%;
+
+    padding:
+      27px
+      14px
+      31px;
+  }
+
+  .heading {
+    gap: 12px;
+  }
+
+  .kicker {
+    margin-bottom: 5px;
+
+    font-size: 5.5px;
+  }
+
+  .titleWrap h2 {
+    font-size: clamp(50px, 14vw, 64px);
+    line-height: 0.82;
+    letter-spacing: -0.02em;
+  }
+
+  .viewAll {
+    font-size: 5.8px;
+  }
+
+  .tabs {
+    margin-top: 15px;
+
+    gap: 6px;
+  }
+
+  .tabs button {
+    min-height: 32px;
+
+    padding:
+      0
+      12px;
+
+    font-size: 5.9px;
+  }
+
+  .rail {
+    margin-top: 12px;
+
+    gap: 7px;
+  }
+}

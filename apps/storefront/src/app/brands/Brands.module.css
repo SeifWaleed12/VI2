@@ -1,0 +1,590 @@
+.page {
+  min-height: 100vh;
+
+  color: #181916;
+  background: #f6f1e9;
+}
+
+.directory {
+  background:
+    linear-gradient(
+      180deg,
+      #f7f2ea 0%,
+      #f2ebe1 100%
+    );
+}
+
+.shell {
+  width:
+    min(
+      calc(100% - 64px),
+      1440px
+    );
+
+  margin: 0 auto;
+
+  padding:
+    34px
+    0
+    46px;
+}
+
+/* ============================================================
+   HEADER
+   ============================================================ */
+
+.header {
+  margin-bottom: 28px;
+
+  display: flex;
+  align-items: flex-end;
+  justify-content:
+    space-between;
+
+  gap: 30px;
+}
+
+.kicker {
+  display: block;
+
+  margin-bottom: 7px;
+
+  color: #626a55;
+
+  font-size: 6px;
+  font-weight: 850;
+  letter-spacing: 0.15em;
+}
+
+.header h1 {
+  margin: 0;
+
+  font-family:
+    var(--font-display),
+    sans-serif;
+
+  font-size:
+    clamp(
+      52px,
+      5vw,
+      76px
+    );
+
+  font-weight: 400;
+  line-height: 0.82;
+}
+
+.header p {
+  max-width: 390px;
+
+  margin:
+    13px
+    0
+    0;
+
+  color: #6f6a62;
+
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.count {
+  padding-left: 20px;
+
+  display: flex;
+  align-items: flex-end;
+
+  gap: 10px;
+
+  border-left:
+    1px solid
+    rgba(
+      24,
+      25,
+      22,
+      0.16
+    );
+}
+
+.count strong {
+  font-family:
+    var(--font-display),
+    sans-serif;
+
+  font-size: 44px;
+  line-height: 0.75;
+}
+
+.count span {
+  color: #766f66;
+
+  font-size: 4.8px;
+  font-weight: 850;
+  line-height: 1.4;
+  letter-spacing: 0.12em;
+}
+
+/* ============================================================
+   iHERB-INSPIRED DIRECTORY LAYOUT — VI2 IDENTITY
+   ============================================================ */
+
+.content {
+  min-height: 360px;
+
+  padding:
+    28px
+    30px;
+
+  display: grid;
+  grid-template-columns:
+    minmax(0, 1fr)
+    255px;
+
+  gap: 40px;
+
+  border:
+    1px solid
+    rgba(
+      24,
+      25,
+      22,
+      0.1
+    );
+
+  border-radius: 12px;
+
+  background:
+    rgba(
+      255,
+      252,
+      247,
+      0.82
+    );
+
+  box-shadow:
+    0 14px 38px
+    rgba(
+      24,
+      25,
+      22,
+      0.035
+    );
+}
+
+.azColumns {
+  display: grid;
+  grid-template-columns:
+    repeat(
+      5,
+      minmax(0, 1fr)
+    );
+
+  align-content: start;
+
+  gap:
+    26px
+    24px;
+}
+
+.column {
+  min-width: 0;
+}
+
+.letter {
+  margin-bottom: 13px;
+
+  color: #626a55;
+
+  font-family:
+    var(--font-display),
+    sans-serif;
+
+  font-size: 26px;
+  line-height: 1;
+}
+
+.brandLinks {
+  display: flex;
+  flex-direction: column;
+
+  gap: 3px;
+}
+
+.brandLink {
+  min-height: 50px;
+
+  padding:
+    8px
+    0;
+
+  display: flex;
+  align-items: center;
+  justify-content:
+    space-between;
+
+  gap: 8px;
+
+  color: #181916;
+
+  border-bottom:
+    1px solid
+    rgba(
+      24,
+      25,
+      22,
+      0.07
+    );
+
+  transition:
+    color
+      170ms ease,
+    transform
+      170ms ease;
+}
+
+.brandLink:hover {
+  color: #626a55;
+
+  transform:
+    translateX(3px);
+}
+
+.brandLink > div {
+  min-width: 0;
+}
+
+.brandLink span {
+  display: block;
+
+  font-size: 11px;
+  line-height: 1.25;
+}
+
+.brandLink small {
+  display: block;
+
+  margin-top: 4px;
+
+  color: #8a847b;
+
+  font-size: 6px;
+}
+
+.viewAll {
+  min-height: 44px;
+
+  padding:
+    0
+    14px;
+
+  grid-column:
+    1 / -1;
+
+  justify-self: start;
+
+  display: inline-flex;
+  align-items: center;
+
+  gap: 8px;
+
+  border:
+    1px solid
+    rgba(
+      98,
+      106,
+      85,
+      0.25
+    );
+
+  border-radius: 999px;
+
+  color: #4f5943;
+  background:
+    rgba(
+      98,
+      106,
+      85,
+      0.06
+    );
+
+  font-size: 6px;
+  font-weight: 850;
+  letter-spacing: 0.09em;
+}
+
+/* ============================================================
+   RIGHT LOGO RAIL
+   ============================================================ */
+
+.brandRail {
+  padding-left: 28px;
+
+  border-left:
+    1px solid
+    rgba(
+      24,
+      25,
+      22,
+      0.11
+    );
+}
+
+.railTitle {
+  margin-bottom: 13px;
+
+  display: flex;
+  align-items: flex-end;
+  justify-content:
+    space-between;
+
+  gap: 10px;
+}
+
+.railTitle span {
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.railTitle small {
+  color: #7c766e;
+
+  font-size: 4.6px;
+  font-weight: 850;
+  letter-spacing: 0.1em;
+}
+
+.logoList {
+  display: grid;
+
+  gap: 8px;
+}
+
+.logoTile {
+  position: relative;
+
+  height: 54px;
+
+  border:
+    1px solid
+    rgba(
+      24,
+      25,
+      22,
+      0.1
+    );
+
+  border-radius: 8px;
+
+  background: #fffdf9;
+
+  transition:
+    transform
+      170ms ease,
+    border-color
+      170ms ease,
+    box-shadow
+      170ms ease;
+}
+
+.logoTile:hover {
+  transform:
+    translateX(3px);
+
+  border-color:
+    rgba(
+      98,
+      106,
+      85,
+      0.35
+    );
+
+  box-shadow:
+    0 8px 20px
+    rgba(
+      24,
+      25,
+      22,
+      0.055
+    );
+}
+
+.logo {
+  object-fit: contain;
+
+  padding:
+    11px
+    17px;
+}
+
+.newBadge {
+  position: absolute;
+
+  z-index: 2;
+
+  top: 4px;
+  right: 5px;
+
+  padding:
+    3px
+    5px;
+
+  border-radius: 999px;
+
+  color: #f7f2ea;
+  background: #181916;
+
+  font-size: 3.5px;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+}
+
+.shopAll {
+  margin-top: 14px;
+
+  display: inline-flex;
+  align-items: center;
+
+  gap: 7px;
+
+  color: #626a55;
+
+  font-size: 6px;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+}
+
+/* ============================================================
+   TABLET
+   ============================================================ */
+
+@media (max-width: 980px) {
+  .content {
+    grid-template-columns:
+      minmax(0, 1fr)
+      210px;
+
+    gap: 26px;
+  }
+
+  .azColumns {
+    grid-template-columns:
+      repeat(
+        3,
+        minmax(
+          0,
+          1fr
+        )
+      );
+  }
+}
+
+/* ============================================================
+   MOBILE
+   ============================================================ */
+
+@media (max-width: 700px) {
+  .shell {
+    width: 100%;
+
+    padding:
+      27px
+      14px
+      34px;
+  }
+
+  .header {
+    margin-bottom: 19px;
+
+    gap: 14px;
+  }
+
+  .header h1 {
+    font-size: 48px;
+  }
+
+  .header p {
+    max-width: 245px;
+
+    font-size: 8px;
+  }
+
+  .count {
+    display: none;
+  }
+
+  .content {
+    min-height: 0;
+
+    padding:
+      19px
+      16px;
+
+    grid-template-columns:
+      1fr;
+
+    gap: 26px;
+
+    border-radius: 9px;
+  }
+
+  .azColumns {
+    grid-template-columns:
+      repeat(
+        2,
+        minmax(
+          0,
+          1fr
+        )
+      );
+
+    gap:
+      20px
+      18px;
+  }
+
+  .letter {
+    margin-bottom: 8px;
+
+    font-size: 24px;
+  }
+
+  .brandLink {
+    min-height: 44px;
+  }
+
+  .brandLink span {
+    font-size: 10px;
+  }
+
+  .brandRail {
+    padding:
+      19px
+      0
+      0;
+
+    border-left: 0;
+    border-top:
+      1px solid
+      rgba(
+        24,
+        25,
+        22,
+        0.11
+      );
+  }
+
+  .logoList {
+    grid-template-columns:
+      repeat(
+        2,
+        minmax(
+          0,
+          1fr
+        )
+      );
+  }
+
+  .logoTile {
+    height: 50px;
+  }
+}

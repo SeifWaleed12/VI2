@@ -1,0 +1,257 @@
+.section {
+  padding: 84px 0;
+  color: #f7f2ea;
+  background: #20221d;
+}
+
+.heading,
+.footer {
+  width: min(calc(100% - 64px), 1440px);
+  margin-inline: auto;
+}
+
+.heading {
+  margin-bottom: 34px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 28px;
+}
+
+.heading > div:first-child > span {
+  margin-bottom: 11px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: rgba(247, 242, 234, 0.7);
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+}
+
+.heading h2 {
+  margin: 0;
+  font-family: var(--font-display), sans-serif;
+  font-size: clamp(64px, 6.4vw, 108px);
+  font-weight: 400;
+  line-height: 0.82;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.timer {
+  min-width: 188px;
+  padding: 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid rgba(247, 242, 234, 0.16);
+}
+
+.timer > div {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.timer span {
+  color: rgba(247, 242, 234, 0.55);
+  font-size: 6px;
+  font-weight: 800;
+}
+
+.timer strong {
+  font-size: 10px;
+}
+
+.arrows {
+  display: flex;
+  gap: 5px;
+}
+
+.arrows button {
+  width: 46px;
+  height: 46px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(247, 242, 234, 0.24);
+  color: #f7f2ea;
+  background: transparent;
+  cursor: pointer;
+}
+
+.rail {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(270px, 24vw);
+  gap: 1px;
+  overflow-x: auto;
+  scroll-snap-type: inline mandatory;
+  scrollbar-width: none;
+}
+
+.rail::-webkit-scrollbar {
+  display: none;
+}
+
+.card {
+  min-width: 0;
+  scroll-snap-align: start;
+  background: #2b2e27;
+}
+
+.card:nth-child(even) {
+  background: #5c6350;
+}
+
+.cardTop {
+  min-height: 49px;
+  padding: 0 15px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(247, 242, 234, 0.12);
+}
+
+.cardTop span,
+.cardTop strong {
+  font-size: 6px;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+}
+
+.imageLink {
+  min-height: 280px;
+  padding: 20px;
+  display: grid;
+  place-items: center;
+}
+
+.imageLink img {
+  width: auto;
+  max-width: 80%;
+  height: 230px;
+  object-fit: contain;
+  filter:
+    drop-shadow(
+      0 22px 20px rgba(0, 0, 0, 0.18)
+    );
+}
+
+.cardBody {
+  padding: 17px;
+  border-top: 1px solid rgba(247, 242, 234, 0.12);
+}
+
+.cardBody > span {
+  color: rgba(247, 242, 234, 0.5);
+  font-size: 6px;
+  font-weight: 800;
+}
+
+.cardBody h3 {
+  margin: 7px 0 0;
+  font-family: var(--font-display), sans-serif;
+  font-size: 31px;
+  font-weight: 400;
+  line-height: 0.92;
+}
+
+.priceRow {
+  margin-top: 17px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.priceRow strong {
+  font-size: 10px;
+}
+
+.priceRow button {
+  width: 39px;
+  height: 39px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(247, 242, 234, 0.35);
+  color: #f7f2ea;
+  background: transparent;
+  cursor: pointer;
+}
+
+.footer {
+  padding-top: 19px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.footer p {
+  max-width: 470px;
+  margin: 0;
+  color: rgba(247, 242, 234, 0.55);
+  font-size: 9px;
+  line-height: 1.6;
+}
+
+.footer a {
+  padding-bottom: 7px;
+  display: inline-flex;
+  align-items: center;
+  gap: 11px;
+  border-bottom: 1px solid rgba(247, 242, 234, 0.65);
+  color: #f7f2ea;
+  font-size: 7px;
+  font-weight: 800;
+}
+
+@media (max-width: 700px) {
+  .section {
+    padding: 56px 0;
+  }
+
+  .heading,
+  .footer {
+    width: calc(100% - 28px);
+  }
+
+  .heading h2 {
+    font-size: clamp(50px, 14vw, 64px);
+    line-height: 0.82;
+    letter-spacing: -0.02em;
+  }
+
+  .timer {
+    display: none;
+  }
+
+  .rail {
+    grid-auto-columns: minmax(190px, 68vw);
+  }
+
+  .imageLink {
+    min-height: 190px;
+    padding: 12px;
+  }
+
+  .imageLink img {
+    height: 150px;
+  }
+
+  .cardBody h3 {
+    font-size: 25px;
+  }
+
+  .footer {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

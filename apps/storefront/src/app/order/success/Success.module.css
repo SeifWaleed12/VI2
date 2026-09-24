@@ -1,0 +1,656 @@
+.page {
+  min-height: 100vh;
+
+  color: #181916;
+  background: #f8f4ed;
+}
+
+.header {
+  width:
+    min(
+      calc(100% - 64px),
+      1440px
+    );
+
+  min-height: 76px;
+
+  margin: 0 auto;
+
+  display: flex;
+  align-items: center;
+  justify-content:
+    space-between;
+
+  gap: 28px;
+
+  border-bottom:
+    1px solid
+    rgba(24, 25, 22, 0.1);
+}
+
+.header > strong {
+  font-family:
+    var(--font-display),
+    sans-serif;
+
+  font-size: 31px;
+  font-weight: 400;
+}
+
+.progress {
+  display: flex;
+  align-items: center;
+
+  gap: 14px;
+
+  color: #99938a;
+
+  font-size: 5.7px;
+  font-weight: 850;
+  letter-spacing: 0.1em;
+}
+
+.progress i {
+  width: 34px;
+  height: 1px;
+
+  background:
+    rgba(24, 25, 22, 0.14);
+}
+
+.progress b {
+  padding-bottom: 7px;
+
+  color: #181916;
+
+  border-bottom:
+    1px solid
+    #181916;
+}
+
+.successBand {
+  min-height: 38px;
+
+  padding:
+    0
+    max(
+      32px,
+      calc(
+        (
+          100% -
+          1440px
+        ) /
+        2 +
+        32px
+      )
+    );
+
+  display: flex;
+  align-items: center;
+
+  gap: 8px;
+
+  color: #4f5943;
+  background:
+    rgba(
+      98,
+      106,
+      85,
+      0.09
+    );
+
+  font-size: 5.5px;
+  font-weight: 850;
+  letter-spacing: 0.1em;
+}
+
+.successBand strong {
+  margin-left: auto;
+
+  color: #181916;
+}
+
+.layout {
+  width:
+    min(
+      calc(100% - 64px),
+      1440px
+    );
+
+  margin:
+    46px
+    auto
+    0;
+
+  padding-bottom: 55px;
+
+  display: grid;
+  grid-template-columns:
+    minmax(0, 1.4fr)
+    minmax(320px, 0.7fr);
+
+  gap: 42px;
+
+  align-items: start;
+}
+
+.eyebrow {
+  color: #626a55;
+
+  font-size: 6px;
+  font-weight: 850;
+  letter-spacing: 0.12em;
+}
+
+.main h1 {
+  margin:
+    10px
+    0
+    0;
+
+  font-family:
+    var(--font-display),
+    sans-serif;
+
+  font-size:
+    clamp(
+      82px,
+      8vw,
+      118px
+    );
+
+  font-weight: 400;
+  line-height: 0.72;
+}
+
+.main h2 {
+  margin:
+    15px
+    0
+    0;
+
+  color: #777169;
+
+  font-family:
+    var(--font-display),
+    sans-serif;
+
+  font-size:
+    clamp(
+      50px,
+      5vw,
+      72px
+    );
+
+  font-weight: 400;
+  line-height: 0.8;
+}
+
+.reference {
+  width: fit-content;
+
+  margin-top: 24px;
+
+  padding:
+    12px
+    16px;
+
+  display: flex;
+  align-items: center;
+
+  gap: 15px;
+
+  background: #eee5d9;
+}
+
+.reference span {
+  color: #777169;
+
+  font-size: 5px;
+  font-weight: 850;
+  letter-spacing: 0.1em;
+}
+
+.reference strong {
+  font-size: 9px;
+}
+
+.statusCard {
+  margin-top: 30px;
+
+  padding:
+    22px;
+
+  display: grid;
+  grid-template-columns:
+    repeat(
+      2,
+      minmax(
+        0,
+        1fr
+      )
+    );
+
+  gap: 14px;
+
+  border:
+    1px solid
+    rgba(24, 25, 22, 0.08);
+
+  background:
+    rgba(
+      255,
+      255,
+      255,
+      0.55
+    );
+}
+
+.statusCard > div {
+  display: flex;
+  align-items: flex-start;
+
+  gap: 10px;
+}
+
+.statusCard > div > div {
+  display: flex;
+  flex-direction: column;
+
+  gap: 5px;
+}
+
+.statusCard strong {
+  font-size: 7px;
+}
+
+.statusCard span {
+  color: #777169;
+
+  font-size: 7px;
+  line-height: 1.45;
+}
+
+.detailGrid {
+  margin-top: 15px;
+
+  display: grid;
+  grid-template-columns:
+    repeat(
+      3,
+      minmax(
+        0,
+        1fr
+      )
+    );
+
+  gap: 8px;
+}
+
+.detailGrid > div {
+  min-height: 126px;
+
+  padding: 15px;
+
+  background: #efede9;
+}
+
+.detailGrid span {
+  display: block;
+
+  margin-bottom: 12px;
+
+  color: #817b72;
+
+  font-size: 5px;
+  font-weight: 850;
+  letter-spacing: 0.1em;
+}
+
+.detailGrid strong {
+  font-size: 9px;
+}
+
+.detailGrid p {
+  margin:
+    7px
+    0
+    0;
+
+  color: #777169;
+
+  font-size: 7.5px;
+  line-height: 1.5;
+}
+
+.actions {
+  margin-top: 24px;
+
+  display: flex;
+  align-items: center;
+
+  gap: 9px;
+}
+
+.primary,
+.secondary {
+  min-height: 52px;
+
+  padding:
+    0
+    18px;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  gap: 10px;
+
+  font-size: 6px;
+  font-weight: 850;
+  letter-spacing: 0.09em;
+}
+
+.primary {
+  color: #f8f4ed;
+  background: #181916;
+}
+
+.secondary {
+  border:
+    1px solid
+    rgba(24, 25, 22, 0.35);
+
+  color: #181916;
+}
+
+.secureNote {
+  margin-top: 13px;
+
+  display: flex;
+  align-items: center;
+
+  gap: 7px;
+
+  color: #777169;
+
+  font-size: 6px;
+}
+
+/* ============================================================
+   RECEIPT
+   ============================================================ */
+
+.summary {
+  position: sticky;
+
+  top: 20px;
+
+  padding:
+    27px
+    25px;
+
+  background: #eee5d9;
+}
+
+.summary > span {
+  color: #777169;
+
+  font-size: 5px;
+  font-weight: 850;
+  letter-spacing: 0.1em;
+}
+
+.summary > h2 {
+  margin:
+    8px
+    0
+    22px;
+
+  font-family:
+    var(--font-display),
+    sans-serif;
+
+  font-size: 58px;
+  font-weight: 400;
+  line-height: 0.76;
+}
+
+.item {
+  padding:
+    12px
+    0;
+
+  display: grid;
+  grid-template-columns:
+    58px
+    minmax(
+      0,
+      1fr
+    )
+    auto;
+
+  gap: 11px;
+
+  align-items: center;
+
+  border-top:
+    1px solid
+    rgba(24, 25, 22, 0.1);
+}
+
+.item > div {
+  width: 58px;
+  height: 58px;
+
+  background:
+    rgba(
+      255,
+      255,
+      255,
+      0.55
+    );
+}
+
+.item img {
+  width: 100%;
+  height: 100%;
+
+  padding: 6px;
+
+  object-fit: contain;
+}
+
+.item section {
+  min-width: 0;
+
+  display: flex;
+  flex-direction: column;
+
+  gap: 3px;
+}
+
+.item section span {
+  color: #777169;
+
+  font-size: 4.8px;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+}
+
+.item section strong {
+  overflow: hidden;
+
+  font-size: 8px;
+
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.item > strong {
+  font-size: 8px;
+  white-space: nowrap;
+}
+
+.total {
+  margin-top: 20px;
+
+  padding-top: 18px;
+
+  display: flex;
+  align-items: center;
+  justify-content:
+    space-between;
+
+  gap: 14px;
+
+  border-top:
+    1px solid
+    rgba(24, 25, 22, 0.14);
+}
+
+.total span {
+  font-family:
+    var(--font-display),
+    sans-serif;
+
+  color: #181916;
+
+  font-size: 26px;
+}
+
+.total strong {
+  font-family:
+    var(--font-display),
+    sans-serif;
+
+  font-size: 34px;
+  font-weight: 400;
+}
+
+.summaryNote {
+  margin-top: 16px;
+
+  padding:
+    12px
+    13px;
+
+  display: flex;
+  align-items: center;
+
+  gap: 8px;
+
+  color: #626a55;
+  background:
+    rgba(
+      255,
+      255,
+      255,
+      0.55
+    );
+
+  font-size: 7px;
+}
+
+/* ============================================================
+   MOBILE
+   ============================================================ */
+
+@media (max-width: 760px) {
+  .header {
+    width:
+      calc(
+        100% - 28px
+      );
+
+    min-height: 62px;
+  }
+
+  .progress {
+    gap: 7px;
+
+    font-size: 4.6px;
+  }
+
+  .progress i {
+    width: 13px;
+  }
+
+  .successBand {
+    padding:
+      0
+      14px;
+
+    min-height: 35px;
+  }
+
+  .layout {
+    width: 100%;
+
+    margin-top: 28px;
+
+    padding:
+      0
+      14px
+      36px;
+
+    display: block;
+  }
+
+  .main h1 {
+    font-size: 68px;
+  }
+
+  .main h2 {
+    font-size: 42px;
+  }
+
+  .reference {
+    margin-top: 18px;
+  }
+
+  .statusCard {
+    margin-top: 20px;
+
+    padding: 15px;
+
+    grid-template-columns:
+      1fr;
+
+    gap: 14px;
+  }
+
+  .detailGrid {
+    grid-template-columns:
+      1fr;
+
+    gap: 7px;
+  }
+
+  .detailGrid > div {
+    min-height: 92px;
+  }
+
+  .summary {
+    position: static;
+
+    margin-top: 18px;
+
+    padding: 18px;
+  }
+
+  .summary > h2 {
+    font-size: 46px;
+  }
+
+  .actions {
+    width: 100%;
+
+    flex-direction: column;
+  }
+
+  .primary,
+  .secondary {
+    width: 100%;
+  }
+}

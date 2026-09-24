@@ -1,0 +1,458 @@
+.hero {
+  position: relative;
+
+  width: 100%;
+  min-height: 690px;
+
+  overflow: hidden;
+
+  background: #e9ddcd;
+}
+
+.heroImage {
+  object-fit: cover;
+  object-position: center center;
+
+  transform: scale(1.002);
+}
+
+.heroOverlay {
+  position: absolute;
+  inset: 0;
+
+  z-index: 2;
+
+  display: flex;
+  align-items: stretch;
+
+  pointer-events: none;
+}
+
+.heroContent {
+  width: 46%;
+  min-width: 470px;
+
+  padding:
+    72px
+    clamp(52px, 7vw, 116px);
+
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+
+  pointer-events: auto;
+}
+
+.heroLogo {
+  width: auto;
+  height: 90px;
+
+  margin-bottom: 27px;
+
+  object-fit: contain;
+}
+
+.heroContent h1 {
+  margin: 0;
+
+  max-width: 610px;
+
+  color: #151613;
+
+  font-family: var(--font-display), sans-serif;
+  font-size: clamp(96px, 8.4vw, 150px);
+  font-weight: 400;
+  line-height: 0.77;
+  letter-spacing: -0.02em;
+}
+
+.heroContent p {
+  max-width: 390px;
+
+  margin: 31px 0 0;
+
+  color: #2c2c28;
+
+  font-size: 15px;
+  line-height: 1.58;
+}
+
+.heroButton {
+  min-width: 160px;
+  min-height: 56px;
+
+  margin-top: 29px;
+  padding: 0 24px;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+
+  border: 1px solid #161714;
+
+  color: #f7f2e9;
+  background: #161714;
+
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+
+  transition:
+    transform 180ms ease,
+    background-color 180ms ease;
+}
+
+.heroButton:hover {
+  transform: translateY(-2px);
+  background: #414536;
+}
+
+.categoryProduct {
+  position: absolute;
+
+  z-index: 2;
+
+  top: 58px;
+  left: 20px;
+  right: 20px;
+  bottom: 112px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  overflow: hidden;
+
+  pointer-events: none;
+}
+
+.categoryProductGlow {
+  position: absolute;
+
+  left: 50%;
+  bottom: 10%;
+
+  width: 62%;
+  height: 24%;
+
+  border-radius: 50%;
+
+  background: rgba(255, 255, 255, 0.28);
+
+  filter: blur(23px);
+
+  transform: translateX(-50%);
+}
+
+.categoryProductImage {
+  position: relative;
+
+  z-index: 2;
+
+  display: block;
+
+  width: auto;
+  max-width: 88%;
+
+  height: 88%;
+  max-height: 100%;
+
+  object-fit: contain;
+
+  mix-blend-mode: normal;
+
+  filter:
+    drop-shadow(
+      0 22px 20px
+      rgba(0, 0, 0, 0.14)
+    );
+
+  transition:
+    transform 380ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.proteinImage {
+  height: 91%;
+}
+
+.creatineImage {
+  height: 87%;
+}
+
+.vitaminsImage {
+  height: 81%;
+}
+
+.wellnessImage {
+  height: 82%;
+}
+
+:global(.category-card):hover .categoryProductImage {
+  transform:
+    translateY(-7px)
+    scale(1.025);
+}
+
+:global(.category-card-dark) .categoryProductImage {
+  mix-blend-mode: normal;
+
+  filter:
+    drop-shadow(
+      0 24px 22px
+      rgba(0, 0, 0, 0.34)
+    );
+}
+
+@media (min-width: 1650px) {
+  .hero {
+    min-height: 750px;
+  }
+
+  .heroContent h1 {
+    font-size: 155px;
+  }
+
+  .heroLogo {
+    height: 98px;
+  }
+}
+
+@media (max-width: 1100px) {
+  .hero {
+    min-height: 620px;
+  }
+
+  .heroContent {
+    width: 52%;
+    min-width: 390px;
+
+    padding:
+      58px
+      38px;
+  }
+
+  .heroContent h1 {
+    font-size: clamp(78px, 9vw, 110px);
+  }
+
+  .heroLogo {
+    height: 72px;
+  }
+}
+
+@media (max-width: 700px) {
+  .hero {
+    min-height: 690px;
+
+    display: block;
+
+    background: #eee4d5;
+  }
+
+  .heroImage {
+    object-fit: cover;
+    object-position: 70% 100%;
+
+    transform: none;
+  }
+
+  .hero::after {
+    content: "";
+
+    position: absolute;
+    inset: 0;
+
+    z-index: 1;
+
+    pointer-events: none;
+
+    background:
+      linear-gradient(
+        180deg,
+        rgba(238, 228, 213, 1) 0%,
+        rgba(238, 228, 213, 0.99) 39%,
+        rgba(238, 228, 213, 0.88) 50%,
+        rgba(238, 228, 213, 0.24) 68%,
+        rgba(238, 228, 213, 0) 80%
+      );
+  }
+
+  .heroOverlay {
+    z-index: 3;
+
+    align-items: flex-start;
+  }
+
+  .heroContent {
+    width: 100%;
+    min-width: 0;
+
+    padding:
+      38px
+      18px
+      300px;
+
+    justify-content: flex-start;
+  }
+
+  .heroLogo {
+    height: 54px;
+
+    margin-bottom: 19px;
+  }
+
+  .heroContent h1 {
+    max-width: 360px;
+
+    font-size: clamp(56px, 16vw, 82px);
+    line-height: 0.78;
+    letter-spacing: -0.02em;
+  }
+
+  .heroContent p {
+    max-width: 380px;
+
+    margin-top: 18px;
+
+    font-size: 14.5px;
+    line-height: 1.55;
+  }
+
+  .heroButton {
+    width: 100%;
+    min-height: 54px;
+
+    margin-top: 20px;
+  }
+
+  .categoryProduct {
+    top: 38px;
+    left: 8px;
+    right: 8px;
+    bottom: 88px;
+  }
+
+  .categoryProductImage,
+  .proteinImage,
+  .creatineImage,
+  .vitaminsImage,
+  .wellnessImage {
+    height: 74%;
+    max-width: 94%;
+  }
+
+  :global(.home-section) {
+    padding:
+      52px
+      14px !important;
+  }
+
+  :global(.section-heading) {
+    margin-bottom: 24px !important;
+
+    align-items: flex-end !important;
+  }
+
+  :global(.section-heading h2) {
+    font-size: clamp(50px, 14vw, 64px) !important;
+    line-height: 0.82 !important;
+    letter-spacing: -0.02em !important;
+  }
+
+  :global(.category-grid) {
+    margin:
+      0
+      -14px !important;
+
+    padding:
+      0
+      14px
+      10px !important;
+
+    display: grid !important;
+    grid-auto-flow: column !important;
+    grid-auto-columns: minmax(82vw, 82vw) !important;
+    grid-template-columns: none !important;
+
+    gap: 10px !important;
+
+    overflow-x: auto !important;
+
+    scroll-snap-type: x mandatory !important;
+    scroll-padding-left: 14px !important;
+
+    scrollbar-width: none !important;
+  }
+
+  :global(.category-grid::-webkit-scrollbar) {
+    display: none !important;
+  }
+
+  :global(.category-card) {
+    position: relative !important;
+
+    min-height: 470px !important;
+
+    scroll-snap-align: start !important;
+  }
+
+  :global(.category-card h3) {
+    font-size: clamp(36px, 8vw, 44px) !important;
+    line-height: 0.90 !important;
+  }
+
+  :global(.simple-commerce-section) {
+    display: flex !important;
+    flex-direction: column !important;
+  }
+
+  :global(.simple-commerce-visual) {
+    min-height: 390px !important;
+  }
+
+  :global(.simple-commerce-content) {
+    padding:
+      48px
+      18px !important;
+  }
+
+  :global(.simple-commerce-content h2) {
+    font-size: clamp(72px, 21vw, 98px) !important;
+    line-height: 0.75 !important;
+    letter-spacing: -0.025em !important;
+  }
+
+  :global(.brand-statement) {
+    padding:
+      46px
+      18px !important;
+
+    text-align: center !important;
+  }
+
+  :global(.brand-statement > span) {
+    font-size: clamp(54px, 12vw, 90px) !important;
+    line-height: 0.80 !important;
+    letter-spacing: -0.02em !important;
+  }
+}
+
+@media (max-width: 390px) {
+  .hero {
+    min-height: 650px;
+  }
+
+  .heroContent {
+    padding-bottom: 280px;
+  }
+
+  .heroContent h1 {
+    font-size: 64px;
+  }
+
+  :global(.category-grid) {
+    grid-auto-columns: minmax(86vw, 86vw) !important;
+  }
+}

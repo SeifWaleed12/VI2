@@ -1,0 +1,22 @@
+<svg
+  width="900"
+  height="300"
+  viewBox="0 0 900 300"
+  fill="none"
+  xmlns="http://www.w3.org/2000/svg"
+>
+  <g fill="#171915">
+    <path d="M74 53H207C274 53 309 83 309 132C309 163 292 187 262 199C299 210 320 237 320 271H245C245 244 226 231 190 231H148V271H74V53ZM148 112V171H194C221 171 234 161 234 141C234 121 221 112 194 112H148Z"/>
+    <path d="M349 53H493C558 53 593 84 593 135C593 169 575 193 542 205L607 271H515L459 214H423V271H349V53ZM423 112V158H481C506 158 518 150 518 135C518 119 506 112 481 112H423Z"/>
+  </g>
+  <rect x="634" y="61" width="12" height="205" rx="6" fill="#9E3128"/>
+  <g fill="#171915">
+    <text x="683" y="142" font-family="Arial, Helvetica, sans-serif" font-size="54" font-weight="800" letter-spacing="2">
+      BIG RAMY
+    </text>
+    <text x="686" y="200" font-family="Arial, Helvetica, sans-serif" font-size="35" font-weight="700" letter-spacing="8">
+      LABS
+    </text>
+  </g>
+  <path d="M687 224H852" stroke="#9E3128" stroke-width="8" stroke-linecap="round"/>
+</svg>
