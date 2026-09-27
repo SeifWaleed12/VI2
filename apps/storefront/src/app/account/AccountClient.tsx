@@ -3,12 +3,14 @@
 import Link from "next/link";
 import {
   ArrowRight,
+  LogOut,
   PackageCheck,
   Plus,
   RotateCcw,
   Sparkles,
   UserRound,
 } from "lucide-react";
+import { Button } from "@/components/ui/Button";
 import {
   useEffect,
   useState,
@@ -125,23 +127,32 @@ export default function AccountClient() {
 
           <p>
             {isAuthenticated && customer
-              ? `Welcome back, ${customer.firstName}.`
+              ? `Welcome back, ${customer.firstName || customer.email}.`
               : "Accounts add points, order history, faster reordering and personalized benefits — while guest checkout stays available."}
           </p>
 
-          {isAuthenticated ? (
-            <button
-              type="button"
-              onClick={handleSignOut}
-              style={{ marginTop: "1rem", textDecoration: "underline", cursor: "pointer", background: "none", border: "none", fontSize: "0.75rem", letterSpacing: "0.1em" }}
-            >
-              SIGN OUT
-            </button>
-          ) : (
-            <Link href="/account/sign-in" style={{ marginTop: "1rem", display: "inline-block", textDecoration: "underline", fontSize: "0.75rem", letterSpacing: "0.1em" }}>
-              SIGN IN / CREATE ACCOUNT
-            </Link>
-          )}
+          <div style={{ marginTop: "1.25rem" }}>
+            {isAuthenticated ? (
+              <Button
+                variant="dark"
+                size="md"
+                onClick={handleSignOut}
+                icon={<LogOut size={16} strokeWidth={1.4} />}
+              >
+                SIGN OUT
+              </Button>
+            ) : (
+              <Button
+                href="/account/sign-in"
+                variant="dark"
+                size="md"
+                icon={<ArrowRight size={15} strokeWidth={1.5} />}
+                iconPosition="right"
+              >
+                SIGN IN / CREATE ACCOUNT
+              </Button>
+            )}
+          </div>
         </div>
 
         <div className={styles.pointsCard}>

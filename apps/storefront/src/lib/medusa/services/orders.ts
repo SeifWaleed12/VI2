@@ -64,8 +64,24 @@ export function mapMedusaOrder(o: any): Order {
   };
 }
 
+/**
+ * Fetches orders for the currently authenticated customer.
+ * Routes through the Next.js /api/orders BFF which reads the HttpOnly
+ * vi2_auth_token cookie and forwards it to Medusa.
+ */
 export async function getCustomerOrders(limit = 20): Promise<Order[]> {
   try {
+    // In browser context, use the Next.js proxy to handle JWT cookie auth
+    if (typeof window !== "undefined") {
+      const res = await fetch(`/api/orders?limit=${limit}`, {
+        cache: "no-store",
+      });
+      if (!res.ok) return [];
+      const data = await res.json();
+      return (data.orders || []).map(mapMedusaOrder);
+    }
+
+    // Server-side: use the SDK directly (server.ts handles the cookie-based auth)
     const { orders } = await medusa.store.order.list({
       limit,
       fields: ORDER_FIELDS,

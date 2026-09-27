@@ -46,9 +46,11 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
+  /**
+   * Fetch the current customer from the /api/auth/me BFF route.
+   */
   const refreshCustomer = useCallback(async () => {
     try {
-      // SDK requests /store/customers/me with session cookie credentials
       const current = await getCustomer();
       setCustomer(current);
     } catch {
@@ -58,6 +60,7 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  // Initial load + listen for auth change events across the application
   useEffect(() => {
     refreshCustomer();
 
@@ -98,14 +101,16 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
   );
 
   const logout = useCallback(async () => {
+    setIsLoading(true);
     await logoutCustomer();
     setCustomer(null);
+    setIsLoading(false);
   }, []);
 
   const value = useMemo<CustomerContextValue>(
     () => ({
       customer,
-      isAuthenticated: Boolean(customer),
+      isAuthenticated: !!customer,
       isLoading,
       loading: isLoading,
       login,
@@ -133,6 +138,6 @@ export function useCustomer(): CustomerContextValue {
   return context;
 }
 
-// Backward-compatible alias
-export const useAuth = useCustomer;
-export const AuthProvider = CustomerProvider;
+export function useAuth(): CustomerContextValue {
+  return useCustomer();
+}

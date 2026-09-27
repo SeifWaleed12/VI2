@@ -1379,29 +1379,56 @@ export default function ProductDetailClient({
                       styles.accordionContent
                     }
                   >
-                    <p>
-                      {
-                        product.description
-                      }
-                    </p>
+                    {product.description ? (
+                      /<[a-z][\s\S]*>/i.test(
+                        product.description,
+                      ) ? (
+                        <div
+                          dangerouslySetInnerHTML={{
+                            __html:
+                              product.description,
+                          }}
+                        />
+                      ) : (
+                        <p>
+                          {
+                            product.description
+                          }
+                        </p>
+                      )
+                    ) : (
+                      <p
+                        style={{
+                          opacity: 0.5,
+                          fontStyle:
+                            "italic",
+                        }}
+                      >
+                        No description
+                        available.
+                      </p>
+                    )}
 
-                    <ul>
-                      {healthGoalLabels.map(
-                        (
-                          goal,
-                        ) => (
-                          <li
-                            key={
-                              goal
-                            }
-                          >
-                            {
-                              goal
-                            }
-                          </li>
-                        ),
-                      )}
-                    </ul>
+                    {healthGoalLabels.length >
+                      0 && (
+                      <ul>
+                        {healthGoalLabels.map(
+                          (
+                            goal,
+                          ) => (
+                            <li
+                              key={
+                                goal
+                              }
+                            >
+                              {
+                                goal
+                              }
+                            </li>
+                          ),
+                        )}
+                      </ul>
+                    )}
                   </div>
                 )}
 

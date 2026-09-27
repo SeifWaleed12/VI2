@@ -1,154 +1,350 @@
-# AGENTS.md
+# AGENTS.md — E-Commerce Platform
 
-## Overview
+## Mission
 
-Medusa DTC Starter — a Turborepo workspace monorepo containing a Medusa backend (`@medusajs/medusa` latest, Node 20+, PostgreSQL 15+) and an optional storefront (Next.js, Tanstack, etc...).
+Build a production-ready Egyptian health & wellness headless e-commerce platform using **Medusa v2 + Next.js**.
 
-## Directory Structure
+Priorities:
+1. Correctness
+2. Security
+3. Maintainability
+4. Testability
+5. Performance
+6. Practical scalability
+
+The MVP is intentionally limited. Do not implement Phase-2 features unless explicitly requested.
+
+---
+
+## 1. Non-Negotiable Rules
+
+1. **Do not modify Medusa core or `node_modules`.**
+2. **Use Medusa native capabilities before custom replacements.**
+3. **Frontend → Medusa API. Never bypass the backend.**
+4. **Never access PostgreSQL directly from Next.js.**
+5. **Business rules belong on the backend.**
+6. **Never trust client-provided prices, totals, inventory, discounts, shipping costs, or payment success.**
+7. **Never expose secrets or private provider credentials to the browser.**
+8. **Never invent business rules, ownership, API contracts, or provider behavior.**
+9. **Do not create competing sources of truth without an explicit synchronization contract.**
+10. **External operations must be timeout-aware, retry-safe, and idempotent where applicable.**
+11. **Do not introduce microservices, databases, frameworks, dependencies, caches, or abstractions without a justified requirement.**
+12. **Do not refactor unrelated code.**
+13. **Do not delete or weaken tests to make a change pass.**
+14. **Prefer the smallest clean change that fully satisfies the requirement.**
+15. **Follow existing repository patterns unless they conflict with these rules.**
+
+---
+
+## 2. Source of Truth & Decision Behavior
+
+This file defines global operational rules. Detailed references live under `docs/`.
+
+Before changing code:
+1. Identify the exact requirement.
+2. Inspect the existing implementation and nearby patterns.
+3. Check whether Medusa already provides the capability.
+4. Identify the correct architectural boundary.
+5. Identify the authoritative data owner.
+6. Check security/trust boundaries.
+7. Check failure/idempotency requirements.
+8. Implement the smallest appropriate change.
+
+Before creating a new file, abstraction, utility, service, module, repository, adapter, dependency, or database object, search for an existing equivalent.
+
+If an important requirement, ownership rule, API contract, or architectural decision is ambiguous:
+- **Do not guess.**
+- Do not silently invent behavior.
+- Ask for clarification or explicitly report the affected work as blocked.
+
+When existing code conflicts with this file:
+- Preserve working behavior unless change is required.
+- Prefer current Medusa conventions.
+- Do not rewrite working code merely to match a preferred pattern.
+
+---
+
+## 3. System Boundaries
 
 ```text
-.
-├── apps/
-│   ├── backend/                  # Medusa application (@dtc/backend)
-│   │   ├── medusa-config.ts      # Medusa config: DB URL, CORS, secrets, modules
-│   │   ├── integration-tests/    # setup.js (Jest setupFiles) and http/*.spec.ts suites
-│   │   └── src/
-│   │       ├── admin/            # Admin dashboard extensions (widgets/, i18n/, routes)
-│   │       ├── api/              # API routes: api/store/*, api/admin/* (file-based)
-│   │       ├── jobs/             # Scheduled jobs
-│   │       ├── links/            # Module links between modules
-│   │       ├── migration-scripts/# Data migration scripts (e.g. initial-data-seed.ts)
-│   │       ├── modules/          # Custom modules (service + models + migrations)
-│   │       ├── subscribers/      # Event subscribers
-│   │       └── workflows/        # Workflows and workflow steps
-│   └── storefront/               # OPTIONAL storefront
-├── eslint.config.ts              # Root ESLint: @medusajs/eslint-plugin recommended
-├── turbo.json                    # Task graph: build, dev, start, lint, test, seed
+Cloudflare
+    ↓
+Hetzner / Coolify
+    ├── Next.js Storefront
+    ├── Medusa Server
+    └── Medusa Worker
+
+Medusa
+    ├── PostgreSQL
+    ├── Redis
+    ├── Meilisearch
+    ├── Odoo
+    ├── Paymob
+    ├── Bosta
+    └── S3/R2 Storage
 ```
 
-**`apps/storefront` is optional and may not exist.** It is skipped when the user chooses not to install it. Before running any storefront command, referencing storefront files, or assuming a full-stack change is possible, check that `apps/storefront/` exists. If it doesn't, the project is backend-only — do not scaffold it or suggest it was deleted by mistake.
+### Next.js owns
+- UI/UX
+- Rendering
+- Customer interaction
+- Storefront state
+- Product/search/cart/checkout/account presentation
+- Calling backend APIs
 
-Each app can have its own nested `AGENTS.md`; agents read the nearest one in the directory tree, so put app-specific context there rather than expanding this file.
+### Next.js must NOT own
+- Backend business rules
+- Inventory authority
+- Payment verification
+- Supplier/warehouse logic
+- Direct PostgreSQL access
+- Direct Odoo access
+- Private Paymob/Bosta APIs
+- Authoritative order creation or totals
 
-## Package Manager
+**Rule: frontend → Medusa API. Do not bypass the backend.**
 
-**The package manager is chosen at install time and is not fixed.** Detect it before running anything, in this order:
+### Medusa owns
+Use Medusa's capabilities for:
+- Products, variants, categories
+- Customers/authentication
+- Carts and orders
+- Pricing/promotions
+- Inventory/stock locations
+- Payment collections/sessions/transactions
+- Fulfillment/shipping
+- Regions/sales channels/API keys
 
-1. The `packageManager` field in the root `package.json` (e.g. `"pnpm@10.11.1"`) — authoritative when present.
-2. The lockfile at the repo root: `pnpm-lock.yaml` → pnpm, `yarn.lock` → yarn, `package-lock.json` → npm.
+Treat the system as **Medusa + custom extensions**, not a generic backend being rebuilt from scratch.
 
-```bash
-node -p "require('./package.json').packageManager ?? 'unset'"
-ls pnpm-lock.yaml yarn.lock package-lock.json bun.lock bun.lockb 2>/dev/null
+---
+
+## 4. Medusa Architecture
+
+Prefer Medusa-native primitives:
+- API routes
+- Workflows
+- Modules
+- Module links
+- Subscribers
+- Scheduled/background jobs
+- Payment providers
+- Fulfillment providers
+
+Never rebuild a Medusa commerce primitive unless a confirmed requirement proves it cannot satisfy the need.
+
+Conceptually:
+
+```text
+Presentation
+    ↓
+Application / Workflow
+    ↓
+Domain rules
+    ↑
+Infrastructure / Providers
 ```
 
-Use that manager for every command and never introduce a second lockfile. Below, `<pm>` means the detected manager. The `<pm> run <script>` and `<pm> exec <bin>` forms work across npm, pnpm, yarn, and bun; workspace-filter flags do not, so the per-app commands below `cd` into the app instead.
+This does **not** mean every feature needs a Clean Architecture hierarchy.
 
-## Commands
+Create abstractions only when they provide real value, such as external-provider isolation, multiple implementations, or meaningful testability.
 
-Run from the repo root unless noted. Turbo skips missing apps automatically.
+Do not create patterns merely to satisfy SOLID.
 
-### Development
+See `docs/ARCHITECTURE.md`.
 
-```bash
-<pm> run dev                # all apps
-<pm> run backend:dev        # backend only (http://localhost:9000, admin at /app)
-<pm> run storefront:dev     # storefront only (http://localhost:8000)
-```
+---
 
-### Build
+## 5. Security
 
-```bash
-<pm> run build              # all apps
-<pm> run start              # build (via turbo dependsOn) then start
-```
+- Keep secrets server-side.
+- Use HTTPS in production.
+- Configure CORS deliberately.
+- Validate all untrusted input.
+- Enforce authorization server-side.
+- Verify webhooks where supported.
+- Rate-limit sensitive/abusable operations where appropriate.
+- Never log secrets, passwords, auth tokens, or sensitive payment data.
+- Scope customer resources to the authenticated customer.
+- Protect admin operations with appropriate authentication/authorization.
+- Do not put sensitive long-lived credentials in browser storage when a secure server-managed strategy is appropriate.
 
-### Lint
+Never trust frontend declarations of:
+- Identity
+- Prices
+- Inventory
+- Discounts
+- Shipping costs
+- Order totals
+- Payment success
 
-```bash
-<pm> run lint                          # all apps via turbo
-cd apps/backend && <pm> run lint       # medusa lint
-cd apps/storefront && <pm> run lint    # next lint
-```
+See `docs/SECURITY.md`.
 
-### Test (backend only; the storefront has no test suite)
+---
 
-```bash
-<pm> run test                                              # all test tasks via turbo
-cd apps/backend && <pm> run test:unit                      # **/src/**/__tests__/**/*.unit.spec.ts
-cd apps/backend && <pm> run test:integration:modules       # **/src/modules/*/__tests__/**
-cd apps/backend && <pm> run test:integration:http          # **/integration-tests/http/*.spec.ts
-```
+## 6. External Integrations
 
-Single test — pass a path/pattern through to Jest, keeping `TEST_TYPE`:
+Odoo, Paymob, Bosta, Meilisearch, and storage are external boundaries.
 
-```bash
-cd apps/backend && <pm> run test:unit -- src/modules/foo/__tests__/service.unit.spec.ts
-cd apps/backend && <pm> run test:unit -- -t "returns the cart"
-```
+Isolate provider-specific behavior behind appropriate adapters/providers.
 
-### Database
+For external operations define where applicable:
+- Timeout
+- Retry policy
+- Backoff
+- Maximum retries
+- Idempotency
+- Failure behavior
+- Recovery
+- Safe logging/correlation
 
-```bash
-cd apps/backend
-<pm> exec medusa db:generate <module-name>   # generate migrations for a custom module
-<pm> exec medusa db:migrate                  # run migrations
-<pm> exec medusa user -e admin@test.com -p supersecret
-<pm> run backend:seed                        # from root; seeds initial data
-```
+Never use infinite retries.
 
-## Medusa Skills & MCP Server
+A payment network timeout is not automatically payment failure.
 
-These are optional but strongly recommended — they give documentation-backed answers instead of guesses about Medusa APIs. **Use them when available; if they are not, mention to the user that installing them meaningfully improves development on this project.**
+External failure must not corrupt commerce state.
 
-**Agentic skills** ([docs](https://docs.medusajs.com/learn/introduction/build-with-llms-ai/agentic-skills)) — if the `medusa-dev` skills are listed as available, load them *before* writing code, not after:
+Do not hard-code undocumented provider behavior; verify provider documentation when implementation depends on it.
 
-- `building-with-medusa` — any backend work: modules, API routes, workflows, data models, module links
-- `building-admin-dashboard-customizations` — anything under `apps/backend/src/admin`
-- `building-storefronts` — anything under `apps/storefront`
-- `db-generate` / `db-migrate` / `new-user` — the DB and user commands above
+See `docs/INTEGRATIONS.md`.
 
-If they are not installed, suggest:
+---
 
-```bash
-/plugin marketplace add medusajs/medusa-agent-skills
-/plugin install medusa-dev@medusa
-```
+## 7. Data Ownership
 
-**MCP server** ([docs](https://docs.medusajs.com/learn/introduction/build-with-llms-ai/mcp-server)) — a `medusa` MCP server exposing the official docs. Prefer it over web search or memory for any Medusa API, config, or upgrade question. If it is not connected, suggest:
+Every important data object must have one authoritative owner.
 
-```bash
-claude mcp add --transport http medusa https://docs.medusajs.com/mcp # or agent equivalent
-```
+If ownership is undefined:
+**do not guess and do not implement synchronization.**
 
-## Code Style
+A derived cache/index may not silently become a second source of truth.
 
-- **The backend must satisfy `@medusajs/eslint-plugin`'s recommended config** (`eslint.config.ts`). Its rules encode Medusa framework requirements — correct route/workflow/module shapes, not just cosmetics — so a lint failure usually means the code is actually wrong, not just badly formatted. Never disable a `@medusajs/*` rule to make lint pass; fix the code.
-- No semicolons. Double quotes, 2-space indent.
-- Files: kebab-case. Types/classes: PascalCase. Functions/variables: camelCase. DB columns: snake_case.
-- No emojis in code, comments, or commit messages.
+Any synchronization contract must define source, destination, direction, trigger, conflict behavior, idempotency, retries, and recovery.
 
-## Conventions
+See `docs/DATA-OWNERSHIP.md`.
 
-- **Backend routing is file-based.** A store endpoint is `src/api/store/<path>/route.ts` exporting `GET`/`POST`/etc. Don't add a router or register routes manually.
-- **Business logic belongs in workflows**, not in route handlers. Routes resolve and run a workflow; workflows compose steps.
-- Adding a task to `turbo.json` requires declaring its `outputs`, or Turbo will cache nothing/the wrong thing.
+---
 
-## Common Mistakes
+## 8. Database / Redis / Performance
 
-- Running storefront commands without checking that `apps/storefront/` exists.
-- Assuming a package manager instead of detecting it, or running a command that creates a second lockfile.
-- Installing a dependency at the root instead of inside the app that needs it (`cd apps/backend && <pm> add <pkg>`).
-- Editing a custom module's model without running `<pm> exec medusa db:generate <module>` — the migration is missing and the change silently never applies.
-- Writing raw SQL or importing DB clients directly in the backend instead of going through module services / workflows.
-- Calling the Medusa API from the storefront without `NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY`; requests fail with a publishable-key error, not an obvious 401.
-- Running the test task without a reachable PostgreSQL — integration suites need a live DB.
-- Silencing `@medusajs/*` ESLint rules instead of fixing the underlying pattern.
+### PostgreSQL
+- Use migrations.
+- Never manually edit production schema.
+- Add indexes intentionally.
+- Avoid N+1 queries.
+- Paginate large collections.
+- Fetch only required data where practical.
+- Use transactions for atomic operations.
+- Preserve constraints protecting business invariants.
+- Do not load entire catalogs into memory.
+- Do not use PostgreSQL as a general-purpose cache.
+- Do not add another database or partitioning without a concrete requirement.
 
-## Off-Limits
+### Redis
+Use only where justified for supported caching, jobs/workflows, temporary state, rate limiting, or coordination.
 
-- `apps/backend/.medusa/`, `.next/`, `dist/`, `out/`, `.turbo/` — build output, excluded from the workspace and regenerated.
-- The lockfile (`pnpm-lock.yaml`, `yarn.lock`, `package-lock.json` — whichever this install produced) — never hand-edit or delete; change it only as a side effect of a package manager command.
-- `.env` / `.env.local` — never commit, print, or copy secret values out of them. Edit `.env.template` instead when documenting a new variable.
-- Existing migrations in `src/modules/*/migrations/` — add a new migration rather than rewriting one that may already have run.
-- Don't run destructive DB commands (drops, `db:migrate --help`-style flags that reset state) against the user's database without explicit confirmation.
+Every cache needs a purpose, TTL, invalidation strategy, source of truth, and unavailable-cache behavior.
+
+Correctness must not depend on cached payment, inventory, or order state.
+
+### Performance
+Avoid unnecessary queries/API calls, synchronous non-critical external work, process-only critical state, and premature distributed complexity.
+
+See `docs/ARCHITECTURE.md`.
+
+---
+
+## 9. Testing & Definition of Done
+
+Every behavior change must have relevant tests.
+
+Use:
+- Unit tests for business rules, validation, mapping, and custom logic.
+- Integration tests for database/provider boundaries.
+- E2E tests for critical customer flows.
+
+Critical negative cases include failed/duplicate payments or webhooks, out-of-stock, invalid address, provider failure, Odoo downtime, network timeout, repeated checkout submission, refresh during checkout, and unauthorized resource access.
+
+A task is complete only when:
+1. Requested behavior works.
+2. Existing behavior is preserved unless intentionally changed.
+3. Relevant tests pass.
+4. Type/lint/static checks pass where configured.
+5. Migrations are valid if schema changed.
+6. Security and trust boundaries were checked.
+7. Required idempotency exists.
+8. No secrets are exposed.
+9. No unnecessary dependencies/complexity were introduced.
+10. No unrelated code was changed.
+11. Remaining assumptions are explicitly reported.
+
+Never delete/weaken tests to make a change pass.
+
+See `docs/TESTING.md`.
+
+---
+
+## 10. Development Workflow
+
+### Before
+Requirement → inspect → check Medusa → identify boundary/owner → check security/failure → implement.
+
+### During
+- Keep changes focused.
+- Keep routes/controllers thin.
+- Centralize business rules.
+- Isolate provider-specific code.
+- Reuse existing patterns.
+- Avoid speculative features and abstractions.
+
+### After
+1. Run relevant tests/checks.
+2. Fix errors caused by the change.
+3. Verify integration boundaries.
+4. Check security.
+5. Check unnecessary queries/API calls.
+6. Report implementation, validation, and remaining assumptions.
+
+For significant architectural changes, update the relevant reference/ADR.
+
+---
+
+## 11. Repository-Specific Rules
+
+The repository is a Turborepo workspace containing a Medusa backend and an optional storefront.
+
+The actual installed Medusa version is authoritative: inspect `apps/backend/package.json`. Do not assume an API because a different/latest Medusa version may behave differently.
+
+The package manager is authoritative from:
+1. Root `package.json` → `packageManager`
+2. Root lockfile: `pnpm-lock.yaml`, `yarn.lock`, `package-lock.json`, `bun.lock`, or `bun.lockb`
+
+Never introduce a second lockfile.
+
+Never assume a script exists solely because it is documented. Verify the relevant `package.json` first.
+
+`apps/storefront/` is optional. Before using storefront commands or files, check that it exists. If absent, treat the repository as backend-only. Do not scaffold it or assume it was accidentally deleted.
+
+See `apps/backend/AGENTS.md` and `apps/storefront/AGENTS.md` for app-specific rules.
+
+---
+
+## 12. References
+
+Read only when relevant:
+
+- `docs/ARCHITECTURE.md` — architecture and boundaries
+- `docs/SECURITY.md` — security/authentication/authorization
+- `docs/INTEGRATIONS.md` — Odoo/Paymob/Bosta/Meilisearch/storage
+- `docs/DATA-OWNERSHIP.md` — sources of truth and synchronization
+- `docs/TESTING.md` — test strategy
+- `docs/MVP-SCOPE.md` — MVP boundaries
+- `docs/decisions/` — accepted architectural decisions
+
+Do not reread all references for a small task.
+
+---
+
+## Core Principle
+
+**Use Medusa for commerce primitives, custom Medusa extensions for project-specific behavior, Next.js for the customer experience, and backend adapters/providers for external systems. Keep the MVP small, secure, testable, maintainable, performant, and ready to extend without premature complexity.**

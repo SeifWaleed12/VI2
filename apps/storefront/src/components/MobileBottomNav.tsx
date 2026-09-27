@@ -13,6 +13,7 @@ import {
 
 import { useCart } from "@/context/CartContext";
 import { useLanguage } from "@/context/LanguageContext";
+import { useAuth } from "@/context/AuthContext";
 
 import styles from "./MobileBottomNav.module.css";
 
@@ -32,6 +33,7 @@ export default function MobileBottomNav({
   } = useCart();
 
   const { isArabic } = useLanguage();
+  const { isAuthenticated } = useAuth();
 
   if (
     pathname.startsWith(
@@ -187,7 +189,11 @@ export default function MobileBottomNav({
             : ""
         }
         onClick={() =>
-          goTo("/account/sign-in")
+          goTo(
+            isAuthenticated
+              ? "/account"
+              : "/account/sign-in",
+          )
         }
       >
         <UserRound

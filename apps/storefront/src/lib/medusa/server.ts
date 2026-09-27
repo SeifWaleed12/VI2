@@ -6,17 +6,21 @@ const BACKEND_URL =
 const PUBLISHABLE_KEY =
   process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY || "";
 
+const AUTH_TOKEN_COOKIE = "vi2_auth_token";
+
 /**
- * Creates a stateless, per-request Medusa SDK instance on the server.
- * Automatically forwards session cookies for authenticated requests without
- * mutating any shared global state.
+ * Creates an authenticated, per-request Medusa SDK instance on the server.
+ *
+ * Reads the vi2_auth_token HttpOnly cookie and forwards it as an
+ * Authorization: Bearer header for authenticated Medusa API calls.
+ * Falls back to a public client if no token is present.
  */
 export async function getMedusaServerClient(): Promise<Medusa> {
-  let cookieHeader = "";
+  let authToken = "";
 
   try {
     const cookieStore = await cookies();
-    cookieHeader = cookieStore.toString();
+    authToken = cookieStore.get(AUTH_TOKEN_COOKIE)?.value || "";
   } catch {
     // Called outside request context (e.g. static build or pre-render)
   }
@@ -24,21 +28,23 @@ export async function getMedusaServerClient(): Promise<Medusa> {
   return new Medusa({
     baseUrl: BACKEND_URL,
     publishableKey: PUBLISHABLE_KEY,
-    globalHeaders: cookieHeader ? { cookie: cookieHeader } : {},
     auth: {
-      type: "session",
+      type: "jwt",
     },
+    globalHeaders: authToken
+      ? { Authorization: `Bearer ${authToken}` }
+      : {},
   });
 }
 
 /**
  * Public server client for unauthenticated/cached public catalog data
- * (products, categories, collections).
+ * (products, categories, collections). No auth headers.
  */
 export const medusaServer = new Medusa({
   baseUrl: BACKEND_URL,
   publishableKey: PUBLISHABLE_KEY,
   auth: {
-    type: "session",
+    type: "jwt",
   },
 });

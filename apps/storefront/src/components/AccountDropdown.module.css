@@ -164,24 +164,35 @@
     rgba(98, 106, 85, 0.06);
 }
 
-.signInCta {
-  min-height: 48px;
-
+.actionWrap {
   margin-top: 18px;
-  padding: 0 18px;
+}
 
+.actionButton,
+.signInCta {
+  width: 100%;
+  min-height: 48px;
+  padding: 0 18px;
   display: flex;
   align-items: center;
   justify-content: center;
-
+  gap: 8px;
   border-radius: 6px;
-
   color: #f8f3ea;
   background: #596149;
-
-  font-size: 8px;
+  font-size: 9px;
   font-weight: 800;
-  letter-spacing: 0.07em;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-decoration: none;
+  cursor: pointer;
+  transition: transform 180ms ease, background-color 180ms ease;
+}
+
+.actionButton:hover,
+.signInCta:hover {
+  background: #181916;
+  transform: translateY(-2px);
 }
 
 @media (max-width: 1100px) {
@@ -262,9 +273,15 @@
   color: #f8f3ea;
   background: #181916;
 
-  font-size: 8px;
+  font-size: 9px;
   font-weight: 800;
-  letter-spacing: 0.07em;
-
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   cursor: pointer;
+  transition: transform 180ms ease, background-color 180ms ease;
+}
+
+.signOutCta:hover {
+  background: #414736;
+  transform: translateY(-2px);
 }

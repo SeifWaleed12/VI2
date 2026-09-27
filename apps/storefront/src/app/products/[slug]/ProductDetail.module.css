@@ -1453,13 +1453,54 @@
   margin: 0;
 }
 
-.accordionContent ul {
+.accordionContent div p {
+  margin: 0 0 8px;
+}
+
+.accordionContent div p:last-child {
+  margin-bottom: 0;
+}
+
+.accordionContent ul,
+.accordionContent ol {
   margin:
     9px
     0
     0;
 
   padding-left: 15px;
+}
+
+.accordionContent div ul,
+.accordionContent div ol {
+  margin: 6px 0;
+  padding-left: 15px;
+}
+
+.accordionContent strong {
+  font-weight: 600;
+  color: #3d3b37;
+}
+
+.accordionContent em {
+  font-style: italic;
+}
+
+.accordionContent a {
+  color: #c6863a;
+  text-decoration: underline;
+}
+
+.accordionContent h1,
+.accordionContent h2,
+.accordionContent h3,
+.accordionContent h4 {
+  margin: 10px 0 4px;
+  font-weight: 600;
+  color: #3d3b37;
+  font-size: 9px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
 }
 
 .accordionFacts {

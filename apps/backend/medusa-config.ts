@@ -9,8 +9,12 @@ module.exports = defineConfig({
       storeCors: process.env.STORE_CORS!,
       adminCors: process.env.ADMIN_CORS!,
       authCors: process.env.AUTH_CORS!,
-      jwtSecret: process.env.JWT_SECRET,
-      cookieSecret: process.env.COOKIE_SECRET,
+      jwtSecret: process.env.JWT_SECRET || 'supersecret',
+      cookieSecret: process.env.COOKIE_SECRET || 'supersecret',
+      // Medusa JWT cryptographic expiration (format: e.g. "86400s", "1d")
+      jwtExpiresIn: process.env.JWT_ACCESS_TOKEN_TTL
+        ? `${process.env.JWT_ACCESS_TOKEN_TTL}s`
+        : '1d',
     }
   },
   modules: [

@@ -10,6 +10,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Globe2,
+  LogOut,
   Menu,
   Package,
   Search,
@@ -59,8 +60,10 @@ export default function Navbar() {
   const [accountOpen, setAccountOpen] =
     useState(false);
 
-  const { customer, signOut } = useAuth();
-  const accountFirstName = customer?.firstName?.trim() ?? "";
+  const { customer, isAuthenticated, signOut } = useAuth();
+  const displayName = customer
+    ? customer.firstName?.trim() || customer.email?.split("@")[0] || ""
+    : "";
 
   const [mobilePanel, setMobilePanel] =
     useState<MobileCatalogKey | null>(null);
@@ -757,8 +760,9 @@ export default function Navbar() {
                   </span>
 
                   <strong>
-                    {t(accountFirstName ||
-                      copy.signIn)}
+                    {isAuthenticated && displayName
+                      ? displayName
+                      : t(copy.signIn)}
                   </strong>
                 </div>
 
@@ -997,7 +1001,7 @@ export default function Navbar() {
           <div className={styles.drawerHeader}>
             <Link
               href={
-                accountFirstName
+                isAuthenticated
                   ? "/account"
                   : "/account/sign-in"
               }
@@ -1010,11 +1014,11 @@ export default function Navbar() {
               />
 
               <strong>
-                {t(accountFirstName
+                {isAuthenticated && displayName
                   ? isArabic
-                    ? `مرحباً، ${accountFirstName}`
-                    : `Welcome, ${accountFirstName}`
-                  : copy.welcome)}
+                    ? `مرحباً، ${displayName}`
+                    : `Welcome, ${displayName}`
+                  : t(copy.welcome)}
               </strong>
             </Link>
 
@@ -1168,7 +1172,7 @@ export default function Navbar() {
             <section className={styles.accountSection}>
               <Link
                 href={
-                  accountFirstName
+                  isAuthenticated
                     ? "/account"
                     : "/account/sign-in?next=/account"
                 }
@@ -1183,8 +1187,8 @@ export default function Navbar() {
 
               <Link
                 href={
-                  accountFirstName
-                    ? "/account"
+                  isAuthenticated
+                    ? "/account#orders"
                     : "/account/sign-in?next=/account"
                 }
                 onClick={closeMenu}
@@ -1198,7 +1202,7 @@ export default function Navbar() {
 
               <Link
                 href={
-                  accountFirstName
+                  isAuthenticated
                     ? "/account#rewards"
                     : "/account/sign-in?next=/account%23rewards"
                 }
@@ -1250,7 +1254,7 @@ export default function Navbar() {
               <strong>{t("EGP")}</strong>
             </div>
 
-            {t(accountFirstName ? (
+            {isAuthenticated ? (
               <button
                 type="button"
                 className={styles.drawerCta}
@@ -1265,11 +1269,14 @@ export default function Navbar() {
                   border: 0,
                   fontFamily: "inherit",
                   cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "8px",
                 }}
               >
-                {t(isArabic
-                  ? "تسجيل الخروج"
-                  : "LOG OUT")}
+                <LogOut size={16} strokeWidth={1.35} />
+                {isArabic ? "تسجيل الخروج" : "LOG OUT"}
               </button>
             ) : (
               <Link
@@ -1279,7 +1286,7 @@ export default function Navbar() {
               >
                 {t(copy.create)}
               </Link>
-            ))}
+            )}
           </div>
 
           {/* SECOND LEVEL PANEL */}

@@ -14,6 +14,7 @@ import {
 import { useEffect, useState } from "react";
 
 import { useAuth } from "@/context/AuthContext";
+import { Button } from "@/components/ui/Button";
 import styles from "./AccountDropdown.module.css";
 
 type Props = {
@@ -48,11 +49,18 @@ export default function AccountDropdown({
 
   if (!open) return null;
 
+  const displayName = customer
+    ? customer.firstName?.trim() || customer.email?.split("@")[0] || ""
+    : "";
+
   const user = customer
     ? {
         fullName:
-          `${customer.firstName} ${customer.lastName}`.trim() || customer.email,
+          `${customer.firstName} ${customer.lastName}`.trim() ||
+          customer.firstName ||
+          customer.email.split("@")[0],
         email: customer.email,
+        firstName: displayName,
       }
     : null;
 
@@ -63,7 +71,7 @@ export default function AccountDropdown({
         rewardBody:
           "اجمع النقاط مع المشتريات المؤهلة واحصل على مزايا للأعضاء.",
         learn: "عرض حسابك",
-        welcome: user ? "مرحباً بعودتك" : "مرحباً بك في Vi2",
+        welcome: user ? `مرحباً، ${user.firstName}` : "مرحباً بك في Vi2",
         account: "حسابي",
         orders: "طلباتي",
         rewardsMenu: "مكافآتي",
@@ -78,7 +86,7 @@ export default function AccountDropdown({
         rewardBody:
           "Earn points on eligible purchases and unlock member benefits over time.",
         learn: "VIEW ACCOUNT",
-        welcome: user ? "WELCOME BACK" : "WELCOME TO VI2",
+        welcome: user ? `WELCOME, ${user.firstName.toUpperCase()}` : "WELCOME TO VI2",
         account: "My Account",
         orders: "My Orders",
         rewardsMenu: "My Rewards",
@@ -157,24 +165,31 @@ export default function AccountDropdown({
           </Link>
         </div>
 
-        {isAuthenticated ? (
-          <button
-            type="button"
-            className={styles.actionButton}
-            onClick={handleSignOut}
-          >
-            <LogOut size={16} strokeWidth={1.35} />
-            {copy.signOut}
-          </button>
-        ) : (
-          <Link
-            href="/account/sign-in"
-            className={styles.actionButton}
-            onClick={onClose}
-          >
-            {copy.signIn}
-          </Link>
-        )}
+        <div className={styles.actionWrap}>
+          {isAuthenticated ? (
+            <Button
+              variant="dark"
+              size="md"
+              fullWidth
+              onClick={handleSignOut}
+              icon={<LogOut size={16} strokeWidth={1.4} />}
+            >
+              {copy.signOut}
+            </Button>
+          ) : (
+            <Button
+              href="/account/sign-in"
+              variant="olive"
+              size="md"
+              fullWidth
+              onClick={onClose}
+              icon={<ArrowRight size={15} strokeWidth={1.5} />}
+              iconPosition="right"
+            >
+              {copy.signIn}
+            </Button>
+          )}
+        </div>
       </section>
     </div>
   );
