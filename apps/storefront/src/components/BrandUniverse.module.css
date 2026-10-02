@@ -3,7 +3,7 @@
 
   overflow: hidden;
 
-  background: #1b1d19;
+  background: #11110f;
 
   border-top:
     1px solid
@@ -26,12 +26,14 @@
 
 .marquee {
   width: 100%;
+  direction: ltr;
 
   overflow: hidden;
 }
 
 .track {
   width: max-content;
+  direction: ltr;
 
   min-height: 34px;
 
@@ -42,9 +44,16 @@
 
   animation:
     vi2BrandTicker
-    24s
+    96s
     linear
     infinite;
+}
+
+.group {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  direction: ltr;
 }
 
 .item {
@@ -71,7 +80,7 @@
       0.92
     );
 
-  font-size: 8px;
+  font-size: 9.5px;
   font-weight: 800;
   line-height: 1;
 
@@ -93,7 +102,7 @@
 
   border-radius: 999px;
 
-  background: #788163;
+  background: #8d8881;
 }
 
 @keyframes vi2BrandTicker {
@@ -121,7 +130,7 @@
   .track {
     min-height: 31px;
 
-    animation-duration: 19s;
+    animation-duration: 76s;
   }
 
   .item {
@@ -131,7 +140,7 @@
   }
 
   .item span {
-    font-size: 7.2px;
+    font-size: 9px;
     font-weight: 780;
     letter-spacing: 0.13em;
 

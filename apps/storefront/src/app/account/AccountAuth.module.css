@@ -66,7 +66,7 @@
 
   gap: 8px;
 
-  color: #626a55;
+  color: #8d8881;
 
   font-size: 6px;
   font-weight: 850;
@@ -78,7 +78,7 @@
   height: 1px;
 
   background:
-    #626a55;
+    #8d8881;
 }
 
 .heading {
@@ -105,7 +105,7 @@
 .heading span {
   display: block;
 
-  color: #626a55;
+  color: #8d8881;
 }
 
 .intro {
@@ -233,7 +233,7 @@
 
   border: 0;
 
-  color: #626a55;
+  color: #8d8881;
   background: transparent;
 
   cursor: pointer;
@@ -280,7 +280,7 @@
 
   margin-top: 1px;
 
-  accent-color: #626a55;
+  accent-color: #8d8881;
 }
 
 .submit {
@@ -354,7 +354,7 @@
 }
 
 .noticeSuccess {
-  color: #4f5943;
+  color: #5e5a55;
 
   border:
     1px solid
@@ -432,7 +432,7 @@
     linear-gradient(
       145deg,
       #1a1c18 0%,
-      #292e25 100%
+      #292826 100%
     );
 }
 
@@ -535,7 +535,7 @@
 }
 
 .trustSide h2 span {
-  color: #98a489;
+  color: #b8b2aa;
 }
 
 .sideCopy {
@@ -606,7 +606,7 @@
 }
 
 .benefit svg {
-  color: #a8b39a;
+  color: #cac4bc;
 }
 
 .benefit strong {

@@ -39,7 +39,7 @@ export default async function Home() {
       {/* ======================================================
           5. VALUE SETS / BUNDLES
           ====================================================== */}
-      <ValueSets />
+      <ValueSets products={products} />
 
       <section className="brand-statement">
         <span>

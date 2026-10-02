@@ -87,7 +87,7 @@
 }
 
 .identity h1 strong {
-  color: #626a55;
+  color: #8d8881;
   font: inherit;
 }
 
@@ -211,7 +211,7 @@
 .dotActive {
   width: 25px;
 
-  background: #626a55;
+  background: #8d8881;
 }
 
 /* ============================================================
@@ -253,7 +253,6 @@
   .identityLockup {
     display: grid;
     grid-template-columns:
-      auto
       auto
       minmax(330px, 1fr)
       minmax(260px, auto);
@@ -318,9 +317,9 @@
 
     font-size:
       clamp(
-        6.6px,
+        8.5px,
         0.62vw,
-        8.7px
+        10px
       );
 
     line-height: 1;
@@ -353,9 +352,9 @@
   .footerLine small {
     font-size:
       clamp(
-        5px,
+        7.5px,
         0.48vw,
-        6.6px
+        8.5px
       );
 
     line-height: 1;
@@ -409,7 +408,6 @@
 
   .identityLockup {
     grid-template-columns:
-      auto
       auto
       minmax(250px, 1fr)
       minmax(210px, auto);
@@ -474,7 +472,6 @@
   .identityLockup {
     display: grid;
     grid-template-columns:
-      88px
       132px
       minmax(0, 1fr);
 
@@ -541,7 +538,7 @@
 
     width: 2px;
 
-    background: #626a55;
+    background: #8d8881;
   }
 
   .identityLockup h1::after {
@@ -655,7 +652,6 @@
 
   .identityLockup {
     grid-template-columns:
-      76px
       112px
       minmax(0, 1fr);
 
@@ -730,7 +726,6 @@
 
   .identityLockup {
     grid-template-columns:
-      69px
       101px
       minmax(0, 1fr);
 

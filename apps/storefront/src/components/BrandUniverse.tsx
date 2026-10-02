@@ -3,18 +3,18 @@
 import styles from "./BrandUniverse.module.css";
 
 const brands = [
-  "VI2",
-  "PREMIUM SUPPLEMENTS",
-  "SCIENCE-BACKED",
-  "DAILY WELLNESS",
-  "PURE NUTRITION",
-  "AUTHENTIC QUALITY",
+  "Nutri-Nations",
+  "Doctor's Best",
+  "NOW Foods",
+  "California Gold Nutrition",
+  "Optimum Nutrition",
+  "Big Ramy Labs",
 ];
 
-const repeatedBrands = [
-  ...brands,
-  ...brands,
-];
+const tickerBrands = Array.from(
+  { length: 4 },
+  () => brands,
+).flat();
 
 export default function BrandUniverse() {
   return (
@@ -26,22 +26,34 @@ export default function BrandUniverse() {
       <div
         className={styles.marquee}
         aria-hidden="true"
+        dir="ltr"
       >
         <div className={styles.track}>
-          {repeatedBrands.map(
-            (brand, index) => (
-              <div
-                key={`${brand}-${index}`}
-                className={styles.item}
-              >
-                <span>
-                  {brand}
-                </span>
-
-                <i />
-              </div>
-            ),
-          )}
+          {[0, 1].map((group) => (
+            <div
+              key={group}
+              className={styles.group}
+            >
+              {tickerBrands.map(
+                (
+                  brand,
+                  index,
+                ) => (
+                  <div
+                    key={`${group}-${index}-${brand}`}
+                    className={
+                      styles.item
+                    }
+                  >
+                    <span>
+                      {brand}
+                    </span>
+                    <i />
+                  </div>
+                ),
+              )}
+            </div>
+          ))}
         </div>
       </div>
     </section>

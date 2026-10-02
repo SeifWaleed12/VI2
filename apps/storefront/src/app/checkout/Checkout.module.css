@@ -133,7 +133,7 @@
 }
 
 .progressDone {
-  color: #626a55 !important;
+  color: #8d8881 !important;
 }
 
 /* ============================================================
@@ -184,7 +184,7 @@
 
 .intro span,
 .confirmKicker span {
-  color: #626a55;
+  color: #8d8881;
 
   font-size: 5.8px;
   font-weight: 850;
@@ -708,7 +708,7 @@
 
   gap: 9px;
 
-  color: #5c6252;
+  color: #5e5a55;
   background:
     rgba(
       98,
@@ -995,7 +995,7 @@
 }
 
 .freeDelivery strong {
-  color: #626a55;
+  color: #8d8881;
 }
 
 .progressTrack {
@@ -1019,7 +1019,7 @@
 
   display: block;
 
-  background: #626a55;
+  background: #8d8881;
 }
 
 .totals {
@@ -1106,7 +1106,7 @@
       0.54
     );
 
-  color: #626a55;
+  color: #8d8881;
 
   font-size: 7px;
 }

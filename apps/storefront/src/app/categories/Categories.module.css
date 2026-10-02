@@ -134,11 +134,11 @@
 }
 
 .dark .group {
-  background: #2a2d26;
+  background: #2a2927;
 }
 
 .dark .group:nth-child(3n + 2) {
-  background: #626a55;
+  background: #8d8881;
 }
 
 .groupIntro {

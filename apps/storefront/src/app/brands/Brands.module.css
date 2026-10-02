@@ -49,7 +49,7 @@
 
   margin-bottom: 7px;
 
-  color: #626a55;
+  color: #8d8881;
 
   font-size: 6px;
   font-weight: 850;
@@ -193,7 +193,7 @@
 .letter {
   margin-bottom: 13px;
 
-  color: #626a55;
+  color: #8d8881;
 
   font-family:
     var(--font-display),
@@ -243,7 +243,7 @@
 }
 
 .brandLink:hover {
-  color: #626a55;
+  color: #8d8881;
 
   transform:
     translateX(3px);
@@ -298,7 +298,7 @@
 
   border-radius: 999px;
 
-  color: #4f5943;
+  color: #5e5a55;
   background:
     rgba(
       98,
@@ -446,7 +446,7 @@
 
   gap: 7px;
 
-  color: #626a55;
+  color: #8d8881;
 
   font-size: 6px;
   font-weight: 850;
