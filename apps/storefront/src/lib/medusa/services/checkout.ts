@@ -14,7 +14,9 @@ export async function completeCheckout(cartId: string, resume = false): Promise<
         return { ok: false, unknown: false, error: "Checkout is unavailable until payment methods are configured." };
       }
       const payment = await initiatePaymentSession(cartId, "pp_system_default");
-      if (!payment.ok) return { ok: false, unknown: true, error: pending };
+      // Completion was never requested, so no order exists and nothing was
+      // authorized. Recovery would only retry a completion without a session.
+      if (!payment.ok) return { ok: false, unknown: false, error: "Payment could not be started and your order was not placed. Your cart is retained; please try again." };
     }
     const result = await medusa.store.cart.complete(cartId);
     if (result.type === "order" && typeof result.order?.id === "string" && result.order.id.startsWith("order_")) {

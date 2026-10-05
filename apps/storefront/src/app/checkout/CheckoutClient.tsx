@@ -405,6 +405,7 @@ export default function CheckoutClient() {
     submissionLock.current = true;
     setSubmitting(true);
     setError("");
+    let completionAttempted = false;
     try {
       let activeCartId = recoveryId || cartId;
       if (!recoveryId) {
@@ -435,6 +436,7 @@ export default function CheckoutClient() {
         setRecovering(true);
       }
       if (!activeCartId) throw new Error("Cart unavailable");
+      completionAttempted = true;
       const completion = await completeCheckout(activeCartId, Boolean(recoveryId));
       if (!completion.ok) {
         if (!completion.unknown) { window.sessionStorage.removeItem(recoveryKey); setRecovering(false); }
@@ -445,10 +447,14 @@ export default function CheckoutClient() {
         window.sessionStorage.removeItem(recoveryKey);
         window.localStorage.removeItem("vi2-last-order");
       } catch { /* confirmed order remains authoritative */ }
-      if (!buyNowSlug) await clearCart();
+      // The order exists in Medusa now. A local cart-reset failure must not be
+      // reported as a checkout failure, or the customer may order twice.
+      if (!buyNowSlug) await clearCart().catch(() => {});
       router.push(`/order/success?order=${encodeURIComponent(completion.orderId)}`);
     } catch {
-      setError("Could not confirm your order. Your cart has been retained. Check delivery details and retry confirmation; payment status may be unknown.");
+      setError(completionAttempted
+        ? "Could not confirm your order. Your cart has been retained. Retry confirmation; payment status may be unknown."
+        : "Could not prepare your order. Check your delivery details and try again.");
     } finally {
       submissionLock.current = false;
       setSubmitting(false);

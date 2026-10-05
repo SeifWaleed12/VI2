@@ -26,9 +26,13 @@ it("requires a Medusa order ID for success", async () => {
   expect(await completeCheckout("cart_123")).toEqual({ ok: true, orderId: "order_123" });
 });
 
-it("does not complete after payment initialization failure", async () => {
+it("reports payment initialization failure as a definite, retryable failure without completing", async () => {
   payment.mockResolvedValue({ ok: false, error: "private gateway data" });
-  expect(await completeCheckout("cart_123")).toMatchObject({ ok: false, unknown: true });
+  const outcome = await completeCheckout("cart_123");
+  // unknown: false clears refresh recovery, so the retry re-initiates payment
+  // instead of completing a cart that has no payment session.
+  expect(outcome).toMatchObject({ ok: false, unknown: false });
+  expect(JSON.stringify(outcome)).not.toContain("private gateway data");
   expect(complete).not.toHaveBeenCalled();
 });
 
