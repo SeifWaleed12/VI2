@@ -12,7 +12,6 @@ import {
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useCart } from "@/context/CartContext";
-import { products as fallbackProducts } from "@/data/products";
 import { getProducts } from "@/lib/medusa";
 import type { Product } from "@/types/product";
 
@@ -58,7 +57,7 @@ export default function FlashDeals({
     }
   }, [initialProducts]);
 
-  const candidates = productsList.length > 0 ? productsList : fallbackProducts;
+  const candidates = productsList;
 
   const dealProducts = useMemo(() => {
     const matched = slugs

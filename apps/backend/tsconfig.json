@@ -17,7 +17,22 @@
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
     "checkJs": false,
-    "strictNullChecks": true
+    "strictNullChecks": true,
+    "baseUrl": ".",
+    "paths": {
+      "react": [
+        "./node_modules/@types/react"
+      ],
+      "react/*": [
+        "./node_modules/@types/react/*"
+      ],
+      "react-dom": [
+        "./node_modules/@types/react-dom"
+      ],
+      "react-dom/*": [
+        "./node_modules/@types/react-dom/*"
+      ]
+    }
   },
   "ts-node": {
     "swc": true
@@ -31,6 +46,6 @@
     ".medusa/server",
     ".medusa/admin",
     ".cache",
-    "eslint.config.*",
+    "eslint.config.*"
   ]
 }

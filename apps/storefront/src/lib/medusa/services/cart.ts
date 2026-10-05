@@ -1,3 +1,4 @@
+import { resolveRegionId } from "./regions";
 import { medusa } from "../client";
 import type { Cart, CartAddress } from "@/types/cart";
 
@@ -25,7 +26,7 @@ export function mapMedusaCart(c: any): Cart {
       productId: item.product_id || product.id || "",
       variantId: item.variant_id || variant.id || "",
       name: item.title || product.title || "",
-      brand: String(meta.brand || "Vi2"),
+      brand: "",
       image: item.thumbnail || product.thumbnail || String(meta.image || ""),
       slug: product.handle || String(meta.slug || ""),
       price: unitPrice,
@@ -35,7 +36,7 @@ export function mapMedusaCart(c: any): Cart {
         id: item.product_id || product.id || "",
         slug: product.handle || "",
         variantId: item.variant_id || variant.id || "",
-        brand: String(meta.brand || "Vi2"),
+        brand: "",
         name: item.title || product.title || "",
         shortName: String(meta.shortName || item.title || product.title || ""),
         category: String(meta.category || ""),
@@ -44,7 +45,7 @@ export function mapMedusaCart(c: any): Cart {
         rating: Number(meta.rating || 0),
         reviewCount: Number(meta.reviewCount || 0),
         image: item.thumbnail || product.thumbnail || String(meta.image || ""),
-        stock: Number(variant.inventory_quantity ?? meta.stock ?? 99),
+        stock: Number(variant.inventory_quantity ?? 0),
       },
     };
   });
@@ -113,7 +114,7 @@ export async function getCart(cartId: string): Promise<Cart | null> {
 export async function createCart(regionId?: string): Promise<Cart> {
   const { cart } = await medusa.store.cart.create(
     {
-      ...(regionId ? { region_id: regionId } : {}),
+      region_id: await resolveRegionId(regionId),
     },
     {
       fields: CART_FIELDS,

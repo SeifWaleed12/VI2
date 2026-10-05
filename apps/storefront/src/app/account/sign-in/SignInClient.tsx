@@ -23,6 +23,7 @@ import {
 } from "next/navigation";
 
 import { useAuth } from "@/context/AuthContext";
+import { safeRedirect } from "@/lib/safe-redirect";
 
 import styles from "../AccountAuth.module.css";
 
@@ -38,7 +39,7 @@ export default function SignInClient() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
-  const next = searchParams.get("next") || "/account";
+  const next = safeRedirect(searchParams.get("next"));
 
   useEffect(() => {
     if (isAuthenticated) {

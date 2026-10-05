@@ -19,7 +19,7 @@ export function mapMedusaOrder(o: any): Order {
       productId: item.product_id || product.id || "",
       variantId: item.variant_id || item.variant?.id || "",
       name: item.title || product.title || "",
-      brand: String(meta.brand || "Vi2"),
+      brand: "",
       image: item.thumbnail || product.thumbnail || String(meta.image || ""),
       slug: product.handle || String(meta.slug || ""),
       price: unitPrice,
@@ -70,36 +70,25 @@ export function mapMedusaOrder(o: any): Order {
  * vi2_auth_token cookie and forwards it to Medusa.
  */
 export async function getCustomerOrders(limit = 20): Promise<Order[]> {
-  try {
-    // In browser context, use the Next.js proxy to handle JWT cookie auth
-    if (typeof window !== "undefined") {
-      const res = await fetch(`/api/orders?limit=${limit}`, {
-        cache: "no-store",
-      });
-      if (!res.ok) return [];
-      const data = await res.json();
-      return (data.orders || []).map(mapMedusaOrder);
-    }
-
-    // Server-side: use the SDK directly (server.ts handles the cookie-based auth)
-    const { orders } = await medusa.store.order.list({
-      limit,
-      fields: ORDER_FIELDS,
-    });
-    return (orders || []).map(mapMedusaOrder);
-  } catch {
-    return [];
-  }
+  const res = await fetch(`/api/orders?limit=${limit}`, { cache: "no-store", signal: AbortSignal.timeout(15000) });
+  if (res.status === 401) throw new Error("Your session expired. Please sign in again.");
+  if (!res.ok) throw new Error("Order history is temporarily unavailable.");
+  const data = await res.json();
+  return (data.orders || []).map(mapMedusaOrder);
 }
 
+// Medusa 2.21 uses the opaque order ID as a guest retrieval capability.
+// Request only receipt data, never guest contact or address details.
 export async function getOrder(orderId: string): Promise<Order | null> {
+  if (!/^order_[a-zA-Z0-9]+$/.test(orderId)) return null;
   try {
     const { order } = await medusa.store.order.retrieve(orderId, {
-      fields: ORDER_FIELDS,
-    });
-    if (!order) return null;
+      fields: "id,display_id,status,payment_status,currency_code,total,created_at,items.id,items.title,items.quantity,items.unit_price,items.total",
+    }, { "Cache-Control": "no-store" });
+    if (!order || order.id !== orderId) return null;
     return mapMedusaOrder(order);
-  } catch {
-    return null;
+  } catch (error) {
+    if (error && typeof error === "object" && "status" in error && error.status === 404) return null;
+    throw new Error("Order confirmation temporarily unavailable.");
   }
 }

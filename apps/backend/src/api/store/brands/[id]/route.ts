@@ -15,13 +15,13 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
       brand = brands[0] ?? null
     }
 
-    if (!brand) {
+    if (!brand || brand.status !== "active") {
       return res.status(404).json({ message: `Brand with identifier "${id}" not found` })
     }
 
     res.json({ brand })
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Failed to retrieve brand"
+  } catch {
+    const message = "Failed to retrieve brand"
     res.status(500).json({ message })
   }
 }

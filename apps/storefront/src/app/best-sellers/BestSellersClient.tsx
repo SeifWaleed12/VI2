@@ -12,7 +12,6 @@ import {
 } from "react";
 
 import BestSellerCard from "@/components/BestSellerCard";
-import { products as fallbackProducts } from "@/data/products";
 import { getProducts } from "@/lib/medusa";
 import type { Product } from "@/types/product";
 
@@ -172,6 +171,7 @@ export default function BestSellersClient({
     safeInitial,
   );
 
+  const [catalogError, setCatalogError] = useState(false);
   const [fetchedProducts, setFetchedProducts] = useState<Product[]>(
     initialProducts || [],
   );
@@ -185,7 +185,7 @@ export default function BestSellersClient({
             setFetchedProducts(res);
           }
         })
-        .catch(() => {});
+        .catch(() => { if (active) setCatalogError(true); });
       return () => {
         active = false;
       };
@@ -193,7 +193,7 @@ export default function BestSellersClient({
   }, [initialProducts]);
 
   const sourceProducts =
-    fetchedProducts.length > 0 ? fetchedProducts : fallbackProducts;
+    fetchedProducts;
 
   const ranked =
     useMemo(
@@ -222,6 +222,7 @@ export default function BestSellersClient({
 
   return (
     <main className={styles.page}>
+      {catalogError && <p role="alert">The catalog is temporarily unavailable.</p>}
       <div
         className={
           styles.shell

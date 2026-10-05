@@ -75,6 +75,7 @@ export default function GlobalSearch({
   const [recent, setRecent] =
     useState<string[]>([]);
 
+  const [catalogError, setCatalogError] = useState(false);
   const [medusaProducts, setMedusaProducts] = useState<Product[]>([]);
 
   useEffect(() => {
@@ -85,7 +86,7 @@ export default function GlobalSearch({
           setMedusaProducts(res);
         }
       })
-      .catch(() => {});
+      .catch(() => { if (active) setCatalogError(true); });
     return () => {
       active = false;
     };
@@ -343,6 +344,7 @@ export default function GlobalSearch({
       role="presentation"
       onMouseDown={onClose}
     >
+      {catalogError && <p role="alert">Search is temporarily unavailable.</p>}
       <section
         className={styles.panel}
         role="dialog"

@@ -24,27 +24,6 @@ import type { Order } from "@/types/order";
 
 import styles from "./Account.module.css";
 
-type StoredItem = {
-  id?: string;
-  slug?: string;
-  name?: string;
-  brand?: string;
-  image?: string;
-  price?: number;
-  quantity?: number;
-  variantId?: string;
-};
-
-type StoredOrder = {
-  reference?: string;
-  createdAt?: string;
-  total?: number;
-  subtotal?: number;
-  delivery?: number;
-  paymentMethod?: string;
-  items?: StoredItem[];
-};
-
 function formatPrice(value: number) {
   return new Intl.NumberFormat("en-EG").format(value);
 }
@@ -65,33 +44,32 @@ export default function AccountClient() {
   const { addItem } = useCart();
 
   const { customer, isAuthenticated, signOut } = useAuth();
-  const [lastOrder, setLastOrder] = useState<StoredOrder | null>(null);
-  const [medusaOrders, setMedusaOrders] = useState<Order[]>([]);
+  const [orderError, setOrderError] = useState("");
+  const [orderResult, setOrderResult] = useState<{ customerId: string; orders: Order[]; error?: string } | null>(null);
+  const medusaOrders = orderResult?.customerId === customer?.id ? orderResult?.orders ?? [] : [];
+  const historyError = orderResult?.customerId === customer?.id ? orderResult?.error : undefined;
+  const lastOrder = isAuthenticated ? medusaOrders[0] : undefined;
 
   useEffect(() => {
-    try {
-      const raw = window.localStorage.getItem("vi2-last-order");
-      if (raw) setLastOrder(JSON.parse(raw) as StoredOrder);
-    } catch {
-      setLastOrder(null);
-    }
+    let active = true;
+    try { window.localStorage.removeItem("vi2-last-order"); } catch { /* legacy cleanup */ }
 
-    if (isAuthenticated) {
+    if (isAuthenticated && customer?.id) {
+      const customerId = customer.id;
       services.orderService
         .getCustomerOrders()
-        .then(setMedusaOrders)
-        .catch(() => {});
-    } else {
-      setMedusaOrders([]);
+        .then((orders) => { if (active) setOrderResult({ customerId, orders }); })
+        .catch((error: unknown) => { if (active) setOrderResult({ customerId, orders: [], error: error instanceof Error ? error.message : "Unable to load order history. Please try again." }); });
     }
-  }, [isAuthenticated]);
+    return () => { active = false; };
+  }, [isAuthenticated, customer?.id]);
 
-  const points = Math.floor(Number(lastOrder?.total ?? 0) / 10);
+  const points = "—";
 
   // Derive reorder items from stored order items directly (no need to look up local products)
   const reorderItems = (lastOrder?.items ?? []).map((item) => ({
     product: {
-      id: item.id ?? item.slug ?? "",
+      id: item.productId ?? item.slug ?? "",
       slug: item.slug ?? "",
       variantId: item.variantId,
       brand: item.brand ?? "Vi2",
@@ -103,18 +81,26 @@ export default function AccountClient() {
       rating: 0,
       reviewCount: 0,
       image: item.image ?? "",
-      stock: 99,
+      stock: 0,
     } as Product,
     quantity: Math.max(1, Number(item.quantity) || 1),
   }));
 
-  function handleSignOut() {
-    signOut();
-    setMedusaOrders([]);
+  async function handleSignOut() {
+    try {
+      await signOut();
+      setOrderResult(null);
+    } catch {
+      setOrderError("Unable to sign out. Please try again.");
+    }
   }
 
   return (
     <main className={styles.page}>
+      {orderError && <p role="alert">{orderError}</p>}
+      {historyError && <p role="alert">{historyError}</p>}
+      {isAuthenticated && !historyError && orderResult?.customerId !== customer?.id && <p role="status">Loading order history…</p>}
+      {isAuthenticated && !historyError && orderResult?.customerId === customer?.id && medusaOrders.length === 0 && <p>No orders yet.</p>}
       <section className={styles.hero}>
         <div>
           <span>VI2 ACCOUNT</span>
@@ -164,11 +150,11 @@ export default function AccountClient() {
           <span>VI2 POINTS</span>
 
           <strong>
-            {new Intl.NumberFormat("en-EG").format(points)}
+            {points}
           </strong>
 
           <p>
-            Points preview based on eligible orders.
+            Rewards are not available yet.
           </p>
         </div>
       </section>
@@ -219,7 +205,7 @@ export default function AccountClient() {
           {lastOrder.total !== undefined && (
             <p style={{ fontSize: "0.85rem", marginTop: "0.5rem" }}>
               Total: <strong>{formatPrice(lastOrder.total)} EGP</strong>
-              {lastOrder.paymentMethod && ` · ${lastOrder.paymentMethod.toUpperCase()}`}
+              
             </p>
           )}
         </section>

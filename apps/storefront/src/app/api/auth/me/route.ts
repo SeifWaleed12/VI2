@@ -1,51 +1,19 @@
-import { NextRequest, NextResponse } from "next/server";
-
-const BACKEND_URL =
-  process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL || "http://localhost:9000";
-const PUBLISHABLE_KEY =
-  process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY || "";
-
-const AUTH_TOKEN_COOKIE = "vi2_auth_token";
+import { NextRequest } from "next/server";
+import { AUTH_COOKIE, AUTH_TIMEOUT_MS, BACKEND_URL, PUBLISHABLE_KEY, authError, authJson, backendFailure, expiredSession, transportFailure, validCustomer } from "@/lib/auth-request";
 
 export async function GET(request: NextRequest) {
-  const token = request.cookies.get(AUTH_TOKEN_COOKIE)?.value;
-
-  if (!token) {
-    return NextResponse.json({ ok: false, customer: null }, { status: 200 });
-  }
-
+  const token = request.cookies.get(AUTH_COOKIE)?.value;
+  if (!token) return expiredSession();
   try {
-    const res = await fetch(`${BACKEND_URL}/store/customers/me`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "x-publishable-api-key": PUBLISHABLE_KEY,
-      },
-      cache: "no-store",
+    const backend = await fetch(`${BACKEND_URL}/store/customers/me`, {
+      headers: { Authorization: `Bearer ${token}`, "x-publishable-api-key": PUBLISHABLE_KEY },
+      cache: "no-store", signal: AbortSignal.timeout(AUTH_TIMEOUT_MS),
     });
-
-    if (res.ok) {
-      const data = await res.json();
-      return NextResponse.json(
-        { ok: true, customer: data.customer },
-        { status: 200 }
-      );
-    }
-
-    if (res.status === 401) {
-      // The JWT is invalid or expired — clear the stale cookie
-      const response = NextResponse.json(
-        { ok: false, customer: null },
-        { status: 200 }
-      );
-      response.cookies.set(AUTH_TOKEN_COOKIE, "", { maxAge: 0, path: "/" });
-      return response;
-    }
-
-    // Backend error (e.g. 5xx or temporary network timeout):
-    // Do NOT clear the cookie; return unauthenticated state for now so user can retry
-    return NextResponse.json({ ok: false, customer: null }, { status: 200 });
+    if (!backend.ok) return backendFailure(backend.status);
+    const data = await backend.json();
+    if (!validCustomer(data?.customer)) return authError("Unable to load account. Please try again.", 502);
+    return authJson({ ok: true, customer: data.customer });
   } catch (error) {
-    console.error("[auth/me] BFF error:", error);
-    return NextResponse.json({ ok: false, customer: null }, { status: 200 });
+    return transportFailure(error);
   }
 }

@@ -1,74 +1,34 @@
-import { NextRequest, NextResponse } from "next/server";
-
-const BACKEND_URL =
-  process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL || "http://localhost:9000";
-const PUBLISHABLE_KEY =
-  process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY || "";
-
-const AUTH_TOKEN_COOKIE = "vi2_auth_token";
-const AUTH_TOKEN_MAX_AGE = 86400; // 1 day (matches 24h JWT expiration)
+import { NextRequest } from "next/server";
+import { AUTH_TIMEOUT_MS, BACKEND_URL, PUBLISHABLE_KEY, authError, authJson, backendFailure, checkAuthOrigin, readAuthBody, readToken, setAuthCookie, transportFailure, validCredentials, validCustomer, validText } from "@/lib/auth-request";
 
 export async function POST(request: NextRequest) {
+  const originError = checkAuthOrigin(request);
+  if (originError) return originError;
+  const body = await readAuthBody(request);
+  if (!validCredentials(body) || !validText(body.firstName, 100) || !validText(body.lastName, 100)
+    || (body.phone !== undefined && (typeof body.phone !== "string" || body.phone.length > 32))) {
+    return authError("Provide valid registration details.", 400);
+  }
   try {
-    const body = await request.json();
-    const { email, password, firstName, lastName, phone } = body || {};
-
-    if (!email || !password || !firstName || !lastName) {
-      return NextResponse.json(
-        { ok: false, message: "All required fields must be provided." },
-        { status: 400 }
-      );
-    }
-
-    // Call Medusa backend registration endpoint.
-    // The backend owns identity creation, customer account creation, and compensation logic.
-    const backendRes = await fetch(`${BACKEND_URL}/store/auth/register`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-publishable-api-key": PUBLISHABLE_KEY,
-      },
-      body: JSON.stringify({
-        email: email.trim().toLowerCase(),
-        password,
-        first_name: firstName.trim(),
-        last_name: lastName.trim(),
-        phone: phone ? phone.trim() : undefined,
-      }),
+    // Do not automatically retry account creation: a timeout does not prove failure.
+    const backend = await fetch(`${BACKEND_URL}/store/auth/register`, {
+      method: "POST", headers: { "Content-Type": "application/json", "x-publishable-api-key": PUBLISHABLE_KEY },
+      body: JSON.stringify({ email: body.email.trim().toLowerCase(), password: body.password,
+        first_name: body.firstName.trim(), last_name: body.lastName.trim(), phone: typeof body.phone === "string" ? body.phone.trim() : undefined }),
+      cache: "no-store", signal: AbortSignal.timeout(AUTH_TIMEOUT_MS),
     });
-
-    const data = await backendRes.json().catch(() => ({}));
-
-    if (!backendRes.ok || !data.token) {
-      return NextResponse.json(
-        {
-          ok: false,
-          message: data.message || "Registration failed. Please try again.",
-        },
-        { status: backendRes.status || 400 }
-      );
+    if (!backend.ok) {
+      if (backend.status === 400 || backend.status === 409) return authError("Unable to register with these details. Try signing in or contact support.", 400);
+      return backendFailure(backend.status);
     }
-
-    const response = NextResponse.json(
-      { ok: true, customer: data.customer },
-      { status: 201 }
-    );
-
-    // Set single authoritative HttpOnly cookie with Medusa JWT
-    response.cookies.set(AUTH_TOKEN_COOKIE, data.token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-      maxAge: AUTH_TOKEN_MAX_AGE,
-      path: "/",
-    });
-
+    const data = await backend.json();
+    const token = readToken(data);
+    if (!token || !validCustomer(data?.customer)) return authError("Unable to confirm registration. Try signing in before registering again.", 502);
+    const response = authJson({ ok: true, customer: data.customer }, 201);
+    setAuthCookie(response, token);
     return response;
   } catch (error) {
-    console.error("[auth/register] BFF error:", error);
-    return NextResponse.json(
-      { ok: false, message: "An unexpected error occurred during registration." },
-      { status: 500 }
-    );
+    const response = transportFailure(error);
+    return authError("Unable to confirm registration. Try signing in before registering again.", response.status);
   }
 }

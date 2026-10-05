@@ -1,100 +1,34 @@
-import { NextRequest, NextResponse } from "next/server";
-
-const BACKEND_URL =
-  process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL || "http://localhost:9000";
-const PUBLISHABLE_KEY =
-  process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY || "";
-
-const AUTH_TOKEN_COOKIE = "vi2_auth_token";
-const AUTH_TOKEN_MAX_AGE = 86400; // 1 day (matches 24h JWT expiration)
+import { NextRequest } from "next/server";
+import { AUTH_TIMEOUT_MS, BACKEND_URL, PUBLISHABLE_KEY, authError, authJson, backendFailure, checkAuthOrigin, readAuthBody, readToken, setAuthCookie, transportFailure, validCredentials, validCustomer } from "@/lib/auth-request";
 
 export async function POST(request: NextRequest) {
+  const originError = checkAuthOrigin(request);
+  if (originError) return originError;
+  const body = await readAuthBody(request);
+  if (!validCredentials(body)) return authError("Provide a valid email and password.", 400);
+  const signal = AbortSignal.timeout(AUTH_TIMEOUT_MS);
   try {
-    const body = await request.json();
-    const { email, password } = body || {};
-
-    if (!email || !password) {
-      return NextResponse.json(
-        { ok: false, message: "Email and password are required." },
-        { status: 400 }
-      );
-    }
-
-    // Call Medusa native emailpass authentication
-    const authResponse = await fetch(
-      `${BACKEND_URL}/auth/customer/emailpass`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-publishable-api-key": PUBLISHABLE_KEY,
-        },
-        body: JSON.stringify({ email: email.trim(), password }),
-      }
-    );
-
-    if (!authResponse.ok) {
-      const errorData = await authResponse.json().catch(() => ({}));
-      return NextResponse.json(
-        {
-          ok: false,
-          message:
-            (errorData as { message?: string }).message ||
-            "Invalid email or password.",
-        },
-        { status: 401 }
-      );
-    }
-
-    const authData = await authResponse.json();
-    const token: string | undefined =
-      typeof authData === "string" ? authData : authData.token;
-
-    if (!token) {
-      return NextResponse.json(
-        { ok: false, message: "Authentication failed: no token received." },
-        { status: 500 }
-      );
-    }
-
-    // Fetch customer profile to return to the UI (transport composition)
-    let customer = null;
-    const customerResponse = await fetch(
-      `${BACKEND_URL}/store/customers/me`,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "x-publishable-api-key": PUBLISHABLE_KEY,
-        },
-        cache: "no-store",
-      }
-    );
-
-    if (customerResponse.ok) {
-      const customerData = await customerResponse.json();
-      customer = customerData.customer;
-    }
-
-    const response = NextResponse.json(
-      { ok: true, customer },
-      { status: 200 }
-    );
-
-    // Set single authoritative HttpOnly cookie with Medusa JWT
-    response.cookies.set(AUTH_TOKEN_COOKIE, token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-      maxAge: AUTH_TOKEN_MAX_AGE,
-      path: "/",
+    const auth = await fetch(`${BACKEND_URL}/auth/customer/emailpass`, {
+      method: "POST", headers: { "Content-Type": "application/json", "x-publishable-api-key": PUBLISHABLE_KEY },
+      body: JSON.stringify({ email: body.email.trim().toLowerCase(), password: body.password }),
+      cache: "no-store", signal,
     });
-
+    if (!auth.ok) {
+      if (auth.status === 400 || auth.status === 401) return authError("Invalid email or password.", 401);
+      return backendFailure(auth.status);
+    }
+    const token = readToken(await auth.json());
+    if (!token) return authError("Unable to sign in. Please try again.", 502);
+    const profile = await fetch(`${BACKEND_URL}/store/customers/me`, {
+      headers: { Authorization: `Bearer ${token}`, "x-publishable-api-key": PUBLISHABLE_KEY }, cache: "no-store", signal,
+    });
+    if (!profile.ok) return backendFailure(profile.status);
+    const data = await profile.json();
+    if (!validCustomer(data?.customer)) return authError("Unable to sign in. Please try again.", 502);
+    const response = authJson({ ok: true, customer: data.customer });
+    setAuthCookie(response, token);
     return response;
   } catch (error) {
-    console.error("[auth/login] BFF error:", error);
-    return NextResponse.json(
-      { ok: false, message: "An unexpected error occurred during login." },
-      { status: 500 }
-    );
+    return transportFailure(error);
   }
 }

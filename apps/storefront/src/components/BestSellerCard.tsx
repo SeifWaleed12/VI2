@@ -113,7 +113,7 @@ export default function BestSellerCard({
           {product.shortName}
         </Link>
 
-        <div className={styles.rating}>
+        {product.reviewCount > 0 && (<div className={styles.rating}>
           <strong>
             {product.rating}
           </strong>
@@ -129,7 +129,7 @@ export default function BestSellerCard({
               product.reviewCount,
             )}
           </span>
-        </div>
+        </div>)}
 
         <div className={styles.bottom}>
           <div className={styles.price}>

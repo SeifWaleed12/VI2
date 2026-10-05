@@ -6,6 +6,7 @@ const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
   {
+    files: ["**/*.{js,jsx,ts,tsx}"],
     rules: {
       "react-hooks/set-state-in-effect": "warn",
     },

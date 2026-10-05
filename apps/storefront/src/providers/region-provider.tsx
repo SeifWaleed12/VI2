@@ -9,12 +9,12 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { getRegions, type StoreRegion } from "@/lib/medusa/services/regions";
+import { getRegions, selectRegion, type StoreRegion } from "@/lib/medusa/services/regions";
 
 const REGION_STORAGE_KEY = "vi2-region-id";
 const DEFAULT_FALLBACK_REGION_ID =
   process.env.NEXT_PUBLIC_MEDUSA_REGION_ID ||
-  "reg_01M329WR0PPZ3Z6FXFE87D9ABJ";
+  "";
 
 type RegionContextValue = {
   region: StoreRegion | null;
@@ -45,19 +45,9 @@ export function RegionProvider({ children }: { children: ReactNode }) {
         targetId = window.localStorage.getItem(REGION_STORAGE_KEY);
       }
 
-      if (!targetId && fetchedRegions.length > 0) {
-        // Look for Egypt / default region or take the first
-        const egyptRegion = fetchedRegions.find(
-          (r) =>
-            r.currency_code?.toLowerCase() === "egp" ||
-            r.countries?.some(
-              (c: { iso_2?: string }) => c.iso_2?.toLowerCase() === "eg",
-            ),
-        );
-        targetId = egyptRegion?.id || fetchedRegions[0]?.id || null;
-      }
-
-      const activeId = targetId || DEFAULT_FALLBACK_REGION_ID;
+      const configured = process.env.NEXT_PUBLIC_MEDUSA_REGION_ID;
+      const validStored = fetchedRegions.some((r) => r.id === targetId) ? targetId : undefined;
+      const activeId = selectRegion(fetchedRegions, configured || validStored || undefined).id;
       setRegionIdState(activeId);
 
       if (typeof window !== "undefined" && targetId) {
@@ -71,19 +61,12 @@ export function RegionProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    // Initial mount hydration
-    if (typeof window !== "undefined") {
-      const stored = window.localStorage.getItem(REGION_STORAGE_KEY);
-      if (stored) {
-        setRegionIdState(stored);
-      }
-    }
-
     refreshRegion();
   }, [refreshRegion]);
 
   const setRegion = useCallback(
     (newRegionId: string) => {
+      selectRegion(regions, newRegionId);
       setRegionIdState(newRegionId);
       if (typeof window !== "undefined") {
         try {
@@ -91,7 +74,7 @@ export function RegionProvider({ children }: { children: ReactNode }) {
         } catch {}
       }
     },
-    [],
+    [regions],
   );
 
   const activeRegion = useMemo(() => {

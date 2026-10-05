@@ -1,6 +1,6 @@
 "use client";
 import { useLanguage } from "@/context/LanguageContext";
-
+import { useEffect, useState } from "react";
 
 import Image from "next/image";
 import Link from "next/link";
@@ -12,12 +12,8 @@ import {
   Trophy,
 } from "lucide-react";
 
-import nutriNationsLogo from "@/assets/brands/nutri-nations.png";
-import doctorsBestLogo from "@/assets/brands/doctors-best.png";
-import nowFoodsLogo from "@/assets/brands/now-foods.png";
-import californiaGoldLogo from "@/assets/brands/california-gold.png";
-import optimumNutritionLogo from "@/assets/brands/optimum-nutrition.png";
-import bigRamyLabsLogo from "@/assets/brands/big-ramy-labs.png";
+import { getBrands } from "@/lib/medusa/services/brands";
+import type { Brand } from "@/types/brand";
 
 import styles from "./DesktopMegaMenu.module.css";
 
@@ -528,120 +524,7 @@ const menus: Record<
   },
 };
 
-const brandGroups = [
-  {
-    letter: "B",
-    brands: [
-      {
-        name:
-          "Big Ramy Labs",
-        href:
-          "/shop?brand=Big%20Ramy%20Labs",
-      },
-    ],
-  },
-  {
-    letter: "C",
-    brands: [
-      {
-        name:
-          "California Gold Nutrition",
-        href:
-          "/shop?brand=California%20Gold%20Nutrition",
-      },
-    ],
-  },
-  {
-    letter: "D",
-    brands: [
-      {
-        name:
-          "Doctor's Best",
-        href:
-          "/shop?brand=Doctor%27s%20Best",
-      },
-    ],
-  },
-  {
-    letter: "N",
-    brands: [
-      {
-        name:
-          "NOW Foods",
-        href:
-          "/shop?brand=NOW%20Foods",
-      },
-      {
-        name:
-          "Nutri-Nations",
-        href:
-          "/shop?brand=Nutri-Nations",
-      },
-    ],
-  },
-  {
-    letter: "O",
-    brands: [
-      {
-        name:
-          "Optimum Nutrition",
-        href:
-          "/shop?brand=Optimum%20Nutrition",
-      },
-    ],
-  },
-];
-
-const brandLogos = [
-  {
-    name:
-      "Nutri-Nations",
-    href:
-      "/shop?brand=Nutri-Nations",
-    logo:
-      nutriNationsLogo,
-  },
-  {
-    name:
-      "Doctor's Best",
-    href:
-      "/shop?brand=Doctor%27s%20Best",
-    logo:
-      doctorsBestLogo,
-  },
-  {
-    name:
-      "NOW Foods",
-    href:
-      "/shop?brand=NOW%20Foods",
-    logo:
-      nowFoodsLogo,
-  },
-  {
-    name:
-      "California Gold Nutrition",
-    href:
-      "/shop?brand=California%20Gold%20Nutrition",
-    logo:
-      californiaGoldLogo,
-  },
-  {
-    name:
-      "Optimum Nutrition",
-    href:
-      "/shop?brand=Optimum%20Nutrition",
-    logo:
-      optimumNutritionLogo,
-  },
-  {
-    name:
-      "Big Ramy Labs",
-    href:
-      "/shop?brand=Big%20Ramy%20Labs",
-    logo:
-      bigRamyLabsLogo,
-  },
-];
+// Brand data is now loaded dynamically from the API inside DesktopMegaMenu
 
 function MenuShell({
   children,
@@ -679,168 +562,112 @@ export default function DesktopMegaMenu({
   active,
   onClose,
 }: {
-  active:
-    MegaMenuKey | null;
+  active: MegaMenuKey | null;
   onClose: () => void;
 }) {
   const { t } = useLanguage();
+
+  // Dynamically loaded brands from the backend API
+  const [brands, setBrands] = useState<Brand[]>([]);
+
+  useEffect(() => {
+    getBrands()
+      .then((data) => {
+        // Only show active brands in the menu
+        setBrands(data.filter((b) => b.status === "active"));
+      })
+      .catch(() => {
+        // Silently fail — menu will show empty brands section
+      });
+  }, []);
+
+  // Derive alphabetical brand groups from live data
+  const brandGroups = brands.reduce<{ letter: string; brands: { name: string; href: string }[] }[]>(
+    (acc, brand) => {
+      const letter = brand.name[0].toUpperCase();
+      const existing = acc.find((g) => g.letter === letter);
+      const entry = {
+        name: brand.name,
+        href: `/shop?brand=${encodeURIComponent(brand.name)}`,
+      };
+      if (existing) {
+        existing.brands.push(entry);
+      } else {
+        acc.push({ letter, brands: [entry] });
+      }
+      return acc;
+    },
+    []
+  ).sort((a, b) => a.letter.localeCompare(b.letter));
+
+  // Derive logo tiles — only brands that have a logo URL set
+  const brandLogos = brands
+    .filter((b) => !!b.logo)
+    .map((b) => ({
+      name: b.name,
+      href: `/shop?brand=${encodeURIComponent(b.name)}`,
+      logo: b.logo as string,
+    }));
 
   if (!active) {
     return null;
   }
 
-  if (
-    active === "brands"
-  ) {
+  if (active === "brands") {
     return (
-      <MenuShell
-        onClose={onClose}
-      >
-        <div
-          className={
-            styles.brandsInner
-          }
-        >
-          <div
-            className={
-              styles.brandDirectory
-            }
-          >
-            {t(brandGroups.map(
-              (
-                group,
-              ) => (
-                <section
-                  key={
-                    group.letter
-                  }
-                  className={
-                    styles.brandColumn
-                  }
-                >
-                  <strong>
-                    {
-                      t(group.letter)
-                    }
-                  </strong>
-
-                  <div>
-                    {t(group.brands.map(
-                      (
-                        brand,
-                      ) => (
-                        <Link
-                          key={
-                            brand.name
-                          }
-                          href={
-                            brand.href
-                          }
-                          onClick={
-                            onClose
-                          }
-                        >
-                          {
-                            t(brand.name)
-                          }
-                        </Link>
-                      ),
-                    ))}
-                  </div>
-                </section>
-              ),
-            ))}
+      <MenuShell onClose={onClose}>
+        <div className={styles.brandsInner}>
+          <div className={styles.brandDirectory}>
+            {t(brandGroups.map((group) => (
+              <section key={group.letter} className={styles.brandColumn}>
+                <strong>{t(group.letter)}</strong>
+                <div>
+                  {t(group.brands.map((brand) => (
+                    <Link key={brand.name} href={brand.href} onClick={onClose}>
+                      {t(brand.name)}
+                    </Link>
+                  )))}
+                </div>
+              </section>
+            )))}
 
             <Link
               href="/brands"
-              onClick={
-                onClose
-              }
-              className={
-                styles.allBrands
-              }
-            >{t("VIEW ALL BRANDS")}<ArrowRight
-                size={
-                  15
-                }
-                strokeWidth={
-                  1.45
-                }
-              />
+              onClick={onClose}
+              className={styles.allBrands}
+            >{t("VIEW ALL BRANDS")}<ArrowRight size={15} strokeWidth={1.45} />
             </Link>
           </div>
 
-          <aside
-            className={
-              styles.brandsSide
-            }
-          >
-            <div
-              className={
-                styles.brandsSideTitle
-              }
-            >
+          <aside className={styles.brandsSide}>
+            <div className={styles.brandsSideTitle}>
               <span>{t("VI2 BRANDS")}</span>
-
               <small>{t("SHOP BY BRAND")}</small>
             </div>
 
-            <div
-              className={
-                styles.brandLogoGrid
-              }
-            >
-              {t(brandLogos.map(
-                (
-                  brand,
-                ) => (
-                  <Link
-                    key={
-                      brand.name
-                    }
-                    href={
-                      brand.href
-                    }
-                    onClick={
-                      onClose
-                    }
-                    className={
-                      styles.brandLogoTile
-                    }
-                    aria-label={t(`Shop ${brand.name}`)}
-                  >
-                    <Image
-                      src={
-                        brand.logo
-                      }
-                      alt={t(`${brand.name} logo`)}
-                      fill
-                      sizes="190px"
-                      className={
-                        styles.brandLogo
-                      }
-                    />
-                  </Link>
-                ),
-              ))}
+            <div className={styles.brandLogoGrid}>
+              {t(brandLogos.map((brand) => (
+                <Link
+                  key={brand.name}
+                  href={brand.href}
+                  onClick={onClose}
+                  className={styles.brandLogoTile}
+                  aria-label={t(`Shop ${brand.name}`)}
+                >
+                  <Image
+                    src={brand.logo}
+                    alt={t(`${brand.name} logo`)}
+                    fill
+                    sizes="190px"
+                    className={styles.brandLogo}
+                    unoptimized
+                  />
+                </Link>
+              )))}
             </div>
 
-            <Link
-              href="/brands"
-              onClick={
-                onClose
-              }
-              className={
-                styles.shopBrands
-              }
-            >{t("SHOP ALL")}<ChevronRight
-                size={
-                  14
-                }
-                strokeWidth={
-                  1.45
-                }
-              />
+            <Link href="/brands" onClick={onClose} className={styles.shopBrands}>
+              {t("SHOP ALL")}<ChevronRight size={14} strokeWidth={1.45} />
             </Link>
           </aside>
         </div>

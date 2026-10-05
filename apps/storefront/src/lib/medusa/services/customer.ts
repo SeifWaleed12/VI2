@@ -21,20 +21,12 @@ export function mapMedusaCustomer(c: any): Customer {
  * The BFF reads the vi2_auth_token HttpOnly cookie and queries Medusa.
  */
 export async function getCustomer(): Promise<Customer | null> {
-  try {
-    const res = await fetch("/api/auth/me", {
-      cache: "no-store",
-    });
-
-    if (!res.ok) return null;
-
-    const data = await res.json();
-    if (!data.ok || !data.customer) return null;
-
-    return mapMedusaCustomer(data.customer);
-  } catch {
-    return null;
-  }
+  const res = await fetch("/api/auth/me", { cache: "no-store", signal: AbortSignal.timeout(15000) });
+  if (res.status === 401) return null;
+  if (!res.ok) throw new Error("Account service temporarily unavailable.");
+  const data = await res.json();
+  if (!data.ok || !data.customer) return null;
+  return mapMedusaCustomer(data.customer);
 }
 
 /**
@@ -48,6 +40,7 @@ export async function loginCustomer(
   try {
     const res = await fetch("/api/auth/login", {
       method: "POST",
+      signal: AbortSignal.timeout(15000),
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         email: credentials.email.trim(),
@@ -64,25 +57,16 @@ export async function loginCustomer(
       };
     }
 
-    const customer: Customer = data.customer
-      ? mapMedusaCustomer(data.customer)
-      : {
-          id: "",
-          email: credentials.email.trim(),
-          firstName: "",
-          lastName: "",
-          hasAccount: true,
-        };
+    if (!data.customer?.id || !data.customer?.email) return { ok: false, message: "Unable to load your account. Please try again." };
+    const customer = mapMedusaCustomer(data.customer);
 
     if (typeof window !== "undefined") {
       window.dispatchEvent(new Event("vi2-auth-change"));
     }
 
     return { ok: true, customer };
-  } catch (err: unknown) {
-    const message =
-      err instanceof Error ? err.message : "Invalid email or password.";
-    return { ok: false, message };
+  } catch {
+    return { ok: false, message: "Unable to sign in right now. Please try again." };
   }
 }
 
@@ -97,6 +81,7 @@ export async function registerCustomer(
   try {
     const res = await fetch("/api/auth/register", {
       method: "POST",
+      signal: AbortSignal.timeout(15000),
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         email: credentials.email.trim().toLowerCase(),
@@ -117,28 +102,16 @@ export async function registerCustomer(
       };
     }
 
-    const customer: Customer = data.customer
-      ? mapMedusaCustomer(data.customer)
-      : {
-          id: "",
-          email: credentials.email.trim().toLowerCase(),
-          firstName: credentials.firstName.trim(),
-          lastName: credentials.lastName.trim(),
-          phone: credentials.phone?.trim(),
-          hasAccount: true,
-        };
+    if (!data.customer?.id || !data.customer?.email) return { ok: false, message: "Unable to confirm registration. Try signing in before registering again." };
+    const customer = mapMedusaCustomer(data.customer);
 
     if (typeof window !== "undefined") {
       window.dispatchEvent(new Event("vi2-auth-change"));
     }
 
     return { ok: true, customer };
-  } catch (err: unknown) {
-    const message =
-      err instanceof Error
-        ? err.message
-        : "Registration failed. Please try again.";
-    return { ok: false, message };
+  } catch {
+    return { ok: false, message: "Unable to confirm registration. Try signing in before registering again." };
   }
 }
 
@@ -148,12 +121,13 @@ export async function registerCustomer(
  */
 export async function logoutCustomer(): Promise<void> {
   try {
-    await fetch("/api/auth/logout", { method: "POST" });
+    const response = await fetch("/api/auth/logout", { method: "POST", signal: AbortSignal.timeout(15000) });
+    if (!response.ok) throw new Error("Logout failed");
   } catch {
-    // Ignore errors — always proceed with client-side cleanup
-  } finally {
-    if (typeof window !== "undefined") {
-      window.dispatchEvent(new Event("vi2-auth-change"));
-    }
+    throw new Error("Unable to sign out. Please try again.");
+  }
+  if (typeof window !== "undefined") {
+    try { window.localStorage.removeItem("vi2-last-order"); } catch { /* Storage may be disabled. */ }
+    window.dispatchEvent(new Event("vi2-auth-change"));
   }
 }

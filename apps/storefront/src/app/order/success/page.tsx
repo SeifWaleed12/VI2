@@ -1,3 +1,4 @@
+export const metadata = { robots: { index: false, follow: false }, referrer: "no-referrer" as const };
 import {
   Suspense,
 } from "react";

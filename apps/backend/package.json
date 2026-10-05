@@ -17,9 +17,11 @@
     "start": "medusa start",
     "dev": "medusa develop",
     "lint": "medusa lint",
-    "test:integration:http": "TEST_TYPE=integration:http NODE_OPTIONS=--experimental-vm-modules jest --silent=false --runInBand --forceExit",
-    "test:integration:modules": "TEST_TYPE=integration:modules NODE_OPTIONS=--experimental-vm-modules jest --silent=false --runInBand --forceExit",
-    "test:unit": "TEST_TYPE=unit NODE_OPTIONS=--experimental-vm-modules jest --silent --runInBand --forceExit"
+    "test:integration:http": "node --experimental-vm-modules ../../node_modules/jest/bin/jest.js --config jest.integration.config.js --runInBand --testPathPattern=integration-tests/http",
+    "test:integration:modules": "node --experimental-vm-modules ../../node_modules/jest/bin/jest.js --config jest.integration.config.js --runInBand --testPathPattern=src/modules",
+    "test:unit": "jest --runInBand",
+    "typecheck": "tsc --noEmit --incremental false && tsc --noEmit -p src/admin/tsconfig.json",
+    "test": "jest --runInBand"
   },
   "dependencies": {
     "@medusajs/admin-sdk": "2.21.0",

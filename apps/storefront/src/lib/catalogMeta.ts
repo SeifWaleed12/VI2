@@ -179,6 +179,7 @@ export function getProductDietaryTags(
 export function getStockLabel(
   product: Product,
 ) {
+  if (product.inventoryKnown === false) return product.inStock ? "AVAILABLE" : "AVAILABILITY UNCONFIRMED";
   if (product.stock <= 0) {
     return "OUT OF STOCK";
   }

@@ -69,9 +69,9 @@
   border-radius: 6px;
 
   color: #f8f4ed;
-  background: #626a55;
+  background: #8d8881;
 
-  font-size: 9px;
+  font-size: 10.5px;
   font-weight: 850;
 }
 
@@ -114,7 +114,7 @@
 
   color: #777269;
 
-  font-size: 8px;
+  font-size: 10px;
   font-weight: 800;
   letter-spacing: 0.09em;
   text-transform: uppercase;
@@ -155,14 +155,14 @@
 .rating strong {
   color: #292a26;
 
-  font-size: 9px;
+  font-size: 10.5px;
   font-weight: 700;
 }
 
 .rating span {
   color: #8c877f;
 
-  font-size: 7.5px;
+  font-size: 9.5px;
   font-weight: 600;
 }
 
@@ -196,7 +196,7 @@
 .price span {
   color: #aaa59d;
 
-  font-size: 9px;
+  font-size: 10.5px;
   font-weight: 400;
 
   text-decoration:
@@ -221,7 +221,7 @@
   border-radius: 2px;
 
   color: #f8f4ed;
-  background: #626a55;
+  background: #8d8881;
 
   cursor: pointer;
 
@@ -279,7 +279,7 @@
 .compact .name {
   min-height: 33px;
 
-  font-size: 9px;
+  font-size: 10.5px;
 }
 
 .compact .rating {
@@ -384,7 +384,7 @@
   }
 
   .compact .brand {
-    font-size: 5.4px;
+    font-size: 10.5px;
   }
 
   .compact .name {
@@ -392,7 +392,7 @@
 
     margin-top: 5px;
 
-    font-size: 8.5px;
+    font-size: 10px;
   }
 
   .compact .rating {
@@ -401,11 +401,11 @@
 
   .compact .rating strong,
   .compact .rating span {
-    font-size: 6.5px;
+    font-size: 10.5px;
   }
 
   .compact .price strong {
-    font-size: 9px;
+    font-size: 10.5px;
   }
 
   .compact .addButton {

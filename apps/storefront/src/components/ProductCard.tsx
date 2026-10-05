@@ -70,7 +70,7 @@ export default function ProductCard({
             {product.brand}
           </span>
 
-          <div
+          {product.reviewCount > 0 && (<div
             className={styles.rating}
             aria-label={`${product.rating} out of 5 stars`}
           >
@@ -86,7 +86,7 @@ export default function ProductCard({
                 ({product.reviewCount})
               </span>
             ) : null}
-          </div>
+          </div>)}
         </div>
 
         <Link

@@ -65,7 +65,7 @@
 
   margin-bottom: 8px;
 
-  color: #626a55;
+  color: #8d8881;
 
   font-size: 7px;
   font-weight: 850;
@@ -237,7 +237,7 @@
 
   border-radius: 50%;
 
-  background: #626a55;
+  background: #8d8881;
 
   transform:
     translateY(-50%);
@@ -392,7 +392,7 @@
   margin-top: -7px;
 
   color: #f7f2ea;
-  background: #4f5943;
+  background: #5e5a55;
 
   border-color:
     rgba(
@@ -580,7 +580,7 @@
 
   gap: 6px;
 
-  color: #626a55;
+  color: #8d8881;
 
   font-size: 5.3px;
   font-weight: 850;
@@ -618,7 +618,7 @@
   border-radius: 999px;
 
   color: #f7f2ea;
-  background: #4f5943;
+  background: #5e5a55;
 
   font-size: 6px;
   font-weight: 850;

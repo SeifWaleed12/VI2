@@ -59,7 +59,7 @@
 
   color: #68645c;
 
-  font-size: 6.6px;
+  font-size: 10px;
   font-weight: 850;
   letter-spacing: 0.14em;
 }
@@ -99,7 +99,7 @@
   color: #181916;
   background: transparent;
 
-  font-size: 6.5px;
+  font-size: 10px;
   font-weight: 850;
   letter-spacing: 0.09em;
 
@@ -149,7 +149,7 @@
   color: #555750;
   background: #ece6dd;
 
-  font-size: 6.4px;
+  font-size: 10px;
   font-weight: 800;
   letter-spacing: 0.05em;
 
@@ -159,10 +159,10 @@
 .tabs
 .activeTab {
   color: #f8f4ed;
-  background: #626a55;
+  background: #8d8881;
 
   border-color:
-    #626a55;
+    #8d8881;
 }
 
 .rail {
@@ -204,7 +204,7 @@
   .kicker {
     margin-bottom: 5px;
 
-    font-size: 5.5px;
+    font-size: 9px;
   }
 
   .titleWrap h2 {
@@ -214,7 +214,7 @@
   }
 
   .viewAll {
-    font-size: 5.8px;
+    font-size: 9px;
   }
 
   .tabs {
@@ -230,7 +230,7 @@
       0
       12px;
 
-    font-size: 5.9px;
+    font-size: 9.5px;
   }
 
   .rail {

@@ -100,7 +100,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         rating: 0,
         reviewCount: 0,
         image: item.image || "",
-        stock: 99,
+        stock: 0,
       },
     }));
 
@@ -375,6 +375,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const clearCart = useCallback(async () => {
     setItems([]);
     setCart(null);
+    setCartIdState(null);
     if (typeof window !== "undefined") {
       try {
         window.localStorage.removeItem(CART_ID_KEY);

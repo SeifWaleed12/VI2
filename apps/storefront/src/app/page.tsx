@@ -4,10 +4,10 @@ import HomeDiscovery from "@/components/HomeDiscovery";
 import HomeHeroSlider from "@/components/HomeHeroSlider";
 import TrendingNow from "@/components/TrendingNow";
 import ValueSets from "@/components/ValueSets";
-import { getProducts } from "@/lib/medusa";
+import { getProducts, getBrands } from "@/lib/medusa";
 
 export default async function Home() {
-  const products = await getProducts();
+  const [products, brands] = await Promise.all([getProducts(), getBrands()]);
 
   return (
     <main>
@@ -29,7 +29,7 @@ export default async function Home() {
       {/* ======================================================
           3. BRANDS IN OUR ORBIT
           ====================================================== */}
-      <BrandUniverse />
+      <BrandUniverse brands={brands.map((brand) => brand.name)} />
 
       {/* ======================================================
           4. HEALTH GOALS / DAILY DISCOVERY
@@ -39,7 +39,7 @@ export default async function Home() {
       {/* ======================================================
           5. VALUE SETS / BUNDLES
           ====================================================== */}
-      <ValueSets />
+      <ValueSets products={products} />
 
       <section className="brand-statement">
         <span>

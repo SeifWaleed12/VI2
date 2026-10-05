@@ -65,14 +65,14 @@
 }
 
 .dark:hover:not(:disabled) {
-  background: #414736;
-  border-color: #414736;
+  background: #5e5a55;
+  border-color: #5e5a55;
 }
 
 .olive {
-  background: #596149;
+  background: #5e5a55;
   color: #f8f3ea;
-  border-color: #596149;
+  border-color: #5e5a55;
 }
 
 .olive:hover:not(:disabled) {

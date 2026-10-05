@@ -11,14 +11,20 @@ export default async function ProductPage({
   params,
 }: ProductPageProps) {
   const { slug } = await params;
-  const [product, allProducts] = await Promise.all([
+  const [medusaProduct, medusaAllProducts] = await Promise.all([
     getProductByHandle(slug),
     getProducts(),
   ]);
 
+  const product =
+    medusaProduct;
+
   if (!product) {
     notFound();
   }
+
+  const allProducts =
+    medusaAllProducts;
 
   return <ProductDetailClient product={product} allProducts={allProducts} />;
 }

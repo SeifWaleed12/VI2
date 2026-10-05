@@ -1,9 +1,12 @@
-import { NextResponse } from "next/server";
+import { NextRequest } from "next/server";
+import { authJson, checkAuthOrigin } from "@/lib/auth-request";
 
 const AUTH_TOKEN_COOKIE = "vi2_auth_token";
 
-export async function POST() {
-  const response = NextResponse.json({ ok: true }, { status: 200 });
+export async function POST(request: NextRequest) {
+  const originError = checkAuthOrigin(request);
+  if (originError) return originError;
+  const response = authJson({ ok: true });
 
   // Clear single authoritative HttpOnly cookie
   response.cookies.set(AUTH_TOKEN_COOKIE, "", {

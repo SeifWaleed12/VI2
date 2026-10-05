@@ -29,22 +29,13 @@ export default function AccountDropdown({
   onClose,
 }: Props) {
   const { customer, isAuthenticated, signOut: authSignOut } = useAuth();
-  const [points, setPoints] = useState(0);
+  const [logoutError, setLogoutError] = useState("");
+  const points = "—";
 
   useEffect(() => {
     if (!open) return;
 
-    try {
-      const raw = window.localStorage.getItem("vi2-last-order");
-      if (!raw) {
-        setPoints(0);
-      } else {
-        const order = JSON.parse(raw) as { total?: number };
-        setPoints(Math.floor(Number(order.total ?? 0) / 10));
-      }
-    } catch {
-      setPoints(0);
-    }
+    try { window.localStorage.removeItem("vi2-last-order"); } catch { /* Storage may be disabled. */ }
   }, [open]);
 
   if (!open) return null;
@@ -96,10 +87,15 @@ export default function AccountDropdown({
         signOut: "SIGN OUT",
       };
 
-  function handleSignOut() {
-    authSignOut();
-    onClose();
-    window.location.href = "/";
+  async function handleSignOut() {
+    setLogoutError("");
+    try {
+      await authSignOut();
+      onClose();
+      window.location.href = "/";
+    } catch {
+      setLogoutError("Unable to sign out. Please try again.");
+    }
   }
 
   return (
@@ -166,6 +162,7 @@ export default function AccountDropdown({
         </div>
 
         <div className={styles.actionWrap}>
+          {logoutError && <p role="alert">{logoutError}</p>}
           {isAuthenticated ? (
             <Button
               variant="dark"

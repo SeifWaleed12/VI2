@@ -1,3 +1,23 @@
+export type ProductVariant = {
+  id: string;
+  title: string;
+  sku?: string;
+  barcode?: string;
+  price: number;
+  compareAtPrice?: number;
+  stock: number;
+  inventoryKnown?: boolean;
+  inStock?: boolean;
+  options?: Record<string, string>; // e.g. { "Flavor": "Caramel", "Size": "2.27 KG" }
+  image?: string;
+};
+
+export type ProductOption = {
+  id: string;
+  title: string;
+  values: string[];
+};
+
 export type Product = {
   id: string;
   slug: string;
@@ -25,6 +45,11 @@ export type Product = {
   servings?: number;
 
   stock: number;
+  inventoryKnown?: boolean;
 
+  inStock?: boolean;
   badge?: string;
+
+  options?: ProductOption[];
+  variants?: ProductVariant[];
 };

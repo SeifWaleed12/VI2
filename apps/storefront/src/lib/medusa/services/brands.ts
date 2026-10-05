@@ -7,9 +7,8 @@ export async function getBrands(): Promise<Brand[]> {
       method: "GET",
     });
     return data?.brands || [];
-  } catch (error) {
-    console.warn("Failed to fetch brands from Medusa backend:", error);
-    return [];
+  } catch {
+    throw new Error("Brands temporarily unavailable.");
   }
 }
 
@@ -19,8 +18,7 @@ export async function getBrand(idOrSlug: string): Promise<Brand | null> {
       method: "GET",
     });
     return data?.brand || null;
-  } catch (error) {
-    console.warn(`Failed to fetch brand "${idOrSlug}" from Medusa:`, error);
-    return null;
+  } catch {
+    throw new Error("Brand temporarily unavailable.");
   }
 }

@@ -54,7 +54,7 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
       const current = await getCustomer();
       setCustomer(current);
     } catch {
-      setCustomer(null);
+      // Preserve the last verified session on temporary backend failure.
     } finally {
       setIsLoading(false);
     }
@@ -102,9 +102,12 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(async () => {
     setIsLoading(true);
-    await logoutCustomer();
-    setCustomer(null);
-    setIsLoading(false);
+    try {
+      await logoutCustomer();
+      setCustomer(null);
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
 
   const value = useMemo<CustomerContextValue>(

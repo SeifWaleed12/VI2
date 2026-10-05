@@ -17,5 +17,6 @@ export const medusa = new Medusa({
   publishableKey: process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY || "",
   auth: {
     type: "jwt",
+    jwtTokenStorageMethod: "nostore",
   },
 });

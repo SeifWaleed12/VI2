@@ -6,14 +6,15 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
   try {
     const brandModuleService: BrandModuleService = req.scope.resolve(BRAND_MODULE)
     const brands = await brandModuleService.listBrands(
-      req.query.status ? { status: req.query.status as string } : {},
+      { status: "active" },
       {
         order: { name: "ASC" },
+        take: 100, skip: 0,
       }
     )
     res.json({ brands })
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Failed to list brands"
+  } catch {
+    const message = "Failed to list brands"
     res.status(500).json({ message })
   }
 }

@@ -227,51 +227,6 @@ export default function HomeHeroSlider() {
               styles.identityLockup
             }
           >
-            <div
-              className={
-                styles.brandCluster
-              }
-            >
-              <Image
-                src="/brand/vi2-wordmark-packaging.png"
-                alt="Vi2"
-                width={164}
-                height={66}
-                priority
-                className={
-                  styles.wordmarkImage
-                }
-              />
-
-              <div
-                className={
-                  styles.brandMeta
-                }
-              >
-                <span
-                  className={
-                    styles.brandDivider
-                  }
-                />
-
-                <span
-                  className={
-                    styles.brandDescriptor
-                  }
-                >
-                  MORE THAN
-                  <br />
-                  SUPPLEMENTS
-                </span>
-
-                <span
-                  className={
-                    styles.brandRule
-                  }
-                />
-              </div>
-            </div>
-
             <h1>
               <span>
                 LIVE WELL,

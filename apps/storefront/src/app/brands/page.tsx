@@ -17,12 +17,6 @@ import optimumNutritionLogo from "@/assets/brands/optimum-nutrition.png";
 import bigRamyLabsLogo from "@/assets/brands/big-ramy-labs.png";
 
 import {
-  brandProfiles,
-} from "@/data/brands";
-import {
-  products as fallbackProducts,
-} from "@/data/products";
-import {
   getProducts,
   getBrands,
 } from "@/lib/medusa";
@@ -53,51 +47,17 @@ const logoByBrand: Record<
     bigRamyLabsLogo,
 };
 
-const alphabetGroups = [
-  {
-    letter: "B",
-    brands: [
-      "Big Ramy Labs",
-    ],
-  },
-  {
-    letter: "C",
-    brands: [
-      "California Gold Nutrition",
-    ],
-  },
-  {
-    letter: "D",
-    brands: [
-      "Doctor's Best",
-    ],
-  },
-  {
-    letter: "N",
-    brands: [
-      "NOW Foods",
-      "Nutri-Nations",
-    ],
-  },
-  {
-    letter: "O",
-    brands: [
-      "Optimum Nutrition",
-    ],
-  },
-];
-
 export default async function BrandsPage() {
   const [medusaProducts, medusaBrands] = await Promise.all([
-    getProducts().catch(() => []),
-    getBrands().catch(() => []),
+    getProducts(),
+    getBrands(),
   ]);
 
-  const activeProducts =
-    medusaProducts && medusaProducts.length > 0
-      ? medusaProducts
-      : fallbackProducts;
-
+  const activeProducts = medusaProducts;
+  const brandProfiles = medusaBrands;
+  const alphabetGroups = [...new Set(medusaBrands.map((brand) => brand.name[0].toUpperCase()))].sort().map((letter) => ({
+    letter, brands: medusaBrands.filter((brand) => brand.name[0].toUpperCase() === letter).map((brand) => brand.name),
+  }));
   const productCountByBrand =
     activeProducts.reduce<
       Record<string, number>
@@ -165,7 +125,7 @@ export default async function BrandsPage() {
               }
             >
               <strong>
-                06
+                {medusaBrands.length}
               </strong>
 
               <span data-arabic-text="علامات مختارة">
@@ -334,21 +294,17 @@ export default async function BrandsPage() {
                         styles.logoTile
                       }
                     >
-                      <Image
-                        src={
-                          logoByBrand[
-                            brand.name
-                          ]
-                        }
+                      {(brand.logo || logoByBrand[brand.name]) ? <Image
+                        src={brand.logo || logoByBrand[brand.name]}
                         alt={`${brand.name} logo`}
                         fill
                         sizes="220px"
                         className={
                           styles.logo
                         }
-                      />
+                      /> : <span>{brand.name}</span>}
 
-                      {brand.featured && (
+                      {false && (
                         <span
                           className={
                             styles.newBadge

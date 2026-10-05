@@ -1,3 +1,4 @@
+import { registrationSchema } from "../../../validators";
 import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http";
 import {
   Modules,
@@ -8,19 +9,18 @@ import { AuthenticationInput } from "@medusajs/framework/types";
 import { createCustomerAccountWorkflow } from "@medusajs/core-flows";
 
 export async function POST(req: MedusaRequest, res: MedusaResponse) {
-  const { email, password, first_name, last_name, phone } = (req.body || {}) as {
-    email?: string;
-    password?: string;
-    first_name?: string;
-    last_name?: string;
-    phone?: string;
-  };
-
-  if (!email || !password || !first_name || !last_name) {
-    return res.status(400).json({
-      message: "email, password, first_name, and last_name are required.",
-    });
+  try {
+    return await registerCustomer(req, res);
+  } catch {
+    req.scope.resolve(ContainerRegistrationKeys.LOGGER).error("Customer registration failed");
+    return res.status(500).json({ message: "Registration could not be completed." });
   }
+}
+
+async function registerCustomer(req: MedusaRequest, res: MedusaResponse) {
+  const parsed = registrationSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ message: "Invalid registration details." });
+  const { email, password, first_name, last_name, phone } = parsed.data;
 
   const normalizedEmail = email.trim().toLowerCase();
 
@@ -32,7 +32,7 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
 
   if (existingCustomers && existingCustomers.length > 0) {
     return res.status(400).json({
-      message: "A customer with this email already exists.",
+      message: "Unable to register with these details. Try signing in or contact support.",
     });
   }
 
@@ -50,11 +50,12 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
 
   if (!authResponse.success || !authResponse.authIdentity) {
     return res.status(400).json({
-      message: authResponse.error || "Registration failed.",
+      message: "Unable to register with these details. Try signing in or contact support.",
     });
   }
 
   const authIdentity = authResponse.authIdentity;
+  let customerCreated = false;
 
   // 3. Create customer account and attach auth identity via Medusa workflow
   try {
@@ -69,6 +70,7 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
         },
       },
     });
+    customerCreated = true;
 
     // 4. Generate the actor-bound JWT token
     const configModule = req.scope.resolve(ContainerRegistrationKeys.CONFIG_MODULE);
@@ -93,21 +95,19 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
     );
 
     return res.status(201).json({ token, customer });
-  } catch (workflowError) {
+  } catch {
     // Explicit compensation step: if customer creation fails, clean up the auth identity
     // so we don't leave an orphaned authentication identity that blocks future registrations.
-    try {
-      await authService.deleteAuthIdentities([authIdentity.id]);
-    } catch (compensationError) {
-      req.scope.resolve(ContainerRegistrationKeys.LOGGER)?.error(
-        `Failed to compensate auth identity ${authIdentity.id} after customer creation failure: ${compensationError}`
-      );
+    if (!customerCreated) {
+      try {
+        await authService.deleteAuthIdentities([authIdentity.id]);
+      } catch {
+        req.scope.resolve(ContainerRegistrationKeys.LOGGER).error(
+          `Failed to compensate auth identity ${authIdentity.id} after customer creation failure`
+        );
+      }
     }
 
-    const message =
-      workflowError instanceof Error
-        ? workflowError.message
-        : "Failed to create customer account.";
-    return res.status(500).json({ message });
+    return res.status(500).json({ message: "Registration could not be completed." });
   }
 }

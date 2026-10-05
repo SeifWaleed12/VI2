@@ -3,25 +3,25 @@
   --font-body: 'Inter', Arial, sans-serif;
   --font-arabic: 'Cairo', Arial, sans-serif;
 
-  --ink: #191a17;
-  --black: #11120f;
+  --ink: #11110f;
+  --black: #11110f;
 
-  --cream: #f1e9df;
-  --cream-soft: #f8f4ee;
-  --cream-deep: #e4d8c9;
+  --cream: #eee6db;
+  --cream-soft: #f5f2ed;
+  --cream-deep: #ded9d2;
 
-  --paper: #fbfaf7;
+  --paper: #f5f2ed;
 
-  --olive: #676b56;
-  --olive-deep: #45493b;
-  --olive-soft: #9b9d87;
+  --olive: #8d8881;
+  --olive-deep: #5e5a55;
+  --olive-soft: #b8b2aa;
 
-  --stone: #c4beb4;
-  --stone-light: #ddd9d2;
+  --stone: #cac4bc;
+  --stone-light: #ded9d2;
 
   --white: #ffffff;
 
-  --border: rgba(25, 26, 23, 0.14);
+  --border: rgba(17, 17, 15, 0.14);
 
   --page-width: 1440px;
 }
@@ -590,10 +590,10 @@ img {
   background:
     radial-gradient(
       circle at 48% 42%,
-      #777b64 0,
-      #626650 33%,
-      #43483a 72%,
-      #34382f 100%
+      #8d8881 0,
+      #5e5a55 33%,
+      #484542 72%,
+      #353535 100%
     );
 }
 
@@ -710,8 +710,8 @@ img {
   background:
     repeating-linear-gradient(
       90deg,
-      #171814 0,
-      #171814 4px,
+      #171715 0,
+      #171715 4px,
       #2b2d27 4px,
       #2b2d27 7px
     );
@@ -840,7 +840,7 @@ img {
 
   opacity: 0.72;
 
-  background: #89906f;
+  background: #8d8881;
 }
 
 .hero-leaf-one {
@@ -1264,7 +1264,7 @@ img {
 .category-card-green {
   color: var(--cream);
 
-  background: #656953;
+  background: #8d8881;
 }
 
 .category-card-stone {
@@ -1274,7 +1274,7 @@ img {
 .category-card-dark {
   color: var(--cream);
 
-  background: #242620;
+  background: #242320;
 }
 
 /* ------------------------------------------------ */
@@ -1306,8 +1306,8 @@ img {
   background:
     linear-gradient(
       145deg,
-      #626653,
-      #3d4136
+      #5e5a55,
+      #353535
     );
 }
 

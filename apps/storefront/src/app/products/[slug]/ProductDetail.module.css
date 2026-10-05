@@ -42,7 +42,7 @@
 }
 
 .breadcrumbs a:hover {
-  color: #626a55;
+  color: #8d8881;
 }
 
 .breadcrumbs span {
@@ -73,12 +73,7 @@
 
 .gallery {
   min-width: 0;
-
-  display: grid;
-  grid-template-columns:
-    72px minmax(0, 1fr);
-
-  gap: 18px;
+  display: block;
 }
 
 .thumbnailRail {
@@ -116,7 +111,7 @@
 
   border-radius: 9px;
 
-  color: #686b59;
+  color: #8d8881;
   background:
     rgba(
       255,
@@ -151,7 +146,7 @@
 
 .thumbnailActive {
   border-color:
-    #626a55;
+    #8d8881;
 
   background: #fbf8f2;
 }
@@ -287,10 +282,10 @@
 }
 
 .roundActionActive {
-  color: #626a55;
+  color: #8d8881;
 
   border-color:
-    #626a55;
+    #8d8881;
 }
 
 .productBadge {
@@ -306,7 +301,7 @@
     9px;
 
   color: #f8f3ea;
-  background: #626a55;
+  background: #8d8881;
 
   font-size: 6px;
   font-weight: 850;
@@ -370,13 +365,13 @@
   justify-content: center;
   align-items: flex-start;
 
-  color: #24251f;
+  color: #242320;
 }
 
 .infoVisual > span {
   margin-bottom: 17px;
 
-  color: #626a55;
+  color: #8d8881;
 
   font-size: 7px;
   font-weight: 850;
@@ -386,7 +381,7 @@
 .infoVisual > svg {
   margin-bottom: 20px;
 
-  color: #626a55;
+  color: #8d8881;
 }
 
 .infoVisual h3 {
@@ -485,7 +480,7 @@
 
   gap: 7px;
 
-  color: #626a55;
+  color: #8d8881;
 }
 
 .brandLine span {
@@ -501,7 +496,7 @@
     0
     0;
 
-  color: #191a16;
+  color: #191816;
 
   font-family:
     var(--font-body),
@@ -620,7 +615,7 @@
 
   border:
     1px solid
-    #626a55;
+    #8d8881;
 
   border-radius: 8px;
 
@@ -651,7 +646,7 @@
 }
 
 .packageOption small {
-  color: #626a55;
+  color: #8d8881;
 
   font-size: 7px;
   font-weight: 750;
@@ -744,7 +739,7 @@
 
 .inStockText {
   color:
-    #626a55 !important;
+    #8d8881 !important;
 }
 
 .lowStockText {
@@ -803,7 +798,7 @@
 .certificationRow svg {
   flex: 0 0 auto;
 
-  color: #626a55;
+  color: #8d8881;
 }
 
 .recommendation {
@@ -867,7 +862,7 @@
 .recommendation > div > strong {
   overflow: hidden;
 
-  color: #24251f;
+  color: #242320;
 
   font-size: 8px;
 
@@ -877,7 +872,7 @@
 }
 
 .recommendation small {
-  color: #626a55;
+  color: #8d8881;
 
   font-size: 7px;
   font-weight: 750;
@@ -997,7 +992,7 @@
       0.1
     );
 
-  color: #626a55;
+  color: #8d8881;
 }
 
 .stockLine span {
@@ -1064,7 +1059,7 @@
 
 .purchaseModeActive {
   border-color:
-    #626a55 !important;
+    #8d8881 !important;
 
   background:
     rgba(
@@ -1092,7 +1087,7 @@
 .radio {
   border:
     4px solid
-    #626a55;
+    #8d8881;
 }
 
 .purchaseModes > button > div {
@@ -1122,7 +1117,7 @@
   border-radius: 999px;
 
   color: #f8f4ed;
-  background: #626a55;
+  background: #8d8881;
 
   font-size: 6px;
   font-style: normal;
@@ -1196,7 +1191,7 @@
 .frequencyActive {
   color: #f8f4ed !important;
   background:
-    #626a55 !important;
+    #8d8881 !important;
 }
 
 .buyRow {
@@ -1298,10 +1293,10 @@
 }
 
 .addButton:hover {
-  background: #626a55;
+  background: #8d8881;
 
   border-color:
-    #626a55;
+    #8d8881;
 }
 
 .buyButton {
@@ -1311,7 +1306,7 @@
 
   border:
     1px solid
-    #626a55;
+    #8d8881;
 
   color: #42463b;
   background:
@@ -1320,7 +1315,25 @@
 
 .buyButton:hover {
   color: #f8f4ed;
-  background: #626a55;
+  background: #8d8881;
+}
+
+.addButton:disabled,
+.addButtonDisabled {
+  background: #a1a1aa !important;
+  border-color: #a1a1aa !important;
+  color: #f4f4f5 !important;
+  cursor: not-allowed !important;
+  opacity: 0.65;
+}
+
+.buyButton:disabled,
+.buyButtonDisabled {
+  background: transparent !important;
+  border-color: #d4d4d8 !important;
+  color: #a1a1aa !important;
+  cursor: not-allowed !important;
+  opacity: 0.65;
 }
 
 .shippingLine {
@@ -1642,7 +1655,7 @@
 
 .relatedPills a:hover {
   color: #f8f4ed;
-  background: #626a55;
+  background: #8d8881;
 }
 
 /* ============================================================
@@ -1847,7 +1860,7 @@
       minmax(0, 1fr)
     );
 
-  background: #626a55;
+  background: #8d8881;
 }
 
 .trustSection > div {
@@ -2440,7 +2453,7 @@
   }
 
   .mobileBuyBar strong {
-    color: #24251f;
+    color: #242320;
 
     font-size: 12px;
   }

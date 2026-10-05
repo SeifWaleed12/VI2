@@ -24,7 +24,7 @@ const nextConfig: NextConfig = {
   images: {
     qualities: [75, 100],
     minimumCacheTTL: 86400,
-    dangerouslyAllowLocalIP: true,
+    dangerouslyAllowLocalIP: process.env.NODE_ENV !== "production",
     remotePatterns: [
       ...medusaBackendPattern,
       {

@@ -485,6 +485,11 @@ export default function Navbar() {
         "A HEALTHIER TOMORROW",
       ];
 
+  const topTickerMessages = [
+    ...topMessages,
+    ...topMessages,
+  ];
+
   return (
     <>
       <header
@@ -549,13 +554,13 @@ export default function Navbar() {
                           group === 1
                         }
                       >
-                        {t(topMessages.map(
+                        {t(topTickerMessages.map(
                           (
                             message,
                             index,
                           ) => (
                             <span
-                              key={`${group}-${message}`}
+                              key={`${group}-${index}-${message}`}
                               className={
                                 styles.topMarqueeItem
                               }
@@ -563,7 +568,7 @@ export default function Navbar() {
                               {t(message)}
 
                               {t(index <
-                                topMessages.length -
+                                topTickerMessages.length -
                                   1 && (
                                 <i
                                   aria-hidden="true"
@@ -647,13 +652,13 @@ export default function Navbar() {
                       group === 1
                     }
                   >
-                    {t(topMessages.map(
+                    {t(topTickerMessages.map(
                       (
                         message,
                         index,
                       ) => (
                         <span
-                          key={`${group}-${message}`}
+                          key={`${group}-${index}-${message}`}
                           className={
                             styles.topMarqueeItem
                           }
@@ -661,7 +666,7 @@ export default function Navbar() {
                           {t(message)}
 
                           {t(index <
-                            topMessages.length -
+                            topTickerMessages.length -
                               1 && (
                             <i
                               aria-hidden="true"

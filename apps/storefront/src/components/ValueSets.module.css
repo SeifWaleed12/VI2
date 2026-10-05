@@ -22,7 +22,7 @@
 
   margin-bottom: 12px;
 
-  font-size: 8px;
+  font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.14em;
 }
@@ -48,7 +48,7 @@
 
   border-bottom: 1px solid #181916;
 
-  font-size: 7px;
+  font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.09em;
 }
@@ -69,7 +69,7 @@
 }
 
 .card:nth-child(2) {
-  background: #69705a;
+  background: #5e5a55;
   color: #f7f2ea;
 }
 
@@ -91,7 +91,7 @@
 
 .cardHead span,
 .cardHead strong {
-  font-size: 6px;
+  font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.09em;
 }
@@ -165,7 +165,7 @@
 
   opacity: 0.65;
 
-  font-size: 9px;
+  font-size: 11px;
   line-height: 1.55;
 }
 
@@ -184,7 +184,7 @@
 
   gap: 7px;
 
-  font-size: 7px;
+  font-size: 11px;
   font-weight: 700;
 }
 
@@ -199,7 +199,7 @@
 }
 
 .actionRow strong {
-  font-size: 10px;
+  font-size: 11px;
 }
 
 .actionRow button {
@@ -220,7 +220,7 @@
 
   cursor: pointer;
 
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.11em;
   text-transform: uppercase;

@@ -6,12 +6,9 @@ import {
   ArrowRight,
   Check,
   ChevronDown,
-  CreditCard,
-  Landmark,
   PackageCheck,
   ShieldCheck,
   Truck,
-  WalletCards,
 } from "lucide-react";
 import {
   useEffect,
@@ -43,11 +40,6 @@ type CheckoutItem = {
   product: Product;
   quantity: number;
 };
-
-type PaymentMethod =
-  | "cod"
-  | "card"
-  | "instapay";
 
 type CheckoutStep =
   | 1
@@ -127,25 +119,12 @@ function isValidEgyptPhone(
   );
 }
 
-function getPaymentLabel(
-  value: PaymentMethod,
-) {
-  if (value === "instapay") {
-    return "InstaPay / Bank Transfer";
-  }
-
-  if (value === "card") {
-    return "Debit / Credit Card";
-  }
-
-  return "Cash on Delivery";
-}
-
 export default function CheckoutClient() {
   const router = useRouter();
   const searchParams =
     useSearchParams();
 
+  const submissionLock = useRef(false);
   const topRef =
     useRef<HTMLDivElement>(null);
 
@@ -177,8 +156,16 @@ export default function CheckoutClient() {
       .catch(() => {});
   }, [cartId]);
 
+  const [recovering, setRecovering] = useState(false);
   const buyNowSlug =
     searchParams.get("buyNow");
+
+  useEffect(() => {
+    try {
+      const pendingId = window.sessionStorage.getItem(`vi2-pending-checkout:${buyNowSlug || "cart"}`);
+      if (pendingId) { setRecovering(true); setStep(2); }
+    } catch { /* recovery storage unavailable */ }
+  }, [buyNowSlug]);
 
   const requestedQuantity =
     Number(
@@ -195,11 +182,14 @@ export default function CheckoutClient() {
     getProductByHandle(buyNowSlug)
       .then((product) => {
         if (product) {
-          setBuyNowProduct(product);
+          const variantId = searchParams.get("variantId");
+          const variant = variantId ? product.variants?.find((v) => v.id === variantId) : product.variants?.[0];
+          if (!variant?.inStock) return;
+          setBuyNowProduct({ ...product, variantId: variant.id, price: variant.price, stock: variant.stock, inventoryKnown: variant.inventoryKnown, inStock: variant.inStock });
         }
       })
       .catch(() => {});
-  }, [buyNowSlug]);
+  }, [buyNowSlug, searchParams]);
 
   const buyNowQuantity =
     Number.isFinite(
@@ -208,9 +198,8 @@ export default function CheckoutClient() {
       ? Math.max(
           1,
           Math.min(
-            requestedQuantity,
-            buyNowProduct?.stock ??
-              1,
+            Math.floor(requestedQuantity),
+            buyNowProduct?.inventoryKnown && buyNowProduct.stock > 0 ? buyNowProduct.stock : 1,
           ),
         )
       : 1;
@@ -265,12 +254,6 @@ export default function CheckoutClient() {
     return Math.max(0, subtotal + delivery - discountTotal);
   }, [cartTotal, subtotal, delivery, discountTotal]);
 
-  const amountUntilFreeDelivery =
-    Math.max(
-      0,
-      2500 - subtotal,
-    );
-
   const itemCount =
     checkoutItems.reduce(
       (
@@ -296,14 +279,6 @@ export default function CheckoutClient() {
   ] =
     useState<CheckoutForm>(
       initialForm,
-    );
-
-  const [
-    paymentMethod,
-    setPaymentMethod,
-  ] =
-    useState<PaymentMethod>(
-      "cod",
     );
 
   const [
@@ -370,6 +345,7 @@ export default function CheckoutClient() {
     }
 
     if (
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim()) ||
       !form.name.trim() ||
       !form.phone.trim() ||
       !form.governorate.trim() ||
@@ -416,107 +392,64 @@ export default function CheckoutClient() {
   }
 
   async function placeOrder() {
-    if (!validateDetails()) {
+    if (submissionLock.current) return;
+    const recoveryKey = `vi2-pending-checkout:${buyNowSlug || "cart"}`;
+    let recoveryId: string | null = null;
+    try { recoveryId = window.sessionStorage.getItem(recoveryKey); } catch { /* optional recovery storage */ }
+    if (!recoveryId && !validateDetails()) {
       setStep(1);
       scrollToTop();
       return;
     }
-
+    submissionLock.current = true;
     setSubmitting(true);
     setError("");
-
     try {
-      let activeCartId = cartId;
-      if (!activeCartId || buyNowProduct) {
-        const created = await createCart();
-        activeCartId = created.id;
-        for (const item of checkoutItems) {
-          const vId = item.product.variantId || item.product.id;
-          await addCartItem(activeCartId, vId, item.quantity);
+      let activeCartId = recoveryId || cartId;
+      if (!recoveryId) {
+        if (process.env.NODE_ENV === "production") {
+          setError("Checkout is unavailable until payment methods are configured.");
+          return;
         }
-      }
-
-      // 1. Set Address & Customer Email
-      const nameParts = form.name.trim().split(" ");
-      const firstName = nameParts[0] || "Customer";
-      const lastName = nameParts.slice(1).join(" ") || "-";
-      const guestRand = Math.random().toString(36).substring(2, 8);
-      const email = form.email.trim() || `guest+${guestRand}@vi2.local`;
-
-      await setCartAddress(
-        activeCartId,
-        email,
-        {
-          firstName,
-          lastName,
+        if (buyNowSlug && !buyNowProduct) throw new Error("Product unavailable");
+        if (!activeCartId || buyNowProduct) {
+          const created = await createCart();
+          activeCartId = created.id;
+          for (const item of checkoutItems) {
+            if (!item.product.variantId) throw new Error("Variant unavailable");
+            await addCartItem(activeCartId, item.product.variantId, item.quantity);
+          }
+        }
+        const [firstName, ...rest] = form.name.trim().split(/\s+/);
+        await setCartAddress(activeCartId, form.email.trim(), {
+          firstName, lastName: rest.join(" "),
           address1: `${form.area.trim()}, ${form.address.trim()}`,
-          city: form.governorate,
-          countryCode: "eg",
-          postalCode: "00000",
+          city: form.governorate, countryCode: "eg",
           phone: normalizeEgyptPhone(form.phone),
-        },
-      );
-
-      // 2. Set Shipping Method if selected
-      if (selectedShippingOptionId) {
-        try {
-          await setCartShippingMethod(
-            activeCartId,
-            selectedShippingOptionId,
-          );
-        } catch (smErr) {
-          console.warn("Shipping method set skipped/failed:", smErr);
-        }
+        });
+        if (!selectedShippingOptionId) throw new Error("Select a shipping method");
+        await setCartShippingMethod(activeCartId, selectedShippingOptionId);
+        // Store only the cart capability before completion, for refresh recovery.
+        window.sessionStorage.setItem(recoveryKey, activeCartId);
+        setRecovering(true);
       }
-
-      // 3. Authoritative Cart Completion on Medusa
-      const completion = await completeCheckout(
-        activeCartId,
-        "pp_system_default",
-      );
-
-      const refRandom = Math.floor(100000 + Math.random() * 900000).toString();
-      const reference = completion.ok
-        ? `VI2-${completion.orderId.slice(-6).toUpperCase()}`
-        : `VI2-${refRandom}`;
-
-      window.localStorage.setItem(
-        "vi2-last-order",
-        JSON.stringify({
-          reference,
-          orderId: completion.ok ? completion.orderId : undefined,
-          createdAt: new Date().toISOString(),
-          customer: form,
-          paymentMethod,
-          subtotal,
-          delivery,
-          discountTotal,
-          total,
-          items: checkoutItems.map((item) => ({
-            id: item.product.id,
-            slug: item.product.slug,
-            name: item.product.name,
-            brand: item.product.brand,
-            image: item.product.image,
-            price: item.product.price,
-            quantity: item.quantity,
-            variantId: item.product.variantId,
-          })),
-        }),
-      );
-
-      if (!buyNowProduct) {
-        await clearCart();
+      if (!activeCartId) throw new Error("Cart unavailable");
+      const completion = await completeCheckout(activeCartId, Boolean(recoveryId));
+      if (!completion.ok) {
+        if (!completion.unknown) { window.sessionStorage.removeItem(recoveryKey); setRecovering(false); }
+        setError(completion.error);
+        return;
       }
-
-      router.push(`/order/success?order=${encodeURIComponent(reference)}`);
-    } catch (submitError) {
-      console.error("VI2 checkout submit error:", submitError);
-      setError(
-        submitError instanceof Error
-          ? submitError.message
-          : "Could not place your order. Please try again.",
-      );
+      try {
+        window.sessionStorage.removeItem(recoveryKey);
+        window.localStorage.removeItem("vi2-last-order");
+      } catch { /* confirmed order remains authoritative */ }
+      if (!buyNowSlug) await clearCart();
+      router.push(`/order/success?order=${encodeURIComponent(completion.orderId)}`);
+    } catch {
+      setError("Could not confirm your order. Your cart has been retained. Check delivery details and retry confirmation; payment status may be unknown.");
+    } finally {
+      submissionLock.current = false;
       setSubmitting(false);
     }
   }
@@ -1275,170 +1208,15 @@ export default function CheckoutClient() {
                     </h2>
 
                     <span>
-                      CHOOSE ONE
+                      PAYMENT AVAILABILITY
                     </span>
                   </div>
 
-                  <div
-                    className={
-                      styles.paymentGrid
-                    }
-                  >
-                    <button
-                      type="button"
-                      className={
-                        paymentMethod ===
-                        "cod"
-                          ? styles.paymentSelected
-                          : styles.paymentOption
-                      }
-                      onClick={() =>
-                        setPaymentMethod(
-                          "cod",
-                        )
-                      }
-                    >
-                      <WalletCards
-                        size={21}
-                        strokeWidth={
-                          1.4
-                        }
-                      />
-
-                      <div>
-                        <strong>
-                          CASH ON
-                          DELIVERY
-                        </strong>
-
-                        <span>
-                          Pay when
-                          your order
-                          arrives
-                        </span>
-                      </div>
-
-                      {paymentMethod ===
-                        "cod" && (
-                        <Check
-                          size={16}
-                        />
-                      )}
-                    </button>
-
-                    <button
-                      type="button"
-                      className={
-                        paymentMethod ===
-                        "instapay"
-                          ? styles.paymentSelected
-                          : styles.paymentOption
-                      }
-                      onClick={() =>
-                        setPaymentMethod(
-                          "instapay",
-                        )
-                      }
-                    >
-                      <Landmark
-                        size={21}
-                        strokeWidth={
-                          1.4
-                        }
-                      />
-
-                      <div>
-                        <strong>
-                          INSTAPAY /
-                          BANK
-                        </strong>
-
-                        <span>
-                          Transfer
-                          after
-                          checkout
-                        </span>
-                      </div>
-
-                      {paymentMethod ===
-                        "instapay" && (
-                        <Check
-                          size={16}
-                        />
-                      )}
-                    </button>
-
-                    <button
-                      type="button"
-                      className={
-                        paymentMethod ===
-                        "card"
-                          ? styles.paymentSelected
-                          : styles.paymentOption
-                      }
-                      onClick={() =>
-                        setPaymentMethod(
-                          "card",
-                        )
-                      }
-                    >
-                      <CreditCard
-                        size={21}
-                        strokeWidth={
-                          1.4
-                        }
-                      />
-
-                      <div>
-                        <strong>
-                          DEBIT /
-                          CREDIT CARD
-                        </strong>
-
-                        <span>
-                          Card
-                          payment
-                        </span>
-                      </div>
-
-                      {paymentMethod ===
-                        "card" && (
-                        <Check
-                          size={16}
-                        />
-                      )}
-                    </button>
-                  </div>
-
-                  {(paymentMethod ===
-                    "card" ||
-                    paymentMethod ===
-                      "instapay") && (
-                    <div
-                      className={
-                        styles.paymentNotice
-                      }
-                    >
-                      <ShieldCheck
-                        size={16}
-                        strokeWidth={
-                          1.4
-                        }
-                      />
-
-                      <span>
-                        This order
-                        will be
-                        created with
-                        payment
-                        status
-                        pending until
-                        the payment
-                        flow is
-                        connected.
-                      </span>
-                    </div>
-                  )}
+                  <p role="status">
+                    {process.env.NODE_ENV === "production"
+                      ? "Checkout is unavailable until payment methods are configured."
+                      : "Development checkout uses Medusa's manual test provider. No card, bank transfer, or cash-on-delivery flow is connected."}
+                  </p>
                 </section>
 
                 {/* REVIEW */}
@@ -1573,16 +1351,11 @@ export default function CheckoutClient() {
                       </span>
 
                       <strong>
-                        {getPaymentLabel(
-                          paymentMethod,
-                        )}
+                        Manual test provider
                       </strong>
 
                       <p>
-                        {paymentMethod ===
-                        "cod"
-                          ? "Pay on arrival"
-                          : "Payment pending"}
+                        Payment status is confirmed by Medusa.
                       </p>
                     </div>
                   </div>
@@ -1604,7 +1377,7 @@ export default function CheckoutClient() {
                     styles.primaryButton
                   }
                   disabled={
-                    submitting
+                    submitting || (process.env.NODE_ENV === "production" && !recovering)
                   }
                   onClick={
                     placeOrder
@@ -1612,7 +1385,7 @@ export default function CheckoutClient() {
                 >
                   {submitting
                     ? "PLACING ORDER..."
-                    : `PLACE ORDER · ${formatPrice(
+                    : recovering ? "RETRY CONFIRMATION" : `PLACE ORDER · ${formatPrice(
                         total,
                       )} EGP`}
 
@@ -1777,47 +1550,6 @@ export default function CheckoutClient() {
                   )
                 )}
               </div>
-
-              {subtotal >
-                0 &&
-                subtotal <
-                  2500 && (
-                  <div
-                    className={
-                      styles.freeDelivery
-                    }
-                  >
-                    <div>
-                      <span>
-                        FREE DELIVERY
-                      </span>
-
-                      <strong>
-                        {formatPrice(
-                          amountUntilFreeDelivery,
-                        )}{" "}
-                        EGP TO GO
-                      </strong>
-                    </div>
-
-                    <div
-                      className={
-                        styles.progressTrack
-                      }
-                    >
-                      <span
-                        style={{
-                          width: `${Math.min(
-                            100,
-                            (subtotal /
-                              2500) *
-                              100,
-                          )}%`,
-                        }}
-                      />
-                    </div>
-                  </div>
-                )}
 
               {/* PROMO / DISCOUNT CODE BOX */}
               <div style={{ padding: "16px 0", borderTop: "1px solid #e5e5e5", borderBottom: "1px solid #e5e5e5", margin: "16px 0" }}>
@@ -1985,8 +1717,7 @@ export default function CheckoutClient() {
           type="button"
           disabled={
             submitting ||
-            checkoutItems.length ===
-              0
+            (!recovering && checkoutItems.length === 0)
           }
           onClick={
             step === 1
@@ -1998,7 +1729,7 @@ export default function CheckoutClient() {
             ? "PLACING..."
             : step === 1
             ? "CONTINUE"
-            : "PLACE ORDER"}
+            : recovering ? "RETRY CONFIRMATION" : "PLACE ORDER"}
         </button>
       </div>
     </>

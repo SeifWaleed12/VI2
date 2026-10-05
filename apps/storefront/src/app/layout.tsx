@@ -19,14 +19,12 @@ const bebasNeue = Bebas_Neue({
 
 const inter = Inter({
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700", "800"],
   variable: "--font-body",
   display: "swap",
 });
 
 const cairo = Cairo({
   subsets: ["arabic", "latin"],
-  weight: ["400", "500", "600", "700", "800", "900"],
   variable: "--font-arabic",
   display: "swap",
 });

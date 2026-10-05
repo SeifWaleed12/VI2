@@ -36,3 +36,14 @@ export async function getRegion(id: string): Promise<StoreRegion | null> {
     return null;
   }
 }
+
+export function selectRegion(regions: StoreRegion[], configuredId?: string): StoreRegion {
+  const eligible = regions.filter((r) => r.currency_code.toLowerCase() === "egp" && r.countries?.some((c) => c.iso_2?.toLowerCase() === "eg"));
+  const region = configuredId ? eligible.find((r) => r.id === configuredId) : eligible.length === 1 ? eligible[0] : undefined;
+  if (!region) throw new Error("An Egyptian EGP region must be configured in Medusa.");
+  return region;
+}
+
+export async function resolveRegionId(id?: string): Promise<string> {
+  return selectRegion(await getRegions(), id || process.env.NEXT_PUBLIC_MEDUSA_REGION_ID).id;
+}

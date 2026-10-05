@@ -30,6 +30,7 @@ export async function getMedusaServerClient(): Promise<Medusa> {
     publishableKey: PUBLISHABLE_KEY,
     auth: {
       type: "jwt",
+    jwtTokenStorageMethod: "nostore",
     },
     globalHeaders: authToken
       ? { Authorization: `Bearer ${authToken}` }
@@ -46,5 +47,6 @@ export const medusaServer = new Medusa({
   publishableKey: PUBLISHABLE_KEY,
   auth: {
     type: "jwt",
+    jwtTokenStorageMethod: "nostore",
   },
 });

@@ -1,0 +1,123 @@
+.variantSection {
+  margin: 18px 0 22px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.optionGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.headerRow {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.label {
+  font-size: 8px;
+  font-weight: 850;
+  letter-spacing: 0.11em;
+  color: #363832;
+  text-transform: uppercase;
+}
+
+.currentValue {
+  font-size: 13px;
+  font-weight: 600;
+  color: #181916;
+}
+
+.outOfStockNotice {
+  font-size: 11px;
+  font-weight: 600;
+  color: #dc2626;
+  margin-left: 4px;
+}
+
+.pillGrid {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+}
+
+/* Base pill button style */
+.pill {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 14px;
+  min-height: 38px;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 13.5px;
+  font-weight: 500;
+  line-height: 1.25;
+  text-align: center;
+  white-space: nowrap;
+  cursor: pointer;
+  outline: none;
+  user-select: none;
+  transition: all 140ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.pill:focus-visible {
+  outline: 2px solid #7c3aed;
+  outline-offset: 2px;
+}
+
+/* 1. Default Unselected state (Coffee Mocha Hazelnut, Creamy Chocolate, etc.) */
+.pillDefault {
+  background: #f4f4f5;
+  border: 1.5px solid #e4e4e7;
+  color: #27272a;
+}
+
+.pillDefault:hover {
+  background: #eaeaea;
+  border-color: #a1a1aa;
+  color: #09090b;
+}
+
+/* 2. Selected state (Caramel - matches purple border from user screenshot) */
+.pillSelected {
+  background: #f4f4f5;
+  border: 1.5px solid #6b21a8;
+  box-shadow: 0 0 0 1px #6b21a8;
+  color: #18181b;
+  font-weight: 600;
+}
+
+.pillSelected:hover {
+  background: #ffffff;
+}
+
+/* 3. Out of stock / Disabled state (Banana - matches muted faint gray text from user screenshot) */
+.pillOutOfStock {
+  background: #f4f4f5;
+  border: 1.5px solid #e4e4e7;
+  color: #a1a1aa;
+  cursor: pointer;
+}
+
+.pillOutOfStock:hover {
+  background: #ebebeb;
+  border-color: #d4d4d8;
+  color: #71717a;
+}
+
+.pillOutOfStock.pillSelected {
+  border-color: #a1a1aa;
+  box-shadow: 0 0 0 1px #a1a1aa;
+  color: #71717a;
+}
+
+.pillDisabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}

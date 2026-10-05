@@ -55,13 +55,13 @@
   border-radius: 50%;
 
   color: #f8f3ea;
-  background: #626a55;
+  background: #8d8881;
 }
 
 .rewardsPanel > span {
   margin-top: 16px;
 
-  color: #626a55;
+  color: #8d8881;
 
   font-size: 8px;
   font-weight: 800;
@@ -109,7 +109,7 @@
 
   gap: 7px;
 
-  color: #596149;
+  color: #5e5a55;
 
   font-size: 7px;
   font-weight: 800;
@@ -125,7 +125,7 @@
 
   margin-bottom: 13px;
 
-  color: #596149;
+  color: #5e5a55;
 
   font-family:
     var(--font-display),
@@ -179,7 +179,7 @@
   gap: 8px;
   border-radius: 6px;
   color: #f8f3ea;
-  background: #596149;
+  background: #5e5a55;
   font-size: 9px;
   font-weight: 800;
   letter-spacing: 0.08em;
@@ -282,6 +282,6 @@
 }
 
 .signOutCta:hover {
-  background: #414736;
+  background: #5e5a55;
   transform: translateY(-2px);
 }

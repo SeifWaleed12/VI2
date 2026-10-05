@@ -20,7 +20,7 @@
     1px solid
     rgba(24, 25, 22, 0.1);
 
-  background: #fbfaf7;
+  background: #f5f2ed;
 }
 
 .utilityInner {
@@ -64,20 +64,20 @@
   color: #181916;
   background: #e8dfd2;
 
-  font-size: 8px;
+  font-size: 9.5px;
   font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
 .utilityLeft > a strong {
-  color: #6c735c;
+  color: #5e5a55;
 }
 
 .shippingText {
   color: #747067;
 
-  font-size: 8px;
+  font-size: 9px;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -100,7 +100,7 @@
 .utilityRight span,
 .utilityRight strong,
 .utilityRight button {
-  font-size: 8px;
+  font-size: 9px;
   font-weight: 800;
   letter-spacing: 0.10em;
 }
@@ -135,7 +135,7 @@
     1px solid
     rgba(24, 25, 22, 0.08);
 
-  background: #646b54;
+  background: #ded9d2;
 }
 
 .mainInner {
@@ -181,9 +181,7 @@
 
   object-fit: contain;
 
-  filter:
-    brightness(0)
-    invert(1);
+  filter: none;
 }
 
 .searchBar {
@@ -227,7 +225,7 @@
 .searchBar svg {
   flex: 0 0 auto;
 
-  color: #5d654c;
+  color: #5e5a55;
 }
 
 .account {
@@ -240,7 +238,7 @@
 
   gap: 8px;
 
-  color: #fff;
+  color: #11110f;
 }
 
 .account > div {
@@ -251,21 +249,15 @@
 }
 
 .account span {
-  color:
-    rgba(
-      255,
-      255,
-      255,
-      0.65
-    );
+  color: #5e5a55;
 
-  font-size: 6px;
+  font-size: 8px;
   font-weight: 800;
   letter-spacing: 0.08em;
 }
 
 .account strong {
-  font-size: 8px;
+  font-size: 10px;
   font-weight: 800;
   letter-spacing: 0.05em;
 }
@@ -281,7 +273,7 @@
 
   border: 0;
 
-  color: #fff;
+  color: #11110f;
   background: transparent;
 
   cursor: pointer;
@@ -304,8 +296,8 @@
 
   border-radius: 50%;
 
-  color: #646b54;
-  background: #f7f3ed;
+  color: #f5f2ed;
+  background: #242320;
 
   font-size: 7.5px;
   font-weight: 800;
@@ -322,7 +314,7 @@
     1px solid
     rgba(24, 25, 22, 0.11);
 
-  background: #fbfaf7;
+  background: #f5f2ed;
 }
 
 .categoryInner {
@@ -357,7 +349,7 @@
 .categoryPromos a {
   color: #272824;
 
-  font-size: 8px;
+  font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -367,7 +359,7 @@
 
 .categoryMain a:hover,
 .categoryPromos a:hover {
-  color: #646b54;
+  color: #8d8881;
 }
 
 .categoryDivider {
@@ -383,7 +375,7 @@
 }
 
 .categoryPromos .bundleLink {
-  color: #5d654c;
+  color: #5e5a55;
 }
 
 /* ============================================================
@@ -426,7 +418,7 @@
   flex-direction: column;
 
   color: #181916;
-  background: #fbfaf7;
+  background: #f5f2ed;
 
   box-shadow:
     24px 0 70px
@@ -479,7 +471,7 @@
 
   gap: 11px;
 
-  color: #596149;
+  color: #5e5a55;
 }
 
 .welcome strong {
@@ -556,7 +548,7 @@
 }
 
 .simpleLinks a:hover {
-  color: #596149;
+  color: #5e5a55;
 }
 
 .linkWithIcon {
@@ -666,7 +658,7 @@
   border-radius: 7px;
 
   color: #f8f3ea;
-  background: #596149;
+  background: #5e5a55;
 
   font-size: 9px;
   font-weight: 800;
@@ -718,7 +710,7 @@
   }
 
   .mainBar {
-    background: #fbfaf7;
+    background: #f5f2ed;
   }
 
   .mainInner {
@@ -783,7 +775,7 @@
 
   .cartCount {
     color: #f7f3ed;
-    background: #646b54;
+    background: #8d8881;
   }
 }
 
@@ -948,7 +940,7 @@
 
 :global(html::-webkit-scrollbar-thumb:hover),
 :global(body::-webkit-scrollbar-thumb:hover) {
-  background: #666d57;
+  background: #8d8881;
 }
 
 @media (max-width: 700px) {
@@ -972,7 +964,7 @@
   color: #272824;
   background: transparent;
   cursor: pointer;
-  font-size: 8px;
+  font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -982,8 +974,8 @@
 .categoryTrigger:hover,
 .categoryTrigger:focus-visible,
 .categoryTriggerActive {
-  border-bottom-color: #646b54;
-  color: #596149;
+  border-bottom-color: #8d8881;
+  color: #5e5a55;
 }
 
 @media (max-width: 980px) {
@@ -1099,7 +1091,7 @@
 
 .primaryMenuButton:hover,
 .simpleMenuButton:hover {
-  color: #596149;
+  color: #5e5a55;
 }
 
 .simpleLinks .simpleMenuButton {
@@ -1121,7 +1113,7 @@
   flex-direction: column;
 
   color: #181916;
-  background: #fbfaf7;
+  background: #f5f2ed;
 
   transform:
     translateX(102%);
@@ -1236,7 +1228,7 @@
 .subMenuTitleRow > a {
   flex: 0 0 auto;
 
-  color: #646b54;
+  color: #8d8881;
 
   font-size: 16px;
   font-weight: 650;
@@ -1272,7 +1264,7 @@
 .subMenuList a:hover {
   padding-inline-start: 4px;
 
-  color: #596149;
+  color: #5e5a55;
 }
 
 /* RTL submenu enters from the opposite side. */
@@ -1354,6 +1346,7 @@
 
 .topMarquee {
   min-width: 0;
+  direction: ltr;
   flex: 1;
 
   overflow: hidden;
@@ -1363,6 +1356,7 @@
 
 .topMarqueeTrack {
   width: max-content;
+  direction: ltr;
 
   display: flex;
   align-items: center;
@@ -1371,13 +1365,14 @@
 
   animation:
     vi2TopTicker
-    18s
+    36s
     linear
     infinite;
 }
 
 .topMarqueeGroup {
   flex: 0 0 auto;
+  direction: ltr;
 
   display: flex;
   align-items: center;
@@ -1397,11 +1392,17 @@
 
   color: #69675f;
 
-  font-size: 7px;
+  font-size: 9px;
   font-weight: 800;
   letter-spacing: 0.075em;
 
   white-space: nowrap;
+}
+
+
+:global(html[dir="rtl"]) .topMarqueeItem {
+  direction: rtl;
+  unicode-bidi: isolate;
 }
 
 .topMarqueeItem i {
@@ -1414,7 +1415,7 @@
 
   border-radius: 50%;
 
-  background: #626a55;
+  background: #8d8881;
 }
 
 @keyframes vi2TopTicker {
@@ -1455,7 +1456,7 @@
 
   .mobileAnnouncement
   .topMarqueeTrack {
-    animation-duration: 15s;
+    animation-duration: 30s;
   }
 
   .mobileAnnouncement
@@ -1470,13 +1471,19 @@
 
     color: #f7f3ed;
 
-    font-size: 6.8px;
+    font-size: 9px;
     font-weight: 850;
     letter-spacing: 0.075em;
   }
 
   .mobileAnnouncement
-  .topMarqueeItem i {
+  
+:global(html[dir="rtl"]) .topMarqueeItem {
+  direction: rtl;
+  unicode-bidi: isolate;
+}
+
+.topMarqueeItem i {
     background:
       rgba(
         247,

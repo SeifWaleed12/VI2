@@ -16,7 +16,6 @@ import {
   Minus,
   PackageCheck,
   Plus,
-  Repeat2,
   Share2,
   ShieldCheck,
   ShoppingBag,
@@ -30,12 +29,13 @@ import {
 
 import ProductSocialProof from "@/components/ProductSocialProof";
 import ProductValueOffer from "@/components/ProductValueOffer";
+import VariantSelector from "@/components/VariantSelector";
 import { useCart } from "@/context/CartContext";
 import {
   getProductForm,
   getProductHealthGoals,
 } from "@/lib/catalogMeta";
-import type { Product } from "@/types/product";
+import type { Product, ProductOption, ProductVariant } from "@/types/product";
 
 import styles from "./ProductDetail.module.css";
 
@@ -58,15 +58,8 @@ function formatReviews(
   ).format(value);
 }
 
-type GalleryView =
-  | "product"
-  | "facts"
-  | "size"
-  | "quality";
-
 type AccordionKey =
   | "information"
-  | "facts"
   | "quality"
   | "delivery"
   | null;
@@ -93,62 +86,136 @@ export default function ProductDetailClient({
   const [shareCopied, setShareCopied] =
     useState(false);
 
-  const [galleryView, setGalleryView] =
-    useState<GalleryView>(
-      "product",
-    );
-
-  const [purchaseMode, setPurchaseMode] =
-    useState<
-      "once" | "repeat"
-    >("once");
-
-  const [repeatEvery, setRepeatEvery] =
-    useState("2 months");
-
   const [openAccordion, setOpenAccordion] =
     useState<AccordionKey>(
       "information",
     );
 
-  const maxQuantity =
-    Math.max(
-      1,
-      Math.min(
-        product.stock,
-        10,
-      ),
-    );
+  // ─── Options & Variants Resolution ──────────────────────────────────
+  const productOptions: ProductOption[] = useMemo(() => {
+    if (product.options && product.options.length > 0) {
+      return product.options;
+    }
+    if (product.flavor) {
+      return [
+        {
+          id: "opt_flavor",
+          title: "Flavor",
+          values: [product.flavor],
+        },
+      ];
+    }
+    return [];
+  }, [product.options, product.flavor]);
 
-  const total = useMemo(
-    () =>
-      product.price *
-      quantity,
-    [
-      product.price,
-      quantity,
-    ],
+  const productVariants: ProductVariant[] = useMemo(() => {
+    return product.variants || [];
+  }, [product.variants]);
+
+  // Selected options state (e.g. { "Flavor": "Caramel", "Size": "2.27 KG" })
+  const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>(
+    () => {
+      const initial: Record<string, string> = {};
+      if (productOptions.length > 0) {
+        productOptions.forEach((opt) => {
+          if (
+            opt.title.toLowerCase() === "flavor" &&
+            product.flavor &&
+            opt.values.some((v) => v.toLowerCase() === product.flavor?.toLowerCase())
+          ) {
+            initial[opt.title] = product.flavor;
+          } else if (
+            opt.title.toLowerCase() === "size" &&
+            product.size &&
+            opt.values.some((v) => v.toLowerCase() === product.size?.toLowerCase())
+          ) {
+            initial[opt.title] = product.size;
+          } else {
+            initial[opt.title] = opt.values[0] || "";
+          }
+        });
+      } else {
+        if (product.flavor) initial["Flavor"] = product.flavor;
+        if (product.size) initial["Size"] = product.size;
+      }
+      return initial;
+    }
   );
 
-  const repeatPrice =
-    Math.round(
-      product.price *
-        0.95,
-    );
+  // Active selected variant matching selected options
+  const selectedVariant = useMemo(() => {
+    if (!productVariants || productVariants.length === 0) return null;
 
-  const productForm =
-    getProductForm(product);
+    // 1. Match variants against user selection
+    const match = productVariants.find((v) => {
+      // If variant has an options map (e.g. { "Flavor": "Vanilla" })
+      if (v.options && Object.keys(v.options).length > 0) {
+        // Every option specified on this variant must match what the user selected
+        return Object.entries(v.options).every(([vOptKey, vOptVal]) => {
+          const userVal = Object.entries(selectedOptions).find(
+            ([sKey]) => sKey.trim().toLowerCase() === vOptKey.trim().toLowerCase()
+          )?.[1];
+          if (!userVal) return true;
+          return String(userVal).trim().toLowerCase() === String(vOptVal).trim().toLowerCase();
+        });
+      }
 
-  const healthGoalLabels =
-    getProductHealthGoals(
-      product,
-    );
+      // If no options map on variant, match variant title to any selected option value
+      return Object.values(selectedOptions).some((sVal) => {
+        if (!sVal) return false;
+        const normTitle = v.title.toLowerCase();
+        const normVal = sVal.toLowerCase();
+        return normTitle === normVal || normTitle.includes(normVal);
+      });
+    });
 
-  const perServing =
-    product.servings
-      ? product.price /
-        product.servings
-      : null;
+    if (match) return match;
+
+    // 2. Fallback: match by title containing any selected option value
+    const titleMatch = productVariants.find((v) => {
+      return Object.values(selectedOptions).some((sVal) => {
+        if (!sVal) return false;
+        return v.title.toLowerCase().includes(sVal.toLowerCase());
+      });
+    });
+    if (titleMatch) return titleMatch;
+
+    return productVariants[0] || null;
+  }, [productVariants, selectedOptions]);
+
+  // Active pricing and stock derived from selected variant
+  const currentPrice = selectedVariant?.price ?? product.price;
+  const currentCompareAtPrice =
+    selectedVariant?.compareAtPrice ?? product.compareAtPrice;
+  const currentStock = selectedVariant?.stock ?? product.stock;
+  const isVariantInStock = selectedVariant
+    ? (selectedVariant.inStock ?? currentStock > 0)
+    : product.inStock === true;
+
+  function handleSelectOption(optionTitle: string, value: string) {
+    setSelectedOptions((prev) => ({
+      ...prev,
+      [optionTitle]: value,
+    }));
+  }
+
+  const maxQuantity = Math.max(
+    1,
+    Math.min(currentStock, 10),
+  );
+
+  const total = useMemo(
+    () => currentPrice * quantity,
+    [currentPrice, quantity],
+  );
+
+  const productForm = getProductForm(product);
+
+  const healthGoalLabels = getProductHealthGoals(product);
+
+  const perServing = product.servings
+    ? currentPrice / product.servings
+    : null;
 
   const sameCategory =
     allProducts
@@ -226,26 +293,43 @@ export default function ProductDetailClient({
   }
 
   function handleAddToCart() {
-    addItem(
-      product,
-      quantity,
-    );
+    if (!isVariantInStock) return;
+
+    const productToAdd: Product = {
+      ...product,
+      variantId: selectedVariant?.id || product.variantId,
+      price: currentPrice,
+      compareAtPrice: currentCompareAtPrice,
+      flavor:
+        selectedOptions["Flavor"] ||
+        selectedVariant?.options?.["Flavor"] ||
+        product.flavor,
+      size:
+        selectedOptions["Size"] ||
+        selectedVariant?.options?.["Size"] ||
+        product.size,
+      stock: currentStock,
+    };
+
+    addItem(productToAdd, quantity);
 
     setAdded(true);
 
-    window.setTimeout(
-      () => {
-        setAdded(false);
-      },
-      1400,
-    );
+    window.setTimeout(() => {
+      setAdded(false);
+    }, 1400);
   }
 
   function handleBuyNow() {
+    if (!isVariantInStock) return;
+    const variantQuery = selectedVariant?.id
+      ? `&variantId=${encodeURIComponent(selectedVariant.id)}`
+      : "";
+
     router.push(
       `/checkout?buyNow=${encodeURIComponent(
         product.slug,
-      )}&quantity=${quantity}`,
+      )}&quantity=${quantity}${variantQuery}`,
     );
   }
 
@@ -372,122 +456,6 @@ export default function ProductDetailClient({
             >
               <div
                 className={
-                  styles.thumbnailRail
-                }
-              >
-                <button
-                  type="button"
-                  className={
-                    galleryView ===
-                    "product"
-                      ? `${styles.thumbnail} ${styles.thumbnailActive}`
-                      : styles.thumbnail
-                  }
-                  onClick={() =>
-                    setGalleryView(
-                      "product",
-                    )
-                  }
-                  aria-label="Show product"
-                >
-                  <img
-                    src={
-                      product.image
-                    }
-                    alt=""
-                  />
-                </button>
-
-                <button
-                  type="button"
-                  className={
-                    galleryView ===
-                    "facts"
-                      ? `${styles.thumbnail} ${styles.thumbnailActive}`
-                      : styles.thumbnail
-                  }
-                  onClick={() =>
-                    setGalleryView(
-                      "facts",
-                    )
-                  }
-                  aria-label="Show product facts"
-                >
-                  <span
-                    className={
-                      styles.thumbLabel
-                    }
-                  >
-                    FACTS
-                  </span>
-
-                  <strong>
-                    {product.servings ??
-                      "—"}
-                  </strong>
-
-                  <small>
-                    SERVINGS
-                  </small>
-                </button>
-
-                <button
-                  type="button"
-                  className={
-                    galleryView ===
-                    "size"
-                      ? `${styles.thumbnail} ${styles.thumbnailActive}`
-                      : styles.thumbnail
-                  }
-                  onClick={() =>
-                    setGalleryView(
-                      "size",
-                    )
-                  }
-                  aria-label="Show package details"
-                >
-                  <PackageCheck
-                    size={24}
-                    strokeWidth={
-                      1.3
-                    }
-                  />
-
-                  <small>
-                    PACKAGE
-                  </small>
-                </button>
-
-                <button
-                  type="button"
-                  className={
-                    galleryView ===
-                    "quality"
-                      ? `${styles.thumbnail} ${styles.thumbnailActive}`
-                      : styles.thumbnail
-                  }
-                  onClick={() =>
-                    setGalleryView(
-                      "quality",
-                    )
-                  }
-                  aria-label="Show quality details"
-                >
-                  <ShieldCheck
-                    size={24}
-                    strokeWidth={
-                      1.3
-                    }
-                  />
-
-                  <small>
-                    QUALITY
-                  </small>
-                </button>
-              </div>
-
-              <div
-                className={
                   styles.mainVisual
                 }
               >
@@ -564,158 +532,23 @@ export default function ProductDetailClient({
                   </span>
                 )}
 
-                {galleryView ===
-                  "product" && (
-                  <div
-                    className={
-                      styles.productImageWrap
+                <div
+                  className={
+                    styles.productImageWrap
+                  }
+                >
+                  <img
+                    src={
+                      selectedVariant?.image || product.image
                     }
-                  >
-                    <img
-                      src={
-                        product.image
-                      }
-                      alt={
-                        product.name
-                      }
-                      className={
-                        styles.productImage
-                      }
-                    />
-                  </div>
-                )}
-
-                {galleryView ===
-                  "facts" && (
-                  <div
-                    className={
-                      styles.infoVisual
+                    alt={
+                      product.name
                     }
-                  >
-                    <span>
-                      PRODUCT FACTS
-                    </span>
-
-                    <h3>
-                      {
-                        product.shortName
-                      }
-                    </h3>
-
-                    <div
-                      className={
-                        styles.factSheet
-                      }
-                    >
-                      <div>
-                        <span>
-                          FORM
-                        </span>
-                        <strong>
-                          {
-                            productForm
-                          }
-                        </strong>
-                      </div>
-
-                      <div>
-                        <span>
-                          SERVINGS
-                        </span>
-                        <strong>
-                          {product.servings ??
-                            "See package"}
-                        </strong>
-                      </div>
-
-                      <div>
-                        <span>
-                          SIZE
-                        </span>
-                        <strong>
-                          {product.size ??
-                            "See package"}
-                        </strong>
-                      </div>
-
-                      <div>
-                        <span>
-                          CATEGORY
-                        </span>
-                        <strong>
-                          {
-                            product.category
-                          }
-                        </strong>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {galleryView ===
-                  "size" && (
-                  <div
                     className={
-                      styles.infoVisual
+                      styles.productImage
                     }
-                  >
-                    <span>
-                      PACKAGE DETAILS
-                    </span>
-
-                    <PackageCheck
-                      size={56}
-                      strokeWidth={
-                        1.05
-                      }
-                    />
-
-                    <h3>
-                      {product.size ??
-                        "PACKAGE SIZE"}
-                    </h3>
-
-                    <p>
-                      {product.flavor
-                        ? `Flavor: ${product.flavor}`
-                        : "Package format shown exactly as listed in the Vi2 catalog."}
-                    </p>
-                  </div>
-                )}
-
-                {galleryView ===
-                  "quality" && (
-                  <div
-                    className={
-                      styles.infoVisual
-                    }
-                  >
-                    <span>
-                      VI2 QUALITY
-                    </span>
-
-                    <ShieldCheck
-                      size={56}
-                      strokeWidth={
-                        1.05
-                      }
-                    />
-
-                    <h3>
-                      QUALITY FIRST.
-                    </h3>
-
-                    <p>
-                      Authenticity,
-                      batch and
-                      supporting
-                      product
-                      information are
-                      organized in one
-                      place.
-                    </p>
-                  </div>
-                )}
+                  />
+                </div>
               </div>
             </div>
 
@@ -766,6 +599,7 @@ export default function ProductDetailClient({
                 </strong>
               </Link>
 
+              {product.reviewCount > 0 && (
               <div
                 className={
                   styles.ratingRow
@@ -827,12 +661,23 @@ export default function ProductDetailClient({
                   reviews
                 </button>
               </div>
+              )}
 
               <div
                 className={
                   styles.detailDivider
                 }
               />
+
+              {/* VARIANT / FLAVOR SELECTOR */}
+              {productOptions.length > 0 && (
+                <VariantSelector
+                  options={productOptions}
+                  variants={productVariants}
+                  selectedOptions={selectedOptions}
+                  onSelectOption={handleSelectOption}
+                />
+              )}
 
               <div
                 className={
@@ -864,7 +709,7 @@ export default function ProductDetailClient({
 
                   <small>
                     {formatPrice(
-                      product.price,
+                      currentPrice,
                     )}{" "}
                     EGP
                   </small>
@@ -919,8 +764,7 @@ export default function ProductDetailClient({
                     </span>
 
                     <strong>
-                      {product.size ??
-                        "See package"}
+                      {selectedOptions["Size"] ?? product.size ?? "See package"}
                     </strong>
                   </div>
 
@@ -931,16 +775,18 @@ export default function ProductDetailClient({
 
                     <strong
                       className={
-                        product.stock >
-                        8
-                          ? styles.inStockText
+                        isVariantInStock
+                          ? (currentStock <= 0 ? "Available" : currentStock > 8
+                            ? styles.inStockText
+                            : styles.lowStockText)
                           : styles.lowStockText
                       }
                     >
-                      {product.stock >
-                      8
-                        ? "IN STOCK"
-                        : "LOW STOCK"}
+                      {isVariantInStock
+                        ? (currentStock <= 0 ? "Available" : currentStock > 8
+                          ? "IN STOCK"
+                          : `LOW STOCK (${currentStock})`)
+                        : "OUT OF STOCK"}
                     </strong>
                   </div>
                 </div>
@@ -1067,7 +913,7 @@ export default function ProductDetailClient({
 
                   <strong>
                     {formatPrice(
-                      product.price,
+                      currentPrice,
                     )}{" "}
                     EGP
                   </strong>
@@ -1096,141 +942,13 @@ export default function ProductDetailClient({
                   />
 
                   <span>
-                    {product.stock >
-                    8
-                      ? "In Stock"
-                      : `Low Stock · ${product.stock} left`}
+                    {isVariantInStock
+                      ? (currentStock <= 0 ? "Available" : currentStock > 8
+                        ? "In Stock"
+                        : `Low Stock · ${currentStock} left`)
+                      : (selectedVariant?.inventoryKnown === false || product.inventoryKnown === false ? "Availability unconfirmed" : "Out of Stock")}
                   </span>
                 </div>
-
-                <div
-                  className={
-                    styles.purchaseModes
-                  }
-                >
-                  <button
-                    type="button"
-                    className={
-                      purchaseMode ===
-                      "once"
-                        ? styles.purchaseModeActive
-                        : ""
-                    }
-                    onClick={() =>
-                      setPurchaseMode(
-                        "once",
-                      )
-                    }
-                  >
-                    <span
-                      className={
-                        styles.radio
-                      }
-                    />
-
-                    <div>
-                      <strong>
-                        ONE-TIME
-                        PURCHASE
-                      </strong>
-
-                      <small>
-                        {
-                          formatPrice(
-                            product.price,
-                          )
-                        }{" "}
-                        EGP
-                      </small>
-                    </div>
-                  </button>
-
-                  <button
-                    type="button"
-                    className={
-                      purchaseMode ===
-                      "repeat"
-                        ? styles.purchaseModeActive
-                        : ""
-                    }
-                    onClick={() =>
-                      setPurchaseMode(
-                        "repeat",
-                      )
-                    }
-                  >
-                    <span
-                      className={
-                        styles.radio
-                      }
-                    />
-
-                    <div>
-                      <strong>
-                        SUBSCRIBE &
-                        SAVE
-                      </strong>
-
-                      <small>
-                        {formatPrice(
-                          repeatPrice,
-                        )}{" "}
-                        EGP
-                      </small>
-                    </div>
-
-                    <em>
-                      -5%
-                    </em>
-                  </button>
-                </div>
-
-                {purchaseMode ===
-                  "repeat" && (
-                  <div
-                    className={
-                      styles.frequencyBox
-                    }
-                  >
-                    <span>
-                      DELIVER EVERY
-                    </span>
-
-                    <div>
-                      {[
-                        "1 month",
-                        "2 months",
-                        "3 months",
-                      ].map(
-                        (
-                          item,
-                        ) => (
-                          <button
-                            type="button"
-                            key={
-                              item
-                            }
-                            className={
-                              repeatEvery ===
-                              item
-                                ? styles.frequencyActive
-                                : ""
-                            }
-                            onClick={() =>
-                              setRepeatEvery(
-                                item,
-                              )
-                            }
-                          >
-                            {
-                              item
-                            }
-                          </button>
-                        ),
-                      )}
-                    </div>
-                  </div>
-                )}
 
                 <div
                   className={
@@ -1282,13 +1000,18 @@ export default function ProductDetailClient({
                   <button
                     type="button"
                     className={
-                      styles.addButton
+                      isVariantInStock
+                        ? styles.addButton
+                        : `${styles.addButton} ${styles.addButtonDisabled}`
                     }
+                    disabled={!isVariantInStock}
                     onClick={
                       handleAddToCart
                     }
                   >
-                    {added ? (
+                    {!isVariantInStock ? (
+                      "OUT OF STOCK"
+                    ) : added ? (
                       <>
                         <Check
                           size={16}
@@ -1309,13 +1032,16 @@ export default function ProductDetailClient({
                 <button
                   type="button"
                   className={
-                    styles.buyButton
+                    isVariantInStock
+                      ? styles.buyButton
+                      : `${styles.buyButton} ${styles.buyButtonDisabled}`
                   }
+                  disabled={!isVariantInStock}
                   onClick={
                     handleBuyNow
                   }
                 >
-                  BUY NOW
+                  {isVariantInStock ? "BUY NOW" : "OUT OF STOCK"}
                 </button>
 
                 <div
@@ -1429,81 +1155,6 @@ export default function ProductDetailClient({
                         )}
                       </ul>
                     )}
-                  </div>
-                )}
-
-                <button
-                  type="button"
-                  onClick={() =>
-                    toggleAccordion(
-                      "facts",
-                    )
-                  }
-                >
-                  <span>
-                    SUPPLEMENT
-                    FACTS
-                  </span>
-
-                  <ChevronDown
-                    size={16}
-                    className={
-                      openAccordion ===
-                      "facts"
-                        ? styles.chevronOpen
-                        : ""
-                    }
-                  />
-                </button>
-
-                {openAccordion ===
-                  "facts" && (
-                  <div
-                    className={
-                      styles.accordionContent
-                    }
-                  >
-                    <div
-                      className={
-                        styles.accordionFacts
-                      }
-                    >
-                      <span>
-                        FORM
-                      </span>
-                      <strong>
-                        {
-                          productForm
-                        }
-                      </strong>
-
-                      <span>
-                        SIZE
-                      </span>
-                      <strong>
-                        {product.size ??
-                          "See package"}
-                      </strong>
-
-                      <span>
-                        SERVINGS
-                      </span>
-                      <strong>
-                        {product.servings ??
-                          "See package"}
-                      </strong>
-                    </div>
-
-                    <p>
-                      Full
-                      ingredient
-                      panels can be
-                      connected when
-                      the final
-                      supplier
-                      catalog is
-                      provided.
-                    </p>
                   </div>
                 )}
 
@@ -1882,11 +1533,7 @@ export default function ProductDetailClient({
 
           <strong>
             {formatPrice(
-              purchaseMode ===
-                "repeat"
-                ? repeatPrice *
-                    quantity
-                : total,
+              total,
             )}{" "}
             EGP
           </strong>
@@ -1894,11 +1541,12 @@ export default function ProductDetailClient({
 
         <button
           type="button"
+          disabled={!isVariantInStock}
           onClick={
             handleBuyNow
           }
         >
-          BUY NOW
+          {isVariantInStock ? "BUY NOW" : "OUT OF STOCK"}
         </button>
       </div>
     </>

@@ -7,7 +7,6 @@ import {
 } from "lucide-react";
 
 import { useCart } from "@/context/CartContext";
-import { products as fallbackProducts } from "@/data/products";
 import type { Product } from "@/types/product";
 import { getProductHealthGoals } from "@/lib/catalogMeta";
 
@@ -25,9 +24,7 @@ export default function ProductValueOffer({
   const goals = getProductHealthGoals(product);
 
   const sourceProducts =
-    allProducts && allProducts.length > 0
-      ? allProducts
-      : fallbackProducts;
+    allProducts ?? [];
 
   const partners = sourceProducts
     .filter(
