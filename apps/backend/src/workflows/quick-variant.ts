@@ -1,4 +1,5 @@
-import { ContainerRegistrationKeys, MedusaError } from "@medusajs/framework/utils"
+import type { IProductModuleService } from "@medusajs/framework/types"
+import { ContainerRegistrationKeys, MedusaError, Modules } from "@medusajs/framework/utils"
 import {
   createStep,
   createWorkflow,
@@ -55,6 +56,37 @@ export function planOptionChange(options: ProductOption[], optionTitle: string, 
   }
 }
 
+export type AddedOptionValue = { option_id: string; value: string }
+
+// The value this request will create on an already existing option. It is
+// absent for a new option (Medusa removes the whole option on rollback) and when
+// the value already exists (nothing is created, so nothing may be removed).
+export function addedOptionValue(plan: OptionPlan): AddedOptionValue | null {
+  if (!plan.change || !("update" in plan.change)) return null
+  const [update] = plan.change.update
+  return { option_id: update.product_option_id, value: update.add[0].value }
+}
+
+type OptionValueStore = Pick<IProductModuleService, "listProductOptionValues" | "deleteProductOptionValues">
+
+// Medusa's rollback unlinks a value it added to an existing option but leaves the
+// value itself behind, so the leftover is removed here.
+export async function removeAddedOptionValue(store: OptionValueStore, added: AddedOptionValue) {
+  const values = await store.listProductOptionValues({ option_id: added.option_id, value: added.value }, { select: ["id"] })
+  if (values.length) await store.deleteProductOptionValues(values.map((value) => value.id))
+}
+
+// Does nothing going forward. It runs before the option change, so on rollback
+// its compensation runs after Medusa has unlinked the value.
+const cleanupAddedOptionValueStep = createStep(
+  "cleanup-added-option-value",
+  async (added: AddedOptionValue) => new StepResponse(undefined, added),
+  async (added, { container }) => {
+    if (!added) return
+    await removeAddedOptionValue(container.resolve(Modules.PRODUCT), added)
+  }
+)
+
 // Read-only, so it needs no compensation.
 const planQuickVariantOptionStep = createStep(
   "plan-quick-variant-option",
@@ -77,6 +109,11 @@ export const createQuickVariantWorkflow = createWorkflow(
   "create-quick-variant",
   (input: QuickVariantInput) => {
     const plan = planQuickVariantOptionStep(input)
+
+    const added = transform({ plan }, ({ plan }) => addedOptionValue(plan))
+    when("value-added-to-existing-option", { added }, ({ added }) => added !== null).then(() => {
+      cleanupAddedOptionValueStep(added as AddedOptionValue)
+    })
 
     when("option-needs-change", { plan }, ({ plan }) => plan.change !== null).then(() => {
       const optionInput = transform({ input, plan }, ({ input, plan }) => ({
