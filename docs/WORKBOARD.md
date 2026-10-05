@@ -60,7 +60,7 @@ GPT review checklist (from `AGENTS.md`):
 
 | Task | Author | Branch | Commits | Review file | Status |
 |---|---|---|---|---|---|
-| Quick-variant partial failure: option or value is rolled back if the variant fails | Claude | `claude/work` | see `git log full-stack..claude/work` | `docs/reviews/quick-variant.md` | waiting for GPT review. Rollback relies on Medusa's compensation and is unit-tested only for the decision logic; a real rollback test needs the PostgreSQL integration tests. |
+| Quick-variant partial failure: option or value is rolled back if the variant fails | Claude | `claude/work` | f403587, fead9e2, and the review-response commit (`git log full-stack..claude/work`) | `docs/reviews/quick-variant.md` | GPT round 1 found 2 majors (leftover option value; no rollback test), both fixed. 5 integration tests pass against local PostgreSQL and fail when the fix is removed. `npm run check` green (72 backend, 87 storefront tests). Waiting for GPT re-review. Known residual risk: concurrent requests adding the same new value. |
 
 ## Done
 
