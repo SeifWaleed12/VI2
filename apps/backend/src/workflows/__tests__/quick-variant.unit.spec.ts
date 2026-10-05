@@ -1,4 +1,5 @@
-import { addedOptionValue, planOptionChange, removeAddedOptionValue } from "../quick-variant"
+import { MedusaError } from "@medusajs/framework/utils"
+import { addedOptionValue, planOptionChange, removeCreatedOptionValue, snapshotOptionValues } from "../quick-variant"
 
 const sizes = [{ id: "opt_1", title: "Size", values: [{ value: "Large" }] }]
 
@@ -41,20 +42,34 @@ describe("addedOptionValue", () => {
   })
 })
 
-describe("removeAddedOptionValue", () => {
-  const store = (found: { id: string }[]) => ({
+describe("snapshotOptionValues and removeCreatedOptionValue", () => {
+  const store = (found: { id: string }[], softDelete = jest.fn().mockResolvedValue([])) => ({
     listProductOptionValues: jest.fn().mockResolvedValue(found),
-    deleteProductOptionValues: jest.fn().mockResolvedValue(undefined),
+    softDeleteProductOptionValues: softDelete,
   })
-  it("deletes only the value created for that option", async () => {
-    const service = store([{ id: "optval_9" }])
-    await removeAddedOptionValue(service, { option_id: "opt_1", value: "Small" })
-    expect(service.listProductOptionValues).toHaveBeenCalledWith({ option_id: "opt_1", value: "Small" }, { select: ["id"] })
-    expect(service.deleteProductOptionValues).toHaveBeenCalledWith(["optval_9"])
+  const added = { option_id: "opt_1", value: "Small" }
+
+  it("records every value the option already holds, not only a first page", async () => {
+    const service = store([{ id: "optval_1" }, { id: "optval_2" }])
+    expect(await snapshotOptionValues(service, added)).toEqual({ ...added, existing_ids: ["optval_1", "optval_2"] })
+    expect(service.listProductOptionValues).toHaveBeenCalledWith({ option_id: "opt_1" }, { select: ["id"], take: null })
   })
-  it("does nothing when the value is already gone", async () => {
-    const service = store([])
-    await removeAddedOptionValue(service, { option_id: "opt_1", value: "Small" })
-    expect(service.deleteProductOptionValues).not.toHaveBeenCalled()
+  it("deletes only a value that was not in the snapshot", async () => {
+    const service = store([{ id: "optval_old" }, { id: "optval_new" }])
+    await removeCreatedOptionValue(service, { ...added, existing_ids: ["optval_old"] })
+    expect(service.softDeleteProductOptionValues).toHaveBeenCalledWith(["optval_new"])
+  })
+  it("never deletes a value that already existed", async () => {
+    const service = store([{ id: "optval_old" }])
+    await removeCreatedOptionValue(service, { ...added, existing_ids: ["optval_old"] })
+    expect(service.softDeleteProductOptionValues).not.toHaveBeenCalled()
+  })
+  it("keeps a value that Medusa refuses to delete because a product uses it", async () => {
+    const refused = jest.fn().mockRejectedValue(new MedusaError(MedusaError.Types.INVALID_DATA, "Cannot delete product option values that are associated with products."))
+    await expect(removeCreatedOptionValue(store([{ id: "optval_new" }], refused), { ...added, existing_ids: [] })).resolves.toBeUndefined()
+  })
+  it("still raises an unexpected failure", async () => {
+    const broken = jest.fn().mockRejectedValue(new Error("database unavailable"))
+    await expect(removeCreatedOptionValue(store([{ id: "optval_new" }], broken), { ...added, existing_ids: [] })).rejects.toThrow("database unavailable")
   })
 })

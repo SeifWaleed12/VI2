@@ -60,7 +60,7 @@ GPT review checklist (from `AGENTS.md`):
 
 | Task | Author | Branch | Commits | Review file | Status |
 |---|---|---|---|---|---|
-| Quick-variant partial failure: option or value is rolled back if the variant fails | Claude | `claude/work` | f403587, fead9e2, and the review-response commit (`git log full-stack..claude/work`) | `docs/reviews/quick-variant.md` | GPT round 1 found 2 majors (leftover option value; no rollback test), both fixed. 5 integration tests pass against local PostgreSQL and fail when the fix is removed. `npm run check` green (72 backend, 87 storefront tests). Waiting for GPT re-review. Known residual risk: concurrent requests adding the same new value. |
+| Quick-variant partial failure: option or value is rolled back if the variant fails | Claude | `claude/work` | f403587, fead9e2, and the round-2 fix commit (`git log full-stack..claude/work`) | `docs/reviews/quick-variant.md` | Round 1: 2 majors, fixed. Round 2: 1 blocker (cleanup could delete values it did not create) and 1 minor, both fixed (snapshot ownership, guarded delete, per-product lock). 10 integration tests pass on local PostgreSQL; `npm run check` green (75 backend, 87 storefront). Waiting for GPT round 3. Open for Seif: the lock provider for production (Redis) is not configured yet. |
 
 ## Done
 

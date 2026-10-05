@@ -9,8 +9,10 @@ import {
   WorkflowResponse,
 } from "@medusajs/framework/workflows-sdk"
 import {
+  acquireLockStep,
   createAndLinkProductOptionsToProductWorkflow,
   createProductVariantsWorkflow,
+  releaseLockStep,
 } from "@medusajs/medusa/core-flows"
 
 export type QuickVariantInput = {
@@ -58,32 +60,54 @@ export function planOptionChange(options: ProductOption[], optionTitle: string, 
 
 export type AddedOptionValue = { option_id: string; value: string }
 
-// The value this request will create on an already existing option. It is
-// absent for a new option (Medusa removes the whole option on rollback) and when
-// the value already exists (nothing is created, so nothing may be removed).
+// The value this request may create on an already existing option. It is absent
+// for a new option (Medusa removes the whole option on rollback) and when the
+// value already exists on the product (nothing is created).
 export function addedOptionValue(plan: OptionPlan): AddedOptionValue | null {
   if (!plan.change || !("update" in plan.change)) return null
   const [update] = plan.change.update
   return { option_id: update.product_option_id, value: update.add[0].value }
 }
 
-type OptionValueStore = Pick<IProductModuleService, "listProductOptionValues" | "deleteProductOptionValues">
+// Ids of every value the option held before this request touched it. A value
+// that is not listed here and appears afterwards was created by this request.
+export type OptionValueSnapshot = AddedOptionValue & { existing_ids: string[] }
 
-// Medusa's rollback unlinks a value it added to an existing option but leaves the
-// value itself behind, so the leftover is removed here.
-export async function removeAddedOptionValue(store: OptionValueStore, added: AddedOptionValue) {
-  const values = await store.listProductOptionValues({ option_id: added.option_id, value: added.value }, { select: ["id"] })
-  if (values.length) await store.deleteProductOptionValues(values.map((value) => value.id))
+type OptionValueStore = Pick<IProductModuleService, "listProductOptionValues" | "softDeleteProductOptionValues">
+
+export async function snapshotOptionValues(store: OptionValueStore, added: AddedOptionValue): Promise<OptionValueSnapshot> {
+  // The option may be shared with other products and hold any number of values.
+  const values = await store.listProductOptionValues({ option_id: added.option_id }, { select: ["id"], take: null })
+  return { ...added, existing_ids: values.map((value) => value.id) }
 }
 
-// Does nothing going forward. It runs before the option change, so on rollback
-// its compensation runs after Medusa has unlinked the value.
-const cleanupAddedOptionValueStep = createStep(
-  "cleanup-added-option-value",
-  async (added: AddedOptionValue) => new StepResponse(undefined, added),
-  async (added, { container }) => {
-    if (!added) return
-    await removeAddedOptionValue(container.resolve(Modules.PRODUCT), added)
+// Medusa's rollback unlinks a value it added to an existing option but keeps the
+// value itself. Only a value absent from the snapshot is removed, so values that
+// existed before the request are never touched. The guarded soft delete also
+// refuses any value linked to a product, so a variant that exists keeps its option.
+export async function removeCreatedOptionValue(store: OptionValueStore, snapshot: OptionValueSnapshot) {
+  const values = await store.listProductOptionValues({ option_id: snapshot.option_id, value: snapshot.value }, { select: ["id"], take: null })
+  const created = values.map((value) => value.id).filter((id) => !snapshot.existing_ids.includes(id))
+  if (!created.length) return
+  try {
+    await store.softDeleteProductOptionValues(created)
+  } catch (error) {
+    // Linked to a product by someone else: keep it. Anything else is a real failure.
+    if (!(MedusaError.isMedusaError(error) && error.type === MedusaError.Types.INVALID_DATA)) throw error
+  }
+}
+
+// Forward it only records what exists. It runs before the option change, so on
+// rollback its compensation runs last, after Medusa has unlinked the value.
+const guardAddedOptionValueStep = createStep(
+  "guard-added-option-value",
+  async (added: AddedOptionValue, { container }) => {
+    const snapshot = await snapshotOptionValues(container.resolve(Modules.PRODUCT), added)
+    return new StepResponse(snapshot, snapshot)
+  },
+  async (snapshot, { container }) => {
+    if (!snapshot) return
+    await removeCreatedOptionValue(container.resolve(Modules.PRODUCT), snapshot)
   }
 )
 
@@ -103,16 +127,27 @@ const planQuickVariantOptionStep = createStep(
   }
 )
 
+export const quickVariantLockKey = (productId: string) => `quick-variant:${productId}`
+
+// Seconds. Requests for the same product wait for each other; the lock expires on
+// its own if a process dies while holding it.
+const LOCK_WAIT_SECONDS = 30
+const LOCK_EXPIRE_SECONDS = 120
+
 // The option change and the variant are composed in one workflow so a failed
-// variant rolls the new option or value back through Medusa's own compensation.
+// variant rolls the new option or value back. The lock serializes requests for
+// the same product, so what the plan and the snapshot saw cannot change under it.
 export const createQuickVariantWorkflow = createWorkflow(
   "create-quick-variant",
   (input: QuickVariantInput) => {
+    const lockKey = transform({ input }, ({ input }) => quickVariantLockKey(input.product_id))
+    acquireLockStep({ key: lockKey, timeout: LOCK_WAIT_SECONDS, ttl: LOCK_EXPIRE_SECONDS })
+
     const plan = planQuickVariantOptionStep(input)
 
     const added = transform({ plan }, ({ plan }) => addedOptionValue(plan))
     when("value-added-to-existing-option", { added }, ({ added }) => added !== null).then(() => {
-      cleanupAddedOptionValueStep(added as AddedOptionValue)
+      guardAddedOptionValueStep(added as AddedOptionValue)
     })
 
     when("option-needs-change", { plan }, ({ plan }) => plan.change !== null).then(() => {
@@ -135,6 +170,8 @@ export const createQuickVariantWorkflow = createWorkflow(
       }],
     }))
 
-    return new WorkflowResponse(createProductVariantsWorkflow.runAsStep({ input: variantInput }))
+    const variants = createProductVariantsWorkflow.runAsStep({ input: variantInput })
+    releaseLockStep({ key: lockKey })
+    return new WorkflowResponse(variants)
   }
 )
