@@ -54,6 +54,7 @@ GPT review checklist (from `AGENTS.md`):
 | Login is email and password only. Phone OTP and OAuth 2 are Phase 2. | 2026-10-06 |
 | Claude writes all code, GPT reviews. Revisit once the process runs smoothly. | 2026-10-06 |
 | Code follows clean architecture and SOLID as written in `AGENTS.md` section 4.1. | 2026-10-06 |
+| One review per task, never batched. Claude does not start the next task until the current one is merged or Seif says otherwise. | 2026-10-06 |
 
 ## In review
 
