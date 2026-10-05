@@ -59,7 +59,7 @@ GPT review checklist (from `AGENTS.md`):
 
 | Task | Author | Branch | Commits | Review file | Status |
 |---|---|---|---|---|---|
-| (none) | | | | | |
+| Quick-variant partial failure: option or value is rolled back if the variant fails | Claude | `claude/work` | see `git log full-stack..claude/work` | `docs/reviews/quick-variant.md` | waiting for GPT review. Rollback relies on Medusa's compensation and is unit-tested only for the decision logic; a real rollback test needs the PostgreSQL integration tests. |
 
 ## Done
 
@@ -84,7 +84,6 @@ GPT review checklist (from `AGENTS.md`):
 
 | Task | Owner | Status | Notes |
 |---|---|---|---|
-| Quick-variant partial failure: option created but variant creation fails leaves an unused option value | Claude (next) | open | `apps/backend/src/api/admin/products/[id]/quick-variant/route.ts`; compose both steps in one workflow. |
 | HTTP integration tests for auth, cart, checkout, admin access | — | open | Needs a test PostgreSQL. `npm run test:integration:http` in `apps/backend`. |
 | Remaining storefront lint warnings | — | open | Low priority; style only. |
 | Split oversized storefront components (for example `ProductDetailClient.tsx`, `CheckoutClient.tsx`) | — | open | Matches the clean code goal, but is a refactor. Needs Seif's approval before starting. |
