@@ -145,13 +145,35 @@ Domain rules
 Infrastructure / Providers
 ```
 
-This does **not** mean every feature needs a Clean Architecture hierarchy.
+Clean Architecture is the required style. The dependency rule is mandatory: dependencies point inward, from presentation and infrastructure toward application and domain rules. Domain rules never import from routes, UI, or provider SDKs.
 
-Create abstractions only when they provide real value, such as external-provider isolation, multiple implementations, or meaningful testability.
-
-Do not create patterns merely to satisfy SOLID.
+Medusa already supplies the layers (routes, workflows, modules, providers). Map the layers onto those primitives. Do not build a parallel layer hierarchy beside them.
 
 See `docs/ARCHITECTURE.md`.
+
+---
+
+## 4.1 Clean Code and SOLID
+
+All new and changed code must follow SOLID. Apply the principles through Medusa's primitives:
+
+- **Single responsibility:** a function, workflow step, service, or component has one reason to change. Split a file that mixes validation, business rules, persistence, and presentation.
+- **Open/closed:** add behavior by adding a new workflow step, provider, adapter, or handler, not by growing conditionals inside existing code.
+- **Liskov substitution:** every implementation of a provider/adapter contract (for example payment or fulfillment) must be usable in place of any other without callers special-casing it.
+- **Interface segregation:** keep contracts small and specific to what the caller needs. Do not create one wide interface that forces unused methods.
+- **Dependency inversion:** application code and workflows depend on a contract, never on a concrete provider. Inject dependencies (Medusa's container, function parameters) instead of importing concrete clients inside business logic.
+
+Clean code rules:
+- Names state intent. Prefer small functions that do one thing.
+- One business rule lives in exactly one place.
+- Routes, controllers, and UI components stay thin. They contain no business rules.
+- No hidden side effects, no circular dependencies, no `everything.ts`, no giant files or components.
+- Prefer composition over inheritance.
+- Comments explain why, not what.
+
+Limit on abstraction: apply SOLID where it removes real coupling or duplication. Do not add an interface, layer, or pattern that has no second implementation, no isolation benefit, and no testing benefit. A plain function is the right answer for simple logic.
+
+When this section and existing working code disagree, do not rewrite unrelated code. Apply these rules to everything you create or change.
 
 ---
 
@@ -342,6 +364,29 @@ Read only when relevant:
 - `docs/decisions/` — accepted architectural decisions
 
 Do not reread all references for a small task.
+
+---
+
+## 13. MVP Decisions (set by the owner)
+
+These are decided. Do not reopen them or build beyond them.
+
+- **Roles:** exactly two, `admin` (full access) and `manager` (the Catalog Manager role). More roles are Phase 2.
+- **Customer and staff login:** email and password only. Phone OTP and OAuth 2 are Phase 2.
+- **Integrations (Paymob, Bosta, Odoo):** the integration PDF in the repository defines them, but the owner is still collecting information. Do not build, stub, or guess any of them until the owner releases the work.
+
+---
+
+## 14. Working With Other Agents
+
+Several AI agents (Claude, GPT) work in this repository.
+
+1. Read `docs/WORKBOARD.md` before starting. Claim a task on it before editing files.
+2. One agent owns a task. Do not edit another agent's claimed task.
+3. Work on your own branch. Do not commit to `full-stack` or `main` directly.
+4. A reviewing agent reports problems in a review note and does not edit the author's code.
+5. The owner merges. Nothing is merged without the owner's approval.
+6. Shared files (`package.json`, lockfile, `AGENTS.md` files, `docs/decisions/`) change only with the owner's approval.
 
 ---
 

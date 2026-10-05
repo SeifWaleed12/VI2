@@ -199,6 +199,13 @@ Medusa backend
 
 Do not put domain/business logic in UI components.
 
+Apply SOLID and the clean code rules in the root `AGENTS.md` section 4.1. In this storefront:
+- A component renders. Data access lives in the Medusa API client and services, and interaction logic lives in hooks.
+- A component or file has one reason to change. Split it when it mixes layout, data fetching, and rules.
+- Components depend on service functions or hooks, not on `fetch` calls or the Medusa SDK directly.
+- Extend behavior with a new component or hook, not by adding more flags and branches to an existing one.
+- Keep props small and specific. Do not pass a large object when a component needs two fields.
+
 Avoid giant components and duplicated API logic.
 
 Use existing project component, hook, and utility patterns before introducing new abstractions.

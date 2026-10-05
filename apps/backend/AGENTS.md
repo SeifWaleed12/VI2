@@ -220,12 +220,20 @@ Conventions:
 
 Follow existing code style if the repository differs from these defaults.
 
+Apply SOLID and the clean code rules in the root `AGENTS.md` section 4.1. In this backend:
+- One workflow step does one thing. Compose steps in a workflow instead of growing a step.
+- Routes only parse input, run a workflow, and map the response.
+- Business rules live in workflows, steps, and module services, never in routes or admin widgets.
+- Workflows and steps depend on a small contract for external providers, never on a concrete Paymob, Bosta, or Odoo client.
+- Resolve dependencies from the Medusa container or take them as parameters. Do not construct clients inside business logic.
+- Add a new provider or step to extend behavior instead of adding branches to existing ones.
+
 Avoid:
 - Giant services
 - `everything.ts`
 - Circular dependencies
 - Duplicate business rules
-- Premature abstractions
+- Abstractions with no second implementation, isolation, or testing benefit
 - Hidden side effects
 
 ---
