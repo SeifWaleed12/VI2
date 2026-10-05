@@ -1,4 +1,4 @@
-import { z } from "zod"
+import { z } from "@medusajs/framework/zod"
 
 const text = z.string().trim().min(1).max(255)
 export const registrationSchema = z.object({

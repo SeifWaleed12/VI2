@@ -1,6 +1,6 @@
 import { allowFields, authenticate, defineMiddlewares } from "@medusajs/framework/http"
 import { MedusaError } from "@medusajs/framework/utils"
-import { adminAccess } from "./admin-access"
+import { adminAccess, unlessInviteAcceptance } from "./admin-access"
 
 export default defineMiddlewares({
   routes: [
@@ -8,7 +8,10 @@ export default defineMiddlewares({
     { matcher: "/store/products/:id", middlewares: [allowFields("brand.name", "brand.status")] },
     {
       matcher: "/admin/*",
-      middlewares: [authenticate("user", ["session", "bearer"]), adminAccess],
+      middlewares: [
+        unlessInviteAcceptance(authenticate("user", ["session", "bearer"])),
+        unlessInviteAcceptance(adminAccess),
+      ],
     },
     {
       matcher: "/store/carts/:id/complete",

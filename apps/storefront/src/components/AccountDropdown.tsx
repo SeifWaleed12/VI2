@@ -30,6 +30,7 @@ export default function AccountDropdown({
 }: Props) {
   const { customer, isAuthenticated, signOut: authSignOut } = useAuth();
   const [logoutError, setLogoutError] = useState("");
+  // Loyalty is not implemented; show a placeholder rather than an invented balance.
   const points = "—";
 
   useEffect(() => {
@@ -112,7 +113,7 @@ export default function AccountDropdown({
 
         <span>{copy.rewards}</span>
 
-        <strong>{new Intl.NumberFormat("en-EG").format(points)}</strong>
+        <strong>{points}</strong>
 
         <small>{copy.points}</small>
 

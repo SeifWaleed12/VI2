@@ -4,7 +4,6 @@ import Link from "next/link";
 import {
   ArrowLeft,
   ArrowRight,
-  Check,
   ChevronDown,
   PackageCheck,
   ShieldCheck,
@@ -160,13 +159,6 @@ export default function CheckoutClient() {
   const buyNowSlug =
     searchParams.get("buyNow");
 
-  useEffect(() => {
-    try {
-      const pendingId = window.sessionStorage.getItem(`vi2-pending-checkout:${buyNowSlug || "cart"}`);
-      if (pendingId) { setRecovering(true); setStep(2); }
-    } catch { /* recovery storage unavailable */ }
-  }, [buyNowSlug]);
-
   const requestedQuantity =
     Number(
       searchParams.get("quantity") ??
@@ -272,6 +264,15 @@ export default function CheckoutClient() {
     useState<CheckoutStep>(
       1,
     );
+
+  // Resume a submitted-but-unconfirmed checkout after refresh. Runs after
+  // hydration because sessionStorage is unavailable during server render.
+  useEffect(() => {
+    try {
+      const pendingId = window.sessionStorage.getItem(`vi2-pending-checkout:${buyNowSlug || "cart"}`);
+      if (pendingId) { setRecovering(true); setStep(2); }
+    } catch { /* recovery storage unavailable */ }
+  }, [buyNowSlug]);
 
   const [
     form,

@@ -67,14 +67,14 @@ The fastest way to get started is deploying with [Medusa Cloud](https://cloud.me
 >
 > - [Node.js](https://nodejs.org/) v20+
 > - [PostgreSQL](https://www.postgresql.org/) v15+
-> - [pnpm](https://pnpm.io/) v10+
+> - npm v11+ (the repository uses `package-lock.json`; do not use pnpm or yarn)
 
 1. Clone the repository and install dependencies:
 
 ```bash
 git clone https://github.com/medusajs/dtc-starter.git
 cd dtc-starter
-pnpm install
+npm install
 ```
 
 2. Set up environment variables for the backend:
@@ -94,21 +94,21 @@ DATABASE_URL=postgres://postgres:@localhost:5432/medusa-dtc-starter
 
 ```bash
 cd apps/backend
-pnpm medusa db:migrate
+npx medusa db:migrate
 ```
 
 5. Add admin user:
 
 ```bash
 cd apps/backend
-pnpm medusa user -e admin@test.com -p supersecret
+npx medusa user -e admin@example.com -p <choose-a-password>
 ```
 
 6. Start Medusa backend:
 
 ```bash
 cd apps/backend
-pnpm dev
+npm run dev
 ```
 
 7. Open the admin dashboard at `localhost:9000/app` and log in. Retrieve your publishable API key at Settings > Publishable API key.
@@ -129,16 +129,37 @@ NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY=pk_6c3...
 
 ```bash
 cd apps/storefront
-pnpm dev
+npm run dev
 ```
 
 The storefront runs on `http://localhost:8000`.
 
-You can slo run the following command from the root to start both backend and storefront:
+You can also run the following command from the root to start both backend and storefront:
 
 ```bash
-pnpm dev
+npm run dev
 ```
+
+## Checks
+
+Run from the repository root. Each command runs for both `apps/backend` and `apps/storefront`:
+
+```bash
+npm run check      # test + typecheck + lint
+npm run test
+npm run typecheck
+npm run lint
+```
+
+Backend HTTP and module integration tests need a reachable PostgreSQL database and run separately:
+
+```bash
+cd apps/backend
+npm run test:integration:http
+npm run test:integration:modules
+```
+
+In production (`NODE_ENV=production`) the backend refuses to start unless `JWT_SECRET` and `COOKIE_SECRET` are set to strong values of at least 32 characters.
 
 ## Configuration
 

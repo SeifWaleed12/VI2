@@ -23,5 +23,5 @@ it.each([undefined, "", "supersecret", "short", "changeme".repeat(10)])("require
 })
 it("accepts configured secrets and permits development fallback only outside production", () => {
   expect(configuredSecret("JWT_SECRET", { NODE_ENV: "production", JWT_SECRET: "a".repeat(48) })).toBe("a".repeat(48))
-  expect(configuredSecret("JWT_SECRET", { NODE_ENV: "test" })).toContain("development-only")
+  expect(configuredSecret("JWT_SECRET", { NODE_ENV: "test" })).toMatch(/^[0-9a-f]{64}$/)
 })

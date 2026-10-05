@@ -1,12 +1,12 @@
 import type { ExecArgs } from "@medusajs/framework/types"
-import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
+import { ContainerRegistrationKeys, MedusaError, Modules } from "@medusajs/framework/utils"
 import { createRbacPoliciesWorkflow, createRbacRolesWorkflow, createRbacRolePoliciesWorkflow } from "@medusajs/medusa/core-flows"
 
 // Run after native migrations. Explicitly names the bootstrap administrator;
 // never upgrades all existing staff or silently assigns manager privileges.
 export default async function setupCatalogManager({ container, args }: ExecArgs) {
   const adminId = args[0]
-  if (!adminId?.startsWith("user_")) throw new Error("Supply the existing administrator's user ID")
+  if (!adminId?.startsWith("user_")) throw new MedusaError(MedusaError.Types.INVALID_DATA, "Supply the existing administrator's user ID")
   const users = container.resolve(Modules.USER)
   await users.retrieveUser(adminId)
   const rbac = container.resolve(Modules.RBAC)
