@@ -2,6 +2,18 @@ import type { AuthenticatedMedusaRequest, MedusaResponse, MedusaNextFunction } f
 import { hasPermission } from "@medusajs/framework"
 import { ContainerRegistrationKeys, MedusaError } from "@medusajs/framework/utils"
 
+// RD v1.1 section 2.2: a catalog manager may create draft products and edit
+// images/content, but not pricing, discounts, stock, or publishing. Product
+// payloads can carry prices, inventory links, and status at any depth.
+function touchesRestrictedProductFields(body: unknown): boolean {
+  if (Array.isArray(body)) return body.some(touchesRestrictedProductFields)
+  if (!body || typeof body !== "object") return false
+  return Object.entries(body).some(([key, value]) =>
+    key === "prices" || key === "inventory_items" ||
+    (key === "status" && value !== "draft") ||
+    touchesRestrictedProductFields(value))
+}
+
 // Explicit catalog endpoints prevent unrelated and future admin APIs from
 // becoming accessible to a catalog manager merely because they lack policies.
 export function managerAction(method: string, path: string, body?: unknown) {
@@ -17,6 +29,9 @@ export function managerAction(method: string, path: string, body?: unknown) {
   }
   // Bulk/import/export endpoints can conceal deletion or bypass scoped checks.
   if (/\/(batch|import|export)$/.test(path)) return null
+  // Brand status is catalog visibility, not product publishing; it is not
+  // covered by the matrix, so brands keep their existing behavior.
+  if (method !== "GET" && match[1] !== "brands" && touchesRestrictedProductFields(body)) return null
   return { resource: resources[match[1]], operation: method === "GET" ? "read" : path.split("/").length === 3 ? "create" : "update" }
 }
 

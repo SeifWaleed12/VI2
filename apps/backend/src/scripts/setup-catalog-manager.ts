@@ -21,7 +21,7 @@ export default async function setupCatalogManager({ container, args }: ExecArgs)
     })
   }
   const policies: string[] = []
-  for (const resource of ["product", "product_variant", "product_option", "product_category", "product_collection", "product_type", "product_tag", "price", "brand"]) {
+  for (const resource of ["product", "product_variant", "product_option", "product_category", "product_collection", "product_type", "product_tag", "brand"]) {
     for (const operation of ["read", "create", "update"]) {
       const key = `${resource}:${operation}`
       const existing = await rbac.listRbacPolicies({ key })
@@ -34,7 +34,7 @@ export default async function setupCatalogManager({ container, args }: ExecArgs)
   }
   let [manager] = await rbac.listRbacRoles({ name: "Catalog Manager" })
   if (!manager) {
-    const { result } = await createRbacRolesWorkflow(container).run({ input: { roles: [{ name: "Catalog Manager", description: "Create and edit catalog and prices; no deletion or non-catalog access." }] } })
+    const { result } = await createRbacRolesWorkflow(container).run({ input: { roles: [{ name: "Catalog Manager", description: "Create draft products and edit catalog content; no pricing, stock, publishing, deletion, or non-catalog access." }] } })
     manager = result[0]
   }
   const assigned = await rbac.listRbacRolePolicies({ role_id: manager.id })

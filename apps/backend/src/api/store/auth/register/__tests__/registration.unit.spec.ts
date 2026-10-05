@@ -45,7 +45,7 @@ test.each([null, [], { ...input, email: 42 }, { ...input, password: " " }, { ...
 test("normalizes email and names while preserving the actual password", async () => {
   const { req, res } = context()
   await POST(req, res)
-  expect(customerService.listCustomers).toHaveBeenCalledWith({ email: "test@example.com" })
+  expect(customerService.listCustomers).toHaveBeenCalledWith({ email: "test@example.com", has_account: true })
   expect(authService.register).toHaveBeenCalledWith("emailpass", expect.objectContaining({ body: { email: "test@example.com", password: input.password } }))
   expect(run).toHaveBeenCalledWith({ input: { authIdentityId: "auth_test", customerData: { email: "test@example.com", first_name: "Test", last_name: "User", phone: undefined } } })
   expect(res.status).toHaveBeenCalledWith(201)
@@ -96,4 +96,13 @@ test("failed compensation logs an identity reference without raw secrets", async
   await POST(req, res)
   expect(logger.error).toHaveBeenCalledWith("Failed to compensate auth identity auth_test after customer creation failure")
   expect(res.status).toHaveBeenCalledWith(500)
+})
+
+test("a previous guest checkout with the same email does not block registration", async () => {
+  // Only registered accounts are looked up; a guest record is not returned.
+  customerService.listCustomers.mockImplementation(async (filters: { has_account?: boolean }) =>
+    filters.has_account === true ? [] : [{ id: "cus_guest", has_account: false }])
+  const { req, res } = context()
+  await POST(req, res)
+  expect(res.status).toHaveBeenCalledWith(201)
 })

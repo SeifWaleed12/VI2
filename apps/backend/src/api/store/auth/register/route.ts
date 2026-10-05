@@ -24,10 +24,14 @@ async function registerCustomer(req: MedusaRequest, res: MedusaResponse) {
 
   const normalizedEmail = email.trim().toLowerCase();
 
-  // 1. Guard against duplicate customer registration
+  // 1. Guard against duplicate registration. Guest checkout creates a
+  // has_account=false customer with the same email; Medusa allows one guest and
+  // one registered record per email, so only a registered account blocks this.
+  // Guest orders are not linked to the new account: the email is unverified.
   const customerService = req.scope.resolve(Modules.CUSTOMER);
   const existingCustomers = await customerService.listCustomers({
     email: normalizedEmail,
+    has_account: true,
   });
 
   if (existingCustomers && existingCustomers.length > 0) {

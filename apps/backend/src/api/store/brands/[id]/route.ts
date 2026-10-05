@@ -16,7 +16,7 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
     }
 
     if (!brand || brand.status !== "active") {
-      return res.status(404).json({ message: `Brand with identifier "${id}" not found` })
+      return res.status(404).json({ message: "Brand not found" })
     }
 
     res.json({ brand })
