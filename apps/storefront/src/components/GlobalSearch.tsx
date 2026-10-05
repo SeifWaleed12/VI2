@@ -160,7 +160,8 @@ export default function GlobalSearch({
             (product) =>
               product.badge ===
                 "Best Seller" ||
-              product.rating >= 4.8,
+              (product.reviewCount > 0 &&
+                product.rating >= 4.8),
           )
           .slice(0, 6);
       }
@@ -585,9 +586,13 @@ export default function GlobalSearch({
 
                     <small>
                       {product.category}
-                      {" · "}
-                      {product.rating}
-                      ★
+                      {product.reviewCount > 0 && (
+                        <>
+                          {" · "}
+                          {product.rating}
+                          ★
+                        </>
+                      )}
                     </small>
                   </div>
 

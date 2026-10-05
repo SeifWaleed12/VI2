@@ -541,10 +541,6 @@ export default function ShopClient({
               <option value="price-high">
                 Price: High to Low
               </option>
-
-              <option value="rating">
-                Highest Rated
-              </option>
             </select>
 
             <ChevronDown

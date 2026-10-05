@@ -769,8 +769,8 @@ const dictionary: Record<string, string> = {
   "MOST-LOVED AT VI2": "المفضلة عند عملاء Vi2",
   BEST: "الأكثر",
   "SELLERS.": "مبيعًا.",
-  "The products customers keep coming back to — ranked by popularity, ratings and demand across the Vi2 catalog.":
-    "منتجات بيرجع لها العملاء باستمرار، مرتبة حسب الرواج والتقييمات والطلب في كتالوج Vi2.",
+  "Products selected by the Vi2 team as best sellers.":
+    "منتجات اختارها فريق Vi2 كأكثر المنتجات مبيعاً.",
   "Best seller categories": "أقسام الأكثر مبيعًا",
   "NO PRODUCTS IN THIS CATEGORY YET.": "مفيش منتجات في القسم ده لسه.",
   "VIEW ALL BEST SELLERS": "عرض كل الأكثر مبيعًا",

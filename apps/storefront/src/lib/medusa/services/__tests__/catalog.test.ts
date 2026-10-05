@@ -1,4 +1,5 @@
 import { mapMedusaProduct, getProducts } from "../products";
+import { mapMedusaCart } from "../cart";
 import { selectRegion } from "../regions";
 import { medusa } from "../../client";
 
@@ -27,4 +28,9 @@ it("selects a real Egyptian EGP region and rejects stale or ambiguous configurat
   expect(() => selectRegion([egypt, { ...egypt, id: "reg_other" }])).toThrow();
   expect(() => selectRegion([{ ...egypt, currency_code: "usd" }])).toThrow();
   expect(() => selectRegion([])).toThrow();
+});
+
+it("never surfaces metadata ratings for cart line products", () => {
+  const cart = mapMedusaCart({ id: "cart_1", items: [{ id: "item_1", quantity: 1, unit_price: 100, product: { id: "prod_1", metadata: { rating: 5, reviewCount: 999 } }, variant: { id: "variant_1" } }] });
+  expect(cart.items[0].product).toMatchObject({ rating: 0, reviewCount: 0 });
 });

@@ -1392,15 +1392,17 @@ export default function ProductDetailClient({
                     </strong>
 
                     <div>
-                      <span>
-                        <Star
-                          size={12}
-                          fill="currentColor"
-                        />
-                        {
-                          item.rating
-                        }
-                      </span>
+                      {item.reviewCount > 0 && (
+                        <span>
+                          <Star
+                            size={12}
+                            fill="currentColor"
+                          />
+                          {
+                            item.rating
+                          }
+                        </span>
+                      )}
 
                       <strong>
                         {formatPrice(

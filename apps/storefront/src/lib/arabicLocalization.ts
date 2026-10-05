@@ -200,7 +200,7 @@ export const arabicUi: Record<string, string> = {
   "Browse the supplement and wellness brands curated for Vi2.": "تصفح علامات المكملات والعافية المختارة لدى Vi2.",
   "CURATED BRANDS": "علامات مختارة", "VI2 BRANDS": "علامات Vi2", "SHOP BY BRAND": "تسوق حسب العلامة", "NEW": "جديد",
   "MOST-LOVED AT VI2": "الأكثر شعبية لدى Vi2", "BEST SELLERS.": "الأكثر مبيعًا.",
-  "The products customers keep coming back to — ranked by popularity, ratings and demand across the Vi2 catalog.": "المنتجات التي يعود إليها العملاء باستمرار، مرتبة حسب الشعبية والتقييمات والطلب في كتالوج Vi2.",
+  "Products selected by the Vi2 team as best sellers.": "منتجات اختارها فريق Vi2 كأكثر المنتجات مبيعاً.",
   "Omega & Fish Oils": "أوميجا وزيوت السمك", "ADD": "أضف",
   "NO PRODUCTS IN THIS CATEGORY YET.": "لا توجد منتجات في هذه الفئة بعد.", "VIEW ALL BEST SELLERS": "عرض كل الأكثر مبيعًا",
   "DAILY ROTATION": "اختيارات يومية متجددة", "FLASH DEALS.": "عروض سريعة.", "REFRESHES DAILY": "تتجدد يومياً",

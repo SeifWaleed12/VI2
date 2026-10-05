@@ -42,8 +42,9 @@ export function mapMedusaCart(c: any): Cart {
         category: String(meta.category || ""),
         description: product.description || "",
         price: unitPrice,
-        rating: Number(meta.rating || 0),
-        reviewCount: Number(meta.reviewCount || 0),
+        // Reviews are not implemented; never surface unverified metadata ratings.
+        rating: 0,
+        reviewCount: 0,
         image: item.thumbnail || product.thumbnail || String(meta.image || ""),
         stock: Number(variant.inventory_quantity ?? 0),
       },

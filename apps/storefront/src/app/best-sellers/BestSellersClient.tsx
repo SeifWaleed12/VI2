@@ -273,14 +273,7 @@ export default function BestSellersClient({
             }
           >
             <p>
-              The products
-              customers keep
-              coming back to —
-              ranked by
-              popularity,
-              ratings and
-              demand across the
-              Vi2 catalog.
+              Products selected by the Vi2 team as best sellers.
             </p>
 
             <Link href="/shop">
