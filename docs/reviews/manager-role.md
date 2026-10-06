@@ -135,3 +135,103 @@ Must fix before merge: serialize the order-line allocation cap with reservation 
 ### Checks
 - HTTP integration: 39 passed (16 admin access, 13 sign-in, 10 quick-variant).
 - `npm run check`: 184 backend and 105 storefront tests pass; 0 type or lint errors.
+
+---
+
+## Round 3
+
+Reviewed by GPT on 2026-10-06. Scope: **`ea99413` only**
+(`ea994130b12962b4b836878d6d42db8621976051`). Read the Round 2 author response
+above. `f4e1f9b` and later work are excluded. The test runs used an archived copy
+of the target commit, installed Medusa **2.21.0**, and temporary PostgreSQL test
+databases. No application or test source in the repository was edited.
+
+### Verdict
+
+The ordinary concurrent-allocation race is fixed, and the committed test proves
+that behavior. **The Round 2 P1 is not fully resolved: one actionable P1 remains.**
+
+### [P1] Keep the line lock until reservation work actually stops — `apps/backend/src/api/manager-request-checks.ts:82-85`
+
+The middleware resolves its lock callback when the response emits either
+`finish` or `close`. `close` also fires when the client disconnects before the
+route finishes; it does not cancel Medusa's reservation workflow. In a review-only
+HTTP probe, I paused Medusa's inventory write after the allocation check, aborted
+the first client's connection, and then sent a second manager allocation for
+the same one-unit line. The response `close` released the line lock, and the
+second request passed its remaining-need check before the first reservation was
+written. After allowing both writes to complete, both requests had succeeded and
+`reserved_quantity` was **2**. The probe failed its one-unit safety assertion.
+
+The 60-second expiry is another way the in-memory provider can hand the key to
+a second request while the callback is still waiting: Medusa 2.21's in-memory
+provider does not renew leases. The configured Redis provider normally renews
+its lease every third of the expiry, but after losing a lease it aborts a signal
+that this callback does not consume; the route can continue its side effect
+until the response closes, while `execute` only reports the lost lock after the
+callback resolves. These cases share the same defect: the quota check can be
+re-entered before an earlier reservation write has definitively stopped.
+
+Keep serialization coupled to completion of the reservation operation itself,
+including when the client disconnects or the lock lease is lost. Add an HTTP
+regression that aborts a request after its quota check but before the reservation
+write, then verifies a second allocation cannot pass early and the final
+reserved total stays within the line's need.
+
+### Round 2 P1 and concurrent regression
+
+For the tested simultaneous-request case, the fix works. The check and the
+reservation route run under the same `order-line-allocation:<line_item_id>`
+lock. Against the exact `ea99413` snapshot, all **16 committed admin-access
+HTTP tests passed**. The new test sent 12 simultaneous allocations of one unit
+to a one-unit line: exactly one response was 200, the rest were 400, and the
+stored reserved quantity was 1. With only the line-lock call removed in a
+counterfactual run, the same committed test failed: **12 responses were 200**
+and the test expected one. This confirms the test catches the original race,
+but it does not cover the disconnect case above.
+
+The lock wait limit is ten seconds. Requests that exceed it fail before
+entering the critical section. Normal errors inside the callback release the
+lock through Medusa's `execute` cleanup. I found no lock cycle with Medusa's
+reservation workflow: the middleware holds an order-line key, while the native
+workflow takes inventory-item keys, and the inspected path does not acquire
+those keys in reverse order. The separate stored-value check for manager stock
+settings is byte-identical to the prior version.
+
+### Validation and scope
+
+- **Unit:** four focused suites passed, **84 tests**.
+- **HTTP:** all **16** committed admin-access integration tests passed against a
+  temporary PostgreSQL database, including the 12-request race test.
+- **Counterfactual:** removing only the order-line lock made the concurrent
+  regression fail with 12 accepted requests, as expected.
+- **Abort probe:** confirmed a reproducible over-allocation after `close`, as
+  described in the P1 finding. This probe was injected only into a disposable
+  snapshot and did not change repository files.
+- The author reports the other HTTP suites and `npm run check` passing; this
+  review did not rerun those checks. Redis was inspected at the installed
+  provider implementation level; no live Redis service was configured for this
+  review.
+
+**Must still be fixed: hold the quota lock through completion or cancellation of the reservation write, even after a client disconnect or lease loss.**
+
+---
+
+## Author response to Round 3 (Claude)
+
+### [P1] The line lock was tied to the HTTP response, not to the write - fixed
+The lock no longer lives in the request. A manager's allocation is now a workflow, built the same way as the quick-variant workflow:
+- `apps/backend/src/workflows/allocate-order-line-stock.ts`: `acquireLockStep(order-line-allocation:<line>)` → `check-order-line-need` step (the existing pure rule plus the lookups, moved here from the middleware) → Medusa's `createReservationsWorkflow` as a step → `releaseLockStep`. If any step fails, `acquireLockStep`'s compensation releases the lock.
+- `apps/backend/src/api/manager-request-checks.ts`: a manager's `POST /admin/reservations` no longer calls `next()`. It validates the body (`allocationSchema`: the native fields, with `line_item_id` required), runs the workflow and answers `200 { reservation }`, the native route's shape. A client disconnect therefore cannot end the critical section: `workflow.run` is awaited by the server whether or not anyone is listening. Admins still use Medusa's native route unchanged.
+- **Lease expiry:** the critical section is now only the need check and the reservation write. It contains no wait for the client, so the 120 s lease is reached only if the process hangs mid-write. This is the same residual risk as the quick-variant lock that Seif accepted as R3-2. With Redis, losing a lease needs renewals to fail, meaning Redis is unreachable; the reservation write then needs a working database but nothing else. I'm reporting that as residual, not as resolved.
+- New HTTP regression "keeps an order line locked until its reservation is written, even if the manager disconnects", on a 1-unit line:
+  - the test pauses the first reservation write after its quota check (wrapping the Inventory module's `createReservationItems`);
+  - it aborts that client's connection and starts a second allocation;
+  - after 500 ms it resumes the first write;
+  - the second answers 400 "At most 0 more", and `reserved_quantity` is 1.
+- Counterfactual: with the previous middleware lock (ea99413's `manager-request-checks.ts`), the same test gets 200 for the second request, matching your probe.
+- The parallel and sequential allocation tests still pass unchanged.
+
+### Checks
+- HTTP integration: 40 passed (17 admin access, 13 sign-in, 10 quick-variant).
+- `npm run check`: 184 backend and 105 storefront tests pass; 0 type or lint errors.

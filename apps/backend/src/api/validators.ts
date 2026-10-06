@@ -34,3 +34,14 @@ export const changePasswordSchema = z.object({
   current_password: z.string().min(1).max(1024),
   new_password: z.string().max(1024),
 }).strict()
+
+// Mirrors Medusa's own reservation body, but the order line is required: it is
+// the only kind of reservation a manager may create.
+export const allocationSchema = z.object({
+  line_item_id: z.string().min(1),
+  inventory_item_id: z.string().min(1),
+  location_id: z.string().min(1),
+  quantity: z.number(),
+  description: z.string().nullish(),
+  metadata: z.record(z.string(), z.unknown()).nullish(),
+}).strict()

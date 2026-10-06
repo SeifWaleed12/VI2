@@ -225,6 +225,56 @@ medusaIntegrationTestRunner({
         expect(level.reserved_quantity).toBe(1)
       })
 
+      it("keeps an order line locked until its reservation is written, even if the manager disconnects", async () => {
+        const container = getContainer()
+        const { data: { stock_location: location } } = await api.post("/admin/stock-locations", { name: "Warehouse" }, admin)
+        const { data: { product } } = await api.post("/admin/products", { title: "Whey", status: "published", options: [{ title: "Size", values: ["1kg"] }], variants: [{ title: "1kg", options: { Size: "1kg" }, manage_inventory: true, prices: [{ amount: 100, currency_code: "egp" }] }] }, admin)
+        const variantId = product.variants[0].id
+        const { data: [link] } = await container.resolve(ContainerRegistrationKeys.QUERY).graph({ entity: "product_variant_inventory_item", fields: ["inventory_item_id"], filters: { variant_id: variantId } })
+        const inventoryItemId = (link as { inventory_item_id: string }).inventory_item_id
+        await api.post(`/admin/inventory-items/${inventoryItemId}/location-levels`, { location_id: location.id, stocked_quantity: 50 }, admin)
+        const { result: [region] } = await createRegionsWorkflow(container).run({ input: { regions: [{ name: "Egypt", currency_code: "egp", countries: ["eg"] }] } })
+        const { result: order } = await createOrderWorkflow(container).run({ input: { region_id: region.id, email: "buyer@test.dev", currency_code: "egp", items: [{ title: "Whey", variant_id: variantId, quantity: 1, unit_price: 100 }] } })
+        const body = { line_item_id: order.items![0].id, inventory_item_id: inventoryItemId, location_id: location.id, quantity: 1 }
+
+        // Pause the first reservation write after its quota check has passed.
+        const inventory = container.resolve(Modules.INVENTORY)
+        const write = inventory.createReservationItems.bind(inventory)
+        let reachedWrite!: () => void
+        const writeReached = new Promise<void>((resolve) => { reachedWrite = resolve })
+        let resumeWrite!: () => void
+        const writeResumed = new Promise<void>((resolve) => { resumeWrite = resolve })
+        let paused = false
+        inventory.createReservationItems = (async (...args: Parameters<typeof write>) => {
+          if (!paused) {
+            paused = true
+            reachedWrite()
+            await writeResumed
+          }
+          return write(...args)
+        }) as typeof inventory.createReservationItems
+        try {
+          const disconnect = new AbortController()
+          const first = api.post("/admin/reservations", body, { ...manager, signal: disconnect.signal }).catch(() => null)
+          await writeReached
+          disconnect.abort()
+          await first
+          const second = api.post("/admin/reservations", body, manager)
+          // The second request must still be waiting for the line when the
+          // first write resumes.
+          await new Promise((resolve) => setTimeout(resolve, 500))
+          resumeWrite()
+          const secondResponse = await second
+          expect(secondResponse.status).toBe(400)
+          expect(secondResponse.data.message).toContain("At most 0 more")
+        } finally {
+          resumeWrite()
+          inventory.createReservationItems = write
+        }
+        const [level] = await inventory.listInventoryLevels({ inventory_item_id: inventoryItemId })
+        expect(level.reserved_quantity).toBe(1)
+      })
+
       it("removes permissions the role no longer grants when the setup runs again", async () => {
         const container = getContainer()
         const rbac = container.resolve(Modules.RBAC)
