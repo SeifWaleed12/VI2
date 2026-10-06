@@ -1,52 +1,14 @@
 import type { AuthenticatedMedusaRequest, MedusaResponse, MedusaNextFunction } from "@medusajs/framework/http"
 import { hasPermission } from "@medusajs/framework"
 import { ContainerRegistrationKeys, MedusaError } from "@medusajs/framework/utils"
-
-// RD v1.1 section 2.2: a catalog manager may create draft products and edit
-// images/content, but not pricing, discounts, stock, or publishing. Product
-// payloads can carry prices, inventory links, and status at any depth.
-// A new product may only be created as a draft. On an existing product any
-// status change is a publish or unpublish, so status is never allowed there.
-// Inventory tracking and backorders decide whether checkout enforces stock, so
-// they count as stock operations even though they carry no quantity.
-const STOCK_AND_PRICE_FIELDS = new Set(["prices", "inventory_items", "manage_inventory", "allow_backorder"])
-
-function touchesRestrictedProductFields(body: unknown, isCreate: boolean): boolean {
-  if (Array.isArray(body)) return body.some((item) => touchesRestrictedProductFields(item, isCreate))
-  if (!body || typeof body !== "object") return false
-  return Object.entries(body).some(([key, value]) =>
-    STOCK_AND_PRICE_FIELDS.has(key) ||
-    (key === "status" && !(isCreate && value === "draft")) ||
-    touchesRestrictedProductFields(value, isCreate))
-}
-
-// Explicit catalog endpoints prevent unrelated and future admin APIs from
-// becoming accessible to a catalog manager merely because they lack policies.
-export function managerAction(method: string, path: string, body?: unknown) {
-  if (method === "DELETE") return null
-  if (body && typeof body === "object" && Object.entries(body).some(([key, value]) =>
-    (key === "delete" || key === "remove") && Array.isArray(value) && value.length > 0)) return null
-  if (method === "GET" && (path === "/admin/users/me" || path === "/admin/rbac/me/permissions")) return { resource: "product", operation: "read" }
-  // Only ever changes the signed-in user's own password.
-  if (method === "POST" && path === "/admin/users/me/password") return { resource: "product", operation: "read" }
-  const match = path.match(/^\/admin\/(products|product-variants|product-categories|product-collections|product-types|product-tags|brands)(?:\/[^/]+)?(?:\/(variants|options)(?:\/[^/]+)?|\/quick-variant)?$/)
-  if (!match || !["GET", "POST", "PUT"].includes(method)) return null
-  const resources: Record<string, string> = {
-    products: "product", "product-variants": "product_variant", "product-categories": "product_category",
-    "product-collections": "product_collection", "product-types": "product_type", "product-tags": "product_tag", brands: "brand",
-  }
-  // Bulk/import/export endpoints can conceal deletion or bypass scoped checks.
-  if (/\/(batch|import|export)$/.test(path)) return null
-  // Brand status is catalog visibility, not product publishing; it is not
-  // covered by the matrix, so brands keep their existing behavior.
-  const isCreate = path.split("/").length === 3
-  if (method !== "GET" && match[1] !== "brands" && touchesRestrictedProductFields(body, isCreate)) return null
-  return { resource: resources[match[1]], operation: method === "GET" ? "read" : isCreate ? "create" : "update" }
-}
+import { existingVariantStockSettings, managerAction, type StockSettingsChange } from "../lib/manager-access"
 
 type Middleware = (req: AuthenticatedMedusaRequest, res: MedusaResponse, next: MedusaNextFunction) => unknown
+type Scope = AuthenticatedMedusaRequest["scope"]
 
-function requestPath(req: { originalUrl: string }) {
+export type StaffRole = "admin" | "manager"
+
+export function requestPath(req: { originalUrl: string }) {
   return req.originalUrl.split("?")[0].replace(/\/$/, "")
 }
 
@@ -60,7 +22,24 @@ export function unlessInviteAcceptance(middleware: Middleware): Middleware {
       : middleware(req, res, next)
 }
 
-export async function adminAccess(req: AuthenticatedMedusaRequest, _res: MedusaResponse, next: MedusaNextFunction) {
+// True when the request would change the stock settings of a variant that
+// already exists. Stock comes from Odoo, so only an administrator may do that.
+async function changesStockSettings(scope: Scope, changes: StockSettingsChange[]) {
+  const query = scope.resolve(ContainerRegistrationKeys.QUERY)
+  const { data } = await query.graph({
+    entity: "product_variant",
+    fields: ["id", "manage_inventory", "allow_backorder"],
+    filters: { id: [...new Set(changes.map((change) => change.variantId))] },
+  })
+  const stored = new Map((data as Record<string, unknown>[]).map((variant) => [variant.id, variant]))
+  // An unknown id is left to Medusa, which rejects the update itself.
+  return changes.some(({ variantId, settings }) => {
+    const variant = stored.get(variantId)
+    return !!variant && Object.entries(settings).some(([key, value]) => variant[key] !== value)
+  })
+}
+
+export async function adminAccess(req: AuthenticatedMedusaRequest, res: MedusaResponse, next: MedusaNextFunction) {
   if (!req.auth_context?.actor_id || req.auth_context.actor_type !== "user") {
     throw new MedusaError(MedusaError.Types.UNAUTHORIZED, "Admin authentication required")
   }
@@ -76,10 +55,19 @@ export async function adminAccess(req: AuthenticatedMedusaRequest, _res: MedusaR
   if (!roles.length) {
     throw new MedusaError(MedusaError.Types.FORBIDDEN, "This action requires an assigned role")
   }
-  if (await hasPermission({ roles, actions: { resource: "*", operation: "*" }, container: req.scope })) return next()
-  const action = managerAction(req.method, requestPath(req), req.body)
+  if (await hasPermission({ roles, actions: { resource: "*", operation: "*" }, container: req.scope })) {
+    res.locals.staffRole = "admin" satisfies StaffRole
+    return next()
+  }
+  const path = requestPath(req)
+  const action = managerAction(req.method, path, req.body)
   if (!action || !await hasPermission({ roles, actions: action, container: req.scope })) {
     throw new MedusaError(MedusaError.Types.FORBIDDEN, "This action requires an administrator")
   }
+  const stockChanges = req.method === "GET" ? [] : existingVariantStockSettings(path, req.body)
+  if (stockChanges.length && await changesStockSettings(req.scope, stockChanges)) {
+    throw new MedusaError(MedusaError.Types.FORBIDDEN, "Stock settings can only be changed by an administrator")
+  }
+  res.locals.staffRole = "manager" satisfies StaffRole
   return next()
 }

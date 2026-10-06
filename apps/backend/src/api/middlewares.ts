@@ -3,6 +3,7 @@ import { MedusaError } from "@medusajs/framework/utils"
 import type { ActorType } from "../lib/login-attempts"
 import { adminAccess, unlessInviteAcceptance } from "./admin-access"
 import { limitLoginAttempts, limitResetRequests } from "./login-rate-limit"
+import { managerLayoutView } from "./manager-layouts"
 import { requireStrongPassword } from "./password-policy"
 
 // Staff and customers sign in, reset and set passwords through the same
@@ -24,6 +25,7 @@ export default defineMiddlewares({
       middlewares: [
         unlessInviteAcceptance(authenticate("user", ["session", "bearer"])),
         unlessInviteAcceptance(adminAccess),
+        managerLayoutView,
       ],
     },
     {

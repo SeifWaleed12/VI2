@@ -65,6 +65,7 @@ GPT review checklist (from `AGENTS.md`):
 | Staff invites go out with the dashboard's "Copy invite link". The SendGrid email code stays but is off; no paid email provider for now. | 2026-10-06 |
 | Customers get "change password" and "forgot password" (by email). The reset email is only delivered once an email provider is configured. | 2026-10-06 |
 | Redis holds the cache and locks whenever `REDIS_URL` is set; production runs PostgreSQL and Redis as Coolify resources. | 2026-10-06 |
+| Manager role redefined (replaces RD v1.1 section 2.2): full orders (incl. fulfil, refund, cancel, edit), products (incl. delete, publish, prices), brands, customers, promotions, price lists; inventory view only; in Settings only product types and tags. Store settings, staff, roles, API keys, regions, tax, shipping setup, workflows and future business pages (revenue) are admin only. Admin-only pages are hidden from managers in the dashboard. | 2026-10-06 |
 
 ## In review
 
@@ -72,6 +73,7 @@ GPT review checklist (from `AGENTS.md`):
 |---|---|---|---|---|---|
 | Admin lockout: RBAC module was never loaded, so every staff user got Forbidden | Claude | `claude/work` | 226d9f0, e3a4024, and the round-2 commit (`git log full-stack..claude/work`) | `docs/reviews/rbac-module.md` | Round 1: 3 P1s fixed. Round 2: RBAC-1/2/3 confirmed resolved; 1 new P1 (manager could switch off stock enforcement) fixed by Seif's decision to block `manage_inventory` and `allow_backorder` for managers. 9 live access tests pass; `npm run check` green (83 backend, 87 storefront). Waiting for GPT round 3 and Seif's browser test as a manager. |
 | Sign-in hardening (staff and customers): attempt limit, 8+ password rule, change password, forgot password, invite and reset emails, Redis config | Claude | `claude/work` (after the RBAC commits) | `git log b2cb5d4..claude/work` | `docs/reviews/sign-in.md` | Requested by Seif on 2026-10-06 while the RBAC review is open. 11 HTTP tests (30 total pass), 126 backend and 105 storefront unit tests; `npm run check` green. Live check passed (limits, short passwords, reset limit, storefront forgot/reset pages). Waiting for GPT review and Seif's browser test of the admin "Change password" page. |
+| Manager role: full shop access, admin-only settings hidden in the dashboard, permissions that survive restarts | Claude | `claude/work` (after 6e96ac6) | `git log 6e96ac6..claude/work` | `docs/reviews/manager-role.md` | Requested by Seif on 2026-10-06. Found and fixed: Medusa deletes permissions no code defines at every start (manager lost `brand:*` and could never get refunds); now defined in `src/policies/project-policies.ts`, and the HTTP tests simulate the restart. 33 HTTP tests and `npm run check` green; checked in the browser as a manager (orders, products, inventory, customers, promotions, price lists, brands load). Open: Settings opens on Store (Medusa's fixed start page); new variants keep the form's stock values (Seif to confirm). |
 
 ## Done
 

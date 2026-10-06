@@ -177,7 +177,7 @@ medusaIntegrationTestRunner({
         const { data } = await signIn("user", "new.manager@test.dev", password)
         const manager = bearer(data.token)
         expect((await api.get("/admin/products", manager)).status).toBe(200)
-        expect((await api.get("/admin/orders", manager)).status).toBe(403)
+        expect((await api.get("/admin/api-keys", manager)).status).toBe(403)
         expect((await api.post("/admin/users/me/password", { current_password: password, new_password: newPassword }, manager)).status).toBe(200)
         expect((await signIn("user", "new.manager@test.dev", newPassword)).status).toBe(200)
       })

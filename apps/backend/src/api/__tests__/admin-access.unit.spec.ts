@@ -1,42 +1,99 @@
-import { adminAccess, managerAction, unlessInviteAcceptance } from "../admin-access"
+import { adminAccess, unlessInviteAcceptance } from "../admin-access"
 import { hasPermission } from "@medusajs/framework"
 
 jest.mock("@medusajs/framework", () => ({ hasPermission: jest.fn() }))
 
-it.each(["/admin/orders", "/admin/customers", "/admin/users", "/admin/rbac/roles", "/admin/api-keys", "/admin/payments", "/admin/products/export"])("denies manager access to %s", (path) => {
-  expect(managerAction("GET", path)).toBeNull()
-  expect(managerAction("POST", path)).toBeNull()
-})
-it.each(["/admin/products/prod_1", "/admin/brands/brand_1"])("permits catalog edits but never deletion: %s", (path) => {
-  expect(managerAction("POST", path)?.operation).toBe("update")
-  expect(managerAction("DELETE", path)).toBeNull()
-  expect(managerAction("POST", path, { delete: ["id"] })).toBeNull()
-})
-it("allows product and brand creation", () => {
-  expect(managerAction("POST", "/admin/products")).toEqual({ resource: "product", operation: "create" })
-  expect(managerAction("POST", "/admin/brands")).toEqual({ resource: "brand", operation: "create" })
-})
+type Variant = { id: string, manage_inventory: boolean, allow_backorder: boolean }
+
+function request(roles: string[], overrides: { method?: string, originalUrl?: string, body?: unknown, variants?: Variant[] } = {}) {
+  const graph = jest.fn(async ({ entity }: { entity: string }) => ({
+    data: entity === "user" ? [{ id: "user_1", rbac_roles: roles.map((id) => ({ id })) }] : overrides.variants ?? [],
+  }))
+  return {
+    auth_context: { actor_id: "user_1", actor_type: "user", app_metadata: { roles: ["role_super_admin"] } },
+    method: overrides.method ?? "POST",
+    originalUrl: overrides.originalUrl ?? "/admin/brands",
+    body: overrides.body ?? { name: "X", slug: "x" },
+    scope: { resolve: () => ({ graph }) },
+    graph,
+  }
+}
+const response = () => ({ locals: {} as Record<string, unknown> })
+// The first hasPermission call asks "is this an administrator?"; the second
+// checks the manager's permission for the action.
+const asManager = () => jest.mocked(hasPermission).mockResolvedValueOnce(false).mockResolvedValueOnce(true)
+
+beforeEach(() => jest.mocked(hasPermission).mockReset())
+
 it("rejects unauthenticated requests before resolving permissions", async () => {
-  await expect(adminAccess({} as never, {} as never, jest.fn())).rejects.toThrow("authentication")
+  await expect(adminAccess({} as never, response() as never, jest.fn())).rejects.toThrow("authentication")
 })
-const request = (roles: string[]) => ({ auth_context: { actor_id: "user_1", actor_type: "user", app_metadata: { roles: ["role_super_admin"] } }, method: "POST", originalUrl: "/admin/brands", body: { name: "X", slug: "x" }, scope: { resolve: () => ({ graph: async () => ({ data: [{ id: "user_1", rbac_roles: roles.map((id) => ({ id })) }] }) }) } })
 
 it("uses current database role assignments, not stale token roles", async () => {
   jest.mocked(hasPermission).mockResolvedValue(false)
-  const req = request(["role_catalog"])
-  req.originalUrl = "/admin/orders"
-  await expect(adminAccess(req as never, {} as never, jest.fn())).rejects.toThrow()
-  expect(req.auth_context.app_metadata.roles).toEqual(["role_catalog"])
+  const req = request(["role_manager"], { method: "GET", originalUrl: "/admin/api-keys" })
+  await expect(adminAccess(req as never, response() as never, jest.fn())).rejects.toThrow("administrator")
+  expect(req.auth_context.app_metadata.roles).toEqual(["role_manager"])
 })
+
 it("denies staff with no role even though Medusa's hasPermission allows an empty role list", async () => {
   // Medusa 2.21 returns true from hasPermission when the role list is empty.
   jest.mocked(hasPermission).mockResolvedValue(true)
   const next = jest.fn()
   const req = request([])
-  await expect(adminAccess(req as never, {} as never, next)).rejects.toThrow("assigned role")
+  await expect(adminAccess(req as never, response() as never, next)).rejects.toThrow("assigned role")
   expect(next).not.toHaveBeenCalled()
-  expect(req.auth_context.app_metadata.roles).toEqual([])
 })
+
+it("records whether the user is an administrator or a manager", async () => {
+  jest.mocked(hasPermission).mockResolvedValueOnce(true)
+  const adminRes = response()
+  await adminAccess(request(["role_super_admin"]) as never, adminRes as never, jest.fn())
+  expect(adminRes.locals.staffRole).toBe("admin")
+  asManager()
+  const managerRes = response()
+  await adminAccess(request(["role_manager"], { method: "GET", originalUrl: "/admin/orders" }) as never, managerRes as never, jest.fn())
+  expect(managerRes.locals.staffRole).toBe("manager")
+})
+
+it("refuses a manager an admin-only area even when Medusa's policies would allow it", async () => {
+  jest.mocked(hasPermission).mockResolvedValueOnce(false).mockResolvedValue(true)
+  const req = request(["role_manager"], { method: "GET", originalUrl: "/admin/api-keys/apk_1" })
+  await expect(adminAccess(req as never, response() as never, jest.fn())).rejects.toThrow("administrator")
+})
+
+const variant = { id: "variant_1", manage_inventory: true, allow_backorder: false }
+
+it("lets a manager resend a variant's unchanged stock settings", async () => {
+  asManager()
+  const next = jest.fn()
+  const req = request(["role_manager"], { originalUrl: "/admin/products/prod_1/variants/variant_1", body: { title: "1kg", manage_inventory: true, allow_backorder: false }, variants: [variant] })
+  await adminAccess(req as never, response() as never, next)
+  expect(next).toHaveBeenCalled()
+})
+
+it.each([
+  ["/admin/products/prod_1/variants/variant_1", { manage_inventory: false }],
+  ["/admin/products/prod_1/variants/variant_1", { allow_backorder: true }],
+  ["/admin/products/prod_1", { variants: [{ id: "variant_1", allow_backorder: true }] }],
+  ["/admin/products/prod_1/variants/batch", { update: [{ id: "variant_1", manage_inventory: false }] }],
+])("refuses a manager changing an existing variant's stock settings: %s %j", async (originalUrl, body) => {
+  asManager()
+  const next = jest.fn()
+  const req = request(["role_manager"], { originalUrl, body, variants: [variant] })
+  await expect(adminAccess(req as never, response() as never, next)).rejects.toThrow("Stock settings")
+  expect(next).not.toHaveBeenCalled()
+})
+
+it("does not look up stock settings for a new variant", async () => {
+  asManager()
+  const next = jest.fn()
+  const req = request(["role_manager"], { originalUrl: "/admin/products/prod_1/variants", body: { title: "2kg", manage_inventory: false } })
+  await adminAccess(req as never, response() as never, next)
+  expect(next).toHaveBeenCalled()
+  expect(req.graph).toHaveBeenCalledTimes(1)
+})
+
 it("lets only invite acceptance bypass the global admin guard", () => {
   const guard = jest.fn()
   const wrapped = unlessInviteAcceptance(guard)
@@ -48,33 +105,4 @@ it("lets only invite acceptance bypass the global admin guard", () => {
     wrapped(req as never, {} as never, next)
   }
   expect(guard).toHaveBeenCalledTimes(3)
-})
-it.each([
-  ["POST", "/admin/products", { title: "Whey", status: "published" }],
-  ["POST", "/admin/products", { title: "Whey", variants: [{ title: "1kg", prices: [{ amount: 100, currency_code: "egp" }] }] }],
-  ["POST", "/admin/products/prod_1", { status: "published" }],
-  ["POST", "/admin/products/prod_1", { status: "draft", variants: [{ id: "v1", prices: [] }] }],
-  ["POST", "/admin/products/prod_1/variants/v1", { prices: [{ amount: 1, currency_code: "egp" }] }],
-  ["POST", "/admin/products/prod_1/variants", { title: "2kg", inventory_items: [{ inventory_item_id: "i1" }] }],
-  ["POST", "/admin/products/prod_1/quick-variant", { option_title: "Size", option_value: "1kg", prices: [{ amount: 1, currency_code: "egp" }] }],
-  ["POST", "/admin/products/prod_1", { status: "draft" }],
-  ["POST", "/admin/products/prod_1", { title: "Whey", status: "draft" }],
-  ["POST", "/admin/products/prod_1/variants/v1", { manage_inventory: false }],
-  ["POST", "/admin/products/prod_1/variants/v1", { allow_backorder: true }],
-  ["POST", "/admin/products/prod_1", { variants: [{ id: "v1", allow_backorder: true }] }],
-  ["POST", "/admin/products", { title: "Whey", status: "draft", variants: [{ title: "1kg", manage_inventory: false }] }],
-])("denies catalog managers pricing, stock, and publishing changes: %s %s %j", (method, path, body) => {
-  expect(managerAction(method, path, body)).toBeNull()
-})
-it("allows catalog managers to create drafts and edit content", () => {
-  expect(managerAction("POST", "/admin/products", { title: "Whey", status: "draft", images: [{ url: "https://x/y.png" }] })).toEqual({ resource: "product", operation: "create" })
-  expect(managerAction("POST", "/admin/products/prod_1", { description: "New copy", thumbnail: "https://x/y.png" })).toEqual({ resource: "product", operation: "update" })
-  expect(managerAction("POST", "/admin/brands/brand_1", { status: "inactive" })?.operation).toBe("update")
-})
-
-it("lets a manager change only their own password", () => {
-  expect(managerAction("POST", "/admin/users/me/password")).toEqual({ resource: "product", operation: "read" })
-  expect(managerAction("GET", "/admin/users/me/password")).toBeNull()
-  expect(managerAction("POST", "/admin/users/user_1/reset-password")).toBeNull()
-  expect(managerAction("POST", "/admin/users/me")).toBeNull()
 })
