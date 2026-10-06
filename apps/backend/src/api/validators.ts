@@ -1,9 +1,10 @@
 import { z } from "@medusajs/framework/zod"
+import { passwordProblem } from "../lib/password-policy"
 
 const text = z.string().trim().min(1).max(255)
 export const registrationSchema = z.object({
   email: z.string().trim().pipe(z.email().max(254)).transform((value) => value.toLowerCase()),
-  password: z.string().min(1).max(1024).refine((value) => value.trim().length > 0),
+  password: z.string().refine((value) => passwordProblem(value) === null && value.trim().length > 0),
   first_name: text.max(100),
   last_name: text.max(100),
   phone: z.string().trim().max(32).optional(),
@@ -26,4 +27,21 @@ export const quickVariantSchema = z.object({
   barcode: text.optional(),
   prices: z.array(z.object({ amount: z.number().finite().nonnegative(), currency_code: z.string().regex(/^[a-z]{3}$/) }).strict()).min(1).max(50),
   manage_inventory: z.boolean().optional(),
+}).strict()
+
+// The new password's rule is checked by changePassword, which reports the reason.
+export const changePasswordSchema = z.object({
+  current_password: z.string().min(1).max(1024),
+  new_password: z.string().max(1024),
+}).strict()
+
+// Mirrors Medusa's own reservation body, but the order line is required: it is
+// the only kind of reservation a manager may create.
+export const allocationSchema = z.object({
+  line_item_id: z.string().min(1),
+  inventory_item_id: z.string().min(1),
+  location_id: z.string().min(1),
+  quantity: z.number(),
+  description: z.string().nullish(),
+  metadata: z.record(z.string(), z.unknown()).nullish(),
 }).strict()

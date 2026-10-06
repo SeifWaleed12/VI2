@@ -33,6 +33,9 @@ Flow for every task:
    branch and answers each note in the review file.
 6. When GPT has no open problems and `npm run check` passes, Seif merges
    `claude/work` into `full-stack` and the task moves to "Done".
+7. Any change to permissions, roles, auth or `medusa-config.ts` must also be
+   checked in the running app (start the backend, log in, call the affected
+   routes), not only in unit or integration tests.
 
 GPT review checklist (from `AGENTS.md`):
 - Requirement met, and nothing beyond it (no Phase-2 work, no unrelated refactor).
@@ -56,12 +59,23 @@ GPT review checklist (from `AGENTS.md`):
 | Code follows clean architecture and SOLID as written in `AGENTS.md` section 4.1. | 2026-10-06 |
 | One review per task, never batched. Claude does not start the next task until the current one is merged or Seif says otherwise. | 2026-10-06 |
 | Quick-variant merged with R3-1 and R3-2 accepted as known limitations; no further changes. | 2026-10-06 |
+| Managers may not change `manage_inventory` or `allow_backorder`. Stock quantities come from Odoo and are never edited in Medusa. | 2026-10-06 |
+| Passwords for staff and customers: at least 8 characters, nothing more. | 2026-10-06 |
+| Sign-in is blocked for 15 minutes after 5 attempts, per account (staff and customers). Wrong current passwords on "change password" count too. | 2026-10-06 |
+| Staff invites go out with the dashboard's "Copy invite link". The SendGrid email code stays but is off; no paid email provider for now. | 2026-10-06 |
+| Customers get "change password" and "forgot password" (by email). The reset email is only delivered once an email provider is configured. | 2026-10-06 |
+| Redis holds the cache and locks whenever `REDIS_URL` is set; production runs PostgreSQL and Redis as Coolify resources. | 2026-10-06 |
+| Managers may allocate stock to an order line ("Allocate items"), never more than the line still needs; they cannot reserve or release stock by hand. | 2026-10-06 |
+| New variants keep the stock settings the form sends for now; which products track stock is decided with the Odoo sync work. | 2026-10-06 |
+| Manager role redefined (replaces RD v1.1 section 2.2): full orders (incl. fulfil, refund, cancel, edit), products (incl. delete, publish, prices), brands, customers, promotions, price lists; inventory view only; in Settings only product types and tags. Store settings, staff, roles, API keys, regions, tax, shipping setup, workflows and future business pages (revenue) are admin only. Admin-only pages are hidden from managers in the dashboard. | 2026-10-06 |
 
 ## In review
 
 | Task | Author | Branch | Commits | Review file | Status |
 |---|---|---|---|---|---|
-| (none) | | | | | |
+| Admin lockout: RBAC module was never loaded, so every staff user got Forbidden | Claude | `claude/work` | 226d9f0, e3a4024, and the round-2 commit (`git log full-stack..claude/work`) | `docs/reviews/rbac-module.md` | Round 1: 3 P1s fixed. Round 2: RBAC-1/2/3 confirmed resolved; 1 new P1 (manager could switch off stock enforcement) fixed by Seif's decision to block `manage_inventory` and `allow_backorder` for managers. 9 live access tests pass; `npm run check` green (83 backend, 87 storefront). GPT round 3: RBAC-R2-1 resolved, no open problems; approved. Later manager rules (eaf4145 onward) are reviewed under the manager-role task. Ready to merge. |
+| Sign-in hardening (staff and customers): attempt limit, 8+ password rule, change password, forgot password, invite and reset emails, Redis config | Claude | `claude/work` (after the RBAC commits) | 6e96ac6, ccacb28 | `docs/reviews/sign-in.md` | GPT round 1: 1 P1 (GET sign-in bypassed the limit), fixed with HTTP regressions. GPT round 2: no findings, approved. Seif tested the admin Change password page in the browser: works. Ready to merge. Requested by Seif on 2026-10-06 while the RBAC review is open. 11 HTTP tests (30 total pass), 126 backend and 105 storefront unit tests; `npm run check` green. Live check passed (limits, short passwords, reset limit, storefront forgot/reset pages). Waiting for GPT review and Seif's browser test of the admin "Change password" page. |
+| Manager role: full shop access, admin-only settings hidden in the dashboard, permissions that survive restarts | Claude | `claude/work` (after 6e96ac6) | eaf4145, 8a31bad, babddff | `docs/reviews/manager-role.md` | GPT round 1: P1 (managers could reserve or release stock by hand) and P2 (inventory export refused) fixed; waiting for GPT round 2. Then, by Seif's decision, managers may allocate stock to order lines within what the line needs (see the review file). GPT round 2: round-1 fixes confirmed; new P1 (parallel allocations exceeded the line's need) fixed with a per-line lock and a concurrent HTTP test. GPT round 3: the lock ended when the client disconnected; allocation now runs as a workflow holding the lock until the reservation is written, with a disconnect HTTP test. GPT round 4: resolved, no open problems; approved. Residual: the allocation lock has the same 120 s ownerless-lease limit as quick-variant R3-2 (Seif to confirm acceptance). Ready to merge. Requested by Seif on 2026-10-06. Found and fixed: Medusa deletes permissions no code defines at every start (manager lost `brand:*` and could never get refunds); now defined in `src/policies/project-policies.ts`, and the HTTP tests simulate the restart. 33 HTTP tests and `npm run check` green; checked in the browser as a manager (orders, products, inventory, customers, promotions, price lists, brands load). Open: Settings opens on Store (Medusa's fixed start page). |
 
 ## Done
 

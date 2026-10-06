@@ -1,5 +1,7 @@
 # AGENTS.md — E-Commerce Platform
 
+> **Every session starts here:** read `docs/WORKBOARD.md` before doing anything else. It holds the current tasks, who owns them, the review flow, and the owner's decisions. See section 14.
+
 ## Mission
 
 Build a production-ready Egyptian health & wellness headless e-commerce platform using **Medusa v2 + Next.js**.
@@ -383,7 +385,10 @@ Several AI agents (Claude, GPT) work in this repository.
 
 1. Read `docs/WORKBOARD.md` before starting. Claim a task on it before editing files.
 2. One agent owns a task. Do not edit another agent's claimed task.
-3. Work on your own branch. Do not commit to `full-stack` or `main` directly.
+3. Work on your own branch in your own folder. Do not commit to `full-stack` or `main` directly.
+   - Claude (author): branch `claude/work`, folder `vi2`.
+   - GPT (reviewer): branch `gpt/work`, folder `vi2-gpt-review`. Review the changes between `full-stack` and `claude/work` and write findings to `docs/reviews/<task-name>.md`.
+   - Never edit files in the other agent's folder.
 4. A reviewing agent reports problems in a review note and does not edit the author's code.
 5. The owner merges. Nothing is merged without the owner's approval.
 6. Shared files (`package.json`, lockfile, `AGENTS.md` files, `docs/decisions/`) change only with the owner's approval.

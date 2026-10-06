@@ -24,3 +24,5 @@ build
 !.yarn/versions
 
 .medusa
+# Admin export files (orders, products, inventory) that Medusa writes here
+static/private-*-exports.csv

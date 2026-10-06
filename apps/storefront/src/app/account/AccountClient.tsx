@@ -22,6 +22,7 @@ import { useAuth } from "@/context/AuthContext";
 import { services } from "@/lib/medusa";
 import type { Order } from "@/types/order";
 
+import ChangePasswordSection from "./ChangePasswordSection";
 import styles from "./Account.module.css";
 
 function formatPrice(value: number) {
@@ -236,6 +237,8 @@ export default function AccountClient() {
           </div>
         </section>
       )}
+
+      {isAuthenticated && <ChangePasswordSection />}
 
       {/* ── Buy It Again ───────────────────────────────────────────── */}
       <section className={styles.reorder}>

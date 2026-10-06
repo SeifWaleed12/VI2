@@ -822,3 +822,27 @@
     font-size: 6.2px;
   }
 }
+
+/* One-column pages (forgot and reset password) that have no side panel. Kept
+   after the media queries so it wins at every width. */
+.shellSingle {
+  width:
+    min(
+      640px,
+      100%
+    );
+
+  grid-template-columns:
+    minmax(0, 1fr);
+}
+
+.forgotLink {
+  align-self: flex-end;
+
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
