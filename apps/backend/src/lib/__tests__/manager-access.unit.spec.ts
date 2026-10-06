@@ -69,6 +69,14 @@ it("treats exports as reading", () => {
   expect(managerAction("POST", "/admin/inventory-items/inv_1/export")).toBeNull()
 })
 
+it("lets a manager allocate stock only to an order line, never reserve by hand", () => {
+  expect(managerAction("POST", "/admin/reservations", { line_item_id: "ordli_1", inventory_item_id: "iitem_1", location_id: "sloc_1", quantity: 1 }))
+    .toEqual({ resource: "reservation_item", operation: "create" })
+  expect(managerAction("POST", "/admin/reservations", { inventory_item_id: "iitem_1", location_id: "sloc_1", quantity: 1 })).toBeNull()
+  expect(managerAction("POST", "/admin/reservations", { line_item_id: null, quantity: 1 })).toBeNull()
+  expect(managerAction("POST", "/admin/reservations/res_1", { line_item_id: "ordli_1", quantity: 9 })).toBeNull()
+})
+
 it("refuses inventory links in any product payload", () => {
   expect(managerAction("POST", "/admin/products/prod_1/variants", { title: "Kit", inventory_items: [{ inventory_item_id: "inv_1" }] })).toBeNull()
 })

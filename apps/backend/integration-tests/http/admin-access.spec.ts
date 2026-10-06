@@ -176,6 +176,36 @@ medusaIntegrationTestRunner({
         expect((await api.post("/admin/inventory-items/export", {}, manager)).status).toBe(202)
       })
 
+      it("lets a manager allocate stock to an order line, but never more than it needs", async () => {
+        const container = getContainer()
+        const { data: { stock_location: location } } = await api.post("/admin/stock-locations", { name: "Warehouse" }, admin)
+        const { data: { product } } = await api.post("/admin/products", { title: "Whey", status: "published", options: [{ title: "Size", values: ["1kg"] }], variants: [{ title: "1kg", options: { Size: "1kg" }, manage_inventory: true, prices: [{ amount: 100, currency_code: "egp" }] }] }, admin)
+        const variantId = product.variants[0].id
+        const { data: [link] } = await container.resolve(ContainerRegistrationKeys.QUERY).graph({ entity: "product_variant_inventory_item", fields: ["inventory_item_id"], filters: { variant_id: variantId } })
+        const inventoryItemId = (link as { inventory_item_id: string }).inventory_item_id
+        await api.post(`/admin/inventory-items/${inventoryItemId}/location-levels`, { location_id: location.id, stocked_quantity: 10 }, admin)
+        const { data: { inventory_item: otherItem } } = await api.post("/admin/inventory-items", { sku: "OTHER" }, admin)
+        await api.post(`/admin/inventory-items/${otherItem.id}/location-levels`, { location_id: location.id, stocked_quantity: 10 }, admin)
+        const { result: [region] } = await createRegionsWorkflow(container).run({ input: { regions: [{ name: "Egypt", currency_code: "egp", countries: ["eg"] }] } })
+        const { result: order } = await createOrderWorkflow(container).run({ input: { region_id: region.id, email: "buyer@test.dev", currency_code: "egp", items: [{ title: "Whey", variant_id: variantId, quantity: 2, unit_price: 100 }] } })
+        const lineItemId = order.items![0].id
+        const allocate = (body: Record<string, unknown>) => api.post("/admin/reservations", { location_id: location.id, ...body }, manager)
+
+        const first = await allocate({ line_item_id: lineItemId, inventory_item_id: inventoryItemId, quantity: 1 })
+        expect(first.status).toBe(200)
+        expect((await allocate({ line_item_id: lineItemId, inventory_item_id: inventoryItemId, quantity: 1 })).status).toBe(200)
+        const tooMany = await allocate({ line_item_id: lineItemId, inventory_item_id: inventoryItemId, quantity: 1 })
+        expect(tooMany.status).toBe(400)
+        expect(tooMany.data.message).toContain("At most 0 more")
+        expect((await allocate({ line_item_id: lineItemId, inventory_item_id: otherItem.id, quantity: 1 })).status).toBe(400)
+        expect((await allocate({ line_item_id: "ordli_does_not_exist", inventory_item_id: inventoryItemId, quantity: 1 })).status).toBe(400)
+        const levels = await container.resolve(Modules.INVENTORY).listInventoryLevels({ inventory_item_id: [inventoryItemId, otherItem.id] })
+        expect(Object.fromEntries(levels.map((level) => [level.inventory_item_id, level.reserved_quantity]))).toEqual({ [inventoryItemId]: 2, [otherItem.id]: 0 })
+
+        expect((await api.post(`/admin/orders/${order.id}/cancel`, {}, manager)).status).toBe(200)
+        expect((await allocate({ line_item_id: lineItemId, inventory_item_id: inventoryItemId, quantity: 1 })).status).toBe(400)
+      })
+
       it("removes permissions the role no longer grants when the setup runs again", async () => {
         const container = getContainer()
         const rbac = container.resolve(Modules.RBAC)

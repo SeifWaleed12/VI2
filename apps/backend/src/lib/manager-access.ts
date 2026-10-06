@@ -46,6 +46,11 @@ export function managerAction(method: string, path: string, body?: unknown): Sta
   // Medusa starts an export with POST, but an export only reads, so it is
   // allowed in view-only areas too (for example inventory).
   if (method === "POST" && segments.length === 2 && segments[1] === "export") return { resource: area.resource, operation: "read" }
+  // Holding stock for an order line ("Allocate items") is part of fulfilling an
+  // order; manager-request-checks.ts limits it to what the line needs.
+  if (method === "POST" && segments.length === 1 && segments[0] === "reservations" && isRecord(body) && typeof body.line_item_id === "string") {
+    return { resource: "reservation_item", operation: "create" }
+  }
   if (method !== "GET" && area.access === "read") return null
   // CSV imports cannot be checked field by field.
   if (segments.some((segment) => segment === "import" || segment === "imports")) return null

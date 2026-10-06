@@ -1,10 +1,10 @@
 import type { AuthenticatedMedusaRequest, MedusaResponse, MedusaNextFunction } from "@medusajs/framework/http"
 import { hasPermission } from "@medusajs/framework"
 import { ContainerRegistrationKeys, MedusaError } from "@medusajs/framework/utils"
-import { existingVariantStockSettings, managerAction, type StockSettingsChange } from "../lib/manager-access"
+import { managerAction } from "../lib/manager-access"
+import { checkManagerRequest } from "./manager-request-checks"
 
 type Middleware = (req: AuthenticatedMedusaRequest, res: MedusaResponse, next: MedusaNextFunction) => unknown
-type Scope = AuthenticatedMedusaRequest["scope"]
 
 export type StaffRole = "admin" | "manager"
 
@@ -20,23 +20,6 @@ export function unlessInviteAcceptance(middleware: Middleware): Middleware {
     req.method === "POST" && requestPath(req) === "/admin/invites/accept"
       ? next()
       : middleware(req, res, next)
-}
-
-// True when the request would change the stock settings of a variant that
-// already exists. Stock comes from Odoo, so only an administrator may do that.
-async function changesStockSettings(scope: Scope, changes: StockSettingsChange[]) {
-  const query = scope.resolve(ContainerRegistrationKeys.QUERY)
-  const { data } = await query.graph({
-    entity: "product_variant",
-    fields: ["id", "manage_inventory", "allow_backorder"],
-    filters: { id: [...new Set(changes.map((change) => change.variantId))] },
-  })
-  const stored = new Map((data as Record<string, unknown>[]).map((variant) => [variant.id, variant]))
-  // An unknown id is left to Medusa, which rejects the update itself.
-  return changes.some(({ variantId, settings }) => {
-    const variant = stored.get(variantId)
-    return !!variant && Object.entries(settings).some(([key, value]) => variant[key] !== value)
-  })
 }
 
 export async function adminAccess(req: AuthenticatedMedusaRequest, res: MedusaResponse, next: MedusaNextFunction) {
@@ -64,10 +47,7 @@ export async function adminAccess(req: AuthenticatedMedusaRequest, res: MedusaRe
   if (!action || !await hasPermission({ roles, actions: action, container: req.scope })) {
     throw new MedusaError(MedusaError.Types.FORBIDDEN, "This action requires an administrator")
   }
-  const stockChanges = req.method === "GET" ? [] : existingVariantStockSettings(path, req.body)
-  if (stockChanges.length && await changesStockSettings(req.scope, stockChanges)) {
-    throw new MedusaError(MedusaError.Types.FORBIDDEN, "Stock settings can only be changed by an administrator")
-  }
+  await checkManagerRequest(req.scope, req.method, path, req.body)
   res.locals.staffRole = "manager" satisfies StaffRole
   return next()
 }

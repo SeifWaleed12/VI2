@@ -97,6 +97,8 @@ export function managerPolicyGrants(): PolicyGrant[] {
     access === "full" ? FULL_OPERATIONS.map((operation) => ({ resource, operation })) : [{ resource, operation: "read" as const }])
   // Creating a product creates its (empty) inventory item; stock stays read-only.
   grants.push({ resource: "inventory_item", operation: "create" })
+  // Allocating stock to an order line, limited to what the line needs.
+  grants.push({ resource: "reservation_item", operation: "create" })
   // Medusa's price-list batch route checks "price:*" (defined in src/policies).
   grants.push({ resource: "price", operation: "*" })
   return grants

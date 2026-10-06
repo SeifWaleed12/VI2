@@ -61,3 +61,21 @@ Must fix: block standalone reservation writes for managers and allow inventory e
 ### Checks
 - HTTP integration: 37 passed (14 admin access, 13 sign-in, 10 quick-variant).
 - `npm run check`: 170 backend and 105 storefront tests pass; 0 type or lint errors (the 21 old storefront warnings are unchanged).
+
+### Follow-up after round 1: order allocation for managers (Seif's decision)
+Seif decided managers may allocate stock to orders, but only safely. Implemented after the round-1 fix:
+- `apps/backend/src/lib/manager-access.ts`: `POST /admin/reservations` with a `line_item_id` is the dashboard's "Allocate items" and is the only reservation write a manager may make. Update and delete stay refused. The role is granted `reservation_item:create` in addition to read.
+- `apps/backend/src/lib/order-allocation.ts`: a pure rule that refuses each of these:
+  - a non-positive quantity;
+  - an unknown order line;
+  - a cancelled order;
+  - a stock item not linked to the line's variant;
+  - more than (unfulfilled items × units per item) minus what is already reserved for that line and stock item.
+  It fails closed when a number cannot be read.
+- `apps/backend/src/api/manager-request-checks.ts`: loads those numbers through Query and the Inventory module. It also now holds the existing stock-settings check, which moved out of `admin-access.ts` unchanged. Quantities are read from the order item (`items.detail`) and converted with `MathBN`. A first version read the line's quantity directly, got nothing, and the fail-closed rule caught it in the HTTP test.
+- HTTP regression "lets a manager allocate stock to an order line, but never more than it needs":
+  - two allocations of 1 on a 2-item line succeed;
+  - a third is refused;
+  - another product's stock item, an unknown line and a cancelled order are refused;
+  - reserved stock stays exactly 2 and the other item stays 0.
+- Checks: HTTP integration 38 passed; `npm run check` 184 backend and 105 storefront tests, 0 type or lint errors.
