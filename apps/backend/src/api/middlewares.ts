@@ -7,9 +7,10 @@ import { managerLayoutView } from "./manager-layouts"
 import { requireStrongPassword } from "./password-policy"
 
 // Staff and customers sign in, reset and set passwords through the same
-// Medusa routes, so both get the same limits and password rule.
+// Medusa routes, so both get the same limits and password rule. Medusa signs in
+// through GET as well as POST on the same path, so both methods are limited.
 const emailPassRoutes = (["user", "customer"] as ActorType[]).flatMap((actor) => [
-  { matcher: `/auth/${actor}/emailpass`, method: "POST" as const, middlewares: [limitLoginAttempts(actor)] },
+  { matcher: `/auth/${actor}/emailpass`, method: ["GET", "POST"] as ("GET" | "POST")[], middlewares: [limitLoginAttempts(actor)] },
   { matcher: `/auth/${actor}/emailpass/reset-password`, method: "POST" as const, middlewares: [limitResetRequests(actor)] },
   { matcher: `/auth/${actor}/emailpass/register`, method: "POST" as const, middlewares: [requireStrongPassword] },
   { matcher: `/auth/${actor}/emailpass/update`, method: "POST" as const, middlewares: [requireStrongPassword] },

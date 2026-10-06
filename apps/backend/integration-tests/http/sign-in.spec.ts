@@ -82,6 +82,20 @@ medusaIntegrationTestRunner({
         expect((await signIn("user", "admin@test.dev", password)).status).toBe(200)
       })
 
+      // Medusa also signs in through GET with the same body; it must share the limit.
+      const signInWithGet = (actor: "user" | "customer", email: string, pass: string) =>
+        api.get(`/auth/${actor}/emailpass`, { data: { email, password: pass }, headers: { "content-type": "application/json" }, validateStatus: () => true })
+
+      it.each(["user", "customer"] as const)("counts %s sign-ins through GET and blocks them during a lockout", async (actor) => {
+        const email = actor === "user" ? "admin@test.dev" : "shopper@test.dev"
+        if (actor === "customer") await registerCustomer()
+        // Guesses through GET use up the same budget as POST.
+        for (let i = 0; i < 5; i++) expect((await signInWithGet(actor, email, "wrong-password")).status).toBe(401)
+        expect((await signIn(actor, email, password)).status).toBe(429)
+        // And during a lockout, the right password through GET is refused too.
+        expect((await signInWithGet(actor, email, password)).status).toBe(429)
+      })
+
       it("blocks a customer account after five attempts without affecting other accounts", async () => {
         await registerCustomer()
         await registerCustomer("other@test.dev")
