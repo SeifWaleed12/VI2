@@ -55,12 +55,13 @@ GPT review checklist (from `AGENTS.md`):
 | Claude writes all code, GPT reviews. Revisit once the process runs smoothly. | 2026-10-06 |
 | Code follows clean architecture and SOLID as written in `AGENTS.md` section 4.1. | 2026-10-06 |
 | One review per task, never batched. Claude does not start the next task until the current one is merged or Seif says otherwise. | 2026-10-06 |
+| Quick-variant merged with R3-1 and R3-2 accepted as known limitations; no further changes. | 2026-10-06 |
 
 ## In review
 
 | Task | Author | Branch | Commits | Review file | Status |
 |---|---|---|---|---|---|
-| Quick-variant partial failure: option or value is rolled back if the variant fails | Claude | `claude/work` | f403587, fead9e2, and the round-2 fix commit (`git log full-stack..claude/work`) | `docs/reviews/quick-variant.md` | Round 1: 2 majors, fixed. Round 2: 1 blocker (cleanup could delete values it did not create) and 1 minor, both fixed (snapshot ownership, guarded delete, per-product lock). 10 integration tests pass on local PostgreSQL; `npm run check` green (75 backend, 87 storefront). Waiting for GPT round 3. Open for Seif: the lock provider for production (Redis) is not configured yet. |
+| (none) | | | | | |
 
 ## Done
 
@@ -71,6 +72,7 @@ GPT review checklist (from `AGENTS.md`):
 | 3. Remove invented availability/social proof; brand/region owners | GPT, then Claude | cdfbea8, 8497eca | Brand comes from the linked Brand module; region must be a real EGP/EG Medusa region; ratings shown only when reviews exist (none do). |
 | 4. Validation, secrets, safe errors, admin authorization, timeouts | GPT, then Claude | cdfbea8, e2af23c, b42edaf | Catalog Manager now matches RD v1.1 section 2.2 (no pricing, stock, publishing). Staff invite acceptance unblocked. Guest buyers can register. |
 | 5. AGENTS.md: clean architecture, SOLID, MVP decisions, multi-agent rules | Claude | fe48d5c | Approved by Seif. |
+| 6. Quick-variant partial failure: option or value is rolled back if the variant fails | Claude, reviewed by GPT (3 rounds) | f403587, fead9e2, 149a95d | Review: `docs/reviews/quick-variant.md`. 10 PostgreSQL integration tests pass; `npm run check` green. Merged by Seif's decision with two known limitations recorded in the review file (R3-1 timing risk with a concurrent native admin write; R3-2 lock has no per-request owner and expires after 120 s). Production needs a shared lock provider (Redis) if more than one server runs. |
 
 ## Open: blocked, waiting on Seif
 
