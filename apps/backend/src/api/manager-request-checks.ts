@@ -1,4 +1,4 @@
-import type { AuthenticatedMedusaRequest } from "@medusajs/framework/http"
+import type { AuthenticatedMedusaRequest, MedusaNextFunction, MedusaResponse } from "@medusajs/framework/http"
 import { ContainerRegistrationKeys, MathBN, MedusaError, Modules } from "@medusajs/framework/utils"
 import { existingVariantStockSettings, type StockSettingsChange } from "../lib/manager-access"
 import { allocationProblem, type OrderLineStock } from "../lib/order-allocation"
@@ -61,19 +61,39 @@ function isAllocation(method: string, path: string) {
   return method === "POST" && path === "/admin/reservations"
 }
 
-// Throws when a manager's request must be refused.
-export async function checkManagerRequest(scope: Scope, method: string, path: string, body: unknown) {
-  if (method === "GET") return
-  const stockChanges = existingVariantStockSettings(path, body)
-  if (stockChanges.length && await changesStockSettings(scope, stockChanges)) {
-    throw new MedusaError(MedusaError.Types.FORBIDDEN, "Stock settings can only be changed by an administrator")
-  }
-  if (isAllocation(method, path)) {
-    const { line_item_id: lineItemId, inventory_item_id: inventoryItemId, quantity } = (body ?? {}) as Record<string, unknown>
+// Seconds: how long an allocation waits for another one on the same order
+// line, and how long a lock may live if a request never finishes.
+const ALLOCATION_WAIT_SECONDS = 10
+const ALLOCATION_LOCK_SECONDS = 60
+
+// Checking the remaining need and creating the reservation must happen as one
+// step per order line, or parallel requests all pass the check before any is
+// saved. The lock is held until Medusa has answered, so the next allocation
+// for the line sees this one's reservation.
+async function allocateWithinNeed(req: AuthenticatedMedusaRequest, res: MedusaResponse, next: MedusaNextFunction) {
+  const { line_item_id: lineItemId, inventory_item_id: inventoryItemId, quantity } = (req.body ?? {}) as Record<string, unknown>
+  const locking = req.scope.resolve(Modules.LOCKING)
+  await locking.execute(`order-line-allocation:${String(lineItemId)}`, async () => {
     const line = typeof lineItemId === "string" && typeof inventoryItemId === "string"
-      ? await orderLineStock(scope, lineItemId, inventoryItemId)
+      ? await orderLineStock(req.scope, lineItemId, inventoryItemId)
       : null
     const problem = allocationProblem(line, quantity)
     if (problem) throw new MedusaError(MedusaError.Types.NOT_ALLOWED, problem)
+    await new Promise<void>((resolve) => {
+      res.once("finish", resolve)
+      res.once("close", resolve)
+      next()
+    })
+  }, { timeout: ALLOCATION_WAIT_SECONDS, expire: ALLOCATION_LOCK_SECONDS })
+}
+
+// Runs the checks that need stored data, then passes the request on.
+export async function continueManagerRequest(req: AuthenticatedMedusaRequest, res: MedusaResponse, next: MedusaNextFunction, path: string) {
+  if (req.method === "GET") return next()
+  const stockChanges = existingVariantStockSettings(path, req.body)
+  if (stockChanges.length && await changesStockSettings(req.scope, stockChanges)) {
+    throw new MedusaError(MedusaError.Types.FORBIDDEN, "Stock settings can only be changed by an administrator")
   }
+  if (isAllocation(req.method, path)) return allocateWithinNeed(req, res, next)
+  return next()
 }

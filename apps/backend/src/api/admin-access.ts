@@ -2,7 +2,7 @@ import type { AuthenticatedMedusaRequest, MedusaResponse, MedusaNextFunction } f
 import { hasPermission } from "@medusajs/framework"
 import { ContainerRegistrationKeys, MedusaError } from "@medusajs/framework/utils"
 import { managerAction } from "../lib/manager-access"
-import { checkManagerRequest } from "./manager-request-checks"
+import { continueManagerRequest } from "./manager-request-checks"
 
 type Middleware = (req: AuthenticatedMedusaRequest, res: MedusaResponse, next: MedusaNextFunction) => unknown
 
@@ -47,7 +47,6 @@ export async function adminAccess(req: AuthenticatedMedusaRequest, res: MedusaRe
   if (!action || !await hasPermission({ roles, actions: action, container: req.scope })) {
     throw new MedusaError(MedusaError.Types.FORBIDDEN, "This action requires an administrator")
   }
-  await checkManagerRequest(req.scope, req.method, path, req.body)
   res.locals.staffRole = "manager" satisfies StaffRole
-  return next()
+  return continueManagerRequest(req, res, next, path)
 }

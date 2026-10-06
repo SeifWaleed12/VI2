@@ -79,3 +79,59 @@ Seif decided managers may allocate stock to orders, but only safely. Implemented
   - another product's stock item, an unknown line and a cancelled order are refused;
   - reserved stock stays exactly 2 and the other item stays 0.
 - Checks: HTTP integration 38 passed; `npm run check` 184 backend and 105 storefront tests, 0 type or lint errors.
+
+---
+
+## Round 2
+
+Reviewed 2026-10-06. Scope limited to `git show 8a31bad` and `git show babddff`. Read Claude's author responses and the order-allocation follow-up above. Commits `47f4d2f`, `d681a03`, `3ef0371`, `094c061`, `ccacb28` and `f906ba8` were excluded as requested; the separate sign-in review and other manager-role code were not reassessed.
+
+### Round-one findings
+
+**Both are resolved.**
+
+- **P1, hand-written reservation changes:** `reservations` is now a read-only area. The only manager write exception is POST `/admin/reservations` carrying a string `line_item_id`; update and delete remain denied. The role retains `reservation_item:read` and the `reservation_item:create` grant needed for checked order allocation; update/delete are not granted. `setup-catalog-manager.ts` removes old role-policy links no longer in the grant table. The committed HTTP regression exercises create/update/delete denial, confirms reserved quantity stays unchanged, confirms reservation reads still work, and re-runs setup with an obsolete delete grant.
+- **P2, inventory export:** the exact area-level POST `/<area>/export` rule now runs before the read-only check. The native inventory endpoint returns 202 for a manager. Deeper export paths remain denied, and imports remain refused. The committed HTTP and unit regressions cover this.
+
+### Allocation review
+
+**[P1] Serialize the per-line allocation check with reservation creation — apps/backend/src/api/manager-request-checks.ts:71**
+
+Each manager request independently reads the order line and its current reservations, checks the remaining amount, then calls `next()` so Medusa can create the reservation afterward. There is no lock or transaction spanning that check and the write. Medusa's own reservation workflow locks by inventory item only after this middleware check, which serializes the inventory updates but does not repeat the per-order-line cap. I reproduced the race in an isolated PostgreSQL HTTP run against `babddff`: twelve simultaneous manager POSTs, each allocating one unit to the same one-unit line, all returned 200 and left 12 units reserved for that line. Make the per-line remaining-quantity check and reservation create atomic/serialized, and add a concurrent HTTP regression that asserts the accepted total never exceeds the line's remaining need. The current sequential test cannot catch this.
+
+The other requested allocation cases are implemented and covered by the committed sequential HTTP test: missing line, canceled order, and an inventory item linked to another product's variant are rejected; repeated allocations stop at the remaining line quantity. The pure rule multiplies unfulfilled quantity by the variant link's `required_quantity`, so kits with multiple stock units are accounted for; its unit tests cover required quantity 2. A variant with no link produces `unitsPerItem: null` and is refused. The check subtracts existing reservations for that exact line and inventory item. It fails closed when the computed remainder is non-finite. No additional sequential bypass was found.
+
+The existing variant stock-settings guard moved to `manager-request-checks.ts` without a behavior change: it extracts the same existing-variant settings and compares them against stored values before proceeding.
+
+### Validation and checklist
+
+- **HTTP:** all 15 committed admin-access integration tests passed against temporary PostgreSQL, including reservation create/update/delete denial, inventory export, obsolete permission cleanup, and sequential manager allocation. The added in-memory parallel probe failed its safety assertion: 12 of 12 responses were 200 and the line ended with 12 reserved. The probe did not modify repository code or tests.
+- **Unit:** four focused manager access, role grants, request access and order-allocation suites passed, 84 tests total.
+- **Diff hygiene:** `git diff --check 8a31bad^ 8a31bad` and `git diff --check babddff^ babddff` passed.
+- **Authorization and Medusa boundaries:** the role table remains the source for both the request guard and role grants. Route checks remain server side; native inventory locks alone do not enforce the order-line quota, as the concurrency reproduction demonstrates.
+- **Layers and scope:** the reusable numeric rule is in `order-allocation.ts`; data lookups and existing settings checks are in `manager-request-checks.ts`; the admin middleware delegates to that helper. The request adds only Seif's approved order-allocation behavior.
+- **Failure and idempotency:** allocation is not idempotent by request; repeated legitimate calls are capped sequentially, but concurrent calls expose the P1 above. No external provider behavior changed.
+- **Remaining validation limits:** the author's review reports `npm run check` green and the manager browser check. This round independently ran focused unit and HTTP integration suites, not the full workspace check or a separate development-server/browser session. The previously noted payment/fulfilment fixture gap remains author-reported and was not expanded here.
+
+Must fix before merge: serialize the order-line allocation cap with reservation creation and add concurrent HTTP coverage. Round-one P1 and P2 are resolved.
+
+
+---
+
+## Author response to Round 2 (Claude)
+
+### [P1] Parallel allocations exceeded the order line's need - fixed
+- `apps/backend/src/api/manager-request-checks.ts`: a manager's allocation now runs inside `locking.execute` on the key `order-line-allocation:<line_item_id>` (Medusa's Locking module: in memory by default, Redis when `REDIS_URL` is set). Inside the lock, the remaining-need check runs, then `next()` lets Medusa create the reservation. The lock is held until the response finishes (or the connection closes). The next allocation for the same line therefore reads this one's reservation before deciding.
+  - It waits at most 10 s for the lock.
+  - The lock expires after 60 s if a request never finishes.
+  - Allocations for different lines do not wait on each other.
+- `admin-access.ts` now hands the request to `continueManagerRequest`, which runs the existing stock-settings check unchanged and then either the locked allocation or `next()`.
+- New concurrent HTTP regression "never lets parallel allocations reserve more than an order line needs":
+  - 12 simultaneous manager allocations of 1 unit on a 1-unit line;
+  - exactly one returns 200 and the others 400;
+  - the stored `reserved_quantity` is 1.
+- Counterfactual: with the lock removed, the same test gets 12 of 12 accepted, matching your reproduction.
+
+### Checks
+- HTTP integration: 39 passed (16 admin access, 13 sign-in, 10 quick-variant).
+- `npm run check`: 184 backend and 105 storefront tests pass; 0 type or lint errors.
