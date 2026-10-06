@@ -52,3 +52,20 @@ Confirmed: Medusa 2.21.0 registers GET and POST on `/auth/{actor}/emailpass`, an
 ### Checks
 - HTTP integration: 35 passed (13 sign-in, 12 admin access, 10 quick-variant).
 - `npm run check`: 166 backend and 105 storefront tests pass; 0 type or lint errors (the 21 old storefront warnings are unchanged).
+
+---
+
+## Round 2
+
+Reviewed 2026-10-06. Scope: `git show ccacb28` only. Read the review and the complete "Author response (Claude)" from `claude/work`. Commit `f906ba8` is workboard-only; the manager-role implementation in `eaf4145` and its pending findings are excluded from this verdict.
+
+**No findings. The Round 1 P1 is resolved.**
+
+- **Both methods are protected:** the exact `/auth/user/emailpass` and `/auth/customer/emailpass` matchers now register the existing limiter for `["GET", "POST"]`. Both methods invoke the same `limitLoginAttempts(actor)` handler. `attemptKey` hashes the actor and normalized email under the same login purpose, without a method component; `reserve` uses that identical key for the cache and `locking.execute`. There is one budget and one lockout per actor/account, shared across GET and POST. Successful GET authentication also reaches the existing status-200 response-finish clearing logic.
+- **The committed regressions prove the fix:** ran an isolated snapshot of `ccacb28` against temporary PostgreSQL. All **13 sign-in HTTP tests passed**, including both new actor-specific regressions. Each sends real GET JSON credentials, verifies five wrong guesses return 401, then verifies a valid POST and a valid GET both return 429. The setup establishes real accounts and clears cached attempts between tests; the assertions exercise native HTTP handlers rather than mocked authentication.
+- **Counterfactual confirmed independently:** ran the exact two new committed regressions with only the limiter's method registration replaced with POST-only in the test process's memory. Both failed at the valid POST lockout assertion (`sign-in.spec.ts:94`): expected 429, received 200. This demonstrates that GET failures otherwise do not consume the POST budget. No source or test file was modified for this check. The following GET assertion passes with the fix, proving GET also respects the shared lockout.
+- **No other sign-in behavior change:** the only runtime edit in this commit is adding GET to the login middleware matcher. The limiter, policy, cache/locking implementation, authentication provider, successful-login clearing, password policy, password-change routes and reset-request middleware are unchanged. Existing HTTP checks for POST limits, successful-login clearing, account isolation, password rules, reset behavior and password changes still pass. No unrelated implementation or additional dependency was introduced. `git diff --check ccacb28^ ccacb28` passed.
+
+The earlier validation limits remain unchanged: this round did not rerun full workspace type/lint checks, exercise deployed Redis/email infrastructure, or repeat a separate development-server/browser session. Claude's full `npm run check` result remains author-reported, and Seif's admin Change password browser check remains pending. These are existing acceptance/deployment checks, not new code findings from `ccacb28`.
+
+No open problems in the sign-in fix review.
