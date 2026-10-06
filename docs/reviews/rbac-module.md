@@ -348,3 +348,77 @@ Seif decided (2026-10-06) that managers must not change the stock switches. Cont
 - Live HTTP tests: 9 access tests and 10 quick-variant tests pass.
 - `npm run check`: 83 backend and 87 storefront tests pass, 0 type or lint errors.
 - The draft-creation policies needed for RBAC-1 are unchanged.
+
+---
+
+## Round 3
+
+Reviewed by GPT on 2026-10-06. Scope: **`5f9448a` only**
+(`5f9448a2ac818c1200d3bdfdb4c6653b29bfd3d8`), against its parent.
+The author response to Round 2 above was read and preserved. This verdict uses
+that commit's catalog-manager contract; later sign-in and manager-role changes
+are excluded. No repository application code or tests were edited.
+
+### Verdict
+
+**RBAC-R2-1 is resolved. No new open finding in this fix.**
+
+`STOCK_AND_PRICE_FIELDS` now includes both `manage_inventory` and
+`allow_backorder`. The existing recursive inspection rejects either key in
+objects or arrays, at every payload depth, before allowing a manager catalog
+write. It applies to both creation and update: direct variant updates, variants
+nested in a product update, product creation with nested variants, and variant
+creation all use the same check. The rejection depends on key presence, not its
+value, so neither false/true values nor an unchanged value bypass it. Omission
+of the fields keeps Medusa's native defaults (managed inventory, no backorder).
+The necessary native draft-creation grants remain unchanged.
+
+The committed unit cases exercise each direct stock flag, a nested variant
+update, and a product creation containing `manage_inventory: false`. Inspection
+of the same recursive set membership confirms that `allow_backorder` is blocked
+on creation too. The rule is intentionally broader than comparing stored
+values; the later stored-value comparison in `eaf4145` belongs to the separate
+manager-role review.
+
+### What the HTTP regression proves
+
+The new stock test creates a published product as Super Admin with a real
+variant whose flags are `manage_inventory: true` and `allow_backorder: false`.
+A real manager login then receives **403** for each direct flag update and a
+nested product update containing `allow_backorder: true`. Retrieving the variant
+through the native product service confirms both stored flags are unchanged.
+Positive manager draft creation and content editing in the same suite rule out
+blanket denial or an unusable manager session as the reason it passes.
+
+Independently removing only the two stock-flag entries from the restricted set
+in a disposable, in-memory test run makes the unchanged authored regression
+fail on its first prohibited update: **expected 403, received 200**. This
+reproduces the original bug and substantiates Claude's counterfactual claim.
+The committed HTTP regression proves direct and nested updates; it does **not**
+contain a creation case. Creation coverage comes from the guard inspection and
+unit case above. An additional review-only creation probe was not counted as
+evidence: its admin positive control returned 400 because its variant fixture
+omitted required prices. That fixture failure does not invalidate the nine
+committed HTTP tests, which all passed.
+
+The two test-precision changes are also correct: publishing uses an
+administrator-created draft and checks its persisted status; content editing
+re-reads and verifies the saved description. No other runtime behavior changes
+were found in this commit.
+
+### Validation and scope limits
+
+- Archived exact `5f9448a` source with installed Medusa **2.21.0** and isolated
+  PostgreSQL databases managed by the native integration runner.
+- **28 admin-access unit tests passed; all 9 committed HTTP tests passed.**
+  The extra creation fixture described above failed separately, so the expanded
+  review-only suite was not wholly green.
+- Counterfactual stock regression: **1 failed, 8 skipped**, for the expected
+  prohibited update returning 200 without the fix.
+- `git diff --check 5f9448a^ 5f9448a` passed. Full workspace checks, browser
+  dashboard interaction, and production deployment were not rerun.
+- The historical disappearance of brand permissions during startup is resolved
+  elsewhere in **`eaf4145`**, through `src/policies/project-policies.ts`, and is
+  covered by the manager-role review. It is not an open finding in this round.
+
+**No open problems in the reviewed RBAC fix.**
