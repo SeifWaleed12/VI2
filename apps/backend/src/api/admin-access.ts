@@ -7,11 +7,15 @@ import { ContainerRegistrationKeys, MedusaError } from "@medusajs/framework/util
 // payloads can carry prices, inventory links, and status at any depth.
 // A new product may only be created as a draft. On an existing product any
 // status change is a publish or unpublish, so status is never allowed there.
+// Inventory tracking and backorders decide whether checkout enforces stock, so
+// they count as stock operations even though they carry no quantity.
+const STOCK_AND_PRICE_FIELDS = new Set(["prices", "inventory_items", "manage_inventory", "allow_backorder"])
+
 function touchesRestrictedProductFields(body: unknown, isCreate: boolean): boolean {
   if (Array.isArray(body)) return body.some((item) => touchesRestrictedProductFields(item, isCreate))
   if (!body || typeof body !== "object") return false
   return Object.entries(body).some(([key, value]) =>
-    key === "prices" || key === "inventory_items" ||
+    STOCK_AND_PRICE_FIELDS.has(key) ||
     (key === "status" && !(isCreate && value === "draft")) ||
     touchesRestrictedProductFields(value, isCreate))
 }

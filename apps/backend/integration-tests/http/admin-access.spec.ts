@@ -91,7 +91,9 @@ medusaIntegrationTestRunner({
         const product = await publishedProduct()
         const response = await api.post(`/admin/products/${product.id}`, { description: "New copy" }, manager)
         expect(response.status).toBe(200)
-        expect(response.data.product.status).toBe("published")
+        const { data } = await api.get(`/admin/products/${product.id}`, admin)
+        expect(data.product.description).toBe("New copy")
+        expect(data.product.status).toBe("published")
       })
 
       it("stops a catalog manager from unpublishing a live product", async () => {
@@ -102,9 +104,25 @@ medusaIntegrationTestRunner({
       })
 
       it("stops a catalog manager from publishing a draft", async () => {
-        const { data: created } = await api.post("/admin/products", { title: "Draft", status: "draft", options: [{ title: "Size", values: ["Single"] }] }, manager)
+        // The draft is created by the admin so this test only depends on the publishing rule.
+        const { data: created } = await api.post("/admin/products", { title: "Draft", status: "draft", options: [{ title: "Size", values: ["Single"] }] }, admin)
+        expect(created.product.status).toBe("draft")
         expect((await api.post(`/admin/products/${created.product.id}`, { status: "published" }, manager)).status).toBe(403)
+        const { data } = await api.get(`/admin/products/${created.product.id}`, admin)
+        expect(data.product.status).toBe("draft")
         expect((await api.post("/admin/products", { title: "Live", status: "published", options: [{ title: "Size", values: ["Single"] }] }, manager)).status).toBe(403)
+      })
+
+      it("stops a catalog manager from switching off stock enforcement on a live variant", async () => {
+        const { data } = await api.post("/admin/products", { title: "Stocked", status: "published", options: [{ title: "Size", values: ["Single"] }], variants: [{ title: "Single", options: { Size: "Single" }, manage_inventory: true, allow_backorder: false, prices: [{ amount: 100, currency_code: "egp" }] }] }, admin)
+        const product = data.product
+        const variant = product.variants[0]
+        expect((await api.post(`/admin/products/${product.id}/variants/${variant.id}`, { manage_inventory: false }, manager)).status).toBe(403)
+        expect((await api.post(`/admin/products/${product.id}/variants/${variant.id}`, { allow_backorder: true }, manager)).status).toBe(403)
+        expect((await api.post(`/admin/products/${product.id}`, { variants: [{ id: variant.id, allow_backorder: true }] }, manager)).status).toBe(403)
+        const stored = await getContainer().resolve(Modules.PRODUCT).retrieveProductVariant(variant.id)
+        expect(stored.manage_inventory).toBe(true)
+        expect(stored.allow_backorder).toBe(false)
       })
 
       it("stops a catalog manager from setting prices or reaching non-catalog areas", async () => {

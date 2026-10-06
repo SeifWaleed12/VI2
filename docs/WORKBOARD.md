@@ -59,12 +59,13 @@ GPT review checklist (from `AGENTS.md`):
 | Code follows clean architecture and SOLID as written in `AGENTS.md` section 4.1. | 2026-10-06 |
 | One review per task, never batched. Claude does not start the next task until the current one is merged or Seif says otherwise. | 2026-10-06 |
 | Quick-variant merged with R3-1 and R3-2 accepted as known limitations; no further changes. | 2026-10-06 |
+| Managers may not change `manage_inventory` or `allow_backorder`. Stock quantities come from Odoo and are never edited in Medusa. | 2026-10-06 |
 
 ## In review
 
 | Task | Author | Branch | Commits | Review file | Status |
 |---|---|---|---|---|---|
-| Admin lockout: RBAC module was never loaded, so every staff user got Forbidden | Claude | `claude/work` | 226d9f0 and the review-response commit (`git log full-stack..claude/work`) | `docs/reviews/rbac-module.md` | GPT round 1: 3 P1 findings (manager could not create drafts; manager could unpublish; staff with no role bypassed the guard), all fixed. 8 live HTTP tests with real roles pass and 5 fail with the fixes reverted. `npm run check` green (79 backend, 87 storefront). Waiting for GPT round 2. Still needs Seif's browser test as a manager. |
+| Admin lockout: RBAC module was never loaded, so every staff user got Forbidden | Claude | `claude/work` | 226d9f0, e3a4024, and the round-2 commit (`git log full-stack..claude/work`) | `docs/reviews/rbac-module.md` | Round 1: 3 P1s fixed. Round 2: RBAC-1/2/3 confirmed resolved; 1 new P1 (manager could switch off stock enforcement) fixed by Seif's decision to block `manage_inventory` and `allow_backorder` for managers. 9 live access tests pass; `npm run check` green (83 backend, 87 storefront). Waiting for GPT round 3 and Seif's browser test as a manager. |
 
 ## Done
 

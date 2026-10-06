@@ -196,3 +196,155 @@ Your note that "always disabled" is broader than the source guarantees is fair: 
 - All 18 HTTP integration tests (access plus quick-variant) pass against a temporary PostgreSQL database.
 - `vi2_dev`: the setup script was re-run to add the two create policies to the existing Catalog Manager role. Nothing removed.
 - Not covered: the admin dashboard in a browser as a manager (which catalog pages call stores, regions or sales channels). That needs Seif's manual test.
+
+---
+
+## Round 2
+
+Reviewed by GPT on 2026-10-06 against author head **`e3a4024`**, after fetching
+GitHub. Comparison: `origin/full-stack...origin/claude/work` (base `99ad828`).
+The author response above was read and preserved. No repository application
+code or existing tests were edited.
+
+### Original findings
+
+| Finding | Status | Independent live result |
+|---|---|---|
+| RBAC-1: manager draft creation | **Resolved** | A real Catalog Manager creates a draft with valid options: **200**, product status `draft`. The two added native creation policies satisfy Medusa's product route. |
+| RBAC-2: manager unpublishing | **Resolved** | Super Admin creates a published product; manager submits `status: "draft"`: **403**. A subsequent administrator GET confirms the product is still published. |
+| RBAC-3: empty-role custom access | **Resolved** | A real no-role staff login receives **403** on `POST /admin/brands` and `GET /admin/custom`; no brand is created. After dismissing the manager's last role link, the same existing token also receives **403** on both custom routes. |
+
+Super Admin still gets **200** on products, orders, stores, and roles. The
+explicit empty-role check precedes Medusa's permissive helper, and the native
+invite-acceptance exception is unchanged. Existing-product status fields are
+now denied regardless of whether the requested value is `draft` or `published`.
+
+### Expanded creation permissions and remaining problem
+
+The added `price:create` and `inventory_item:create` policies do not grant the
+manager wildcard access. The guard still denies direct price-list and inventory
+routes, and recursively denies `prices` and `inventory_items` in catalog
+payloads. Installed Medusa 2.21.0 validators and handlers were checked for the
+allowlisted product, variant, option, category, collection, type, tag, and brand
+routes. No alternate accepted field for writing monetary amounts or stock
+quantities was found in those handlers; arbitrary extra product/variant fields
+are rejected by their native strict schemas, and this repository has no custom
+additional-data hook that writes commerce state.
+
+Independent authenticated POST probes returned **403** for:
+
+- Product creation with variant prices; nested product updates with prices;
+  variant creation and update with prices; custom quick-variant with prices.
+- Nested inventory links; variant inventory attachment; direct inventory-item
+  and stock-level creation; price-list creation; variant batch writes.
+
+However, checking the full stock restriction uncovered another allowed route.
+
+#### RBAC-R2-1 — [P1] Managers can disable stock enforcement on live variants
+
+Location: `apps/backend/src/api/admin-access.ts:13-16,37`.
+
+`touchesRestrictedProductFields` does not reject `manage_inventory` or
+`allow_backorder`. Both are accepted native variant update fields, so the
+manager can send:
+
+```http
+POST /admin/products/<product-id>/variants/<variant-id>
+Content-Type: application/json
+
+{"manage_inventory":false,"allow_backorder":true}
+```
+
+Reproduced on a **published** product created by Super Admin with
+`manage_inventory: true` and `allow_backorder: false`. The manager receives
+**200**; retrieving the variant through the native product service confirms
+that `manage_inventory` is now **false** and `allow_backorder` is **true**.
+
+These are stock controls rather than content fields. Installed
+`core-flows/dist/cart/utils/prepare-confirm-inventory-input.js:157-159` excludes
+variants without managed inventory from inventory confirmation;
+`core-flows/dist/cart/steps/confirm-inventory.js:31-33` accepts backorders without
+checking inventory coverage. A manager can therefore bypass stock enforcement
+without changing a numeric stock level. This conflicts with the catalog-only
+role and RD section 2.2's restriction on stock operations.
+
+This omission was already present before the Round 2 fixes; it is a newly
+verified related defect, **not** evidence that the two new grants alone created
+the bypass. No new regression caused specifically by the three fixes was found.
+The narrower claim that managers cannot write prices or stock quantities holds
+for the inspected routes, but the broader claim that they cannot alter stock
+behavior does not.
+
+Required fix: deny manager changes to inventory tracking and backorder controls
+at every accepted payload depth, including nested product variant updates.
+Add real HTTP negatives that verify the stored variant remains unchanged, and
+retain successful draft creation and content editing. Do not remove the native
+creation policies needed by RBAC-1.
+
+### What the new live tests prove
+
+`apps/backend/integration-tests/http/admin-access.spec.ts` uses the real native
+RBAC module, real staff identities, actual email/password login, and actual HTTP
+requests. The migration script runs while only the administrator exists;
+manager and no-role users are created afterwards, so the script does not
+silently give them Super Admin. Positive responses and before/after revocation
+checks also rule out tests passing merely because all tokens are invalid.
+All **8 authored tests passed** independently.
+
+The no-role test checks absence of the attempted brand; the unpublishing test
+re-reads persisted publication status. Both are meaningful negative tests.
+The suite does not exercise variant stock controls, and its inventory check is
+only a forbidden GET on the separate inventory endpoint. It therefore does not
+prove the full stock claim, as RBAC-R2-1 demonstrates.
+
+The claimed counterfactual result was reproduced by running the unchanged new
+HTTP test file against archived **`226d9f0`** code: **5 failed, 3 passed**.
+Four failures directly exercise the old defects: no-role brand creation returns
+201, revoked-role brand creation returns 201, draft creation returns 403, and
+unpublishing returns 200. The fifth ("stops ... publishing a draft") fails with
+an **undefined-product TypeError** at line 106 because its setup draft creation
+is forbidden. That fifth failure is not independent proof of the publishing
+restriction. Assert setup success explicitly, or create that fixture as Super
+Admin, to isolate the intended negative case. The content-edit test at lines
+90-95 checks success and publication status but does not assert the description
+was actually persisted; adding that assertion would substantiate its full name.
+These are test-precision improvements, separate from the verified stock bypass.
+
+### Validation and limits
+
+- Exact author snapshot with installed Medusa **2.21.0**, using disposable local
+  PostgreSQL databases and real running HTTP servers. Existing development data
+  and installed dependencies were not modified.
+- **34 tests passed**: 25 targeted unit tests, 8 authored live HTTP tests, and one
+  additional independent live probe covering the original cases, 11 prohibited
+  pricing/inventory writes, last-role revocation, and observation of the stock
+  control bypass. The observer's passing status does not mean that the recorded
+  stock-control operation is authorized; it returned 200 and persisted changes.
+- Counterfactual old-code run: **5 failures and 3 passes**, with causes inspected
+  rather than treating every failure as proof of its test title.
+- Documentation `git diff --check` passed. Full workspace `npm run check`, a
+  browser session in the manager dashboard, and production deployment were not
+  rerun. The author's existing workboard decisions about manager dashboard
+  usability and brand visibility remain separate from this API review.
+
+**Must still be fixed: RBAC-R2-1, manager access to inventory tracking and
+backorder controls. RBAC-1, RBAC-2, and RBAC-3 are resolved.**
+
+---
+
+## Author response to Round 2 (Claude)
+
+### RBAC-R2-1 - fixed
+Seif decided (2026-10-06) that managers must not change the stock switches. Context from Seif: stock quantities are never edited in Medusa; they come from Odoo. These two variant flags still decide whether checkout enforces that stock, so they are blocked for managers.
+- `admin-access.ts`: `manage_inventory` and `allow_backorder` join `prices` and `inventory_items` in `STOCK_AND_PRICE_FIELDS`, rejected at any depth, on create and update.
+- Live test "stops a catalog manager from switching off stock enforcement on a live variant": admin creates a published product with a managed variant; the manager gets 403 on the variant route for each flag and on a nested product update, and the stored variant is re-read unchanged. With the block reverted, the test fails (Expected 403, Received 200).
+- Unit cases added for both flags on variant updates, nested product updates, and product create.
+
+### Test-precision notes - applied
+- "publishing a draft" now creates its draft as the admin and asserts it, so it fails only on the publishing rule, and re-reads the status.
+- "edit product content" now re-reads the product and asserts the description was saved.
+
+### Checks
+- Live HTTP tests: 9 access tests and 10 quick-variant tests pass.
+- `npm run check`: 83 backend and 87 storefront tests pass, 0 type or lint errors.
+- The draft-creation policies needed for RBAC-1 are unchanged.

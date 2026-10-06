@@ -59,6 +59,10 @@ it.each([
   ["POST", "/admin/products/prod_1/quick-variant", { option_title: "Size", option_value: "1kg", prices: [{ amount: 1, currency_code: "egp" }] }],
   ["POST", "/admin/products/prod_1", { status: "draft" }],
   ["POST", "/admin/products/prod_1", { title: "Whey", status: "draft" }],
+  ["POST", "/admin/products/prod_1/variants/v1", { manage_inventory: false }],
+  ["POST", "/admin/products/prod_1/variants/v1", { allow_backorder: true }],
+  ["POST", "/admin/products/prod_1", { variants: [{ id: "v1", allow_backorder: true }] }],
+  ["POST", "/admin/products", { title: "Whey", status: "draft", variants: [{ title: "1kg", manage_inventory: false }] }],
 ])("denies catalog managers pricing, stock, and publishing changes: %s %s %j", (method, path, body) => {
   expect(managerAction(method, path, body)).toBeNull()
 })
