@@ -71,3 +71,10 @@ it("allows catalog managers to create drafts and edit content", () => {
   expect(managerAction("POST", "/admin/products/prod_1", { description: "New copy", thumbnail: "https://x/y.png" })).toEqual({ resource: "product", operation: "update" })
   expect(managerAction("POST", "/admin/brands/brand_1", { status: "inactive" })?.operation).toBe("update")
 })
+
+it("lets a manager change only their own password", () => {
+  expect(managerAction("POST", "/admin/users/me/password")).toEqual({ resource: "product", operation: "read" })
+  expect(managerAction("GET", "/admin/users/me/password")).toBeNull()
+  expect(managerAction("POST", "/admin/users/user_1/reset-password")).toBeNull()
+  expect(managerAction("POST", "/admin/users/me")).toBeNull()
+})

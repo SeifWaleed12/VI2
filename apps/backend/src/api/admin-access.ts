@@ -27,6 +27,8 @@ export function managerAction(method: string, path: string, body?: unknown) {
   if (body && typeof body === "object" && Object.entries(body).some(([key, value]) =>
     (key === "delete" || key === "remove") && Array.isArray(value) && value.length > 0)) return null
   if (method === "GET" && (path === "/admin/users/me" || path === "/admin/rbac/me/permissions")) return { resource: "product", operation: "read" }
+  // Only ever changes the signed-in user's own password.
+  if (method === "POST" && path === "/admin/users/me/password") return { resource: "product", operation: "read" }
   const match = path.match(/^\/admin\/(products|product-variants|product-categories|product-collections|product-types|product-tags|brands)(?:\/[^/]+)?(?:\/(variants|options)(?:\/[^/]+)?|\/quick-variant)?$/)
   if (!match || !["GET", "POST", "PUT"].includes(method)) return null
   const resources: Record<string, string> = {

@@ -60,12 +60,18 @@ GPT review checklist (from `AGENTS.md`):
 | One review per task, never batched. Claude does not start the next task until the current one is merged or Seif says otherwise. | 2026-10-06 |
 | Quick-variant merged with R3-1 and R3-2 accepted as known limitations; no further changes. | 2026-10-06 |
 | Managers may not change `manage_inventory` or `allow_backorder`. Stock quantities come from Odoo and are never edited in Medusa. | 2026-10-06 |
+| Passwords for staff and customers: at least 8 characters, nothing more. | 2026-10-06 |
+| Sign-in is blocked for 15 minutes after 5 attempts, per account (staff and customers). Wrong current passwords on "change password" count too. | 2026-10-06 |
+| Staff invites go out with the dashboard's "Copy invite link". The SendGrid email code stays but is off; no paid email provider for now. | 2026-10-06 |
+| Customers get "change password" and "forgot password" (by email). The reset email is only delivered once an email provider is configured. | 2026-10-06 |
+| Redis holds the cache and locks whenever `REDIS_URL` is set; production runs PostgreSQL and Redis as Coolify resources. | 2026-10-06 |
 
 ## In review
 
 | Task | Author | Branch | Commits | Review file | Status |
 |---|---|---|---|---|---|
 | Admin lockout: RBAC module was never loaded, so every staff user got Forbidden | Claude | `claude/work` | 226d9f0, e3a4024, and the round-2 commit (`git log full-stack..claude/work`) | `docs/reviews/rbac-module.md` | Round 1: 3 P1s fixed. Round 2: RBAC-1/2/3 confirmed resolved; 1 new P1 (manager could switch off stock enforcement) fixed by Seif's decision to block `manage_inventory` and `allow_backorder` for managers. 9 live access tests pass; `npm run check` green (83 backend, 87 storefront). Waiting for GPT round 3 and Seif's browser test as a manager. |
+| Sign-in hardening (staff and customers): attempt limit, 8+ password rule, change password, forgot password, invite and reset emails, Redis config | Claude | `claude/work` (after the RBAC commits) | `git log b2cb5d4..claude/work` | `docs/reviews/sign-in.md` | Requested by Seif on 2026-10-06 while the RBAC review is open. 11 HTTP tests (30 total pass), 126 backend and 105 storefront unit tests; `npm run check` green. Live check passed (limits, short passwords, reset limit, storefront forgot/reset pages). Waiting for GPT review and Seif's browser test of the admin "Change password" page. |
 
 ## Done
 

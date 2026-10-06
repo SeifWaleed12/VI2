@@ -1,9 +1,22 @@
 import { allowFields, authenticate, defineMiddlewares } from "@medusajs/framework/http"
 import { MedusaError } from "@medusajs/framework/utils"
+import type { ActorType } from "../lib/login-attempts"
 import { adminAccess, unlessInviteAcceptance } from "./admin-access"
+import { limitLoginAttempts, limitResetRequests } from "./login-rate-limit"
+import { requireStrongPassword } from "./password-policy"
+
+// Staff and customers sign in, reset and set passwords through the same
+// Medusa routes, so both get the same limits and password rule.
+const emailPassRoutes = (["user", "customer"] as ActorType[]).flatMap((actor) => [
+  { matcher: `/auth/${actor}/emailpass`, method: "POST" as const, middlewares: [limitLoginAttempts(actor)] },
+  { matcher: `/auth/${actor}/emailpass/reset-password`, method: "POST" as const, middlewares: [limitResetRequests(actor)] },
+  { matcher: `/auth/${actor}/emailpass/register`, method: "POST" as const, middlewares: [requireStrongPassword] },
+  { matcher: `/auth/${actor}/emailpass/update`, method: "POST" as const, middlewares: [requireStrongPassword] },
+])
 
 export default defineMiddlewares({
   routes: [
+    ...emailPassRoutes,
     { matcher: "/store/products", middlewares: [allowFields("brand.name", "brand.status")] },
     { matcher: "/store/products/:id", middlewares: [allowFields("brand.name", "brand.status")] },
     {

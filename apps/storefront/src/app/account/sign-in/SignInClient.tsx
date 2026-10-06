@@ -178,6 +178,13 @@ export default function SignInClient() {
               </div>
             </label>
 
+            <Link
+              href="/account/forgot-password"
+              className={styles.forgotLink}
+            >
+              Forgot password?
+            </Link>
+
             {error && (
               <div className={styles.noticeError}>
                 <LockKeyhole

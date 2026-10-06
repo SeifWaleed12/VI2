@@ -131,3 +131,36 @@ export async function logoutCustomer(): Promise<void> {
     window.dispatchEvent(new Event("vi2-auth-change"));
   }
 }
+
+type PasswordResult = { ok: true; message?: string } | { ok: false; message: string };
+
+async function postPasswordForm(path: string, body: Record<string, string>, fallback: string): Promise<PasswordResult> {
+  try {
+    const res = await fetch(path, {
+      method: "POST",
+      signal: AbortSignal.timeout(15000),
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.ok) return { ok: false, message: data.message || fallback };
+    return { ok: true, message: data.message };
+  } catch {
+    return { ok: false, message: fallback };
+  }
+}
+
+/** Asks Medusa to email a password reset link. The answer never reveals whether the email has an account. */
+export function requestPasswordReset(email: string): Promise<PasswordResult> {
+  return postPasswordForm("/api/auth/forgot-password", { email: email.trim().toLowerCase() }, "Unable to send the reset link right now. Please try again.");
+}
+
+/** Sets a new password using the token from a reset email. */
+export function resetPassword(token: string, password: string): Promise<PasswordResult> {
+  return postPasswordForm("/api/auth/reset-password", { token, password }, "Unable to reset the password right now. Please try again.");
+}
+
+/** Changes the signed-in customer's password after checking the current one. */
+export function changePassword(currentPassword: string, newPassword: string): Promise<PasswordResult> {
+  return postPasswordForm("/api/auth/password", { currentPassword, newPassword }, "Unable to change the password right now. Please try again.");
+}

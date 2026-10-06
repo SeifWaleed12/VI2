@@ -25,3 +25,6 @@ it("accepts configured secrets and permits development fallback only outside pro
   expect(configuredSecret("JWT_SECRET", { NODE_ENV: "production", JWT_SECRET: "a".repeat(48) })).toBe("a".repeat(48))
   expect(configuredSecret("JWT_SECRET", { NODE_ENV: "test" })).toMatch(/^[0-9a-f]{64}$/)
 })
+it.each(["seven77", "        ", "a".repeat(129)])("rejects a registration password outside the rule: %j", (password) => {
+  expect(registrationSchema.safeParse({ email: "a@example.com", password, first_name: "A", last_name: "B" }).success).toBe(false)
+})

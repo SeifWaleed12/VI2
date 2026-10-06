@@ -38,9 +38,12 @@ export function validText(value: unknown, max = 255): value is string {
   return typeof value === "string" && value.trim().length > 0 && value.length <= max;
 }
 
+export function validEmail(value: unknown): value is string {
+  return validText(value, 254) && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+}
+
 export function validCredentials(body: Record<string, unknown> | null): body is Record<string, unknown> & { email: string; password: string } {
-  return !!body && validText(body.email, 254) && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.email.trim())
-    && validText(body.password, 1024);
+  return !!body && validEmail(body.email) && validText(body.password, 1024);
 }
 
 export function readToken(data: unknown): string | null {
