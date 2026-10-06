@@ -59,6 +59,7 @@ GPT review checklist (from `AGENTS.md`):
 
 | Task | Author | Branch | Commits | Review file | Status |
 |---|---|---|---|---|---|
+| Admin lockout: RBAC module review | GPT (reviewer) | `gpt/work` | author head `226d9f0` | `docs/reviews/rbac-module.md` | Review complete: module loads and Super Admin passes; RBAC-1 draft creation blocked, RBAC-2 unpublishing allowed, RBAC-3 empty-role custom access open. Documentation only. |
 | Quick-variant Round 3 review | GPT (reviewer) | `gpt/work` | author head `149a95d` | `docs/reviews/quick-variant.md` | Reviewed 149a95d: R2-2 resolved; R2-1 open; R3-1 ownership and R3-2 lock expiry must be fixed. Documentation only. |
 
 ## Done
