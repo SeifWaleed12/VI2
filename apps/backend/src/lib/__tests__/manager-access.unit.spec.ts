@@ -16,6 +16,7 @@ it.each([
   ["POST", "/admin/price-lists/pl_1/prices/batch", "price_list", "update"],
   ["POST", "/admin/uploads", "file", "create"],
   ["GET", "/admin/inventory-items/inv_1", "inventory_item", "read"],
+  ["GET", "/admin/reservations", "reservation_item", "read"],
   ["GET", "/admin/stores", "store", "read"],
   ["GET", "/admin/regions/reg_1", "region", "read"],
 ])("gives a manager %s %s as %s:%s", (method, path, resource, operation) => {
@@ -46,6 +47,9 @@ it.each([
   ["POST", "/admin/tax-regions"],
   ["POST", "/admin/inventory-items/inv_1/location-levels/sloc_1"],
   ["DELETE", "/admin/inventory-items/inv_1"],
+  ["POST", "/admin/reservations"],
+  ["POST", "/admin/reservations/res_1"],
+  ["DELETE", "/admin/reservations/res_1"],
   ["GET", "/admin/search"],
   ["GET", "/admin/index/details"],
   ["POST", "/admin/products/import"],
@@ -60,6 +64,9 @@ it.each([
 it("treats exports as reading", () => {
   expect(managerAction("POST", "/admin/orders/export")).toEqual({ resource: "order", operation: "read" })
   expect(managerAction("POST", "/admin/products/export")).toEqual({ resource: "product", operation: "read" })
+  expect(managerAction("POST", "/admin/inventory-items/export")).toEqual({ resource: "inventory_item", operation: "read" })
+  // Only an area's own export endpoint counts as reading.
+  expect(managerAction("POST", "/admin/inventory-items/inv_1/export")).toBeNull()
 })
 
 it("refuses inventory links in any product payload", () => {

@@ -13,7 +13,7 @@ it("grants full use of orders, catalog, customers and marketing", () => {
 
 it("lets managers see stock and reference data without changing them", () => {
   expect(keys()).toEqual(expect.arrayContaining(["inventory_item:read", "inventory_item:create", "store:read", "region:read", "sales_channel:read"]))
-  expect(keys().filter((key) => /^(inventory_item|inventory_level|store|region|sales_channel|stock_location):(\*|update|delete)$/.test(key))).toEqual([])
+  expect(keys().filter((key) => /^(inventory_item|inventory_level|reservation_item|store|region|sales_channel|stock_location):(\*|update|delete)$/.test(key))).toEqual([])
 })
 
 it("never grants admin-only resources", () => {

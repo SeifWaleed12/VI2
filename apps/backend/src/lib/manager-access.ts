@@ -43,10 +43,12 @@ export function managerAction(method: string, path: string, body?: unknown): Sta
   if (own !== undefined) return own
   const area = MANAGER_AREAS[segments[0]]
   if (!area || !["GET", "POST", "PUT", "DELETE"].includes(method)) return null
+  // Medusa starts an export with POST, but an export only reads, so it is
+  // allowed in view-only areas too (for example inventory).
+  if (method === "POST" && segments.length === 2 && segments[1] === "export") return { resource: area.resource, operation: "read" }
   if (method !== "GET" && area.access === "read") return null
-  // CSV imports cannot be checked field by field. An export only reads.
+  // CSV imports cannot be checked field by field.
   if (segments.some((segment) => segment === "import" || segment === "imports")) return null
-  if (method === "POST" && segments[segments.length - 1] === "export") return { resource: area.resource, operation: "read" }
   // Linking variants to inventory items is stock management, which Odoo owns.
   if (method !== "GET" && (segments.includes("inventory-items") || bodyHas(body, (key) => key === "inventory_items"))) return null
   const operation = method === "GET" ? "read" : method === "DELETE" ? "delete" : segments.length === 1 ? "create" : "update"

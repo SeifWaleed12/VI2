@@ -28,7 +28,6 @@ export const MANAGER_AREAS: Readonly<Record<string, ManagerArea>> = {
   "fulfillments": full("fulfillment"),
   "payments": full("payment"),
   "payment-collections": full("payment_collection"),
-  "reservations": full("reservation_item"),
   // Catalog.
   "products": full("product"),
   "product-variants": full("product_variant"),
@@ -45,8 +44,11 @@ export const MANAGER_AREAS: Readonly<Record<string, ManagerArea>> = {
   "promotions": full("promotion"),
   "campaigns": full("campaign"),
   "price-lists": full("price_list"),
-  // Stock levels come from Odoo: visible, never edited here.
+  // Stock levels come from Odoo: visible, never edited here. A reservation
+  // holds stock, so creating or releasing one by hand is a stock change too;
+  // order workflows still reserve and release stock themselves.
   "inventory-items": read("inventory_item"),
+  "reservations": read("reservation_item"),
   // Reference data that order, product and customer pages display.
   "stores": read("store"),
   "regions": read("region"),

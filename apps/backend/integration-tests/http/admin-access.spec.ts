@@ -161,6 +161,32 @@ medusaIntegrationTestRunner({
         expect((await api.post("/admin/tax-regions", { country_code: "eg" }, manager)).status).toBe(403)
       })
 
+      it("stops a manager from reserving or releasing stock by hand, but lets them export it", async () => {
+        const container = getContainer()
+        const { data: { stock_location: location } } = await api.post("/admin/stock-locations", { name: "Warehouse" }, admin)
+        const { data: { inventory_item: item } } = await api.post("/admin/inventory-items", { sku: "WHEY-1KG" }, admin)
+        await api.post(`/admin/inventory-items/${item.id}/location-levels`, { location_id: location.id, stocked_quantity: 10 }, admin)
+        const { data: { reservation } } = await api.post("/admin/reservations", { inventory_item_id: item.id, location_id: location.id, quantity: 2 }, admin)
+        expect((await api.post("/admin/reservations", { inventory_item_id: item.id, location_id: location.id, quantity: 7 }, manager)).status).toBe(403)
+        expect((await api.post(`/admin/reservations/${reservation.id}`, { quantity: 9 }, manager)).status).toBe(403)
+        expect((await api.delete(`/admin/reservations/${reservation.id}`, manager)).status).toBe(403)
+        expect((await api.get("/admin/reservations", manager)).status).toBe(200)
+        const [level] = await container.resolve(Modules.INVENTORY).listInventoryLevels({ inventory_item_id: item.id })
+        expect(level.reserved_quantity).toBe(2)
+        expect((await api.post("/admin/inventory-items/export", {}, manager)).status).toBe(202)
+      })
+
+      it("removes permissions the role no longer grants when the setup runs again", async () => {
+        const container = getContainer()
+        const rbac = container.resolve(Modules.RBAC)
+        const [extra] = await rbac.listRbacPolicies({ key: "reservation_item:delete" })
+        await rbac.createRbacRolePolicies([{ role_id: managerRoleId, policy_id: extra.id }])
+        const { data: { users: [adminUser] } } = await api.get("/admin/users", admin)
+        await setupCatalogManager({ container, args: [adminUser.id] } as never)
+        const links = await rbac.listRbacRolePolicies({ role_id: managerRoleId })
+        expect(links.map((link) => link.policy_id)).not.toContain(extra.id)
+      })
+
       it("keeps settings, staff, keys and workflows admin only", async () => {
         for (const path of ["/admin/api-keys", "/admin/users", "/admin/invites", "/admin/rbac/roles", "/admin/rbac/policies", "/admin/workflows-executions", "/admin/search?q=a", "/admin/custom"]) {
           expect({ path, status: (await api.get(path, manager)).status }).toEqual({ path, status: 403 })

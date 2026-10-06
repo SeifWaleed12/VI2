@@ -1,6 +1,6 @@
 import type { ExecArgs } from "@medusajs/framework/types"
 import { ContainerRegistrationKeys, MedusaError, Modules } from "@medusajs/framework/utils"
-import { createRbacPoliciesWorkflow, createRbacRolesWorkflow, createRbacRolePoliciesWorkflow, updateRbacRolesWorkflow } from "@medusajs/medusa/core-flows"
+import { createRbacPoliciesWorkflow, createRbacRolesWorkflow, createRbacRolePoliciesWorkflow, deleteRbacRolePoliciesWorkflow, updateRbacRolesWorkflow } from "@medusajs/medusa/core-flows"
 import { managerPolicyGrants } from "../lib/manager-role"
 
 const MANAGER_DESCRIPTION = "Runs the shop: orders, catalog, brands, customers, promotions and price lists. No store settings, staff, API keys or stock settings."
@@ -44,5 +44,9 @@ export default async function setupCatalogManager({ container, args }: ExecArgs)
   const assigned = await rbac.listRbacRolePolicies({ role_id: manager.id })
   const missing = policies.filter((id) => !assigned.some((link) => link.policy_id === id))
   if (missing.length) await createRbacRolePoliciesWorkflow(container).run({ input: { actor_id: adminId, policies: missing.map((id) => ({ role_id: manager.id, policy_id: id })) } })
+  // The role holds exactly the table's permissions: anything it no longer
+  // grants (for example reservation writes) is removed from the role.
+  const obsolete = assigned.filter((link) => !policies.includes(link.policy_id))
+  if (obsolete.length) await deleteRbacRolePoliciesWorkflow(container).run({ input: { role_policy_ids: obsolete.map((link) => link.id) } })
   container.resolve(ContainerRegistrationKeys.LOGGER).info(`Catalog Manager role ready: ${manager.id}. Assign it through native admin role management, then sign in again.`)
 }
