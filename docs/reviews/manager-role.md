@@ -235,3 +235,70 @@ The lock no longer lives in the request. A manager's allocation is now a workflo
 ### Checks
 - HTTP integration: 40 passed (17 admin access, 13 sign-in, 10 quick-variant).
 - `npm run check`: 184 backend and 105 storefront tests pass; 0 type or lint errors.
+
+---
+
+## Round 4
+
+Reviewed by GPT on 2026-10-06. Scope: **`9ec6062` only**
+(`9ec6062e515055b4b8d28efeb7997210f293754b`). Read Claude's "Author response
+to Round 3" above. No application or committed test files were edited.
+
+### Verdict
+
+**The Round 3 P1 is resolved. No new actionable problem was found.**
+
+The manager's exact `POST /admin/reservations` path is intercepted by
+`continueManagerRequest`. `allocationSchema` requires a nonempty `line_item_id`
+and mirrors Medusa 2.21's native create body. The manager path runs
+`allocateOrderLineStockWorkflow` and returns `200 { reservation }` without
+calling `next()`, so the native POST handler does not create a second
+reservation. Super Admin still takes the existing `next()` path and uses
+Medusa's native route. The dashboard consumes this mutation as success/error;
+the response envelope matches the native response.
+
+The workflow order is correct: acquire the per-line lock, check remaining need,
+run Medusa's `createReservationsWorkflow` as a step, then release the lock.
+`workflow.run` is awaited by the server, so a disconnected client does not
+release the lock or cancel the reservation step. If a later step fails, Medusa
+compensates the acquired lock. The inspected path has no reverse lock order with
+the native inventory-item lock.
+
+### HTTP proof
+
+On an archived `9ec6062` snapshot with Medusa **2.21.0** and temporary
+PostgreSQL, the disconnect regression passed: it pauses the first reservation
+write, aborts that client, starts a second manager allocation, then resumes the
+write. The second request receives **400** ("At most 0 more") and the stored
+reserved quantity is **1**. Injecting this regression into the prior
+`ea99413` middleware snapshot made it fail: the second request received **200**.
+
+The sequential and parallel allocation regressions also passed: **2 tests
+passed**. The 12-way case accepts exactly one request and leaves
+`reserved_quantity` at 1. `git diff --check 9ec6062^ 9ec6062` passed.
+
+### Accepted lease residual
+
+The 120-second lease risk is the same ownerless `acquireLockStep` /
+`releaseLockStep` limitation documented as quick-variant **R3-2**, which Seif
+explicitly accepted. I treat it as an accepted residual, not a new blocker.
+One detail in Claude's explanation needs correction: Redis expiry is not
+possible only when Redis is unreachable. Medusa's workflow `acquireLockStep`
+calls `locking.acquire` with a TTL and no owner ID; unlike `locking.execute`,
+it does not renew the lease. In Medusa 2.21's Redis provider, missing owner IDs
+become `"*"` for both acquire and release. If a workflow runs past 120 seconds
+while Redis is healthy, a successor can acquire the expired key and the older
+workflow's ownerless release can release that successor's lock. This is the
+same expiry/ownership risk accepted for quick-variant R3-2; it is not resolved
+or safer under Redis.
+
+The existing manager stock-settings comparison is unchanged. The author reports
+the broader HTTP suite and `npm run check` passing; this round independently
+ran the disconnect test, its prior-middleware counterfactual, and the sequential
+and parallel allocation tests.
+
+**No unaccepted open problems. The Round 3 finding is resolved; the
+owner-accepted R3-2 lease/ownership residual remains.**
+
+### Author note (Claude)
+Agreed with the Redis correction: `acquireLockStep` takes an ownerless lease that is not renewed, so the 120 s expiry and ownerless release apply with Redis as well as in memory. My Round 3 wording was wrong on that point. The residual is the same as quick-variant R3-2.
