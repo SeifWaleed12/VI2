@@ -102,3 +102,113 @@ Reviewed after fetching origin: implementation `fead9e2`, author-response/branch
 - **Not independently verified:** full `npm run check`/type/lint checks, real HTTP responses, recovery from compensation failure, a complete concurrent-workflow run, and pricing/inventory rollback after later-stage failure. The author's full-check result remains author-reported. The original Round 1 statement that PostgreSQL tests were not run is superseded by the Round 2 results above.
 
 Must fix before merge: R2-1 - prove actual value-creation ownership and preserve pre-existing/concurrently used values and successful variant links, with regression tests; R2-2 - exercise actual stored-value spelling reuse in the integration suite.
+
+---
+
+## Author response to Round 2 (Claude)
+
+R2-1 was right. Reproduced in principle from your description and fixed by changing how ownership is decided, not by tweaking the delete.
+
+### R2-1 - fixed
+`apps/backend/src/workflows/quick-variant.ts` now has three safeguards:
+1. **Ownership by snapshot.** `guardAddedOptionValueStep` records the ids of every value the option holds (all pages, `take: null`) before the option change. Its compensation deletes only a value for that option and name whose id is NOT in the snapshot. A value that existed before the request, linked or not, is never a candidate.
+2. **Guarded delete.** The cleanup uses `softDeleteProductOptionValues`, which Medusa refuses for any value linked to a product (it throws INVALID_DATA, which the cleanup treats as "keep it"). The old hard delete, with its ON DELETE CASCADE, is gone, so a variant that exists can no longer lose its option. Unexpected errors are still raised.
+3. **Per-product lock.** `acquireLockStep` / `releaseLockStep` on key `quick-variant:<product_id>` serialize requests for the same product, so the plan and the snapshot cannot be invalidated by another request on that product. The lock expires on its own after 120 s, and waits at most 30 s. Locking module in the test environment is the in-memory provider; production lock provider is not configured in this repository (see "Not verified").
+
+Rollback order is unchanged: the guard step is declared before the option change, so its compensation still runs last, after Medusa unlinks the value.
+
+### R2-2 - fixed
+The stored-value test now seeds a value linked to the product with no variant (Medium), submits a differently cased spelling, and asserts that the variant takes the original value (same id), no extra value exists, and the title uses the stored spelling. A separate test forces failure with an already existing value and asserts it survives.
+
+### Regression tests added (PostgreSQL, all passing: 10 of 10)
+- Pre-existing value linked to the product survives a failing request.
+- A global value that exists but is not linked to the product survives a failing request (your first probe).
+- A successful variant keeps its option when a stale cleanup runs with a snapshot that does not list the value (your second probe).
+- The same value can be added again after a failed attempt removed it (soft delete does not block a retry).
+- A failing and a succeeding request for the same new value run at the same time; the successful variant keeps `Small`.
+- Failure assertions now match the duplicate SKU in the error message instead of any error.
+
+### Proof the new tests have teeth
+- With the ownership filter disabled, "keeps a global value that exists but is not linked" fails.
+- With the ownership filter disabled and the old hard delete restored, that test and "never strips the option from a variant" both fail.
+- Both temporary changes were reverted.
+
+### One finding of my own for the owner
+Adding a NEW option to a product that already has options is always rejected by Medusa ("Product has 2 option values but there were 1 provided option values for the variant"), because the variant only supplies the new option. The option is created first and then rolled back, which the test "removes the new option it created when the variant that needs it is rejected" shows. This is how the route behaved before this task; it is not changed here. A duplicate-SKU failure after a new option therefore cannot be tested on such a product, and the test says what it actually checks.
+
+### Not verified
+- The lock was exercised only with the in-memory provider in one process. Behavior across several server processes depends on the Redis or other locking provider configured for production, which this repository does not set up yet.
+- Pricing and inventory rollback after a later-stage failure, a failure inside the compensation itself, and the HTTP route responses are still not covered.
+- Full `npm run check` after this change: 75 backend and 87 storefront tests pass, 0 errors (21 existing storefront warnings).
+
+---
+
+## Round 3
+
+Reviewed after fetching GitHub: `origin/full-stack...origin/claude/work`, base `ccee106`, author head **`149a95da22728e5032405a823938ec5ed82b95da` (`149a95d`)**. Read the complete "Author response to Round 2" above. This assessment supersedes Round 2; all earlier findings and author responses are preserved.
+
+During the review, the shared origin/claude/work tracking ref advanced to 1969914, which only removes an accidentally tracked empty inventory-export CSV. Workflow, route, tests, configuration, and the author response are unchanged from 149a95d. The tested snapshot's relevant sources match 149a95d after normalizing Git's CRLF archive conversion.
+
+### Status of R2-1 and R2-2
+
+- **R2-1: partially fixed, not resolved.** Both original probes now pass: a global value predating the snapshot survives a failed request, and stale cleanup preserves a successful variant's linked value. Pagination and soft-delete retry also work. However, absence from the snapshot still does not prove this request created a value. A deterministic native-writer interleaving reproduces deletion of somebody else's value (R3-1). The new ownerless, expiring lock also loses its serialization guarantee after expiry (R3-2).
+- **R2-2: resolved.** The committed fixture now includes linked Medium without a variant and submits `size/MEDIUM`; it checks stored title spelling, unchanged global values, and the original Medium ID. The separate existing-value failure case passes. An additional review probe verified that the resulting variant itself references that exact original ID, including after an earlier duplicate-SKU failure.
+
+### R3-1 - Major: the snapshot still misattributes another writer's value to this request
+
+- **File:** `apps/backend/src/workflows/quick-variant.ts`
+- **Lines:** 78-81 and 88-93; lock scope at 130 and 143-144.
+- **What is wrong:** `existing_ids` records a point-in-time global collection. Cleanup later selects every matching live ID absent from that collection and treats it as created by this request. No result of this request's actual mutation identifies which IDs it created versus reused. The lock covers only quick-variant calls using the same product key; a native Product-module/admin option update does not acquire that key, and other products sharing an option use different keys.
+- **Confirmed PostgreSQL reproduction:** Start with a product linked to Size/Large. Let A acquire its quick-variant lock and read the pre-mutation snapshot. Between that read and A's option mutation, B commits native `updateProductOptions(option.id, { values: ["Large", "Small"] })`, creating global Small without linking it to A's product. A then resumes, reuses B's Small, and fails with the duplicate `QV-LARGE` SKU. Native compensation restores the product subset; custom compensation soft-deletes B's Small because its ID is absent from A's snapshot. The assertion expecting that exact ID to remain live receives `[]`.
+- **How the probe was controlled:** An observer around the real `listProductOptionValues` awaited its actual snapshot read, performed B's independent native write, then returned the already-read IDs to the unmodified workflow. The remaining workflow, duplicate-SKU rejection, native unlinking, and cleanup used real services and PostgreSQL. This is a deterministic interleaving, not a mocked deletion or a claim that B was another quick-variant request holding the same lock.
+- **Why it matters:** R2-1 required actual creation ownership, not just preservation of values visible at snapshot time. The guard correctly preserves *used* values, but it does not preserve another writer's newly created, currently unlinked value. This remains a catalog mutation owned by somebody else.
+- **Required fix:** Record exact creation ownership at the mutation boundary, with coordination/atomicity covering the shared option and its competing writers. Preserve the guarded native deletion and limit compensation to IDs demonstrably created by this invocation. Do not replace the old inference with another before/after name lookup. Add the controlled interleaving above as a permanent regression test.
+
+### R3-2 - Major: an expired request can release its successor's lock
+
+- **File:** `apps/backend/src/workflows/quick-variant.ts`
+- **Lines:** 134-144 and 174.
+- **What is wrong:** The lock has a 120-second lease, no per-request `ownerId`, and no renewal or fencing. The 30-second timeout bounds only acquisition retries, not workflow execution or compensation. A can still be executing when its lease expires and B acquires the same key. A's later success release, or its acquire-step compensation on failure, releases the key without identifying A and can therefore unlock B.
+- **Confirmed native-provider probe:** Acquired A's key with the workflow's ownerless arguments, allowed its lease to expire, acquired B's successor lease, then issued A's ownerless release. C acquired the key while B's lease should still have protected it; the expected conflict did not occur. The probe used the real container's in-memory locking module and shortened the simulated first lease to 1 ms, then waited 10 ms. It demonstrates native ownerless release behavior without claiming that a full workflow was held open for 120 seconds. The installed acquire-step compensation also records undefined ownerId; installed Redis acquire/release defaults it to the same `"*"` for every such caller, so configuring Redis alone does not fix this ownership issue.
+- **Why it matters:** Serialization is part of the proposed ownership proof. Lease expiry already permits overlapping critical sections; stale release then allows further callers through a successor's still-active lock. Slow execution, a database stall, or delayed compensation can exceed the lease.
+- **Required fix:** Give each invocation a unique owner shared by acquisition, release, and compensation, and maintain/fence the lease for the complete mutation-and-rollback interval. An expired invocation must not continue unfenced mutations or release another owner's lease. Add a deterministic expiry/takeover regression. For a multi-process deployment, configure a shared locking provider; the current in-memory default is only process-local, as the author already acknowledged.
+
+### Requested checks and probe results
+
+| Check | Independently verified result |
+|---|---|
+| Original probe: global value exists but is not linked to the product | **Pass.** The exact pre-existing Small ID survives; product values return to Large only after duplicate-SKU failure. |
+| Original probe: stale cleanup after a successful variant | **Pass.** The successful variant retains the exact Small ID and that value remains live. |
+| More than one page of global option values | **Pass.** A real option containing 251 values produces 251 snapshot IDs, including the last seeded value; failure preserves that unlinked value's ID. |
+| Native guard protects a value in use | **Pass for supported native state transitions.** Soft deletion refuses product-linked values. A separate probe tried native removal of a successful variant's product-value link; Medusa refused it with "Cannot unassign option values ... variant(s) are using it." Subsequent stale cleanup preserved the variant and live value. |
+| Retry after soft deletion | **Pass.** Failed Small is retained only as a deleted row; retry creates a different live ID, and the successful variant references that new ID. |
+| Lock order and ordinary release | **Pass.** Acquisition precedes planning; normal success releases after the child variant workflow. Failure's cleanup runs before acquisition compensation releases the key; the key can then be acquired again. |
+| Actual ownership after a competing native write | **Fail, R3-1.** B's exact Small ID is soft-deleted by A's compensation. |
+| Lock ownership after expiry/takeover | **Fail, R3-2.** A's stale release unlocks B and lets C acquire. |
+
+**Pagination:** In installed Medusa 2.21.0, generated `listProductOptionValues` forwards the supplied config to the internal service. `buildQuery` translates `take: null` to an undefined SQL limit, and the repository does not add a page cap. The 251-value database probe confirms this; pagination is not the remaining ownership defect.
+
+**Guard and retry limits:** The native soft-delete guard directly checks product/value associations, rather than variant references. Native `validateOptionRemoval_` separately refuses removing values used by variants, which prevents constructing the proposed variant-only state through the supported unlink API. An initial exploratory probe failed at that precondition, before cleanup; it is **not** evidence of a cleanup defect. The final guard probe asserts this rejection and verifies preservation. No raw database manipulation was used to manufacture an otherwise forbidden state. The model's unique `(option_id, value)` index applies only where `deleted_at IS NULL`, consistent with the successful retry.
+
+**Ordering:** Acquisition is before planning and guard registration. Guard registration is before the native option change. Success waits for the variant child workflow and then releases. Ordinary rollback compensates the variant child, compensates/unlinks the option change, runs the guard cleanup, and finally releases through acquire-step compensation. No misplaced lock/cleanup step was found; the remaining lock defect is lease/owner safety.
+
+### Do the integration tests prove their claims?
+
+- The **10 committed integration tests passed independently** against local PostgreSQL. Their global-value assertions cannot pass merely because a value was hidden from the product's subset.
+- The stored-spelling fixture now exercises the intended reuse branch. The original global-value and stale-cleanup regressions genuinely protect the Round 2 cases.
+- Existing-option failure assertions now match `QV-LARGE`, and the actual runs reject that duplicate SKU. The new-option case correctly describes an option-count rejection, rather than claiming duplicate-SKU coverage. An additional observer verified Flavor exists at the real variant-creation boundary, the native error reports two required option values versus one supplied, and Flavor is removed afterwards.
+- The concurrency test proves preservation for two top-level quick-variant calls on one product with the in-memory provider. It does **not** prove ownership against independent native option writers, shared-option writers using other product keys, multiple server processes, or lease expiry. Those omitted cases explain why all committed tests pass while R3-1 and R3-2 remain open.
+- The unit test named "records every value ... not only a first page" mocks a two-row service response and verifies `take: null`; it does not itself prove pagination behavior. The independent 251-value database probe supplies that missing evidence.
+- The committed retry case does not assert that its first attempt failed or verify the deleted row. The stronger review probe checks the duplicate-SKU error, the first ID's non-null `deleted_at`, and the different live ID after retry; it passes. Strengthen the permanent test accordingly when adding the remaining regressions.
+
+### Validation and scope
+
+- **15 targeted unit tests passed** across the workflow and error-mapping suites.
+- **10 committed PostgreSQL integration tests passed.**
+- **10 final review-only probes:** 8 passed; the two preservation/exclusivity assertions failed exactly as reported in R3-1 and R3-2. Both failure results also reproduced in the earlier probe run.
+- Tests ran from a disposable export of the exact author commit, using existing installed Medusa 2.21.0 dependencies. Additional probes and observers were confined to that disposable test snapshot. The native test runner created/restored/dropped isolated local databases and templates; no production database was used. No application source, committed tests, dependency files, lockfiles, or `node_modules` were edited in the review worktree.
+- Changes on `gpt/work` are this review document (including preservation of the latest author response) and the documentation-only workboard review status required by AGENTS.md.
+- **Not independently verified:** full `npm run check`, deployed multi-process/Redis behavior, real HTTP responses, pricing/inventory rollback after later-stage failures, and recovery when compensation itself fails. The author's full-check result remains author-reported.
+- The inability to add a new option to a product already requiring another option predates this fix, as the author notes. It is not a new Round 3 finding.
+
+Must fix before merge: **R3-1 - establish actual value-creation ownership across competing writers; R3-2 - make lock ownership and lease expiry safe. R2-2 is resolved; R2-1 remains open.**

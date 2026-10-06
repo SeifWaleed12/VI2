@@ -59,7 +59,7 @@ GPT review checklist (from `AGENTS.md`):
 
 | Task | Author | Branch | Commits | Review file | Status |
 |---|---|---|---|---|---|
-| (none) | | | | | |
+| Quick-variant Round 3 review | GPT (reviewer) | `gpt/work` | author head `149a95d` | `docs/reviews/quick-variant.md` | Reviewed 149a95d: R2-2 resolved; R2-1 open; R3-1 ownership and R3-2 lock expiry must be fixed. Documentation only. |
 
 ## Done
 
