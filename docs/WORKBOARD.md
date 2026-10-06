@@ -33,6 +33,9 @@ Flow for every task:
    branch and answers each note in the review file.
 6. When GPT has no open problems and `npm run check` passes, Seif merges
    `claude/work` into `full-stack` and the task moves to "Done".
+7. Any change to permissions, roles, auth or `medusa-config.ts` must also be
+   checked in the running app (start the backend, log in, call the affected
+   routes), not only in unit or integration tests.
 
 GPT review checklist (from `AGENTS.md`):
 - Requirement met, and nothing beyond it (no Phase-2 work, no unrelated refactor).
@@ -61,7 +64,7 @@ GPT review checklist (from `AGENTS.md`):
 
 | Task | Author | Branch | Commits | Review file | Status |
 |---|---|---|---|---|---|
-| (none) | | | | | |
+| Admin lockout: RBAC module was never loaded, so every staff user got Forbidden | Claude | `claude/work` | see `git log full-stack..claude/work` | `docs/reviews/rbac-module.md` | Waiting for GPT review. Cause: Medusa builds its default module list before core feature flags are registered, so `featureFlags: { rbac: true }` enforced permissions but left the RBAC module disabled. Fix: list `@medusajs/medusa/rbac` in `modules`. Regression test fails without the fix. Live check: admin gets 200 on products, orders, stores and rbac routes. `vi2_dev` was migrated (role tables, Super Admin assigned to admin@gmail.com) and the Catalog Manager role was created; nothing deleted. |
 
 ## Done
 
