@@ -64,7 +64,7 @@ GPT review checklist (from `AGENTS.md`):
 
 | Task | Author | Branch | Commits | Review file | Status |
 |---|---|---|---|---|---|
-| Admin lockout: RBAC module was never loaded, so every staff user got Forbidden | Claude | `claude/work` | see `git log full-stack..claude/work` | `docs/reviews/rbac-module.md` | Waiting for GPT review. Cause: Medusa builds its default module list before core feature flags are registered, so `featureFlags: { rbac: true }` enforced permissions but left the RBAC module disabled. Fix: list `@medusajs/medusa/rbac` in `modules`. Regression test fails without the fix. Live check: admin gets 200 on products, orders, stores and rbac routes. `vi2_dev` was migrated (role tables, Super Admin assigned to admin@gmail.com) and the Catalog Manager role was created; nothing deleted. |
+| Admin lockout: RBAC module was never loaded, so every staff user got Forbidden | Claude | `claude/work` | 226d9f0 and the review-response commit (`git log full-stack..claude/work`) | `docs/reviews/rbac-module.md` | GPT round 1: 3 P1 findings (manager could not create drafts; manager could unpublish; staff with no role bypassed the guard), all fixed. 8 live HTTP tests with real roles pass and 5 fail with the fixes reverted. `npm run check` green (79 backend, 87 storefront). Waiting for GPT round 2. Still needs Seif's browser test as a manager. |
 
 ## Done
 

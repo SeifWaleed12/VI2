@@ -20,16 +20,23 @@ export default async function setupCatalogManager({ container, args }: ExecArgs)
       [Modules.RBAC]: { rbac_role_id: "role_super_admin" },
     })
   }
-  const policies: string[] = []
+  const grants: [string, string][] = []
   for (const resource of ["product", "product_variant", "product_option", "product_category", "product_collection", "product_type", "product_tag", "brand"]) {
-    for (const operation of ["read", "create", "update"]) {
-      const key = `${resource}:${operation}`
-      const existing = await rbac.listRbacPolicies({ key })
-      if (existing.length) policies.push(existing[0].id)
-      else {
-        const { result } = await createRbacPoliciesWorkflow(container).run({ input: { policies: [{ key, name: key, resource, operation }] } })
-        policies.push(result[0].id)
-      }
+    for (const operation of ["read", "create", "update"]) grants.push([resource, operation])
+  }
+  // Medusa's POST /admin/products also requires these two, because creating a
+  // product creates its empty price sets and inventory items. They grant nothing
+  // else here: admin-access.ts only lets a manager reach catalog routes and
+  // rejects any payload that carries prices or inventory links.
+  grants.push(["price", "create"], ["inventory_item", "create"])
+  const policies: string[] = []
+  for (const [resource, operation] of grants) {
+    const key = `${resource}:${operation}`
+    const existing = await rbac.listRbacPolicies({ key })
+    if (existing.length) policies.push(existing[0].id)
+    else {
+      const { result } = await createRbacPoliciesWorkflow(container).run({ input: { policies: [{ key, name: key, resource, operation }] } })
+      policies.push(result[0].id)
     }
   }
   let [manager] = await rbac.listRbacRoles({ name: "Catalog Manager" })

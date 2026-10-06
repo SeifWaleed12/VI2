@@ -19,10 +19,22 @@ it("allows product and brand creation", () => {
 it("rejects unauthenticated requests before resolving permissions", async () => {
   await expect(adminAccess({} as never, {} as never, jest.fn())).rejects.toThrow("authentication")
 })
+const request = (roles: string[]) => ({ auth_context: { actor_id: "user_1", actor_type: "user", app_metadata: { roles: ["role_super_admin"] } }, method: "POST", originalUrl: "/admin/brands", body: { name: "X", slug: "x" }, scope: { resolve: () => ({ graph: async () => ({ data: [{ id: "user_1", rbac_roles: roles.map((id) => ({ id })) }] }) }) } })
+
 it("uses current database role assignments, not stale token roles", async () => {
   jest.mocked(hasPermission).mockResolvedValue(false)
-  const req = { auth_context: { actor_id: "user_1", actor_type: "user", app_metadata: { roles: ["role_super_admin"] } }, method: "POST", originalUrl: "/admin/products", scope: { resolve: () => ({ graph: async () => ({ data: [{ id: "user_1", rbac_roles: [] }] }) }) } }
+  const req = request(["role_catalog"])
+  req.originalUrl = "/admin/orders"
   await expect(adminAccess(req as never, {} as never, jest.fn())).rejects.toThrow()
+  expect(req.auth_context.app_metadata.roles).toEqual(["role_catalog"])
+})
+it("denies staff with no role even though Medusa's hasPermission allows an empty role list", async () => {
+  // Medusa 2.21 returns true from hasPermission when the role list is empty.
+  jest.mocked(hasPermission).mockResolvedValue(true)
+  const next = jest.fn()
+  const req = request([])
+  await expect(adminAccess(req as never, {} as never, next)).rejects.toThrow("assigned role")
+  expect(next).not.toHaveBeenCalled()
   expect(req.auth_context.app_metadata.roles).toEqual([])
 })
 it("lets only invite acceptance bypass the global admin guard", () => {
@@ -45,6 +57,8 @@ it.each([
   ["POST", "/admin/products/prod_1/variants/v1", { prices: [{ amount: 1, currency_code: "egp" }] }],
   ["POST", "/admin/products/prod_1/variants", { title: "2kg", inventory_items: [{ inventory_item_id: "i1" }] }],
   ["POST", "/admin/products/prod_1/quick-variant", { option_title: "Size", option_value: "1kg", prices: [{ amount: 1, currency_code: "egp" }] }],
+  ["POST", "/admin/products/prod_1", { status: "draft" }],
+  ["POST", "/admin/products/prod_1", { title: "Whey", status: "draft" }],
 ])("denies catalog managers pricing, stock, and publishing changes: %s %s %j", (method, path, body) => {
   expect(managerAction(method, path, body)).toBeNull()
 })
