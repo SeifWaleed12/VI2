@@ -127,3 +127,67 @@ normal layout. Update the number after F1 is fixed. The handoff already says
 3. A live walkthrough with the real catalog (desktop menu, mobile panel,
    category links, an invalid ID, backend off) once the backend runs; the tests
    check markup only.
+
+---
+
+# Round 2 (2026-10-09)
+
+Reviewed `git diff 67b79c6 823c7eb` plus the response commit `7034b11` and
+`docs/storefront-categories-review-response.md`. Same method as round 1: a
+throwaway worktree of `7034b11` (removed) with this checkout's `node_modules`
+linked, i.e. the repo's real layout, no `NODE_PATH` workaround.
+
+## Verdict
+
+**Approved.** F1, F2, F3 and F6 are fixed; F4 and F5 are accepted as recorded
+limits. No new blocking findings.
+
+## Results
+
+| Check | Result |
+|---|---|
+| Storefront Jest, `--runInBand` | **10 suites, 142 tests, all passed** (round 1: 7 failed). |
+| `tsc --noEmit` | Exit 0. |
+| ESLint on `src` | 0 errors, 19 warnings (existing code), matches the response. |
+| Full `npm run check`, build, live walkthrough | Not run. |
+
+## Findings, one by one
+
+- **F1 fixed.** `jest.config.cjs` maps `react`, `react-dom` and their subpaths to
+  the storefront copy, and the previously failing `category-ui` tests pass with
+  real Lucide icons. Nothing outside tests changed.
+- **F2 fixed.** `app/shop/page.tsx` swallows a directory failure only when
+  neither `category_id` nor `category` is present (the shop then renders with an
+  empty sidebar). A scoped request still rethrows, so it never falls back to all
+  products. Both cases have tests.
+- **F3 fixed.** The footer renders live categories from the provider. Product
+  pages link with `categoryHref(product.categoryId)`, falling back to
+  `/categories`. `categoryId` comes only from `categories[0].id` in the mapper;
+  tests confirm it is never derived from metadata or product type. Old
+  `?category=<Name>` URLs are resolved on the server to exactly one public
+  category ID; unknown, empty, array or ambiguous (duplicate-name) values give
+  not-found, never the unfiltered shop. The client-side name filter and its state
+  are removed from `ShopClient`. `category_id` wins if both are present. The
+  `Footer` is inside `Providers` in `layout.tsx`, so `useCategories` is
+  available there.
+- **F4, F5** remain as noted limits for a small catalog.
+- **F6 fixed** (handoff corrected, per the response).
+
+## Notes, none blocking
+
+- The footer now lists every public category, children included, with no
+  Arabic labels (the old four links had `data-arabic-text`). Fine for a small
+  catalog; revisit once the real category count is known.
+- An old bookmark such as `/shop?category=Protein` now returns not-found if two
+  public categories share that name. Acceptable by design; mentioned so it is
+  not a surprise.
+- `jest.config.cjs` now requires `react` and `react-dom` to exist under
+  `apps/storefront/node_modules`. True today (React 19 is a direct storefront
+  dependency); if npm ever hoists them, the mapper path must change.
+
+## Before Seif merges
+
+1. Run the normal full `npm run check` (not green-verified by either of us).
+2. Live walkthrough with the backend running: desktop menu, mobile panel,
+   category links, an old `?category=` link, an invalid ID, backend off.
+3. Seif decides about merging; I changed no code and merged nothing.
