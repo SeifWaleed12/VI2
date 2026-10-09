@@ -100,6 +100,16 @@ medusaIntegrationTestRunner({
         expect(await graph("shipping_option", ["id"])).toEqual([])
       })
 
+      it("stops when an existing Egypt delivery zone also covers other countries", async () => {
+        const container = getContainer()
+        const location = await stockLocation("Cairo Warehouse", "eg")
+        await createLocationFulfillmentSetWorkflow(container).run({ input: { location_id: location.id, fulfillment_set_data: { name: "Old delivery", type: "shipping" } } })
+        const [withSet] = await graph("stock_location", ["fulfillment_sets.id"], { id: location.id })
+        await createServiceZonesWorkflow(container).run({ input: { data: [{ fulfillment_set_id: withSet.fulfillment_sets[0].id, name: "Egypt", geo_zones: [{ type: "country", country_code: "gb" }, { type: "country", country_code: "eg" }] }] } })
+        await expect(setupEgyptStore(container)).rejects.toThrow("not exactly Egypt")
+        expect(await graph("shipping_option", ["id"])).toEqual([])
+      })
+
       async function starterDemo(europeanStock = 0) {
         const container = getContainer()
         await createRegionsWorkflow(container).run({ input: { regions: [{ name: "Europe", currency_code: "eur", countries: ["gb", "de"] }] } })
@@ -127,6 +137,18 @@ medusaIntegrationTestRunner({
         expect((await graph("shipping_option", ["name"])).map((option) => option.name)).toEqual(["Standard Delivery"])
         expect((await graph("product_category", ["name"])).map((category) => category.name)).toEqual(["Shirts"])
         expect(await graph("product", ["title"])).toEqual([expect.objectContaining({ title: "Real product" })])
+      })
+
+      it("keeps a starter-country tax region that was configured for real use", async () => {
+        const container = getContainer()
+        await setupEgyptStore(container)
+        await starterDemo()
+        const tax = container.resolve(Modules.TAX)
+        const [britain] = await tax.listTaxRegions({ country_code: "gb" })
+        await tax.createTaxRates([{ tax_region_id: britain.id, name: "VAT", code: "VAT", rate: 20, is_default: true }])
+        const result = await removeDemoData(container)
+        expect(result.keptTaxRegions).toEqual(["gb"])
+        expect((await tax.listTaxRegions({})).filter((region) => !region.parent_id).map((region) => region.country_code).sort()).toEqual(["eg", "gb"])
       })
 
       it("refuses to remove a demo warehouse that still holds stock, and deletes nothing", async () => {

@@ -60,6 +60,22 @@ async function removeCategories(container: MedusaContainer) {
   return { removed: unused.map((category) => category.name), kept: categories.filter((category) => category.products?.length).map((category) => category.name) }
 }
 
+// A starter tax region is removed only while it still looks exactly as the seed
+// made it: country level, the system provider, no rates and no provinces.
+// Anything configured since then is real tax setup and is kept.
+async function starterTaxRegions(container: MedusaContainer) {
+  const tax = container.resolve(Modules.TAX)
+  const regions = (await tax.listTaxRegions({ country_code: [...STARTER_DEMO_DATA.taxCountryCodes] })).filter((region) => !region.parent_id)
+  if (!regions.length) return { remove: [], kept: [] as string[] }
+  const ids = regions.map((region) => region.id)
+  const [rates, provinces] = await Promise.all([tax.listTaxRates({ tax_region_id: ids }), tax.listTaxRegions({ parent_id: ids })])
+  const untouched = (region: { id: string, provider_id: string | null }) =>
+    region.provider_id === STARTER_DEMO_DATA.taxProvider
+    && !rates.some((rate) => rate.tax_region_id === region.id)
+    && !provinces.some((province) => province.parent_id === region.id)
+  return { remove: regions.filter(untouched), kept: regions.filter((region) => !untouched(region)).map((region) => region.country_code) }
+}
+
 export async function removeDemoData(container: MedusaContainer) {
   const logger = container.resolve(ContainerRegistrationKeys.LOGGER)
   const query = container.resolve(ContainerRegistrationKeys.QUERY)
@@ -70,9 +86,8 @@ export async function removeDemoData(container: MedusaContainer) {
   const { data: regions } = await query.graph({ entity: "region", fields: ["id"], filters: { name: [...STARTER_DEMO_DATA.regionNames] } })
   if (regions.length) await deleteRegionsWorkflow(container).run({ input: { ids: regions.map((region) => region.id as string) } })
 
-  // Country-level only; deleting one also removes its province tax regions.
-  const taxRegions = (await container.resolve(Modules.TAX).listTaxRegions({ country_code: [...STARTER_DEMO_DATA.taxCountryCodes] }))
-    .filter((region) => !region.parent_id)
+  const tax = await starterTaxRegions(container)
+  const taxRegions = tax.remove
   if (taxRegions.length) await deleteTaxRegionsWorkflow(container).run({ input: { ids: taxRegions.map((region) => region.id) } })
 
   const { data: products } = await query.graph({ entity: "product", fields: ["id"], filters: { handle: [...STARTER_DEMO_DATA.productHandles] } })
@@ -80,8 +95,9 @@ export async function removeDemoData(container: MedusaContainer) {
 
   const categories = await removeCategories(container)
   logger.info(`Demo data removed: ${locations.length} warehouse(s), ${regions.length} region(s), ${taxRegions.length} tax region(s), ${products.length} product(s), categories [${categories.removed.join(", ")}].`
-    + (categories.kept.length ? ` Kept categories still used by products: [${categories.kept.join(", ")}].` : ""))
-  return { locations: locations.length, regions: regions.length, taxRegions: taxRegions.length, products: products.length, categories }
+    + (categories.kept.length ? ` Kept categories still used by products: [${categories.kept.join(", ")}].` : "")
+    + (tax.kept.length ? ` Kept tax regions configured since the starter seed: [${tax.kept.join(", ")}].` : ""))
+  return { locations: locations.length, regions: regions.length, taxRegions: taxRegions.length, keptTaxRegions: tax.kept, products: products.length, categories }
 }
 
 export default async function removeDemoDataScript({ container }: ExecArgs) {

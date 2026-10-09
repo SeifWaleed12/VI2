@@ -37,6 +37,8 @@ export const EGYPT_STORE = {
 export const STARTER_DEMO_DATA = {
   regionNames: ["Europe"],
   taxCountryCodes: ["gb", "de", "dk", "se", "fr", "es", "it"],
+  // The starter tax regions used this provider and had no rates or provinces.
+  taxProvider: "tp_system",
   stockLocationNames: ["European Warehouse"],
   categoryNames: ["Shirts", "Sweatshirts", "Pants", "Merch"],
   productHandles: ["t-shirt", "sweatshirt", "sweatpants", "shorts"],

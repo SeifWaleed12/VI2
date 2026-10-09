@@ -71,13 +71,15 @@ type Location = {
   address?: { country_code?: string | null } | null
   sales_channels?: { id: string }[]
   fulfillment_providers?: { id: string }[]
-  fulfillment_sets?: { id: string, type: string, service_zones?: { id: string, name: string }[] }[]
+  fulfillment_sets?: { id: string, type: string, service_zones?: ServiceZone[] }[]
 }
+
+type ServiceZone = { id: string, name: string, geo_zones?: { type: string, country_code: string }[] }
 
 async function listLocations(container: MedusaContainer) {
   const { data } = await queryOf(container).graph({
     entity: "stock_location",
-    fields: ["id", "name", "address.country_code", "sales_channels.id", "fulfillment_providers.id", "fulfillment_sets.id", "fulfillment_sets.type", "fulfillment_sets.service_zones.id", "fulfillment_sets.service_zones.name"],
+    fields: ["id", "name", "address.country_code", "sales_channels.id", "fulfillment_providers.id", "fulfillment_sets.id", "fulfillment_sets.type", "fulfillment_sets.service_zones.id", "fulfillment_sets.service_zones.name", "fulfillment_sets.service_zones.geo_zones.type", "fulfillment_sets.service_zones.geo_zones.country_code"],
   })
   return data as Location[]
 }
@@ -135,7 +137,20 @@ async function ensureServiceZone(container: MedusaContainer, locationId: string)
     })
     zone = (await find()).zone!
   }
+  assertCoversOnlyEgypt(zone)
   return zone.id
+}
+
+// An existing zone is trusted by its name only if it covers exactly Egypt;
+// otherwise the delivery option would be offered elsewhere, or not in Egypt.
+// The setup stops rather than change a zone someone configured.
+function assertCoversOnlyEgypt(zone: ServiceZone) {
+  const geoZones = (zone.geo_zones ?? []).filter(Boolean)
+  const onlyEgypt = geoZones.length === 1 && geoZones[0].type === "country" && geoZones[0].country_code?.toLowerCase() === EGYPT_STORE.countryCode
+  if (!onlyEgypt) {
+    const covers = geoZones.map((geoZone) => `${geoZone.type} ${geoZone.country_code}`).join(", ") || "nothing"
+    throw new MedusaError(MedusaError.Types.INVALID_DATA, `The "${zone.name}" delivery zone covers ${covers}, not exactly Egypt. Fix it in the admin (Settings > Locations) and run again.`)
+  }
 }
 
 async function ensureShippingProfile(container: MedusaContainer) {
