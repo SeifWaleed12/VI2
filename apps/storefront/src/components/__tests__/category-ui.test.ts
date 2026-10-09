@@ -3,6 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server"
 import CategoriesClient from "@/app/categories/CategoriesClient"
 import DesktopMegaMenu from "../DesktopMegaMenu"
 import Navbar from "../Navbar"
+import Footer from "../Footer"
 import CategoryStatus from "../category-status"
 import { useCategories } from "@/providers/category-provider"
 import { useLanguage } from "@/context/LanguageContext"
@@ -83,4 +84,19 @@ it("connects the error button to the shared retry action", () => {
   if (!state) throw new Error("Missing error state")
   state.props.children[1].props.onClick()
   expect(retry).toHaveBeenCalledTimes(1)
+})
+
+it("uses public root category IDs in the footer without hard-coded names", () => {
+  const html = renderToStaticMarkup(createElement(Footer))
+  expect(html).toContain('href="/shop?category_id=pcat_root"')
+  expect(html).toContain('href="/categories"')
+  expect(html).not.toContain("?category=")
+  expect(html).not.toContain("Creatine")
+})
+
+it("keeps the footer directory link available when categories fail", () => {
+  jest.mocked(useCategories).mockReturnValue({ categories: [], status: "error", retry: jest.fn() })
+  const html = renderToStaticMarkup(createElement(Footer))
+  expect(html).toContain('href="/categories"')
+  expect(html).not.toContain("?category_id=")
 })

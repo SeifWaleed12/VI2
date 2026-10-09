@@ -44,3 +44,27 @@ it("propagates category outages to the existing route error boundary", async () 
   await expect(ShopPage({ searchParams: Promise.resolve({ category_id: "pcat_parent" }) })).rejects.toThrow("temporarily unavailable")
   expect(getProducts).not.toHaveBeenCalled()
 })
+
+it("keeps products available when unscoped category loading fails", async () => {
+  jest.mocked(getCategoryDirectory).mockRejectedValue(new Error("offline"))
+  const page = await ShopPage({ searchParams: Promise.resolve({}) })
+  expect(getProducts).toHaveBeenCalledWith({})
+  expect(page.props.children.props.categoryOptions).toEqual([])
+})
+
+it("resolves a unique legacy category name to native ID scoping", async () => {
+  const page = await ShopPage({ searchParams: Promise.resolve({ category: "Nutrition" }) })
+  expect(getProducts).toHaveBeenCalledWith({ category_id: ["pcat_parent", "pcat_child"] })
+  expect(page.props.children.props.selectedCategoryId).toBe("pcat_parent")
+})
+
+it.each(["Protein", "Missing", "", ["Nutrition", "Protein"]])("never opens all products for ambiguous or invalid legacy category %j", async (category) => {
+  await expect(ShopPage({ searchParams: Promise.resolve({ category }) })).rejects.toThrow("NEXT_NOT_FOUND")
+  expect(getProducts).not.toHaveBeenCalled()
+})
+
+it("keeps a legacy category scoped during directory outages", async () => {
+  jest.mocked(getCategoryDirectory).mockRejectedValue(new Error("offline"))
+  await expect(ShopPage({ searchParams: Promise.resolve({ category: "Nutrition" }) })).rejects.toThrow("offline")
+  expect(getProducts).not.toHaveBeenCalled()
+})

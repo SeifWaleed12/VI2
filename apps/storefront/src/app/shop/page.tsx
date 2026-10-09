@@ -5,13 +5,23 @@ import { buildCategoryTree, categoryLinks, findCategory } from "@/lib/category-n
 import ShopClient from "./ShopClient"
 
 export default async function ShopPage({ searchParams }: {
-  searchParams: Promise<{ category_id?: string | string[] }>
+  searchParams: Promise<{ category_id?: string | string[]; category?: string | string[] }>
 }) {
-  const [query, categories] = await Promise.all([searchParams, getCategoryDirectory()])
+  const query = await searchParams
   const categoryId = query.category_id
   if (categoryId !== undefined && (typeof categoryId !== "string" || !categoryId)) notFound()
-  const selected = categoryId ? findCategory(buildCategoryTree(categories), categoryId) : undefined
-  if (categoryId && !selected) notFound()
+  const legacyName = categoryId === undefined ? query.category : undefined
+  if (legacyName !== undefined && (typeof legacyName !== "string" || !legacyName)) notFound()
+  const scoped = categoryId !== undefined || legacyName !== undefined
+  const categories = await getCategoryDirectory().catch((error) => {
+    if (scoped) throw error
+    return []
+  })
+  const legacyMatches = legacyName ? categories.filter((category) => category.name === legacyName) : []
+  if (legacyName && legacyMatches.length !== 1) notFound()
+  const selectedId = categoryId ?? legacyMatches[0]?.id
+  const selected = selectedId ? findCategory(buildCategoryTree(categories), selectedId) : undefined
+  if (selectedId && !selected) notFound()
   const products = await getProducts(selected ? {
     category_id: categoryLinks(selected).map((category) => category.id),
   } : {})
@@ -19,9 +29,8 @@ export default async function ShopPage({ searchParams }: {
   return (
     <Suspense fallback={<ShopLoading />}>
       <ShopClient
-        key={categoryId ?? "all"}
+        key={selectedId ?? "all"}
         products={products}
-        initialCategories={categories.map((category) => category.name)}
         categoryOptions={categories}
         selectedCategoryId={selected?.id}
         selectedCategoryName={selected?.name}
