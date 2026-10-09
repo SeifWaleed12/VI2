@@ -13,518 +13,13 @@ import {
 } from "lucide-react";
 
 import { getBrands } from "@/lib/medusa/services/brands";
+import { useCategories } from "@/providers/category-provider"
+import { categoryLinks } from "@/lib/category-navigation"
 import type { Brand } from "@/types/brand";
 
 import styles from "./DesktopMegaMenu.module.css";
 
-export type MegaMenuKey =
-  | "supplements"
-  | "sports"
-  | "vitamins"
-  | "wellness"
-  | "brands";
-
-type MegaColumn = {
-  title: string;
-  items: {
-    label: string;
-    href: string;
-  }[];
-};
-
-type MegaConfig = {
-  label: string;
-  description: string;
-  allHref: string;
-  columns: MegaColumn[];
-};
-
-const menus: Record<
-  Exclude<
-    MegaMenuKey,
-    "brands"
-  >,
-  MegaConfig
-> = {
-  supplements: {
-    label: "SUPPLEMENTS",
-    description:
-      "Browse ingredients and everyday supplement essentials without leaving the page.",
-    allHref: "/shop",
-    columns: [
-      {
-        title: "POPULAR",
-        items: [
-          {
-            label:
-              "Omega-3 & Fish Oils",
-            href:
-              "/shop?q=Omega-3",
-          },
-          {
-            label:
-              "Ashwagandha",
-            href:
-              "/shop?q=Ashwagandha",
-          },
-          {
-            label:
-              "Magnesium",
-            href:
-              "/shop?q=Magnesium",
-          },
-          {
-            label:
-              "Probiotics",
-            href:
-              "/shop?q=Probiotics",
-          },
-          {
-            label:
-              "CoQ10",
-            href:
-              "/shop?q=CoQ10",
-          },
-        ],
-      },
-      {
-        title:
-          "DIGESTION & GUT",
-        items: [
-          {
-            label:
-              "Probiotics",
-            href:
-              "/shop?q=Probiotics",
-          },
-          {
-            label:
-              "Prebiotics",
-            href:
-              "/shop?q=Prebiotics",
-          },
-          {
-            label:
-              "Digestive Enzymes",
-            href:
-              "/shop?q=Digestive%20Enzymes",
-          },
-          {
-            label:
-              "Fiber",
-            href:
-              "/shop?q=Fiber",
-          },
-        ],
-      },
-      {
-        title: "HERBS",
-        items: [
-          {
-            label:
-              "Ashwagandha",
-            href:
-              "/shop?q=Ashwagandha",
-          },
-          {
-            label:
-              "Rhodiola",
-            href:
-              "/shop?q=Rhodiola",
-          },
-          {
-            label:
-              "Turmeric / Curcumin",
-            href:
-              "/shop?q=Turmeric",
-          },
-          {
-            label:
-              "Milk Thistle",
-            href:
-              "/shop?q=Milk%20Thistle",
-          },
-        ],
-      },
-      {
-        title: "SPECIALTY",
-        items: [
-          {
-            label:
-              "Collagen",
-            href:
-              "/shop?q=Collagen",
-          },
-          {
-            label:
-              "L-Carnitine",
-            href:
-              "/shop?q=L-Carnitine",
-          },
-          {
-            label:
-              "Glutamine",
-            href:
-              "/shop?q=Glutamine",
-          },
-          {
-            label:
-              "NMN / NAD+",
-            href:
-              "/shop?q=NMN",
-          },
-        ],
-      },
-    ],
-  },
-
-  sports: {
-    label:
-      "SPORTS NUTRITION",
-    description:
-      "Protein, performance, recovery and hydration organized for faster shopping.",
-    allHref:
-      "/shop?goal=Muscle%20%26%20Recovery",
-    columns: [
-      {
-        title: "PROTEIN",
-        items: [
-          {
-            label:
-              "Whey Protein",
-            href:
-              "/shop?q=Whey",
-          },
-          {
-            label:
-              "Whey Isolate",
-            href:
-              "/shop?q=Whey%20Isolate",
-          },
-          {
-            label:
-              "Plant Protein",
-            href:
-              "/shop?q=Plant%20Protein",
-          },
-          {
-            label:
-              "Mass Gainers",
-            href:
-              "/shop?q=Mass%20Gainer",
-          },
-        ],
-      },
-      {
-        title:
-          "PERFORMANCE",
-        items: [
-          {
-            label:
-              "Creatine",
-            href:
-              "/shop?q=Creatine",
-          },
-          {
-            label:
-              "Pre-Workout",
-            href:
-              "/shop?q=Pre-Workout",
-          },
-          {
-            label:
-              "BCAAs / EAAs",
-            href:
-              "/shop?q=BCAA",
-          },
-          {
-            label:
-              "Glutamine",
-            href:
-              "/shop?q=Glutamine",
-          },
-        ],
-      },
-      {
-        title:
-          "HYDRATION",
-        items: [
-          {
-            label:
-              "Electrolytes",
-            href:
-              "/shop?q=Electrolytes",
-          },
-          {
-            label:
-              "Hydration",
-            href:
-              "/shop?q=Hydration",
-          },
-          {
-            label:
-              "Energy",
-            href:
-              "/shop?q=Energy",
-          },
-        ],
-      },
-      {
-        title: "GOALS",
-        items: [
-          {
-            label:
-              "Muscle & Recovery",
-            href:
-              "/shop?goal=Muscle%20%26%20Recovery",
-          },
-          {
-            label:
-              "Energy & Fitness",
-            href:
-              "/shop?goal=Energy%20%26%20Fitness",
-          },
-          {
-            label:
-              "Weight Management",
-            href:
-              "/shop?q=Weight%20Management",
-          },
-        ],
-      },
-    ],
-  },
-
-  vitamins: {
-    label:
-      "VITAMINS & MINERALS",
-    description:
-      "Daily vitamins, minerals and multivitamins grouped for quick comparison.",
-    allHref:
-      "/shop?category=Vitamins",
-    columns: [
-      {
-        title: "VITAMINS",
-        items: [
-          {
-            label:
-              "Vitamin C",
-            href:
-              "/shop?q=Vitamin%20C",
-          },
-          {
-            label:
-              "Vitamin D3",
-            href:
-              "/shop?q=Vitamin%20D3",
-          },
-          {
-            label:
-              "B-Complex",
-            href:
-              "/shop?q=B-Complex",
-          },
-          {
-            label:
-              "Vitamin E",
-            href:
-              "/shop?q=Vitamin%20E",
-          },
-        ],
-      },
-      {
-        title: "MINERALS",
-        items: [
-          {
-            label:
-              "Magnesium",
-            href:
-              "/shop?q=Magnesium",
-          },
-          {
-            label:
-              "Zinc",
-            href:
-              "/shop?q=Zinc",
-          },
-          {
-            label:
-              "Calcium",
-            href:
-              "/shop?q=Calcium",
-          },
-          {
-            label:
-              "Iron",
-            href:
-              "/shop?q=Iron",
-          },
-        ],
-      },
-      {
-        title:
-          "MULTIVITAMINS",
-        items: [
-          {
-            label:
-              "Men's Multivitamins",
-            href:
-              "/shop?q=Men%27s%20Multivitamin",
-          },
-          {
-            label:
-              "Women's Multivitamins",
-            href:
-              "/shop?q=Women%27s%20Multivitamin",
-          },
-          {
-            label:
-              "Daily Multivitamins",
-            href:
-              "/shop?q=Multivitamin",
-          },
-        ],
-      },
-      {
-        title:
-          "ESSENTIALS",
-        items: [
-          {
-            label:
-              "Vitamin D3 & K2",
-            href:
-              "/shop?q=D3%20K2",
-          },
-          {
-            label:
-              "Trace Minerals",
-            href:
-              "/shop?q=Minerals",
-          },
-          {
-            label:
-              "Electrolytes",
-            href:
-              "/shop?q=Electrolytes",
-          },
-        ],
-      },
-    ],
-  },
-
-  wellness: {
-    label: "WELLNESS",
-    description:
-      "Shop around the goal first: sleep, stress, heart, gut and everyday wellbeing.",
-    allHref:
-      "/shop?category=Wellness",
-    columns: [
-      {
-        title:
-          "DAILY WELLNESS",
-        items: [
-          {
-            label:
-              "Immune Support",
-            href:
-              "/shop?goal=Immune%20Support",
-          },
-          {
-            label:
-              "Stress & Sleep",
-            href:
-              "/shop?goal=Stress%20%26%20Sleep",
-          },
-          {
-            label:
-              "Heart Health",
-            href:
-              "/shop?goal=Heart%20Health",
-          },
-          {
-            label:
-              "Gut Health",
-            href:
-              "/shop?goal=Gut%20Health",
-          },
-        ],
-      },
-      {
-        title:
-          "MIND & MOOD",
-        items: [
-          {
-            label:
-              "Sleep Support",
-            href:
-              "/shop?q=Sleep",
-          },
-          {
-            label:
-              "Stress Relief",
-            href:
-              "/shop?q=Stress",
-          },
-          {
-            label:
-              "Focus",
-            href:
-              "/shop?q=Focus",
-          },
-        ],
-      },
-      {
-        title:
-          "BODY SUPPORT",
-        items: [
-          {
-            label:
-              "Bone & Joint",
-            href:
-              "/shop?q=Joint",
-          },
-          {
-            label:
-              "Hair, Skin & Nails",
-            href:
-              "/shop?q=Collagen",
-          },
-          {
-            label:
-              "Healthy Aging",
-            href:
-              "/shop?q=CoQ10",
-          },
-        ],
-      },
-      {
-        title: "DISCOVER",
-        items: [
-          {
-            label:
-              "All Health Goals",
-            href:
-              "/#health-goals",
-          },
-          {
-            label:
-              "Best Sellers",
-            href:
-              "/#best-sellers",
-          },
-          {
-            label:
-              "Value Sets",
-            href:
-              "/#value-sets",
-          },
-        ],
-      },
-    ],
-  },
-};
-
-// Brand data is now loaded dynamically from the API inside DesktopMegaMenu
+export type MegaMenuKey = string
 
 function MenuShell({
   children,
@@ -566,6 +61,8 @@ export default function DesktopMegaMenu({
   onClose: () => void;
 }) {
   const { t } = useLanguage();
+
+  const { categories } = useCategories()
 
   // Dynamically loaded brands from the backend API
   const [brands, setBrands] = useState<Brand[]>([]);
@@ -675,8 +172,18 @@ export default function DesktopMegaMenu({
     );
   }
 
-  const menu =
-    menus[active];
+  const category = categories.find((item) => item.id === active)
+  if (!category) return null
+  const menu = {
+    label: category.name,
+    description: category.description,
+    allHref: category.href,
+    columns: (category.children.length ? category.children : [category]).map((child) => ({
+      id: child.id,
+      title: child.name,
+      items: categoryLinks(child),
+    })),
+  }
 
   return (
     <MenuShell
@@ -731,7 +238,7 @@ export default function DesktopMegaMenu({
             ) => (
               <section
                 key={
-                  column.title
+                  column.id
                 }
                 className={
                   styles.column
@@ -749,7 +256,7 @@ export default function DesktopMegaMenu({
                       item,
                     ) => (
                       <Link
-                        key={`${column.title}-${item.label}`}
+                        key={item.id}
                         href={
                           item.href
                         }

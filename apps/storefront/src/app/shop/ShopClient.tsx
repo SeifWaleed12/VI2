@@ -6,7 +6,10 @@ import {
   SlidersHorizontal,
   X,
 } from "lucide-react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link"
+import { categoryHref } from "@/lib/category-navigation"
+import type { StoreCategory } from "@/lib/medusa/services/categories"
 import {
   useEffect,
   useMemo,
@@ -27,15 +30,6 @@ import { getArabicProductSearchText } from "@/lib/arabicLocalization";
 
 import styles from "./Shop.module.css";
 
-const defaultCategories = [
-  "All",
-  "Protein",
-  "Creatine",
-  "Pre-Workout",
-  "Vitamins",
-  "Wellness",
-  "Mass Gainer",
-];
 
 
 
@@ -85,9 +79,15 @@ type SortValue =
 export default function ShopClient({
   products,
   initialCategories = [],
+  categoryOptions = [],
+  selectedCategoryId,
+  selectedCategoryName,
 }: {
   products: Product[];
   initialCategories?: string[];
+  categoryOptions?: StoreCategory[];
+  selectedCategoryId?: string;
+  selectedCategoryName?: string;
 }) {
   const categories = useMemo(() => {
     const derived = Array.from(
@@ -99,7 +99,7 @@ export default function ShopClient({
     if (combined.length > 0) {
       return ["All", ...combined];
     }
-    return defaultCategories;
+    return ["All"];
   }, [initialCategories, products]);
 
   const brands = [
@@ -108,6 +108,7 @@ export default function ShopClient({
   ];
 
   const searchParams = useSearchParams();
+  const router = useRouter();
 
   const requestedCategory =
     searchParams.get("category");
@@ -257,6 +258,7 @@ export default function ShopClient({
 
     return result;
   }, [
+    products,
     availabilityOnly,
     brand,
     category,
@@ -267,6 +269,7 @@ export default function ShopClient({
   ]);
 
   function clearFilters() {
+    if (selectedCategoryId) router.push("/shop");
     setSearch("");
     setCategory("All");
     setGoal("All Goals");
@@ -279,6 +282,7 @@ export default function ShopClient({
   }
 
   const hasActiveFilters =
+    Boolean(selectedCategoryId) ||
     search.trim().length > 0 ||
     category !== "All" ||
     goal !== "All Goals" ||
@@ -330,19 +334,15 @@ export default function ShopClient({
         </div>
 
         <div className={styles.filterOptions}>
-          {categories.map((item) => (
-            <button
-              key={item}
-              type="button"
-              className={
-                category === item
-                  ? styles.filterActive
-                  : ""
-              }
-              onClick={() => setCategory(item)}
+          <Link href="/shop" className={!selectedCategoryId && category === "All" ? styles.filterActive : ""}>All</Link>
+          {categoryOptions.map((item) => (
+            <Link
+              key={item.id}
+              href={categoryHref(item.id)}
+              className={selectedCategoryId === item.id || (!selectedCategoryId && category === item.name) ? styles.filterActive : ""}
             >
-              <span data-arabic-text={arabicCatalogLabels[item]}>{item}</span>
-            </button>
+              <span data-arabic-text={arabicCatalogLabels[item.name]}>{item.name}</span>
+            </Link>
           ))}
         </div>
       </div>
@@ -455,6 +455,7 @@ export default function ShopClient({
 
   return (
     <main className={styles.page}>
+      {selectedCategoryName && <p className={styles.categorySelection}>{selectedCategoryName} · <Link href="/shop">View all products</Link></p>}
       <section className={styles.intro}>
         <div className={styles.introCopy}>
           <span className={styles.eyebrow}>

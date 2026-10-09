@@ -8,6 +8,7 @@ export type StoreCategory = {
   parent_category_id?: string | null;
   parent_category?: StoreCategory | null;
   category_children?: StoreCategory[];
+  rank?: number;
   products?: unknown[];
   metadata?: Record<string, unknown> | null;
 };
@@ -63,5 +64,37 @@ export async function getCategoryByHandle(
       error,
     );
     return null;
+  }
+}
+
+/** Load only public category fields, one page at a time, without product data. */
+export async function getCategoryDirectory(): Promise<StoreCategory[]> {
+  const categories: StoreCategory[] = []
+  const signal = AbortSignal.timeout(10_000)
+  try {
+    for (let page = 0; page < 100; page++) {
+      const response = await medusa.client.fetch<{
+        product_categories: StoreCategory[]; count: number
+      }>("/store/product-categories", {
+        method: "GET",
+        signal,
+        query: {
+          limit: 100,
+          offset: categories.length,
+          order: "rank",
+          fields: "id,name,handle,description,parent_category_id,rank",
+        },
+      })
+      const items = response.product_categories
+      if (!Array.isArray(items) || !Number.isInteger(response.count) || response.count < 0) {
+        throw new Error("Invalid category response")
+      }
+      categories.push(...items)
+      if (categories.length >= response.count) return categories
+      if (!items.length) throw new Error("Category pagination did not advance")
+    }
+    throw new Error("Category pagination limit reached")
+  } catch {
+    throw new Error("Categories temporarily unavailable.")
   }
 }
