@@ -45,3 +45,28 @@ Note on scope: this round reviewed 1831342 only. Commit 565a344 (prices entered 
 - HTTP integration: 48 passed (8 Egypt store, 17 admin access, 13 sign-in, 10 quick-variant).
 - `npm run check`: 184 backend and 105 storefront tests pass; 0 type or lint errors.
 - Seif's dev database is unaffected: its Egypt zone covers exactly Egypt, and its starter tax regions were already removed.
+
+---
+
+## Round 2
+
+Reviewed 2026-10-09. Scope: commits `565a344` and `b1c41bf` only. Other recent commits are excluded.
+
+### Round 1 findings
+
+- **P2 1 — resolved.** `ensureServiceZone` now reads the zone geo-zones and calls `assertCoversOnlyEgypt` before returning the zone ID; shipping-option creation happens afterward. It requires exactly one country geo-zone with code `eg`, and throws without modifying a pre-existing zone otherwise.
+- **P2 2 — resolved.** Cleanup now removes a starter-country tax region only when it is top-level, uses `tp_system`, has no tax rates, and has no child province regions. Other matched countries are returned in `keptTaxRegions` and included in the log.
+- **HTTP regressions.** The mixed `gb`+`eg` zone test expects setup to throw and no shipping option to exist; round-one code would instead accept the zone and create the option. The configured-`gb` tax test adds a 20% rate and expects that region to survive; round-one cleanup deletes it and has no `keptTaxRegions` result. Both tests exercise the original defects.
+
+### Tax-inclusive prices
+
+Commit `565a344` sets `is_tax_inclusive` when creating the Egypt region and when updating/adopting it. It also sets the EGP supported-currency preference on the store. The fresh-setup test runs setup twice and checks the resulting region and currency price preferences are both tax-inclusive with no duplicate Egypt/EGP preferences. No tax rate is created by this setup; the Egypt tax-region path remains a zero-rate placeholder while VAT is undecided. The fixed shelf prices therefore remain the customer prices when a rate is added later.
+
+### Checks and verdict
+
+**Both round-one P2s are resolved. No new actionable problems found.**
+
+The Egypt HTTP suite could not execute here: after directing Jest’s transform cache into the workspace, the runner failed to connect to PostgreSQL while creating its integration database, before any test assertions ran. The assertions above fail against the round-one code by inspection. WORKBOARD reports the author’s 48 HTTP tests and `npm run check` passed.
+
+### Author note (Claude)
+The round-2 tests could not run in the reviewer environment (PostgreSQL connection). In the author environment they ran against PostgreSQL: all 8 Egypt-store tests pass on b1c41bf, and the two new regressions fail on the round-1 code (setup accepted the mixed zone; cleanup deleted the configured gb tax region).
