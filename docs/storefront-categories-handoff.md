@@ -1,7 +1,7 @@
 # SF 2: Medusa category directory and navigation handoff
 
 Author: GPT. Reviewer: Claude. Branch: `gpt/work`.
-Implementation: `f744658`. Implementation base: `7e29171`.
+Implementation: `f744658`; review fixes: `823c7eb`. Implementation base: `7e29171`.
 Approved commerce baseline: `full-stack` at `caf81ea`.
 
 ## Behavior
@@ -20,6 +20,10 @@ This handles products outside the first unfiltered page and avoids confusing
 categories that share a name. Unknown, empty or repeated IDs produce a not-found
 page; they never silently open the unfiltered shop. The sidebar uses real category
 links and shows the selected category with an explicit return to all products.
+Footer and product-page links use these IDs too. Products without an ID link to
+the directory. Legacy name URLs resolve to exactly one public category ID;
+unknown or ambiguous names return not-found. ShopClient no longer filters by
+category name. Unscoped /shop tolerates directory outages; scoped requests fail.
 
 The shared category provider loads one directory for the page and navigation.
 It deduplicates the in-flight request during React effect replay. Loading, empty,
@@ -46,15 +50,17 @@ descriptions remain plain React text; no untrusted HTML is injected.
 
 ## Validation
 
-- Storefront Jest: **10 suites, 131 tests passed**, including 26 new tests.
-  Tests cover paginated categories, empty/malformed/outage responses, nested
-  hierarchy, duplicate names, ID URL escaping, invalid category IDs, descendant
-  scoping, directory/mega-menu/mobile rendering and bilingual error/retry states.
-- Storefront TypeScript: **0 diagnostics** using the configured compiler options
-  and a temporary host that resolves missing dependencies from the existing
-  installation in `vi2`. Source files are from `vi2-gpt-review`, not Claude's code.
-- Storefront configured ESLint rules: **0 errors, 20 warnings** in existing code,
-  loaded from that installation and applied to the GPT source.
+- Correction: Claude review f1fd033 found that the original NODE_PATH run of
+  131 tests used React 18 and hid seven failures under storefront React 19.
+- After fixes: **10 suites, 142 tests passed**, using installed React 19.2.8 and
+  React DOM 19.2.8 with real Lucide icons. The committed Jest mapper pins React,
+  React DOM and their subpaths (including JSX runtimes) to storefront copies.
+- Added 11 regressions for unscoped outages, valid/invalid/ambiguous legacy links,
+  scoped legacy outages, footer links/outages, and native product category IDs.
+- Storefront TypeScript: **0 diagnostics** using configured compiler options
+  and the existing installation through the temporary compiler host.
+- Configured ESLint rules: **0 errors, 19 existing warnings**. Removing the
+  legacy category effect removed one warning; no rule was weakened.
 - Git whitespace checks passed.
 - `npm run check` was attempted with existing tool binaries. Turbo's isolated
   task environment could not resolve dependencies (including `@swc/jest`) in
@@ -67,23 +73,25 @@ descriptions remain plain React text; no untrusted HTML is injected.
   development configuration; the backend was unavailable. No live integration,
   browser walkthrough, production build or deployment is claimed.
 
-Actual Jest command used (from `vi2-gpt-review`, with `NODE_PATH` pointing at the
-existing `vi2/node_modules` and storefront dependency folders):
+Corrected Jest command (from GPT's folder):
 
 ```powershell
-node ../vi2/node_modules/jest/bin/jest.js --config apps/storefront/jest.config.cjs --runInBand
+node ../vi2/node_modules/jest/bin/jest.js --config "$env:TEMP/vi2-sf2-validation/jest-react19.config.cjs" --runInBand
 ```
 
-Temporary validation runners and logs are in
-`C:/Users/Seif Waleed/AppData/Local/Temp/vi2-sf2-validation/`. They do not modify
-installed dependency files. Normal checks should be rerun if Seif approves local
-installation; the temporary resolution is not a claim that this checkout can
-build unaided.
+The temporary config imports GPT's committed config and redirects its missing
+React/React DOM paths to installed storefront React 19, resolves existing SWC
+by absolute path and adds existing dependency folders. Source and tests stay
+in GPT's folder. NODE_PATH supplies other dependencies; React is pinned, so
+root React 18 cannot hide the mismatch. No installed files were changed.
+Runners: C:/Users/Seif Waleed/AppData/Local/Temp/vi2-sf2-validation/.
+This is not a claim of normal unaided checkout checks. Claude should rerun the
+committed config in a normal dependency layout.
 
 ## Review focus and remaining limits
 
-Claude: review `git diff 7e29171 f744658`, then this handoff and the workboard
-status commit. Record findings in `docs/reviews/storefront-categories.md` in your
+Claude: re-review `git diff 67b79c6 823c7eb`, then this handoff,
+`docs/storefront-categories-review-response.md` and the workboard status commit. Record findings in `docs/reviews/storefront-categories.md` in your
 own folder/branch. Do not edit GPT's implementation or merge anything.
 
 Focus on API paging/error handling, shared provider request/retry lifecycle,
@@ -91,6 +99,10 @@ category search and hierarchy, real-ID links, invalid-ID handling, category
 changes/clear filters in the shop, bilingual states, and responsive navigation.
 The rendered tests verify markup and links, not browser interactions. A live
 walkthrough with the actual catalog remains required once the backend is available.
+
+Known minor findings F4/F5: eager directory loading and duplicate shop fetch
+remain; the shop sidebar is flat. Claude marked both nonblocking for a small
+catalog. No cache or sidebar redesign was added in this fix.
 
 The existing product-list page size (100) and browser filters for other shop
 features remain; this task scopes that page correctly by Medusa category and
