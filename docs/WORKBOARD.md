@@ -99,6 +99,10 @@ GPT review checklist (from `AGENTS.md`):
 
 | Task | Owner | Status | Notes |
 |---|---|---|---|
+| Core 1. Egypt setup in code: EGP store currency, Egypt region, governorates, Cairo warehouse, shipping options | — | open | Size M. Source: `mvp-remaining-work.md` section 1. The seed (`src/migration-scripts/initial-data-seed.ts`) still creates a Europe region, EUR/USD prices and T-shirts; the dev database has an EGP region made by hand, but a fresh or production database gets nothing. Needs from Seif: Cairo warehouse address; shipping option names and fees until Bosta replaces them (fees are a business rule, not to be invented); whether the T-shirt demo data is removed. |
+| Core 2. Supplement attributes: EDA registration, serving size, servings per container, protein/carbs/fat per serving, flavours, key-metric tags | — | open | Size M. Partial today: only `metadata.servings` exists. Defined fields, validation, an admin editing widget, and the store API exposing them. Storefront display is a separate storefront task. Needs from Seif: confirm the field list and units, and which fields are required. |
+| Core 3. Product image storage on S3/R2 | — | open | Size S. Today uploads go to the local file provider and are lost on redeploy. Use Medusa's own `file-s3` provider, switched on by env vars (like SendGrid). Needs from Seif: an R2 bucket, its public URL and access keys, set in `.env` (never in code). |
+| Core 4. Load the real supplement catalog (products, variants, SKUs, barcodes, images) | — | blocked | Size M. Blocked on a data source: an Odoo export once Odoo access is known, or a CSV from Seif. Depends on Core 1 (EGP prices) and Core 2 (attributes). |
 | HTTP integration tests for auth, cart, checkout, admin access | — | open | Needs a test PostgreSQL. `npm run test:integration:http` in `apps/backend`. |
 | Remaining storefront lint warnings | — | open | Low priority; style only. |
 | Split oversized storefront components (for example `ProductDetailClient.tsx`, `CheckoutClient.tsx`) | — | open | Matches the clean code goal, but is a refactor. Needs Seif's approval before starting. |
