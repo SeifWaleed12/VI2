@@ -73,6 +73,7 @@ GPT review checklist (from `AGENTS.md`):
 
 | Task | Author | Branch | Commits | Review file | Status |
 |---|---|---|---|---|---|
+| Core 1. Egypt store setup in code: EGP, Egypt region and tax region, Cairo Warehouse, one 70 EGP delivery option; starter demo removal | Claude | `claude/work` | the Core 1 commit after c6aa6a6 | `docs/reviews/egypt-store.md` | Seif's inputs (2026-10-09): warehouse Cairo, Egypt; one option, flat 70 EGP; remove the demo. `src/lib/egypt-store.ts` (settings), `src/scripts/setup-egypt-store.ts` (idempotent, also run by `initial-data-seed` on new databases), `src/scripts/remove-demo-data.ts` (explicit, refuses a warehouse holding stock). 6 new HTTP tests; 46 HTTP and `npm run check` green. Applied to Seif's dev database (setup, then demo removal). Governorates: not needed while one fee covers Egypt; they matter with Bosta zones. |
 
 ## Done
 
@@ -93,13 +94,14 @@ GPT review checklist (from `AGENTS.md`):
 | Item | Why it is blocked |
 |---|---|
 | Payment methods (Paymob), Bosta shipment ownership, Odoo sync contract | Seif is collecting more information. Do not build, stub or guess these until Seif releases the work. Production checkout stays disabled until then (`apps/backend/src/api/middlewares.ts`). |
+| Egyptian VAT on products | Core 1 adds an Egypt tax region with no rate, so tax is 0%. Whether prices include 14% VAT, or VAT is added, is Seif's decision (and possibly the accountant's). |
 | Guest account provisioning, expiry dates, analytics | RD asks for them; `docs/MVP-SCOPE.md` excludes or does not mention them. Seif to decide. |
 
 ## Open: ready to pick up
 
 | Task | Owner | Status | Notes |
 |---|---|---|---|
-| Core 1. Egypt setup in code: EGP store currency, Egypt region, governorates, Cairo warehouse, shipping options | — | open | Size M. Source: `mvp-remaining-work.md` section 1. The seed (`src/migration-scripts/initial-data-seed.ts`) still creates a Europe region, EUR/USD prices and T-shirts; the dev database has an EGP region made by hand, but a fresh or production database gets nothing. Needs from Seif: Cairo warehouse address; shipping option names and fees until Bosta replaces them (fees are a business rule, not to be invented); whether the T-shirt demo data is removed. |
+| Storefront: remove invented fallback delivery options | — | open | Size S. `apps/storefront/src/lib/medusa/services/shipping.ts` shows hard-coded "Standard 85 EGP / Express 140 EGP" with env or fake IDs when the backend call fails or returns nothing. Those prices are invented and the IDs cannot be ordered. Show an error and let the customer retry instead. Found during Core 1. |
 | Core 2. Supplement attributes: EDA registration, serving size, servings per container, protein/carbs/fat per serving, flavours, key-metric tags | — | open | Size M. Partial today: only `metadata.servings` exists. Defined fields, validation, an admin editing widget, and the store API exposing them. Storefront display is a separate storefront task. Needs from Seif: confirm the field list and units, and which fields are required. |
 | Core 3. Product image storage on S3/R2 | — | open | Size S. Today uploads go to the local file provider and are lost on redeploy. Use Medusa's own `file-s3` provider, switched on by env vars (like SendGrid). Needs from Seif: an R2 bucket, its public URL and access keys, set in `.env` (never in code). |
 | Core 4. Load the real supplement catalog (products, variants, SKUs, barcodes, images) | — | blocked | Size M. Blocked on a data source: an Odoo export once Odoo access is known, or a CSV from Seif. Depends on Core 1 (EGP prices) and Core 2 (attributes). |
