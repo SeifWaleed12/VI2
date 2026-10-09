@@ -95,12 +95,12 @@ The initial update prepared tasks only. Seif authorized SF 1 on 2026-10-09; othe
 
 | Task | Author | Branch | Commits | Review file | Status |
 |---|---|---|---|---|---|
-| SF 1. Storefront UI integration verification | GPT; reviewer Claude | `gpt/work` | `98f4b35`, `fa6636f`; Claude review `3ddfc5e` on `claude/work` | `docs/reviews/storefront-ui-integration.md` (on `claude/work`) | Claude approved for closure on 2026-10-09; no actionable findings. Awaiting Seif closure. Documentation only; no runtime checks claimed. |
 
 ## Done
 
 | Task | Owner | Commit | Notes |
 |---|---|---|---|
+| SF 1. Storefront UI integration verification | GPT, reviewed by Claude | `98f4b35`, `fa6636f`; review `3ddfc5e` on `claude/work` | Closed by Seif on 2026-10-09. UI content already incorporated in `full-stack`; 24 exact file matches and five intentional later differences. Documentation only. |
 | 1. Trustworthy checkout confirmation + regression tests | GPT, then Claude | cdfbea8, db8b2d8 | Success requires a Medusa `order_` ID; confirmation page reads the order from Medusa. Unknown outcomes keep the same cart for retry. |
 | 2. Lint/type errors; `npm run check` covers both apps | GPT, then Claude | cdfbea8, e2af23c | 0 errors. 21 storefront lint warnings remain (`<img>`, setState-in-effect), all in code not otherwise touched. |
 | 3. Remove invented availability/social proof; brand/region owners | GPT, then Claude | cdfbea8, 8497eca | Brand comes from the linked Brand module; region must be a real EGP/EG Medusa region; ratings shown only when reviews exist (none do). |
@@ -147,8 +147,8 @@ also await Seif's approval; approval alone does not resolve their dependencies.
 
 | Task | Source state | Size left | Owner | Reviewer | Branch | Status | Scope / dependencies |
 |---|---|---|---|---|---|---|---|
-| SF 1. Verify integration of the `front` UI update | Already incorporated (verified) | S | GPT | Claude | `gpt/work` | review approved; awaiting Seif closure | Seif authorized SF 1 on 2026-10-09. All 29 UI-update files checked against `full-stack`: 24 exact matches, five preserve later data/auth/availability fixes. UI content entered through `cdfbea8`; no code reapplication or merge needed. Evidence: `docs/storefront-ui-integration-handoff.md`, commit `98f4b35`. Claude approved with no actionable findings in review commit `3ddfc5e` on `claude/work`. Awaiting Seif closure; correct the source checklist state when closing. |
-| SF 2. Categories page and mega menu from Medusa categories | Partial | S | GPT | Claude | `gpt/work` | awaiting Seif approval | Replace static category data from `data/catalogArchitecture.ts` with Medusa category data through the existing API client. Handle loading, empty and error states; preserve the existing design. |
+| SF 1. Verify integration of the `front` UI update | Already incorporated (verified) | S | GPT | Claude | `gpt/work` | done; closed by Seif | Seif authorized SF 1 on 2026-10-09. All 29 UI-update files checked against `full-stack`: 24 exact matches, five preserve later data/auth/availability fixes. UI content entered through `cdfbea8`; no code reapplication or merge needed. Evidence: `docs/storefront-ui-integration-handoff.md`, commit `98f4b35`. Claude approved with no actionable findings in review commit `3ddfc5e` on `claude/work`. Seif approved closure and released SF 2 on 2026-10-09. The source checklist is in Claude's folder and must be corrected there by its owner; the corrected state is recorded here. |
+| SF 2. Categories page and mega menu from Medusa categories | Partial | S | GPT | Claude | `gpt/work` | in progress | Seif authorized SF 2 on 2026-10-09.  Replace static category data from `data/catalogArchitecture.ts` with Medusa category data through the existing API client. Handle loading, empty and error states; preserve the existing design. |
 | SF 3. Product key-metrics bar, supplement facts and video preview | Partial | M | GPT | Claude | `gpt/work` | blocked | Depends on Core 2's confirmed supplement fields, units and store API. Confirm the video source/field before wiring the preview. Display authoritative values and handle absent data without invented claims. |
 | SF 4. Product warehouse stock badge | Partial | S | GPT | Claude | `gpt/work` | blocked | Generic in/out of stock already works. Exact quantity and Cairo-warehouse wording depend on the released Odoo stock contract and Medusa exposure of warehouse stock. No direct Odoo access or invented quantities. |
 | SF 5. Frequently bought together cross-sell | Not started | S | GPT | Claude | `gpt/work` | blocked | The assessment suggests admin-picked related products. Seif must confirm selection ownership and how the relationship is stored/exposed through Medusa before implementation. Use real products, variants, prices and availability. |
