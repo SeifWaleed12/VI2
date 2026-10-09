@@ -68,7 +68,7 @@ flow continues for other tasks, including Claude's claimed Core 1 work.
 
 Work only in the assigned folder. Shared-file changes still require Seif's
 approval. Integration work remains unreleased until Seif supplies the contracts.
-This update prepares tasks only; it does not approve implementation or a merge.
+The initial update prepared tasks only. Seif authorized SF 1 on 2026-10-09; other task releases and merge approvals are recorded separately.
 
 ## Decided (by Seif)
 
@@ -95,6 +95,7 @@ This update prepares tasks only; it does not approve implementation or a merge.
 
 | Task | Author | Branch | Commits | Review file | Status |
 |---|---|---|---|---|---|
+| SF 1. Storefront UI integration verification | GPT; reviewer Claude | `gpt/work` | `98f4b35` (evidence handoff); workboard status recorded separately | `docs/reviews/storefront-ui-integration.md` (Claude to create) | Ready for Claude review through Seif. Documentation only: update already incorporated; see `docs/storefront-ui-integration-handoff.md`. No runtime checks claimed. |
 
 ## Done
 
@@ -133,20 +134,20 @@ This update prepares tasks only; it does not approve implementation or a merge.
 
 | Task | Owner | Branch | Status | Notes |
 |---|---|---|---|---|
-| Transfer incomplete storefront items from the MVP checklist | GPT | `gpt/work` | awaiting Seif approval | Requested by Seif on 2026-10-09. Prepare the backlog for Seif's approval; implementation follows approval. |
+| Transfer incomplete storefront items from the MVP checklist | GPT | `gpt/work` | approved by Seif | Requested by Seif on 2026-10-09. Prepare the backlog for Seif's approval; implementation follows approval. |
 
-## Storefront: proposed work, awaiting Seif approval
+## Storefront: assigned backlog
 
 Source: `mvp-remaining-work.md`, section 2, assessment dated 2026-10-09 against
 `full-stack` at `caf81ea`. Source states and estimates are copied from that
 assessment, not a fresh implementation audit. All eight Partial/Not started
 items are included, plus the unmerged UI update and the remaining Arabic/RTL pass.
-Each task uses the storefront author/reviewer exception above. "Blocked" tasks
+Seif authorized SF 1 on 2026-10-09. Its source state has been corrected after inspection; other source states remain assessment-derived. Each task uses the storefront author/reviewer exception above. "Blocked" tasks
 also await Seif's approval; approval alone does not resolve their dependencies.
 
 | Task | Source state | Size left | Owner | Reviewer | Branch | Status | Scope / dependencies |
 |---|---|---|---|---|---|---|---|
-| SF 1. Prepare the unmerged `front` UI update for integration | Not merged | S | GPT | Claude | `gpt/work` | awaiting Seif approval | Inspect the 2 Oct update (29 files), verify the actual branch/ref, and resolve conflicts with the current merged baseline while preserving later correctness/security work. Prepare the change on `gpt/work` for Claude review; Seif performs the approved merge. |
+| SF 1. Verify integration of the `front` UI update | Already incorporated (verified) | S | GPT | Claude | `gpt/work` | in review | Seif authorized SF 1 on 2026-10-09. All 29 UI-update files checked against `full-stack`: 24 exact matches, five preserve later data/auth/availability fixes. UI content entered through `cdfbea8`; no code reapplication or merge needed. Evidence: `docs/storefront-ui-integration-handoff.md`, commit `98f4b35`. Awaiting Claude review and Seif closure. |
 | SF 2. Categories page and mega menu from Medusa categories | Partial | S | GPT | Claude | `gpt/work` | awaiting Seif approval | Replace static category data from `data/catalogArchitecture.ts` with Medusa category data through the existing API client. Handle loading, empty and error states; preserve the existing design. |
 | SF 3. Product key-metrics bar, supplement facts and video preview | Partial | M | GPT | Claude | `gpt/work` | blocked | Depends on Core 2's confirmed supplement fields, units and store API. Confirm the video source/field before wiring the preview. Display authoritative values and handle absent data without invented claims. |
 | SF 4. Product warehouse stock badge | Partial | S | GPT | Claude | `gpt/work` | blocked | Generic in/out of stock already works. Exact quantity and Cairo-warehouse wording depend on the released Odoo stock contract and Medusa exposure of warehouse stock. No direct Odoo access or invented quantities. |
