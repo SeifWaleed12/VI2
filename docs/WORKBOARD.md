@@ -95,6 +95,7 @@ The initial update prepared tasks only. Seif authorized SF 1 on 2026-10-09; othe
 
 | Task | Author | Branch | Commits | Review file | Status |
 |---|---|---|---|---|---|
+| SF 2. Categories directory and navigation from Medusa | GPT; reviewer Claude | `gpt/work` | `f744658`; base `7e29171` | `docs/reviews/storefront-categories.md` (Claude to create) | Implementation prepared for review. 131 storefront tests pass; TypeScript 0 diagnostics; lint 0 errors/20 existing warnings with existing-tool validation. Normal `npm run check` blocked by missing local dependencies; installation awaiting Seif approval. Live backend unavailable. Handoff: `docs/storefront-categories-handoff.md`. |
 
 ## Done
 
@@ -142,13 +143,13 @@ Source: `mvp-remaining-work.md`, section 2, assessment dated 2026-10-09 against
 `full-stack` at `caf81ea`. Source states and estimates are copied from that
 assessment, not a fresh implementation audit. All eight Partial/Not started
 items are included, plus the unmerged UI update and the remaining Arabic/RTL pass.
-Seif authorized SF 1 on 2026-10-09. Its source state has been corrected after inspection; other source states remain assessment-derived. Each task uses the storefront author/reviewer exception above. "Blocked" tasks
+Seif closed SF 1 and released SF 2 on 2026-10-09. SF 1's source state has been corrected after inspection; other source states remain assessment-derived. Each task uses the storefront author/reviewer exception above. "Blocked" tasks
 also await Seif's approval; approval alone does not resolve their dependencies.
 
 | Task | Source state | Size left | Owner | Reviewer | Branch | Status | Scope / dependencies |
 |---|---|---|---|---|---|---|---|
 | SF 1. Verify integration of the `front` UI update | Already incorporated (verified) | S | GPT | Claude | `gpt/work` | done; closed by Seif | Seif authorized SF 1 on 2026-10-09. All 29 UI-update files checked against `full-stack`: 24 exact matches, five preserve later data/auth/availability fixes. UI content entered through `cdfbea8`; no code reapplication or merge needed. Evidence: `docs/storefront-ui-integration-handoff.md`, commit `98f4b35`. Claude approved with no actionable findings in review commit `3ddfc5e` on `claude/work`. Seif approved closure and released SF 2 on 2026-10-09. The source checklist is in Claude's folder and must be corrected there by its owner; the corrected state is recorded here. |
-| SF 2. Categories page and mega menu from Medusa categories | Partial | S | GPT | Claude | `gpt/work` | in progress | Seif authorized SF 2 on 2026-10-09.  Replace static category data from `data/catalogArchitecture.ts` with Medusa category data through the existing API client. Handle loading, empty and error states; preserve the existing design. |
+| SF 2. Categories page and mega menu from Medusa categories | Partial (assessment); implemented on GPT branch | S | GPT | Claude | `gpt/work` | in review; normal checks awaiting dependency approval | Seif authorized SF 2 on 2026-10-09. Implementation `f744658` replaces static category data from `data/catalogArchitecture.ts` with Medusa category data through the existing API client. Handle loading, empty and error states; preserve the existing design. |
 | SF 3. Product key-metrics bar, supplement facts and video preview | Partial | M | GPT | Claude | `gpt/work` | blocked | Depends on Core 2's confirmed supplement fields, units and store API. Confirm the video source/field before wiring the preview. Display authoritative values and handle absent data without invented claims. |
 | SF 4. Product warehouse stock badge | Partial | S | GPT | Claude | `gpt/work` | blocked | Generic in/out of stock already works. Exact quantity and Cairo-warehouse wording depend on the released Odoo stock contract and Medusa exposure of warehouse stock. No direct Odoo access or invented quantities. |
 | SF 5. Frequently bought together cross-sell | Not started | S | GPT | Claude | `gpt/work` | blocked | The assessment suggests admin-picked related products. Seif must confirm selection ownership and how the relationship is stored/exposed through Medusa before implementation. Use real products, variants, prices and availability. |
