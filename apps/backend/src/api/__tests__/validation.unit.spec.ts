@@ -1,4 +1,4 @@
-import { brandSchema, quickVariantSchema, registrationSchema } from "../validators"
+import { brandSchema, productEdaSchema, quickVariantSchema, registrationSchema } from "../validators"
 import { configuredSecret } from "../../lib/secrets"
 
 it.each([null, [], { email: 1 }, { email: "a@example.com", password: [], first_name: {}, last_name: "x" }])("rejects malformed registration %j", (body) => {
@@ -27,4 +27,10 @@ it("accepts configured secrets and permits development fallback only outside pro
 })
 it.each(["seven77", "        ", "a".repeat(129)])("rejects a registration password outside the rule: %j", (password) => {
   expect(registrationSchema.safeParse({ email: "a@example.com", password, first_name: "A", last_name: "B" }).success).toBe(false)
+})
+it("accepts an EDA number with its approval, trimmed", () => {
+  expect(productEdaSchema.parse({ registration_number: " 12345/2026 ", is_approved: true })).toEqual({ registration_number: "12345/2026", is_approved: true })
+})
+it.each([{}, { registration_number: "1" }, { registration_number: "", is_approved: false }, { registration_number: "1", is_approved: "true" }, { registration_number: "1", is_approved: true, extra: 1 }])("rejects EDA input %j", (body) => {
+  expect(productEdaSchema.safeParse(body).success).toBe(false)
 })
