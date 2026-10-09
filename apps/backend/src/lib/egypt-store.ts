@@ -11,6 +11,11 @@ export const EGYPT_STORE = {
   // stays disabled in src/api/middlewares.ts until it is.
   paymentProviders: ["pp_system_default"],
   taxProvider: "tp_system",
+  // Prices are entered and shown including tax, so customers pay exactly the
+  // shelf price. The VAT rate is not decided yet (the tax region has none, so
+  // tax is 0%); setting it later splits tax out of the same prices instead of
+  // raising them.
+  pricesIncludeTax: true,
   warehouse: {
     name: "Cairo Warehouse",
     address: { address_1: "Cairo", city: "Cairo", country_code: "EG" },

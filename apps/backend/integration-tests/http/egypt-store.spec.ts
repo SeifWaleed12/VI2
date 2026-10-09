@@ -50,6 +50,15 @@ medusaIntegrationTestRunner({
 
         const options = await graph("shipping_option", ["name", "price_type", "prices.amount", "prices.currency_code"])
         expect(options).toEqual([expect.objectContaining({ name: "Standard Delivery", price_type: "flat", prices: [expect.objectContaining({ amount: 70, currency_code: "egp" })] })])
+        // Prices include tax for both the Egypt region and EGP (VAT rate still open).
+        const preferences = await graph("price_preference", ["attribute", "value", "is_tax_inclusive"])
+        expect(preferences).toEqual(expect.arrayContaining([
+          expect.objectContaining({ attribute: "region_id", value: store.default_region_id, is_tax_inclusive: true }),
+          expect.objectContaining({ attribute: "currency_code", value: "egp", is_tax_inclusive: true }),
+        ]))
+        // Medusa's default store starts with EUR; its leftover preference is
+        // unused once EGP is the only currency.
+        expect(preferences.filter((preference) => preference.value === "egp" || preference.value === store.default_region_id)).toHaveLength(2)
         const keys = await graph("api_key", ["sales_channels.id"], { type: "publishable" })
         expect(keys).toHaveLength(1)
         expect(keys[0].sales_channels.map((channel: { id: string }) => channel.id)).toEqual([store.default_sales_channel_id])

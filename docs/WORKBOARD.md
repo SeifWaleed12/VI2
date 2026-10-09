@@ -64,6 +64,7 @@ GPT review checklist (from `AGENTS.md`):
 | Sign-in is blocked for 15 minutes after 5 attempts, per account (staff and customers). Wrong current passwords on "change password" count too. | 2026-10-06 |
 | Staff invites go out with the dashboard's "Copy invite link". The SendGrid email code stays but is off; no paid email provider for now. | 2026-10-06 |
 | Customers get "change password" and "forgot password" (by email). The reset email is only delivered once an email provider is configured. | 2026-10-06 |
+| Store is Egypt only: EGP, one Cairo warehouse, one delivery option at a flat 70 EGP until Bosta; Medusa's starter demo data is removed. Prices are entered including tax while the VAT rate is open. | 2026-10-09 |
 | Redis holds the cache and locks whenever `REDIS_URL` is set; production runs PostgreSQL and Redis as Coolify resources. | 2026-10-06 |
 | Managers may allocate stock to an order line ("Allocate items"), never more than the line still needs; they cannot reserve or release stock by hand. | 2026-10-06 |
 | New variants keep the stock settings the form sends for now; which products track stock is decided with the Odoo sync work. | 2026-10-06 |
@@ -73,7 +74,7 @@ GPT review checklist (from `AGENTS.md`):
 
 | Task | Author | Branch | Commits | Review file | Status |
 |---|---|---|---|---|---|
-| Core 1. Egypt store setup in code: EGP, Egypt region and tax region, Cairo Warehouse, one 70 EGP delivery option; starter demo removal | Claude | `claude/work` | 1831342 | `docs/reviews/egypt-store.md` | Seif's inputs (2026-10-09): warehouse Cairo, Egypt; one option, flat 70 EGP; remove the demo. `src/lib/egypt-store.ts` (settings), `src/scripts/setup-egypt-store.ts` (idempotent, also run by `initial-data-seed` on new databases), `src/scripts/remove-demo-data.ts` (explicit, refuses a warehouse holding stock). 6 new HTTP tests; 46 HTTP and `npm run check` green. Applied to Seif's dev database (setup, then demo removal). Governorates: not needed while one fee covers Egypt; they matter with Bosta zones. |
+| Core 1. Egypt store setup in code: EGP, Egypt region and tax region, Cairo Warehouse, one 70 EGP delivery option; starter demo removal | Claude | `claude/work` | 1831342 | `docs/reviews/egypt-store.md` | Seif's inputs (2026-10-09): warehouse Cairo, Egypt; one option, flat 70 EGP; remove the demo; VAT unknown, so prices are tax-inclusive with no rate yet. `src/lib/egypt-store.ts` (settings), `src/scripts/setup-egypt-store.ts` (idempotent, also run by `initial-data-seed` on new databases), `src/scripts/remove-demo-data.ts` (explicit, refuses a warehouse holding stock). 6 new HTTP tests; 46 HTTP and `npm run check` green. Applied to Seif's dev database (setup, then demo removal). Governorates: not needed while one fee covers Egypt; they matter with Bosta zones. |
 
 ## Done
 
@@ -94,7 +95,7 @@ GPT review checklist (from `AGENTS.md`):
 | Item | Why it is blocked |
 |---|---|
 | Payment methods (Paymob), Bosta shipment ownership, Odoo sync contract | Seif is collecting more information. Do not build, stub or guess these until Seif releases the work. Production checkout stays disabled until then (`apps/backend/src/api/middlewares.ts`). |
-| Egyptian VAT on products | Core 1 adds an Egypt tax region with no rate, so tax is 0%. Whether prices include 14% VAT, or VAT is added, is Seif's decision (and possibly the accountant's). |
+| Egyptian VAT rate | Seif (2026-10-09): rate still unknown; use best practice meanwhile. Done in Core 1: EGP prices and the Egypt region are tax-inclusive, and the Egypt tax region has no rate (0%). When Seif (or the accountant) sets the rate in the admin, prices shown to customers stay the same and tax is split out of them. |
 | Guest account provisioning, expiry dates, analytics | RD asks for them; `docs/MVP-SCOPE.md` excludes or does not mention them. Seif to decide. |
 
 ## Open: ready to pick up

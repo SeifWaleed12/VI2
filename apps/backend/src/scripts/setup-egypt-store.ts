@@ -46,13 +46,13 @@ async function ensureRegion(container: MedusaContainer) {
     if (existing.currency_code !== EGYPT_STORE.currencyCode) {
       throw new MedusaError(MedusaError.Types.INVALID_DATA, `Region ${existing.name} sells to Egypt in ${existing.currency_code}; change it to EGP in the admin first.`)
     }
-    if (existing.name !== EGYPT_STORE.regionName) {
-      await updateRegionsWorkflow(container).run({ input: { selector: { id: existing.id }, update: { name: EGYPT_STORE.regionName } } })
-    }
+    await updateRegionsWorkflow(container).run({
+      input: { selector: { id: existing.id }, update: { name: EGYPT_STORE.regionName, is_tax_inclusive: EGYPT_STORE.pricesIncludeTax } },
+    })
     return existing.id
   }
   const { result: [region] } = await createRegionsWorkflow(container).run({
-    input: { regions: [{ name: EGYPT_STORE.regionName, currency_code: EGYPT_STORE.currencyCode, countries: [EGYPT_STORE.countryCode], payment_providers: [...EGYPT_STORE.paymentProviders] }] },
+    input: { regions: [{ name: EGYPT_STORE.regionName, currency_code: EGYPT_STORE.currencyCode, countries: [EGYPT_STORE.countryCode], payment_providers: [...EGYPT_STORE.paymentProviders], is_tax_inclusive: EGYPT_STORE.pricesIncludeTax }] },
   })
   return region.id
 }
@@ -193,7 +193,7 @@ export async function setupEgyptStore(container: MedusaContainer) {
     input: {
       selector: { id: store.id },
       update: {
-        supported_currencies: [{ currency_code: EGYPT_STORE.currencyCode, is_default: true }],
+        supported_currencies: [{ currency_code: EGYPT_STORE.currencyCode, is_default: true, is_tax_inclusive: EGYPT_STORE.pricesIncludeTax }],
         default_sales_channel_id: salesChannelId,
         default_region_id: regionId,
         default_location_id: locationId,
