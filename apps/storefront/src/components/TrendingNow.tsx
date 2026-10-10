@@ -44,20 +44,12 @@ export default function TrendingNow({
     return null;
   }
 
-  // Duplicate for smooth marquee effect if multiple products, otherwise repeat to fill track
-  const movingProducts =
-    railProducts.length >= 6
-      ? [...railProducts, ...railProducts]
-      : Array(Math.ceil(12 / railProducts.length))
-          .fill(railProducts)
-          .flat();
-
   return (
     <section className={styles.section}>
       <div className={styles.heading}>
         <div>
           <span>{arabic ? "اختيارات Vi2" : "VI2 PICKS"}</span>
-          <h2>{arabic ? "رائج دلوقتي" : "TRENDING NOW"}</h2>
+          <h2>{arabic ? "اكتشف المنتجات" : "EXPLORE PRODUCTS"}</h2>
         </div>
 
         <Link href="/shop">
@@ -68,7 +60,7 @@ export default function TrendingNow({
 
       <div className={styles.viewport} dir="ltr">
         <div className={styles.track}>
-          {movingProducts.map((product, index) => {
+          {railProducts.map((product, index) => {
             const image = product.image;
 
             return (
@@ -94,6 +86,7 @@ export default function TrendingNow({
                     </span>
                   )}
                 </div>
+                <span className={styles.productName}>{product.shortName || product.name}</span>
               </Link>
             );
           })}

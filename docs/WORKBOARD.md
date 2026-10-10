@@ -163,3 +163,15 @@ Proposed order after approval: SF 1, then SF 2; pick up SF 3-9 individually as
 their contracts/data are confirmed and released; SF 10 follows the real catalog
 and storefront changes. Existing lint-warning and component-refactor rows above
 remain separate and are not claimed by this transfer.
+
+## Impeccable setup
+
+| Task | Owner | Branch | Status | Notes |
+|---|---|---|---|---|
+| Impeccable storefront initialization | GPT | gpt/work | done | Seif requested init and confirmed storefront customers and comp-first on 2026-10-10. Created apps/storefront/PRODUCT.md; saved buildPath=comp and Next.js live configuration after CSP detection found no policy. No UI or application behavior changed. |
+
+| Impeccable storefront design documentation | GPT | gpt/work | done | Seif requested document on 2026-10-10 and confirmed The Wellness Editorial, confident and editorial atmosphere, Ink/Warm Paper/Muted Stone, flat at rest with softly layered panels, and crisp square commerce surfaces with pill utility controls. Created apps/storefront/DESIGN.md and .impeccable/design.json with seven component previews. Source-based extraction; no running preview available. Application code unchanged. |
+
+| Impeccable storefront homepage critique | GPT | gpt/work | done | Seif requested critique and authorized two independent assessments on 2026-10-10. Target apps/storefront/src/app/page.tsx and composed homepage/navigation. Independent source design review plus detector completed; provisional 21/40, two P1 and three P2 priorities. Snapshot stored under apps/storefront/.impeccable/critique. Browser localhost:3000 refused connection; no overlay or app services started. No application code changed. |
+
+| Homepage critique fixes (all five priorities) | GPT | gpt/work | in review | All five implemented; independent follow-up review clear, provisional 28/40. Storefront: 152 tests, typecheck and lint pass (19 warnings). Full check: 184 backend tests pass, blocked by unchanged admin-access.spec.ts:78 type error. Live homepage/cart verification limited by unavailable Medusa backend. See docs/reviews/storefront-homepage-critique-fixes.md. No integration/package changes; owner merges. |

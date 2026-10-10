@@ -3,9 +3,9 @@
 import { useLanguage } from "@/context/LanguageContext";
 import {
   ArrowRight,
-  Trophy,
 } from "lucide-react";
 import { useMemo, useState } from "react";
+import Link from "next/link";
 
 import BestSellerCard from "@/components/BestSellerCard";
 import type { Product } from "@/types/product";
@@ -101,17 +101,7 @@ export default function HomeBestSellers({
   const { t } = useLanguage();
   const [activeCategory, setActiveCategory] = useState<CategoryKey>("All");
 
-  const rankedProducts = useMemo(() => {
-    if (!initialProducts || initialProducts.length === 0) {
-      return [];
-    }
-    return [...initialProducts].sort(
-      (a, b) =>
-        Number(b.badge === "Best Seller") - Number(a.badge === "Best Seller") ||
-        b.rating - a.rating ||
-        b.reviewCount - a.reviewCount,
-    );
-  }, [initialProducts]);
+  const rankedProducts = useMemo(() => initialProducts || [], [initialProducts]);
 
   const bestSellers = useMemo(
     () =>
@@ -152,39 +142,19 @@ export default function HomeBestSellers({
               styles.titleWrap
             }
           >
-            <div
-              className={
-                styles.kicker
-              }
-            >
-              <Trophy
-                size={14}
-                strokeWidth={
-                  1.45
-                }
-              />
-
-              <span>{t("POPULAR RIGHT NOW")}</span>
-            </div>
-
-            <h2 data-arabic-text="الأكثر مبيعًا">{t("BEST SELLERS")}</h2>
+            <h2 data-arabic-text="تسوق المنتجات">{t("SHOP PRODUCTS")}</h2>
           </div>
 
-          <button
-            type="button"
-            className={
-              styles.viewAll
-            }
-            onClick={() =>
-              setActiveCategory("All")
-            }
+          <Link
+            href="/shop"
+            className={styles.viewAll}
           >{t("VIEW ALL")}<ArrowRight
               size={15}
               strokeWidth={
                 1.5
               }
             />
-          </button>
+          </Link>
         </div>
 
         <div
@@ -207,6 +177,7 @@ export default function HomeBestSellers({
                     ? styles.activeTab
                     : ""
                 }
+                aria-pressed={activeCategory === tab.category}
                 onClick={() =>
                   setActiveCategory(
                     tab.category,
@@ -226,10 +197,15 @@ export default function HomeBestSellers({
             styles.rail
           }
         >
+          {bestSellers.length === 0 && (
+            <div role="status" className={styles.emptyState}>
+              <p>{t("No products in this category yet.")}</p>
+              <button type="button" onClick={() => setActiveCategory("All")}>{t("SHOW ALL CATEGORIES")}</button>
+            </div>
+          )}
           {t(bestSellers.map(
             (
               product,
-              index,
             ) => (
               <BestSellerCard
                 key={
@@ -237,9 +213,6 @@ export default function HomeBestSellers({
                 }
                 product={
                   product
-                }
-                rank={
-                  index + 1
                 }
                 compact
               />

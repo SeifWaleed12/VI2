@@ -3,7 +3,6 @@
 import Image from "next/image";
 import {
   useCallback,
-  useEffect,
   useRef,
   useState,
 } from "react";
@@ -51,10 +50,6 @@ export default function HomeHeroSlider() {
     setActive,
   ] = useState(0);
 
-  const [
-    paused,
-    setPaused,
-  ] = useState(false);
 
   const touchStartX =
     useRef<number | null>(
@@ -86,34 +81,6 @@ export default function HomeHeroSlider() {
       );
     }, []);
 
-  useEffect(() => {
-    if (paused) {
-      return;
-    }
-
-    const reduceMotion =
-      window.matchMedia(
-        "(prefers-reduced-motion: reduce)",
-      ).matches;
-
-    if (reduceMotion) {
-      return;
-    }
-
-    const timer =
-      window.setInterval(
-        next,
-        2000,
-      );
-
-    return () =>
-      window.clearInterval(
-        timer,
-      );
-  }, [
-    next,
-    paused,
-  ]);
 
   function handleTouchStart(
     event:
@@ -130,7 +97,6 @@ export default function HomeHeroSlider() {
     touchCurrentX.current =
       x;
 
-    setPaused(true);
   }
 
   function handleTouchMove(
@@ -150,7 +116,6 @@ export default function HomeHeroSlider() {
       touchCurrentX.current ===
         null
     ) {
-      setPaused(false);
       return;
     }
 
@@ -179,11 +144,6 @@ export default function HomeHeroSlider() {
     touchCurrentX.current =
       null;
 
-    window.setTimeout(
-      () =>
-        setPaused(false),
-      220,
-    );
   }
 
   return (
@@ -193,12 +153,6 @@ export default function HomeHeroSlider() {
       }
       aria-label="Vi2 featured collections"
       aria-roledescription="carousel"
-      onMouseEnter={() =>
-        setPaused(true)
-      }
-      onMouseLeave={() =>
-        setPaused(false)
-      }
       onTouchStart={
         handleTouchStart
       }

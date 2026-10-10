@@ -158,7 +158,7 @@ export default function Navbar() {
   const copy = isArabic
     ? {
         freeShipping:
-          "شحن مجاني للطلبات فوق ٢٬٥٠٠ جنيه",
+          "تسوق المكملات بالجنيه المصري",
         flash:
           "العروض اليومية",
         search:
@@ -188,7 +188,7 @@ export default function Navbar() {
         deals:
           "العروض",
         best:
-          "الأكثر مبيعًا",
+          "تسوق المنتجات",
         new:
           "جديد",
         bundles:
@@ -210,7 +210,7 @@ export default function Navbar() {
       }
     : {
         freeShipping:
-          "FREE SHIPPING ON ORDERS OVER 2,500 EGP",
+          "SHOP SUPPLEMENTS IN EGP",
         flash:
           "DAILY FLASH DEALS",
         search:
@@ -240,7 +240,7 @@ export default function Navbar() {
         deals:
           "Deals",
         best:
-          "Best Sellers",
+          "Shop Products",
         new:
           "New",
         bundles:
@@ -275,17 +275,17 @@ export default function Navbar() {
   const topMessages = isArabic
     ? [
         copy.freeShipping,
-        "جودة عالية",
-        "نتائج حقيقية",
-        "علامات موثوقة",
-        "غد أكثر صحة",
+        "فيتامينات ومعادن",
+        "اكتشف المنتجات",
+        "تغذية رياضية",
+        "العربية والإنجليزية",
       ]
     : [
         copy.freeShipping,
-        "HIGH QUALITY",
-        "REAL RESULTS",
-        "TRUSTED BRANDS",
-        "A HEALTHIER TOMORROW",
+        "VITAMINS & MINERALS",
+        "EXPLORE THE COLLECTION",
+        "SPORTS NUTRITION",
+        "ENGLISH & ARABIC",
       ];
 
   const topTickerMessages = [

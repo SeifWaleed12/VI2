@@ -334,3 +334,13 @@
     display: none;
   }
 }
+
+/* Products stay still while customers browse. */
+.viewport { height: auto; overflow-x: auto; overflow-y: hidden; }
+.viewport::before, .viewport::after { display: none; }
+.track { position: relative; inset: auto; height: auto; animation: none; will-change: auto; padding: 12px 18px; }
+:global(html[dir="rtl"]) .track { left: auto; right: auto; animation: none; }
+.item { height: auto; gap: 12px; padding-bottom: 12px; }
+.productName { max-width: 100%; text-align: center; font-size: 13px; line-height: 1.4; }
+.item:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
+@media (max-width: 700px) { .item { width: 140px; height: auto; } .productName { font-size: 12px; } }

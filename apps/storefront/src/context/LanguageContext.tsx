@@ -26,6 +26,8 @@ let currentLanguage: Language | null = null;
 const listeners = new Set<() => void>();
 
 const dictionary: Record<string, string> = {
+  "No products in this category yet.": "لا توجد منتجات في هذه الفئة حاليًا.",
+  "SHOW ALL CATEGORIES": "عرض كل الفئات",
   reviews: "تقييمات",
   ratings: "تقييمات",
   "LIVE WELL, LIVE FULLY.": "عيش بصحة، عيش حياتك.",

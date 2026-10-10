@@ -46,7 +46,7 @@ export type CartContextValue = {
   openCart: () => void;
   closeCart: () => void;
   toggleCart: () => void;
-  addItem: (product: Product, quantity?: number) => Promise<void>;
+  addItem: (product: Product, quantity?: number) => Promise<boolean>;
   removeItem: (productIdOrLineId: string) => Promise<void>;
   updateQuantity: (
     productIdOrLineId: string,
@@ -221,6 +221,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         const variantId = product.variantId || product.id;
         const updated = await addCartItem(activeCart.id, variantId, quantity);
         syncFromMedusaCart(updated);
+        return true;
       } catch (err: unknown) {
         console.error("Failed to add item to Medusa cart, rolling back:", err);
         // Rollback to server state
@@ -231,6 +232,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
             ? err.message
             : "Failed to add item. Reverting changes.",
         );
+        return false;
       }
     },
     [cart, getOrCreateCart, items, openCart, syncFromMedusaCart],
