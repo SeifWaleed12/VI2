@@ -1,4 +1,5 @@
 import path from "path";
+import { existsSync, realpathSync } from "node:fs"
 import type { NextConfig } from "next";
 
 const medusaBackendUrl = process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL;
@@ -16,9 +17,15 @@ if (medusaBackendUrl) {
   }
 }
 
+const workspaceRoot = path.resolve(__dirname, "../..")
+const storefrontModules = path.join(__dirname, "node_modules")
+const externalModules = existsSync(storefrontModules) &&
+  !realpathSync(storefrontModules).startsWith(`${workspaceRoot}${path.sep}`)
+
 const nextConfig: NextConfig = {
   turbopack: {
-    root: path.resolve(__dirname, "../../"),
+    // The GPT worktree links dependencies from its sibling checkout.
+    root: externalModules ? path.dirname(workspaceRoot) : workspaceRoot,
   },
 
   images: {
