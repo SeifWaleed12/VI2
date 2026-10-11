@@ -1,6 +1,6 @@
 # Category navigation and locale foundation — author handoff
 
-Implemented on `gpt/work` in `vi2-gpt-review` under Seif's explicit approval of the full plan. Claude review and owner merge remain pending. The author checkout and unrelated review notes were preserved.
+Implemented on `gpt/work` in `vi2-gpt-review` under Seif's explicit approval of the full plan. Claude approved the initial series with three should-fix items; the follow-up below needs recheck and owner merge. The author checkout and unrelated review notes were preserved.
 
 ## Dependent tasks
 
@@ -47,3 +47,42 @@ The final repository `npm run check` passes (tests, both type checks, and both l
 - Future category additions/renames/rank changes are handled by fresh native requests and covered by hierarchy/rank tests; a separate manual Admin rename/reorder session was not performed. Parent descendant filtering is covered by service/query tests; real products were not reassigned to the new groups merely for QA.
 - Existing catalog imagery includes an empty image and an image URL on localhost:9000; the separate verification backend ran on 9001. Image warnings are existing catalog data issues, outside this taxonomy/routing change.
 - Review Arabic catalog wording and the decision to keep the unrelated `supplements` root during the normal owner-controlled review. No owner merge, production deployment, permissions rewrite, or external integration was performed.
+
+## Claude review follow-up (2026-10-11)
+
+Seif requested fixes after Claude's review at `5ec5812`, recorded in the author
+checkout as `docs/reviews/storefront-category-locales-review.md`.
+
+- **F1:** Replace the blanket dotted-path exclusion with static file extensions.
+  The actual Next.js matcher and proxy are tested with unprefixed/English/Arabic
+  `whey-2.5kg` handles; APIs, framework paths and existing static assets stay outside
+  language routing.
+- **F2:** Record dynamic rendering and per-request/no-store category fetching in the
+  workboard and deployment guide. Preserve refresh freshness; no speculative cache.
+- **F3:** Add `docs/CATEGORY-LOCALES-DEPLOYMENT.md`: complete-release migration without
+  local skip flags, dry run, apply, reuse verification, and post-release checks.
+  Setup reports the configured database host/port/name before catalog queries or
+  writes, excludes credentials/options, and refuses an unreportable target.
+- **F4:** Script header and runbook explicitly warn that rerunning apply overwrites
+  matched English/Arabic names and ranks. Routine later edits belong in Admin.
+- **F5:** Record Arabic editorial review and the unrelated public supplements root as
+  pending owner decisions. Preserve existing data and the agreed compatibility scope.
+
+No catalog data, permissions, dependency files, reviewer-authored notes, or production
+state were changed. Runtime customer/Admin checks and production migration execution
+remain pending; this follow-up does not claim to have performed them.
+
+### Follow-up validation
+
+- Workspace `npm run check` passes: **193 backend tests + 148 storefront tests =
+  341**, both type checks, and lint. After resolving a new Medusa error-class
+  warning, the final native backend lint reports no issues; storefront retains
+  its **19 pre-existing warnings**. The six setup-target tests were repeated
+  against the final script and pass.
+- Storefront production webpack build and full backend/Admin build pass.
+- Native Medusa exec dry run, guarded to the existing local development database,
+  prints `localhost:5432/vi2_dev` and reports **reuse for all 38 requested categories**.
+  No `apply`, migration, catalog write, production operation or dev server startup.
+- No menu markup, styling, content labels or identity handling changed. Visual
+  walkthroughs were not repeated for this routing/script/documentation follow-up.
+- Final follow-up is ready for Claude's recheck and Seif's owner-controlled merge.

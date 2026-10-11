@@ -1,10 +1,17 @@
+// One-time taxonomy bootstrap/reconciliation. Rerunning apply restores manifest English
+// names, ranks and Arabic names on matched categories, overwriting later Admin edits.
+// Use native Admin controls after setup; run a dry run before any deliberate reconciliation.
 import type {
   ExecArgs,
   IProductModuleService,
   ITranslationModuleService,
   IStoreModuleService,
 } from "@medusajs/framework/types";
-import { MedusaError, Modules } from "@medusajs/framework/utils";
+import {
+  ContainerRegistrationKeys,
+  MedusaError,
+  Modules,
+} from "@medusajs/framework/utils";
 import {
   batchTranslationsWorkflow,
   updateStoresWorkflow,
@@ -15,6 +22,32 @@ export default async function setupWellnessCatalog({
   container,
   args,
 }: ExecArgs) {
+  const config = container.resolve(ContainerRegistrationKeys.CONFIG_MODULE);
+  let database;
+  try {
+    const target = new URL(config.projectConfig.databaseUrl ?? "");
+    if (
+      !["postgres:", "postgresql:"].includes(target.protocol) ||
+      !target.hostname ||
+      target.pathname.length < 2
+    )
+      throw new MedusaError(
+        MedusaError.Types.INVALID_DATA,
+        "Invalid database target",
+      );
+    database = {
+      host: target.hostname,
+      port: target.port || "5432",
+      name: decodeURIComponent(target.pathname.slice(1)),
+    };
+  } catch {
+    throw new MedusaError(
+      MedusaError.Types.INVALID_DATA,
+      "A valid PostgreSQL database URL is required to report the setup target safely",
+    );
+  }
+  // Never print the connection URL, credentials or connection options.
+  console.log(JSON.stringify({ database }));
   const product: IProductModuleService = container.resolve(Modules.PRODUCT);
   const translation: ITranslationModuleService = container.resolve(
     Modules.TRANSLATION,

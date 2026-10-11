@@ -22,4 +22,8 @@ export function proxy(request: NextRequest) {
   });
   return response;
 }
-export const config = { matcher: ["/((?!api(?:/|$)|_next(?:/|$)|.*\\.).*)"] };
+export const config = {
+  matcher: [
+    "/((?!api(?:/|$)|_next(?:/|$)|.*\\.(?:png|jpe?g|gif|svg|ico|css|js|map|txt|xml|webp|avif|woff2?|ttf|otf|pdf)$).*)",
+  ],
+};
