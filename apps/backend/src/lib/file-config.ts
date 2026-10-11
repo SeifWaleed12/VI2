@@ -30,8 +30,9 @@ export function fileModules(env: NodeJS.ProcessEnv = process.env) {
           secret_access_key: secretAccessKey,
           // R2 has no per-file permissions (x-amz-acl), and new AWS buckets
           // disable them; the bucket itself is public instead.
-          // shortcut: product export CSVs share the public bucket under random
-          // names, move them to a private bucket if exports ever hold customer data.
+          // Product and stock import/export CSVs share the bucket; they hold
+          // only catalog data. Order export, which holds customer details, is
+          // turned off in api/middlewares.ts.
           acl: false,
         },
       }],
