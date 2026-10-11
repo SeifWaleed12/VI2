@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Bebas_Neue, Cairo, Inter } from "next/font/google";
 import { headers } from "next/headers";
 import { isLocale } from "@/lib/i18n";
+import { loadCategoryDirectory } from "@/lib/medusa/category-directory";
 
 import "./globals.css";
 import "./rtl-support.css";
@@ -42,6 +43,7 @@ export default async function RootLayout({
 }>) {
   const requested = (await headers()).get("x-vi2-locale");
   const locale = isLocale(requested) ? requested : "en";
+  const directory = await loadCategoryDirectory(locale);
   return (
     <html
       lang={locale}
@@ -54,11 +56,11 @@ export default async function RootLayout({
         suppressHydrationWarning
       >
         <Providers locale={locale}>
-          <Navbar />
+          <Navbar initialDirectory={directory} />
 
           {children}
 
-          <Footer />
+          <Footer categories={directory.roots} />
 
           <CartDrawer />
         </Providers>

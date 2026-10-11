@@ -1,5 +1,6 @@
 "use client";
 
+import { LegacyTranslations } from "@/context/LanguageContext";
 import Link from "@/components/LocaleLink";
 import {
   Minus,
@@ -30,7 +31,7 @@ export default function CartDrawer() {
   } = useCart();
 
   return (
-    <>
+    <LegacyTranslations>
       <button
         type="button"
         aria-label="Close cart"
@@ -260,6 +261,6 @@ export default function CartDrawer() {
           </>
         )}
       </aside>
-    </>
+    </LegacyTranslations>
   );
 }

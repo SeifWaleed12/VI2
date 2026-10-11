@@ -1,4 +1,5 @@
 "use client";
+import { LegacyTranslations } from "@/context/LanguageContext";
 import { useLocaleRouter } from "@/hooks/use-locale-router";
 
 import Link from "@/components/LocaleLink";
@@ -382,7 +383,7 @@ export default function ProductDetailClient({
 
   return (
     <>
-      <main
+      <LegacyTranslations><main
         className={styles.page}
       >
         <div
@@ -1513,7 +1514,7 @@ export default function ProductDetailClient({
             </span>
           </div>
         </section>
-      </main>
+      </main></LegacyTranslations>
 
       {/* ======================================================
           MOBILE QUICK BUY

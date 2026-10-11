@@ -1,3 +1,4 @@
+import { LegacyTranslations } from "@/context/LanguageContext";
 import { isLocale } from "@/lib/i18n";
 import type { Metadata } from "next";
 import Image, {
@@ -82,7 +83,7 @@ export default async function BrandsPage({ params }: { params: Promise<{ locale:
     );
 
   return (
-    <main
+    <LegacyTranslations><main
       className={
         styles.page
       }
@@ -339,6 +340,6 @@ export default async function BrandsPage({ params }: { params: Promise<{ locale:
           </div>
         </div>
       </section>
-    </main>
+    </main></LegacyTranslations>
   );
 }

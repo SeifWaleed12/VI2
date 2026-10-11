@@ -1,3 +1,4 @@
+import { LegacyTranslations } from "@/context/LanguageContext";
 import {
   Suspense,
 } from "react";
@@ -18,7 +19,7 @@ export default function CheckoutPage() {
 
 function CheckoutLoading() {
   return (
-    <main
+    <LegacyTranslations><main
       style={{
         minHeight:
           "70vh",
@@ -42,6 +43,6 @@ function CheckoutLoading() {
       >
         PREPARING CHECKOUT
       </span>
-    </main>
+    </main></LegacyTranslations>
   );
 }

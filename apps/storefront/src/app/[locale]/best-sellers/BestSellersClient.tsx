@@ -1,4 +1,5 @@
 "use client";
+import { LegacyTranslations } from "@/context/LanguageContext";
 
 import Link from "@/components/LocaleLink";
 import {
@@ -221,7 +222,7 @@ export default function BestSellersClient({
     );
 
   return (
-    <main className={styles.page}>
+    <LegacyTranslations><main className={styles.page}>
       {catalogError && <p role="alert">The catalog is temporarily unavailable.</p>}
       <div
         className={
@@ -386,6 +387,6 @@ export default function BestSellersClient({
           </div>
         )}
       </div>
-    </main>
+    </main></LegacyTranslations>
   );
 }

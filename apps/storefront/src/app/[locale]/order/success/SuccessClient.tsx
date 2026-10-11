@@ -1,4 +1,5 @@
 "use client";
+import { LegacyTranslations } from "@/context/LanguageContext";
 
 import Link from "@/components/LocaleLink";
 import { useEffect, useState } from "react";
@@ -22,17 +23,17 @@ export default function SuccessClient() {
     return () => { active = false; };
   }, [id, attempt]);
 
-  if (!result || result.id !== id) return <main className={styles.page}><p role="status">Checking your order with Medusa…</p></main>;
-  if (!result.order) return <main className={styles.page}>
+  if (!result || result.id !== id) return <LegacyTranslations><main className={styles.page}><p role="status">Checking your order with Medusa…</p></main></LegacyTranslations>;
+  if (!result.order) return <LegacyTranslations><main className={styles.page}>
     <h1>Order not confirmed</h1>
     <p role="alert">{result.error || "No order could be verified from this link. Check the reference or contact support before placing another order."}</p>
     <button onClick={() => setAttempt((value) => value + 1)}>Retry confirmation</button>
     <Link href="/account">View your account</Link>
-  </main>;
+  </main></LegacyTranslations>;
 
   const order = result.order;
   const money = (amount: number) => new Intl.NumberFormat("en-EG", { style: "currency", currency: order.currencyCode }).format(amount);
-  return <main className={styles.page}>
+  return <LegacyTranslations><main className={styles.page}>
     <header className={styles.header}><strong>VI2</strong><span>ORDER CONFIRMATION</span></header>
     <div className={styles.layout}>
       <section className={styles.main}>
@@ -53,5 +54,5 @@ export default function SuccessClient() {
         <div className={styles.total}><span>TOTAL</span><strong>{money(order.total)}</strong></div>
       </aside>
     </div>
-  </main>;
+  </main></LegacyTranslations>;
 }

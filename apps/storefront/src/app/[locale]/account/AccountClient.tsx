@@ -1,4 +1,5 @@
 "use client";
+import { LegacyTranslations } from "@/context/LanguageContext";
 
 import Link from "@/components/LocaleLink";
 import {
@@ -97,7 +98,7 @@ export default function AccountClient() {
   }
 
   return (
-    <main className={styles.page}>
+    <LegacyTranslations><main className={styles.page}>
       {orderError && <p role="alert">{orderError}</p>}
       {historyError && <p role="alert">{historyError}</p>}
       {isAuthenticated && !historyError && orderResult?.customerId !== customer?.id && <p role="status">Loading order history…</p>}
@@ -312,6 +313,6 @@ export default function AccountClient() {
           </div>
         )}
       </section>
-    </main>
+    </main></LegacyTranslations>
   );
 }

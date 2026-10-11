@@ -1,3 +1,4 @@
+import { LegacyTranslations } from "@/context/LanguageContext";
 export const metadata = { robots: { index: false, follow: false }, referrer: "no-referrer" as const };
 import {
   Suspense,
@@ -19,7 +20,7 @@ export default function OrderSuccessPage() {
 
 function SuccessLoading() {
   return (
-    <main
+    <LegacyTranslations><main
       style={{
         minHeight: "70vh",
         display: "grid",
@@ -55,6 +56,6 @@ function SuccessLoading() {
           PREPARING ORDER CONFIRMATION
         </span>
       </div>
-    </main>
+    </main></LegacyTranslations>
   );
 }

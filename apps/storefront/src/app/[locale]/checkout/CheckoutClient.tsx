@@ -1,4 +1,5 @@
 "use client";
+import { LegacyTranslations } from "@/context/LanguageContext";
 import { useLocaleRouter } from "@/hooks/use-locale-router";
 
 import Link from "@/components/LocaleLink";
@@ -468,7 +469,7 @@ export default function CheckoutClient() {
 
   return (
     <>
-      <main
+      <LegacyTranslations><main
         className={
           styles.page
         }
@@ -1697,7 +1698,7 @@ export default function CheckoutClient() {
             </div>
           </aside>
         </div>
-      </main>
+      </main></LegacyTranslations>
 
       {/* =====================================================
           MOBILE STICKY ACTION

@@ -1,3 +1,4 @@
+import { LegacyTranslations } from "@/context/LanguageContext";
 import { isLocale } from "@/lib/i18n";
 import BrandUniverse from "@/components/BrandUniverse";
 import HomeBestSellers from "@/components/HomeBestSellers";
@@ -13,7 +14,7 @@ export default async function Home({ params }: { params: Promise<{ locale: strin
   const [products, brands] = await Promise.all([getProducts({locale}), getBrands()]);
 
   return (
-    <main>
+    <LegacyTranslations><main>
       {/* ======================================================
           HERO
           ====================================================== */}
@@ -53,6 +54,6 @@ export default async function Home({ params }: { params: Promise<{ locale: strin
           VI2 · DIETARY & WELLNESS SUPPLEMENTS
         </p>
       </section>
-    </main>
+    </main></LegacyTranslations>
   );
 }

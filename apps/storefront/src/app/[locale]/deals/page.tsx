@@ -1,3 +1,4 @@
+import { LegacyTranslations } from "@/context/LanguageContext";
 import type { Metadata } from "next";
 
 import FlashDeals from "@/components/FlashDeals";
@@ -10,8 +11,8 @@ export const metadata: Metadata = {
 
 export default function DealsPage() {
   return (
-    <main>
+    <LegacyTranslations><main>
       <FlashDeals />
-    </main>
+    </main></LegacyTranslations>
   );
 }

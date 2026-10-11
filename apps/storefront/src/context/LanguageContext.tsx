@@ -6,6 +6,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
 
   type ReactNode,
 } from "react";
@@ -1006,34 +1007,6 @@ export function LanguageProvider({ children, locale = "en" }: { children: ReactN
     document.documentElement.dir = language === "ar" ? "rtl" : "ltr";
     document.body.dataset.locale = language;
 
-    const observerOptions: MutationObserverInit = {
-      childList: true,
-      subtree: true,
-    };
-
-    const observer = new MutationObserver(() => {
-      // Disconnect before translating so the DOM writes we are about to make
-      // don't re-trigger this callback and cause an infinite loop.
-      observer.disconnect();
-
-      window.requestAnimationFrame(() => {
-        translateDomText(document.body, language);
-        // Reconnect after the translation paint so future dynamic content
-        // (e.g. lazy-loaded components) still gets translated.
-        observer.observe(document.body, observerOptions);
-      });
-    });
-
-    // Initial translation pass on language change.
-    window.requestAnimationFrame(() => {
-      translateDomText(document.body, language);
-      observer.observe(document.body, observerOptions);
-
-    });
-
-    return () => {
-      observer.disconnect();
-    };
   }, [language]);
 
   const t = useCallback(
@@ -1057,6 +1030,32 @@ export function LanguageProvider({ children, locale = "en" }: { children: ReactN
       {children}
     </LanguageContext.Provider>
   );
+}
+
+// Mount inside a screen's hydration boundary; never observe the shared document.
+export function LegacyTranslations({ children }: { children: ReactNode }) {
+  const { language } = useLanguage();
+  const scope = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const root = scope.current;
+    if (!root) return;
+    let frame = 0;
+    const options = { childList: true, subtree: true };
+    const observer = new MutationObserver(() => {
+      observer.disconnect();
+      frame = window.requestAnimationFrame(() => {
+        translateDomText(root, language);
+        observer.observe(root, options);
+      });
+    });
+    translateDomText(root, language);
+    observer.observe(root, options);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      observer.disconnect();
+    };
+  }, [language]);
+  return <div ref={scope} style={{ display: "contents" }} data-legacy-translation>{children}</div>;
 }
 
 export function useLanguage() {

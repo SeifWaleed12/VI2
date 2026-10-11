@@ -1,4 +1,5 @@
 "use client";
+import { LegacyTranslations } from "@/context/LanguageContext";
 
 import Link from "@/components/LocaleLink";
 import {
@@ -44,7 +45,7 @@ export default function ForgotPasswordClient() {
   }
 
   return (
-    <main className={styles.page}>
+    <LegacyTranslations><main className={styles.page}>
       <section className={`${styles.shell} ${styles.shellSingle}`}>
         <div className={styles.formSide}>
           <div className={styles.kicker}>
@@ -112,6 +113,6 @@ export default function ForgotPasswordClient() {
           </div>
         </div>
       </section>
-    </main>
+    </main></LegacyTranslations>
   );
 }

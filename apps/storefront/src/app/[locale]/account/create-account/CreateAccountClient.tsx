@@ -1,4 +1,5 @@
 "use client";
+import { LegacyTranslations } from "@/context/LanguageContext";
 import { useLocaleRouter } from "@/hooks/use-locale-router";
 
 import Link from "@/components/LocaleLink";
@@ -178,7 +179,7 @@ export default function CreateAccountClient() {
   }
 
   return (
-    <main className={styles.page}>
+    <LegacyTranslations><main className={styles.page}>
       <section className={styles.shell}>
         <div className={styles.formSide}>
           <div className={styles.kicker}>
@@ -528,6 +529,6 @@ export default function CreateAccountClient() {
           </div>
         </aside>
       </section>
-    </main>
+    </main></LegacyTranslations>
   );
 }

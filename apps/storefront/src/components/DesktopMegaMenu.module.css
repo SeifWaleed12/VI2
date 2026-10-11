@@ -406,3 +406,9 @@
     display: none;
   }
 }
+
+.backdrop { top: var(--vi2-header-bottom, 154px); }
+.intro h3 { font-size: 36px; line-height: 1.05; overflow-wrap: anywhere; }
+.column a:focus-visible { outline: 2px solid var(--ink); outline-offset: 4px; }
+.menu { max-height: calc(100dvh - var(--vi2-header-bottom, 154px)); overflow-y: auto; }
+[dir="rtl"] .intro { padding: 28px 0 28px 28px; border-right: 0; border-left: 1px solid rgba(24,25,22,.1); }

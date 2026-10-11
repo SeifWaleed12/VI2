@@ -1452,3 +1452,9 @@
       );
   }
 }
+
+/* Desktop layout remains independent of the mobile drawer. */
+.categoryMain { flex-wrap: wrap; }
+.categoryInner { align-items: flex-start; flex-wrap: wrap; row-gap: 8px; }
+.categoryTrigger, .categoryTriggerActive { white-space: normal; max-width: 220px; text-align: start; }
+.categoryTrigger:focus-visible, .categoryTriggerActive:focus-visible { outline: 2px solid var(--ink); outline-offset: 4px; }

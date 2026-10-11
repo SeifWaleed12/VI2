@@ -176,3 +176,11 @@ remain separate and are not claimed by this transfer.
 | Homepage critique fixes (all five priorities) | GPT | gpt/work | in review | Commit c25bebd. All five implemented; independent follow-up review clear, provisional 28/40. Storefront: 152 tests, typecheck and lint pass (19 warnings). Full check: 184 backend tests pass, blocked by unchanged admin-access.spec.ts:78 type error. Live homepage/cart verification limited by unavailable Medusa backend. See docs/reviews/storefront-homepage-critique-fixes.md. No integration/package changes; owner merges. |
 
 | GPT worktree Turbopack startup fix | GPT | gpt/work | done | Seif reported external node_modules junction panic on 2026-10-11. Next root includes the sibling dependency checkout only when storefront modules resolve outside this workspace. Normal installations keep the workspace root. Verified Turbopack startup and GET /categories HTTP 200; typecheck and targeted config lint pass. Test server stopped. No dependency/package/UI changes. |
+
+## Category navigation and locale foundation (approved 2026-10-11)
+
+| Task | Owner | Branch | Status | Notes |
+|---|---|---|---|---|
+| Native catalog translations and bilingual category setup | GPT | gpt/work | in review | f739bdc. Native translations, five parents/33 children, guarded local migrations and repeatable setup applied; dry run reuses all IDs. 187 backend tests, typecheck, lint and build pass. See docs/reviews/storefront-category-locales.md; Claude review and owner merge pending. |
+| Locale URLs and translation compatibility | GPT | gpt/work | in review | b1f69a3 plus final compatibility completion in the dependent series. /en and /ar, server locale/RTL, keyed navigation/search text, localized links and screen-scoped legacy compatibility. 138 storefront tests, typecheck, lint and build pass; 19 existing warnings. |
+| Shared desktop/mobile categories and removal of category directory | GPT | gpt/work | in review | Final commit in this series. Shared native hierarchy and descendant-ID filters; desktop/mobile/breakpoint/keyboard and cart-language continuity verified. Category page/client/CSS deleted; all three removed URLs return 404. Unrelated supplements root preserved. See handoff for live-check limits. Claude review and owner merge required. |

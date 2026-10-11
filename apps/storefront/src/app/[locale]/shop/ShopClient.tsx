@@ -1,4 +1,5 @@
 "use client";
+import { LegacyTranslations } from "@/context/LanguageContext";
 
 import {
   ChevronDown,
@@ -437,7 +438,7 @@ export default function ShopClient({
   );
 
   return (
-    <main className={styles.page}>
+    <LegacyTranslations><main className={styles.page}>
       <section className={styles.intro}>
         <div className={styles.introCopy}>
           <span className={styles.eyebrow}>
@@ -683,6 +684,6 @@ export default function ShopClient({
           </aside>
         </div>
       )}
-    </main>
+    </main></LegacyTranslations>
   );
 }
