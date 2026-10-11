@@ -7,7 +7,7 @@ import type { Product } from "@/types/product"
 
 jest.mock("next/link", () => ({ __esModule: true, default: ({ children, href, ...props }: { children: unknown; href: string }) => createElement("a", { href, ...props }, children as never) }))
 jest.mock("next/image", () => ({ __esModule: true, default: (props: { src: string; alt: string }) => createElement("img", { src: props.src, alt: props.alt }) }))
-jest.mock("@/context/LanguageContext", () => ({ useLanguage: () => ({ isArabic: false, t: <T,>(value: T) => value }) }))
+jest.mock("@/context/LanguageContext", () => ({ useLanguage: () => ({ language: "en", isArabic: false, t: <T,>(value: T) => value }) }))
 jest.mock("../BestSellerCard", () => ({ __esModule: true, default: ({ product, rank }: { product: Product; rank?: number }) => createElement("div", { "data-rank": rank }, product.name) }))
 jest.mock("../HomeBestSellers.module.css", () => ({}))
 jest.mock("../TrendingNow.module.css", () => ({}))
@@ -16,7 +16,7 @@ const product = { id: "p1", slug: "protein", name: "Protein", shortName: "Protei
 
 it("links the collection action to the shop without claiming sales rank", () => {
   const html = renderToStaticMarkup(createElement(HomeBestSellers, { initialProducts: [product] }))
-  expect(html).toContain('href="/shop"')
+  expect(html).toContain('href="/en/shop"')
   expect(html).toContain("SHOP PRODUCTS")
   expect(html).not.toContain("BEST SELLERS")
   expect(html).not.toContain("data-rank")
@@ -25,7 +25,7 @@ it("links the collection action to the shop without claiming sales rank", () => 
 
 it("renders each discovery product once with its visible name", () => {
   const html = renderToStaticMarkup(createElement(() => TrendingNow({ products: [product] })))
-  expect(html.match(/href="\/products\/protein"/g)).toHaveLength(1)
+  expect(html.match(/href="\/en\/products\/protein"/g)).toHaveLength(1)
   expect(html).toContain("EXPLORE PRODUCTS")
   expect(html).toContain(">Protein</span>")
 })

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
+import Link from "@/components/LocaleLink";
 import { ArrowRight } from "lucide-react";
 
 import type { Product } from "@/types/product";

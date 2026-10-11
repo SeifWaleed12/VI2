@@ -34,3 +34,13 @@ it("never surfaces metadata ratings for cart line products", () => {
   const cart = mapMedusaCart({ id: "cart_1", items: [{ id: "item_1", quantity: 1, unit_price: 100, product: { id: "prod_1", metadata: { rating: 5, reviewCount: 999 } }, variant: { id: "variant_1" } }] });
   expect(cart.items[0].product).toMatchObject({ rating: 0, reviewCount: 0 });
 });
+
+it("retains the authoritative category ID for product breadcrumbs", () => {
+ expect(mapMedusaProduct({ id: "prod_1", categories: [{id:"pcat_1",name:"Translated name"}], variants: [] } as never).categoryId).toBe("pcat_1");
+});
+it("sends category IDs and locale in each isolated product request", async () => {
+ jest.mocked(medusa.store.product.list).mockResolvedValue({products:[]} as never);
+ await Promise.all([getProducts({locale:"ar",category_id:["parent","child"]}), getProducts({locale:"en"})]);
+ expect(medusa.store.product.list).toHaveBeenCalledWith(expect.objectContaining({category_id:["parent","child"]}), {"x-medusa-locale":"ar-EG"});
+ expect(medusa.store.product.list).toHaveBeenCalledWith(expect.anything(), {"x-medusa-locale":"en-US"});
+});

@@ -30,6 +30,7 @@ export type Product = {
   shortName: string;
 
   category: string;
+  categoryId?: string;
   description: string;
 
   price: number;

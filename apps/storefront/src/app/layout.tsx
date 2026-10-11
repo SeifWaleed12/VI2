@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Bebas_Neue, Cairo, Inter } from "next/font/google";
-import Script from "next/script";
+import { headers } from "next/headers";
+import { isLocale } from "@/lib/i18n";
 
 import "./globals.css";
 import "./rtl-support.css";
@@ -34,39 +35,25 @@ export const metadata: Metadata = {
   description: "Dietary, wellness and sports nutrition.",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const requested = (await headers()).get("x-vi2-locale");
+  const locale = isLocale(requested) ? requested : "en";
   return (
     <html
-      lang="en"
-      dir="ltr"
+      lang={locale}
+      dir={locale === "ar" ? "rtl" : "ltr"}
       suppressHydrationWarning
       data-scroll-behavior="smooth"
     >
-      <head>
-        <Script id="vi2-language-init" strategy="beforeInteractive">
-          {`
-            try {
-              var language = localStorage.getItem("vi2-language") === "ar" ? "ar" : "en";
-              document.documentElement.lang = language;
-              document.documentElement.dir = language === "ar" ? "rtl" : "ltr";
-              document.body && (document.body.dataset.locale = language);
-              if (language === "ar") {
-                document.documentElement.style.opacity = "0";
-              }
-            } catch (error) {}
-          `}
-        </Script>
-      </head>
-
-      <body
+<body
         className={`${bebasNeue.variable} ${inter.variable} ${cairo.variable}`}
         suppressHydrationWarning
       >
-        <Providers>
+        <Providers locale={locale}>
           <Navbar />
 
           {children}

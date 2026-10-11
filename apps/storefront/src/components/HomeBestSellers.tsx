@@ -5,7 +5,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { useMemo, useState } from "react";
-import Link from "next/link";
+import Link from "@/components/LocaleLink";
 
 import BestSellerCard from "@/components/BestSellerCard";
 import type { Product } from "@/types/product";

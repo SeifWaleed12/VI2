@@ -1,6 +1,7 @@
 "use client";
 
-import Link from "next/link";
+import Link from "@/components/LocaleLink";
+import { localizedHref } from "@/lib/i18n";
 import {
   ArrowRight,
   Heart,
@@ -93,7 +94,7 @@ export default function AccountDropdown({
     try {
       await authSignOut();
       onClose();
-      window.location.href = "/";
+      window.location.href = localizedHref("/", isArabic ? "ar" : "en");
     } catch {
       setLogoutError("Unable to sign out. Please try again.");
     }

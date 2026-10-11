@@ -1,3 +1,4 @@
+import { medusaLocale, type Locale } from "@/lib/i18n";
 import { medusa } from "../client";
 import type { Product, ProductOption, ProductVariant } from "@/types/product";
 
@@ -112,6 +113,7 @@ export function mapMedusaProduct(p: CatalogProduct): Product {
     name: p.title ?? "",
     shortName: String(meta.shortName ?? p.title ?? ""),
     category: categoryName,
+    categoryId: p.categories?.[0]?.id,
     description: p.description ?? "",
     price,
     ...(compareAtPrice !== undefined ? { compareAtPrice } : {}),
@@ -131,6 +133,7 @@ export function mapMedusaProduct(p: CatalogProduct): Product {
 }
 
 export type GetProductsParams = {
+  locale?: "en" | "ar";
   regionId?: string;
   limit?: number;
   offset?: number;
@@ -161,7 +164,7 @@ export async function getProducts(
       query.order = params.order;
     }
 
-    const { products } = await medusa.store.product.list(query);
+    const { products } = await medusa.store.product.list(query, { "x-medusa-locale": medusaLocale(params.locale ?? "en") });
     return (products || []).map(mapMedusaProduct);
   } catch {
     throw new Error("Catalog temporarily unavailable.");
@@ -171,6 +174,7 @@ export async function getProducts(
 export async function getProductByHandle(
   handle: string,
   regionId?: string,
+  locale: Locale = "en",
 ): Promise<Product | null> {
   try {
     const targetRegionId = await resolveRegionId(regionId);
@@ -181,7 +185,7 @@ export async function getProductByHandle(
       region_id: targetRegionId,
     };
 
-    const { products } = await medusa.store.product.list(query);
+    const { products } = await medusa.store.product.list(query, { "x-medusa-locale": medusaLocale(locale) });
     const product = products?.[0];
     if (!product) return null;
 
@@ -194,6 +198,7 @@ export async function getProductByHandle(
 export async function getProduct(
   id: string,
   regionId?: string,
+  locale: Locale = "en",
 ): Promise<Product | null> {
   try {
     const targetRegionId = await resolveRegionId(regionId);
@@ -202,7 +207,7 @@ export async function getProduct(
       region_id: targetRegionId,
     };
 
-    const { product } = await medusa.store.product.retrieve(id, query);
+    const { product } = await medusa.store.product.retrieve(id, query, { "x-medusa-locale": medusaLocale(locale) });
     if (!product) return null;
 
     return mapMedusaProduct(product);
