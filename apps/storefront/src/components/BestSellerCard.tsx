@@ -1,16 +1,14 @@
 "use client";
 
-import Link from "next/link";
+import Link from "@/components/LocaleLink";
 import {
   Check,
   Plus,
   Star,
 } from "lucide-react";
-import {
-  useState,
-} from "react";
 
-import { useCart } from "@/context/CartContext";
+import { useCartAdd } from "@/hooks/use-cart-add";
+import { useLanguage } from "@/context/LanguageContext";
 import type { Product } from "@/types/product";
 
 import styles from "./BestSellerCard.module.css";
@@ -50,23 +48,9 @@ export default function BestSellerCard({
   rank?: number;
   compact?: boolean;
 }) {
-  const { addItem } = useCart();
-
-  const [added, setAdded] =
-    useState(false);
-
-  function handleAdd() {
-    addItem(product);
-
-    setAdded(true);
-
-    window.setTimeout(
-      () => {
-        setAdded(false);
-      },
-      1100,
-    );
-  }
+  const { pending, added, failed, handleAdd } = useCartAdd(product);
+  const { isArabic } = useLanguage();
+  const status = pending ? (isArabic ? "جارٍ الإضافة…" : "Adding…") : failed ? (isArabic ? "تعذرت الإضافة. حاول مجددًا." : "Could not add. Try again.") : added ? (isArabic ? "تمت الإضافة" : "Added") : "";
 
   return (
     <article
@@ -153,8 +137,10 @@ export default function BestSellerCard({
           <button
             type="button"
             className={styles.addButton}
+            disabled={pending}
+            aria-busy={pending}
             onClick={handleAdd}
-            aria-label={`Add ${product.name} to cart`}
+            aria-label={pending ? status : isArabic ? `أضف ${product.name} إلى السلة` : `Add ${product.name} to cart`}
           >
             {added ? (
               <>
@@ -186,6 +172,7 @@ export default function BestSellerCard({
           </button>
         </div>
       </div>
+      <p role="status" aria-live="polite" className={styles.addStatus}>{status}</p>
     </article>
   );
 }

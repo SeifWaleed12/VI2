@@ -65,3 +65,22 @@ export async function getCategoryByHandle(
     return null;
   }
 }
+
+
+import { buildCategoryTree, type Category } from "@/lib/category-tree"
+import { medusaLocale, type Locale } from "@/lib/i18n"
+export async function getCategoryTree(locale: Locale): Promise<Category[]> {
+  const categories: Omit<Category,"children">[] = []
+  for (let offset = 0; ; offset += 50) {
+    const response = await medusa.client.fetch<{ product_categories: Omit<Category,"children">[]; count: number }>("/store/product-categories", {
+      query: { limit: 50, offset, fields: "id,name,handle,parent_category_id,rank" },
+      headers: { "x-medusa-locale": medusaLocale(locale) }, cache: "no-store", signal: AbortSignal.timeout(8000),
+    })
+    categories.push(...response.product_categories)
+    if (categories.length >= response.count || response.product_categories.length < 50) break
+  }
+  if (process.env.NODE_ENV === "development" && locale === "ar") {
+    for (const category of categories) if (!/[\u0600-\u06ff]/.test(category.name) && /[a-zA-Z]{4}/.test(category.name)) console.warn(`Check Arabic category translation: ${category.id}`)
+  }
+  return buildCategoryTree(categories)
+}

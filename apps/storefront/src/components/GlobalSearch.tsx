@@ -1,7 +1,9 @@
 "use client";
+import { useLanguage } from "@/context/LanguageContext";
+import { useLocaleRouter } from "@/hooks/use-locale-router";
 
 import Image from "next/image";
-import Link from "next/link";
+import Link from "@/components/LocaleLink";
 import {
   ArrowRight,
   Clock3,
@@ -16,7 +18,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { useRouter } from "next/navigation";
+
 
 import type { Product } from "@/types/product";
 import { getProducts } from "@/lib/medusa";
@@ -64,7 +66,8 @@ export default function GlobalSearch({
   onClose,
   isArabic,
 }: Props) {
-  const router = useRouter();
+  const router = useLocaleRouter();
+  const { msg, language } = useLanguage();
 
   const inputRef =
     useRef<HTMLInputElement>(null);
@@ -80,7 +83,7 @@ export default function GlobalSearch({
 
   useEffect(() => {
     let active = true;
-    getProducts()
+    getProducts({locale: language})
       .then((res) => {
         if (active && res.length > 0) {
           setMedusaProducts(res);
@@ -90,7 +93,7 @@ export default function GlobalSearch({
     return () => {
       active = false;
     };
-  }, []);
+  }, [language]);
 
   const catalogProducts = useMemo(() => {
     return medusaProducts;
@@ -248,37 +251,12 @@ export default function GlobalSearch({
     return null;
   }
 
-  const copy = isArabic
-    ? {
-        search: "ابحث في Vi2",
-        placeholder:
-          "منتج، علامة تجارية، هدف صحي...",
-        recent: "عمليات البحث الأخيرة",
-        popular: "الأكثر بحثاً",
-        suggestions:
-          query.trim()
-            ? "نتائج مقترحة"
-            : "اختيارات شائعة",
-        viewAll: "عرض كل النتائج",
-        clear: "مسح",
-        empty:
-          "جرّب اسم منتج أو علامة تجارية أو هدف صحي آخر.",
-      }
-    : {
-        search: "SEARCH VI2",
-        placeholder:
-          "Product, brand, health goal...",
-        recent: "RECENT SEARCHES",
-        popular: "POPULAR SEARCHES",
-        suggestions:
-          query.trim()
-            ? "SUGGESTED RESULTS"
-            : "POPULAR PICKS",
-        viewAll: "VIEW ALL RESULTS",
-        clear: "CLEAR",
-        empty:
-          "Try another product, brand, category or health goal.",
-      };
+  const copy = {
+    search: msg("nav.search"), placeholder: msg("search.placeholder"),
+    recent: msg("search.recent"), popular: msg("search.popular"),
+    suggestions: msg(query.trim() ? "search.suggestions" : "search.picks"),
+    viewAll: msg("search.viewAll"), clear: msg("search.clear"), empty: msg("search.empty"),
+  };
 
   function remember(
     value: string,
@@ -345,11 +323,12 @@ export default function GlobalSearch({
       role="presentation"
       onMouseDown={onClose}
     >
-      {catalogError && <p role="alert">Search is temporarily unavailable.</p>}
+      {catalogError && <p role="alert">{msg("search.error")}</p>}
       <section
         className={styles.panel}
         role="dialog"
         aria-modal="true"
+        data-no-translate
         aria-label={copy.search}
         dir={
           isArabic
@@ -370,7 +349,7 @@ export default function GlobalSearch({
 
           <button
             type="button"
-            aria-label="Close search"
+            aria-label={msg("search.close")}
             onClick={onClose}
           >
             <X

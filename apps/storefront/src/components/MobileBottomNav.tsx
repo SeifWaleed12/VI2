@@ -15,6 +15,7 @@ import { useCart } from "@/context/CartContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { useAuth } from "@/context/AuthContext";
 
+import { localizedHref } from "@/lib/i18n";
 import styles from "./MobileBottomNav.module.css";
 
 type Props = {
@@ -25,14 +26,14 @@ export default function MobileBottomNav({
   onOpenSearch,
 }: Props) {
   const pathname =
-    usePathname();
+    usePathname().replace(/^\/(en|ar)(?=\/|$)/, "") || "/";
 
   const {
     itemCount,
     openCart,
   } = useCart();
 
-  const { isArabic } = useLanguage();
+  const { isArabic, language, msg } = useLanguage();
   const { isAuthenticated } = useAuth();
 
   if (
@@ -49,21 +50,7 @@ export default function MobileBottomNav({
     return null;
   }
 
-  const labels = isArabic
-    ? {
-        home: "الرئيسية",
-        shop: "المتجر",
-        search: "بحث",
-        account: "حسابي",
-        cart: "السلة",
-      }
-    : {
-        home: "HOME",
-        shop: "SHOP",
-        search: "SEARCH",
-        account: "ACCOUNT",
-        cart: "CART",
-      };
+  const labels = { home: msg("nav.home"), shop: msg("nav.shopShort"), search: msg("nav.searchShort"), account: msg("nav.account"), cart: msg("nav.cart") };
 
   /**
    * CartDrawer lives inside the shared Providers tree.
@@ -79,11 +66,9 @@ export default function MobileBottomNav({
   function goTo(
     href: string,
   ) {
-    document.body.style.overflow =
-      "";
 
     window.location.assign(
-      href,
+      localizedHref(href, language),
     );
   }
 
@@ -101,18 +86,17 @@ export default function MobileBottomNav({
       // Search can still fall back to the shop page.
     }
 
-    document.body.style.overflow =
-      "";
 
     window.location.assign(
-      pathname || "/",
+      localizedHref(pathname,language) + window.location.search + window.location.hash,
     );
   }
 
   return (
     <nav
       className={styles.nav}
-      aria-label="Mobile navigation"
+      data-no-translate
+      aria-label={msg("nav.mobile")}
       dir={
         isArabic
           ? "rtl"

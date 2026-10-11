@@ -1,13 +1,14 @@
 "use client";
+import { useLocaleRouter } from "@/hooks/use-locale-router";
 
 import Image from "next/image";
-import Link from "next/link";
+import Link from "@/components/LocaleLink";
 import {
   ArrowRight,
   Check,
   PackagePlus,
 } from "lucide-react";
-import { useRouter } from "next/navigation";
+
 import { useMemo } from "react";
 
 import { useCart } from "@/context/CartContext";
@@ -77,7 +78,7 @@ function formatPrice(value: number) {
 export default function ValueSets({
   products = [],
 }: ValueSetsProps) {
-  const router = useRouter();
+  const router = useLocaleRouter();
   const { t } = useLanguage();
   const { addItem } = useCart();
 

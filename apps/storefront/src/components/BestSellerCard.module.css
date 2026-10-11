@@ -414,3 +414,7 @@
     height: 32px;
   }
 }
+
+.addButton:disabled { opacity: .6; cursor: wait; }
+.addButton:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
+.addStatus { min-height: 18px; margin: 8px 0 0; font-size: 12px; line-height: 1.5; color: var(--ink); }

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { forwardRef } from "react";
-import Link from "next/link";
+import Link from "@/components/LocaleLink";
 import styles from "./Button.module.css";
 
 export type ButtonVariant = "dark" | "olive" | "light" | "outline";
