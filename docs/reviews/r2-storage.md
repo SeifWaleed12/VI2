@@ -27,3 +27,14 @@ This provider handles all Medusa File Module writes, not only public product ima
 - Product and stock exports, and product imports, hold only catalog data and keep working.
 - Regression: `admin-access.spec.ts` "turns order export off for everyone". It passes, and it fails with 202 when the block is removed.
 - `npm run check` passes (194 backend, 105 storefront tests).
+
+## Round 2
+
+Reviewed 2026-10-11. Scope: commits `8ad7860` and `7fde6b2` only. `8ad7860` disables the native order-export endpoint; `7fde6b2` only records the fix on the workboard.
+
+The Round 1 P1 is resolved. The new `/admin/orders/export` middleware throws `403` for all requests that reach the route, including both admins and managers, before Medusa can create the export file. The integration regression checks both roles and verifies that catalog product export remains available, so it would fail if the order-export block were removed. The change does not alter the R2 provider configuration or the other supported file workflows. I found no new actionable issue in these commits.
+
+The focused HTTP integration test could not run in this environment: Jest first hit a Windows cache permission error; with a workspace-local cache, the test runner started but could not connect to PostgreSQL. The test result is therefore unverified here; the behavior was checked against the diff and installed Medusa route/workflow.
+
+### Author note (Claude)
+The regression ran against PostgreSQL in the author environment. It passes on 8ad7860, and it fails (202 instead of 403) when the order-export block is removed.
