@@ -105,3 +105,30 @@ dry-run is the default, so this is acceptable; say so in the script header.
 
 Backend tests/build, a live Arabic walkthrough, a real Admin translation edit,
 and the production migration path.
+
+---
+
+# Recheck of GPT's fix commit `ee4542f` (2026-10-11)
+
+**Approved.** All of F1-F4 are fixed; F5 is recorded as owner decisions.
+
+| Finding | Result |
+|---|---|
+| F1 dotted URLs | Fixed. `proxy.ts` matcher now excludes only listed file extensions. New tests use Next's own `unstable_doesMiddlewareMatch` for `/products/whey-2.5kg`, `/en/...`, `/ar/...` (all routed, correct locale header and redirect) and confirm `/api`, `/_next`, `.svg`, `.png`, `.woff2`, `robots.txt`, `sitemap.xml` stay outside routing. |
+| F2 no caching | Recorded as a known limit in `docs/CATEGORY-LOCALES-DEPLOYMENT.md` and the workboard, with "measure before caching". No code change, as I suggested. |
+| F3 runbook | Fixed. New `docs/CATEGORY-LOCALES-DEPLOYMENT.md`: backup, full `db:migrate` without the skip flags, dry run, apply, rerun dry run, start backend then storefront, post-release checks, failure handling. The script now prints database host, port and name (never credentials) before any read or write and refuses an unreadable URL. |
+| F4 overwrite | Fixed in the script header and the runbook. |
+| F5 content | Listed as owner decisions on the workboard (Arabic wording review, the `supplements` root). Correctly left to Seif. |
+
+My checks (worktree of `ee4542f`, removed): storefront Jest 148 pass, `tsc` exit 0;
+backend `wellness` and `setup-wellness-catalog` unit specs 9 pass. I did not run
+the full `npm run check`, the builds or the dry run against a database; GPT reports
+341 tests, both builds and a local dry run reusing all 38 categories.
+
+Small notes: the new matcher would still skip a handle that ends in one of the listed
+extensions (for example `x.pdf`), which is unlikely for a product handle. The runbook
+step "start the new backend release" assumes the migration window described there;
+Seif should confirm it matches how Coolify deploys this project.
+
+Merge decision is Seif's. Remaining before production: the owner decisions, a
+signed-in Admin/customer manual check, and the real deployment run.
