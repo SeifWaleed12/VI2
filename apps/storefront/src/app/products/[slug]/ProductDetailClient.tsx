@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { categoryHref } from "@/lib/category-navigation"
 import { useRouter } from "next/navigation";
 import {
   BadgeCheck,
@@ -418,7 +417,9 @@ export default function ProductDetailClient({
             />
 
             <Link
-              href={product.categoryId ? categoryHref(product.categoryId) : "/categories"}
+              href={`/shop?category=${encodeURIComponent(
+                product.category,
+              )}`}
             >
               {
                 product.category
@@ -1334,7 +1335,9 @@ export default function ProductDetailClient({
               </div>
 
               <Link
-                href={product.categoryId ? categoryHref(product.categoryId) : "/categories"}
+                href={`/shop?category=${encodeURIComponent(
+                  product.category,
+                )}`}
               >
                 VIEW ALL
                 <ChevronRight

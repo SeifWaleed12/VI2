@@ -112,7 +112,6 @@ export function mapMedusaProduct(p: CatalogProduct): Product {
     name: p.title ?? "",
     shortName: String(meta.shortName ?? p.title ?? ""),
     category: categoryName,
-    categoryId: p.categories?.[0]?.id,
     description: p.description ?? "",
     price,
     ...(compareAtPrice !== undefined ? { compareAtPrice } : {}),

@@ -1452,19 +1452,3 @@
       );
   }
 }
-
-/* Category names and the number of roots are owned by the live catalog. */
-.categoryMain {
-  overflow-x: auto;
-}
-
-.categoryMain > button,
-.categoryMain > a,
-.categoryMain > span {
-  flex-shrink: 0;
-}
-
-.categoryMain > p,
-.categoryMain > div[role="alert"] {
-  font-size: 10px;
-}

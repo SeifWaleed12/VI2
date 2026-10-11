@@ -1,10 +1,6 @@
-"use client"
-
-import Link from "next/link"
-import { useCategories } from "@/providers/category-provider"
+import Link from "next/link";
 
 export default function Footer() {
-  const { categories } = useCategories()
   return (
     <footer className="footer">
       <div className="footer-grid">
@@ -39,10 +35,21 @@ export default function Footer() {
             All products
           </Link>
 
-          <Link href="/categories">All categories</Link>
-          {categories.map((category) => (
-            <Link key={category.id} href={category.href}>{category.name}</Link>
-          ))}
+          <Link href="/shop?category=Protein">
+            <span data-arabic-text="البروتين">Protein</span>
+          </Link>
+
+          <Link href="/shop?category=Creatine">
+            <span data-arabic-text="الكرياتين">Creatine</span>
+          </Link>
+
+          <Link href="/shop?category=Vitamins">
+            <span data-arabic-text="الفيتامينات">Vitamins</span>
+          </Link>
+
+          <Link href="/shop?category=Wellness">
+            <span data-arabic-text="العافية">Wellness</span>
+          </Link>
         </section>
 
         <section className="footer-column">

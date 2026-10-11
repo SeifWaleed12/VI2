@@ -34,13 +34,3 @@ it("never surfaces metadata ratings for cart line products", () => {
   const cart = mapMedusaCart({ id: "cart_1", items: [{ id: "item_1", quantity: 1, unit_price: 100, product: { id: "prod_1", metadata: { rating: 5, reviewCount: 999 } }, variant: { id: "variant_1" } }] });
   expect(cart.items[0].product).toMatchObject({ rating: 0, reviewCount: 0 });
 });
-
-it("preserves the primary Medusa category ID alongside its name", () => {
-  const product = mapMedusaProduct({ id: "prod_1", categories: [{ id: "pcat_native", name: "Nutrition" }], variants: [] } as never)
-  expect(product).toMatchObject({ category: "Nutrition", categoryId: "pcat_native" })
-})
-
-it("never derives a category ID from metadata or product type", () => {
-  const product = mapMedusaProduct({ id: "prod_1", metadata: { category: "Nutrition", category_id: "pcat_fake" }, type: { value: "Nutrition" }, variants: [] } as never)
-  expect(product.categoryId).toBeUndefined()
-})

@@ -293,8 +293,7 @@
   gap: 3px;
 }
 
-.filterOptions button,
-.filterOptions > a {
+.filterOptions button {
   min-height: 31px;
 
   padding: 0;
@@ -747,15 +746,4 @@
   color: #8a6557;
   font-size: 7px;
   line-height: 1.55;
-}
-
-
-.categorySelection {
-  margin: 0;
-  padding: 18px max(18px, calc((100vw - 1440px) / 2));
-  font-size: 12px;
-}
-
-.categorySelection a {
-  text-decoration: underline;
 }

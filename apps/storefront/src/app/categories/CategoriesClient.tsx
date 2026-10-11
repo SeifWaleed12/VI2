@@ -1,67 +1,164 @@
-"use client"
+"use client";
 
-import Link from "next/link"
-import { ArrowRight, Search } from "lucide-react"
-import { useMemo, useState } from "react"
-import { categoryLinks, filterCategoryTree } from "@/lib/category-navigation"
-import { useCategories } from "@/providers/category-provider"
-import { useLanguage } from "@/context/LanguageContext"
-import CategoryStatus from "@/components/category-status"
-import styles from "./Categories.module.css"
+import Link from "next/link";
+import {
+  ArrowRight,
+  Search,
+} from "lucide-react";
+import {
+  useMemo,
+  useState,
+} from "react";
+
+import {
+  healthTopicGroups,
+  primaryCatalogGroups,
+} from "@/data/catalogArchitecture";
+
+import styles from "./Categories.module.css";
+
+function filterGroups(
+  groups: typeof primaryCatalogGroups,
+  normalized: string,
+) {
+  return groups
+    .map((group) => ({
+      ...group,
+      items: group.items.filter(
+        (item) =>
+          !normalized ||
+          item.toLowerCase().includes(normalized) ||
+          group.title.toLowerCase().includes(normalized),
+      ),
+    }))
+    .filter((group) => group.items.length > 0);
+}
 
 export default function CategoriesClient() {
-  const [query, setQuery] = useState("")
-  const { categories, status } = useCategories()
-  const { isArabic, t } = useLanguage()
-  const groups = useMemo(() => filterCategoryTree(categories, query), [categories, query])
+  const [query, setQuery] = useState("");
+
+  const normalized = query.trim().toLowerCase();
+
+  const productGroups = useMemo(
+    () => filterGroups(primaryCatalogGroups, normalized),
+    [normalized],
+  );
+
+  const healthGroups = useMemo(
+    () => filterGroups(healthTopicGroups, normalized),
+    [normalized],
+  );
 
   return (
     <main className={styles.page}>
       <section className={styles.hero}>
-        <span>{isArabic ? "دليل فئات VI2" : "VI2 COMPLETE CATALOG"}</span>
-        <h1>{isArabic ? "اكتشف ما يناسبك." : <>FIND YOUR<br />ROUTINE.</>}</h1>
-        <p>{isArabic ? "اكتشف المنتجات حسب فئات المتجر." : "Explore products by store category."}</p>
+        <span>VI2 COMPLETE CATALOG</span>
+
+        <h1>
+          FIND YOUR
+          <br />
+          ROUTINE.
+        </h1>
+
+        <p>
+          Explore products by supplement type, body
+          system, health goal or life stage.
+        </p>
+
         <label className={styles.search}>
           <Search size={18} strokeWidth={1.4} />
+
           <input
             value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder={isArabic ? "ابحث في الفئات…" : "Search categories…"}
-            aria-label={isArabic ? "ابحث في الفئات" : "Search categories"}
+            onChange={(event) =>
+              setQuery(event.target.value)
+            }
+            placeholder="Search categories and health goals..."
           />
         </label>
       </section>
-      <section className={styles.directory}>
-        <header className={styles.sectionHead}>
-          <span>01</span>
-          <div>
-            <small>{isArabic ? "تسوق حسب الفئة" : "SHOP BY CATEGORY"}</small>
-            <h2>{isArabic ? "فئات المنتجات" : "PRODUCT CATEGORIES"}</h2>
-          </div>
-        </header>
-        <CategoryStatus />
-        {status === "ready" && categories.length > 0 && groups.length === 0 && (
-          <p role="status">{isArabic ? "لا توجد فئات تطابق بحثك." : "No categories match your search."}</p>
-        )}
-        <div className={styles.groupGrid}>
-          {groups.map((group) => (
-            <article key={group.id} className={styles.group}>
-              <div className={styles.groupIntro}>
-                <h3>{t(group.name)}</h3>
-                {group.description && <p>{group.description}</p>}
-              </div>
-              <div className={styles.items}>
-                {categoryLinks(group).map((item) => (
-                  <Link key={item.id} href={item.href}>
-                    <span>{t(item.label)}</span>
-                    <ArrowRight size={14} strokeWidth={1.4} />
-                  </Link>
-                ))}
-              </div>
-            </article>
-          ))}
-        </div>
-      </section>
+
+      <Directory
+        number="01"
+        eyebrow="SHOP BY PRODUCT TYPE"
+        title="PRODUCT CATEGORIES"
+        groups={productGroups}
+      />
+
+      <Directory
+        number="02"
+        eyebrow="SHOP BY HEALTH CONDITION"
+        title="HEALTH GOALS"
+        groups={healthGroups}
+        dark
+        id="health-goals"
+      />
     </main>
-  )
+  );
+}
+
+function Directory({
+  number,
+  eyebrow,
+  title,
+  groups,
+  dark = false,
+  id,
+}: {
+  number: string;
+  eyebrow: string;
+  title: string;
+  groups: typeof primaryCatalogGroups;
+  dark?: boolean;
+  id?: string;
+}) {
+  return (
+    <section
+      id={id}
+      className={`${styles.directory} ${
+        dark ? styles.dark : ""
+      }`}
+    >
+      <header className={styles.sectionHead}>
+        <span>{number}</span>
+
+        <div>
+          <small>{eyebrow}</small>
+          <h2>{title}</h2>
+        </div>
+      </header>
+
+      <div className={styles.groupGrid}>
+        {groups.map((group) => (
+          <article
+            key={group.id}
+            id={group.id}
+            className={styles.group}
+          >
+            <div className={styles.groupIntro}>
+              <h3>{group.title}</h3>
+              <p>{group.description}</p>
+            </div>
+
+            <div className={styles.items}>
+              {group.items.map((item) => (
+                <Link
+                  key={item}
+                  href={`/shop?q=${encodeURIComponent(
+                    item,
+                  )}`}
+                >
+                  <span>{item}</span>
+                  <ArrowRight
+                    size={14}
+                    strokeWidth={1.4}
+                  />
+                </Link>
+              ))}
+            </div>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
 }

@@ -32,17 +32,18 @@ import AccountDropdown from "@/components/AccountDropdown";
 import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
 
-import { useCategories } from "@/providers/category-provider"
-import { categoryLinks } from "@/lib/category-navigation"
-import CategoryStatus from "./category-status"
-
 import styles from "./Navbar.module.css";
 
 
-type MobileCatalogKey = string
+type MobileCatalogKey =
+  | "vitamins"
+  | "sports"
+  | "botanicals"
+  | "beauty"
+  | "kids"
+  | "health";
 
 export default function Navbar() {
-  const { categories } = useCategories()
   const { t } = useLanguage();
 
   const [menuOpen, setMenuOpen] =
@@ -261,16 +262,212 @@ export default function Navbar() {
           "Cart",
       };
 
-  const primaryMobileCategories = categories.map((category) => ({
-    key: category.id,
-    label: category.name,
-  }))
-  const activeCategory = categories.find((category) => category.id === mobilePanel)
-  const activeMobilePanel = activeCategory ? {
-    title: activeCategory.name,
-    shopAllHref: activeCategory.href,
-    items: categoryLinks(activeCategory).map((item) => [item.label, item.href]),
-  } : null
+  const mobileCatalog = {
+    vitamins: {
+      title: isArabic
+        ? "الفيتامينات والمعادن"
+        : "Vitamins & Minerals",
+      shopAllHref:
+        "/shop?category=Vitamins",
+      items: isArabic
+        ? [
+            ["الفيتامينات المتعددة", "/shop?q=Multivitamin"],
+            ["فيتامين C", "/shop?q=Vitamin%20C"],
+            ["فيتامين D3 و K2", "/shop?q=Vitamin%20D3"],
+            ["فيتامينات B المركبة", "/shop?q=B-Complex"],
+            ["المغنيسيوم", "/shop?q=Magnesium"],
+            ["الزنك", "/shop?q=Zinc"],
+            ["الحديد", "/shop?q=Iron"],
+            ["الكالسيوم", "/shop?q=Calcium"],
+          ]
+        : [
+            ["Multivitamins", "/shop?q=Multivitamin"],
+            ["Vitamin C", "/shop?q=Vitamin%20C"],
+            ["Vitamin D3 & K2", "/shop?q=Vitamin%20D3"],
+            ["B-Complex", "/shop?q=B-Complex"],
+            ["Magnesium (Glycinate, Citrate)", "/shop?q=Magnesium"],
+            ["Zinc", "/shop?q=Zinc"],
+            ["Iron", "/shop?q=Iron"],
+            ["Calcium", "/shop?q=Calcium"],
+          ],
+    },
+
+    sports: {
+      title: isArabic
+        ? "التغذية الرياضية"
+        : "Sports Nutrition",
+      shopAllHref:
+        "/shop?goal=Muscle%20%26%20Recovery",
+      items: isArabic
+        ? [
+            ["بروتين مصل اللبن", "/shop?category=Protein"],
+            ["البروتين النباتي", "/shop?q=Plant%20Protein"],
+            ["كرياتين مونوهيدرات", "/shop?category=Creatine"],
+            ["مكملات ما قبل التمرين", "/shop?category=Pre-Workout"],
+            ["BCAA / EAA", "/shop?q=BCAA"],
+            ["جلوتامين", "/shop?q=Glutamine"],
+            ["ماس جينر", "/shop?category=Mass%20Gainer"],
+            ["الإلكتروليتات", "/shop?q=Electrolytes"],
+          ]
+        : [
+            ["Whey Protein (Isolate, Concentrate)", "/shop?category=Protein"],
+            ["Plant Protein", "/shop?q=Plant%20Protein"],
+            ["Creatine Monohydrate", "/shop?category=Creatine"],
+            ["Pre-Workouts", "/shop?category=Pre-Workout"],
+            ["BCAAs / EAAs", "/shop?q=BCAA"],
+            ["Glutamine", "/shop?q=Glutamine"],
+            ["Mass Gainers", "/shop?category=Mass%20Gainer"],
+            ["Electrolytes", "/shop?q=Electrolytes"],
+          ],
+    },
+
+    botanicals: {
+      title: isArabic
+        ? "المكملات والمستخلصات النباتية"
+        : "Supplements & Botanicals",
+      shopAllHref: "/shop",
+      items: isArabic
+        ? [
+            ["أوميجا 3 وزيوت السمك", "/shop?q=Omega"],
+            ["البروبيوتك والبريبيوتك", "/shop?q=Probiotic"],
+            ["ببتيدات الكولاجين", "/shop?q=Collagen"],
+            ["أشواجاندا", "/shop?q=Ashwagandha"],
+            ["حليب الشوك", "/shop?q=Milk%20Thistle"],
+            ["مستخلصات الفطر", "/shop?q=Mushroom"],
+            ["CoQ10", "/shop?q=CoQ10"],
+            ["الكركمين", "/shop?q=Curcumin"],
+          ]
+        : [
+            ["Omega-3 & Fish Oils", "/shop?q=Omega"],
+            ["Probiotics & Prebiotics", "/shop?q=Probiotic"],
+            ["Collagen Peptides", "/shop?q=Collagen"],
+            ["Ashwagandha", "/shop?q=Ashwagandha"],
+            ["Milk Thistle", "/shop?q=Milk%20Thistle"],
+            ["Mushroom Extracts", "/shop?q=Mushroom"],
+            ["CoQ10", "/shop?q=CoQ10"],
+            ["Curcumin", "/shop?q=Curcumin"],
+          ],
+    },
+
+    beauty: {
+      title: isArabic
+        ? "الجمال وصحة البشرة"
+        : "Beauty & Skin Wellness",
+      shopAllHref:
+        "/shop?q=Collagen",
+      items: isArabic
+        ? [
+            ["بيوتين", "/shop?q=Biotin"],
+            ["حمض الهيالورونيك", "/shop?q=Hyaluronic"],
+            ["كولاجين بحري", "/shop?q=Marine%20Collagen"],
+            ["تركيبات مقاومة الشيخوخة", "/shop?q=Anti-Aging"],
+            ["تركيبات الشعر والبشرة والأظافر", "/shop?q=Hair%20Skin%20Nails"],
+          ]
+        : [
+            ["Biotin", "/shop?q=Biotin"],
+            ["Hyaluronic Acid", "/shop?q=Hyaluronic"],
+            ["Marine Collagen", "/shop?q=Marine%20Collagen"],
+            ["Anti-Aging Formulas", "/shop?q=Anti-Aging"],
+            ["Hair, Skin & Nails Blends", "/shop?q=Hair%20Skin%20Nails"],
+          ],
+    },
+
+    kids: {
+      title: isArabic
+        ? "صحة الأطفال والرضع"
+        : "Baby & Kids Health",
+      shopAllHref:
+        "/shop?q=Kids",
+      items: isArabic
+        ? [
+            ["قطرات D3 / بروبيوتك للرضع", "/shop?q=D3"],
+            ["فيتامينات متعددة للأطفال", "/shop?q=Multivitamin"],
+            ["دعم التسنين", "/shop?q=Teething"],
+            ["DHA للأطفال", "/shop?q=DHA"],
+          ]
+        : [
+            ["Infant Drops (D3 / Probiotics)", "/shop?q=D3"],
+            ["Children's Multivitamin Gummies", "/shop?q=Multivitamin"],
+            ["Teething Support", "/shop?q=Teething"],
+            ["DHA for Kids", "/shop?q=DHA"],
+          ],
+    },
+
+    health: {
+      title: isArabic
+        ? "الأهداف الصحية"
+        : "Health Goals",
+      shopAllHref:
+        "/#health-goals",
+      items: isArabic
+        ? [
+            ["العافية العامة وطول العمر", "/shop?goal=Daily%20Wellness"],
+            ["المناعة والدعم الموسمي", "/shop?goal=Immune%20Support"],
+            ["الهضم والتمثيل الغذائي", "/shop?goal=Gut%20Health"],
+            ["القلب والدماغ والدورة الدموية", "/shop?goal=Heart%20Health"],
+            ["العظام والمفاصل والعضلات", "/shop?goal=Muscle%20%26%20Recovery"],
+            ["النوم والمزاج", "/shop?goal=Stress%20%26%20Sleep"],
+            ["مراحل الحياة", "/shop?goal=Daily%20Wellness"],
+            ["أنظمة الجسم والجمال", "/shop?goal=Daily%20Wellness"],
+          ]
+        : [
+            ["General Wellness & Longevity", "/shop?goal=Daily%20Wellness"],
+            ["Immune & Seasonal Support", "/shop?goal=Immune%20Support"],
+            ["Digestion & Metabolism", "/shop?goal=Gut%20Health"],
+            ["Heart, Brain & Circulation", "/shop?goal=Heart%20Health"],
+            ["Bone, Joint & Pain", "/shop?goal=Muscle%20%26%20Recovery"],
+            ["Mind, Sleep & Mood", "/shop?goal=Stress%20%26%20Sleep"],
+            ["Demographics & Stage of Life", "/shop?goal=Daily%20Wellness"],
+            ["Specific Body Systems & Aesthetics", "/shop?goal=Daily%20Wellness"],
+          ],
+    },
+  } satisfies Record<
+    MobileCatalogKey,
+    {
+      title: string;
+      shopAllHref: string;
+      items: string[][];
+    }
+  >;
+
+  const primaryMobileCategories: {
+    key: MobileCatalogKey;
+    label: string;
+  }[] = [
+    {
+      key: "vitamins",
+      label: isArabic
+        ? "الفيتامينات والمعادن"
+        : "Vitamins & Minerals",
+    },
+    {
+      key: "sports",
+      label: copy.sports,
+    },
+    {
+      key: "botanicals",
+      label: isArabic
+        ? "المكملات والمستخلصات النباتية"
+        : "Supplements & Botanicals",
+    },
+    {
+      key: "beauty",
+      label: isArabic
+        ? "الجمال وصحة البشرة"
+        : "Beauty & Skin Wellness",
+    },
+    {
+      key: "kids",
+      label: isArabic
+        ? "صحة الأطفال والرضع"
+        : "Baby & Kids Health",
+    },
+  ];
+
+  const activeMobilePanel =
+    mobilePanel
+      ? mobileCatalog[mobilePanel]
+      : null;
 
   const topMessages = isArabic
     ? [
@@ -620,24 +817,101 @@ export default function Navbar() {
         <nav className={styles.desktopCategories}>
           <div className={styles.categoryInner}>
             <div className={styles.categoryMain}>
-              <CategoryStatus />
-              {categories.map((category) => (
-                <button
-                  key={category.id}
-                  type="button"
-                  className={megaOpen === category.id ? styles.categoryTriggerActive : styles.categoryTrigger}
-                  aria-expanded={megaOpen === category.id}
-                  aria-haspopup="true"
-                  onMouseEnter={() => setMegaOpen(category.id)}
-                  onFocus={() => setMegaOpen(category.id)}
-                  onClick={() => setMegaOpen(megaOpen === category.id ? null : category.id)}
-                >
-                  {t(category.name)}
-                </button>
-              ))}
-              <Link href="/categories" onMouseEnter={() => setMegaOpen(null)} onFocus={() => setMegaOpen(null)} onClick={() => setMegaOpen(null)}>
-                {isArabic ? "كل الفئات" : "All categories"}
-              </Link>
+              <button
+                type="button"
+                className={
+                  megaOpen === "supplements"
+                    ? styles.categoryTriggerActive
+                    : styles.categoryTrigger
+                }
+                onMouseEnter={() =>
+                  setMegaOpen("supplements")
+                }
+                onFocus={() =>
+                  setMegaOpen("supplements")
+                }
+                onClick={() =>
+                  setMegaOpen(
+                    megaOpen === "supplements"
+                      ? null
+                      : "supplements",
+                  )
+                }
+              >
+                {t(copy.supplements)}
+              </button>
+
+              <button
+                type="button"
+                className={
+                  megaOpen === "sports"
+                    ? styles.categoryTriggerActive
+                    : styles.categoryTrigger
+                }
+                onMouseEnter={() =>
+                  setMegaOpen("sports")
+                }
+                onFocus={() =>
+                  setMegaOpen("sports")
+                }
+                onClick={() =>
+                  setMegaOpen(
+                    megaOpen === "sports"
+                      ? null
+                      : "sports",
+                  )
+                }
+              >
+                {t(copy.sports)}
+              </button>
+
+              <button
+                type="button"
+                className={
+                  megaOpen === "vitamins"
+                    ? styles.categoryTriggerActive
+                    : styles.categoryTrigger
+                }
+                onMouseEnter={() =>
+                  setMegaOpen("vitamins")
+                }
+                onFocus={() =>
+                  setMegaOpen("vitamins")
+                }
+                onClick={() =>
+                  setMegaOpen(
+                    megaOpen === "vitamins"
+                      ? null
+                      : "vitamins",
+                  )
+                }
+              >
+                {t(copy.vitamins)}
+              </button>
+
+              <button
+                type="button"
+                className={
+                  megaOpen === "wellness"
+                    ? styles.categoryTriggerActive
+                    : styles.categoryTrigger
+                }
+                onMouseEnter={() =>
+                  setMegaOpen("wellness")
+                }
+                onFocus={() =>
+                  setMegaOpen("wellness")
+                }
+                onClick={() =>
+                  setMegaOpen(
+                    megaOpen === "wellness"
+                      ? null
+                      : "wellness",
+                  )
+                }
+              >
+                {t(copy.wellness)}
+              </button>
 
               <span
                 className={
@@ -774,11 +1048,6 @@ export default function Navbar() {
               </span>
 
               <nav className={styles.primaryMenuList}>
-                <CategoryStatus />
-                <Link href="/categories" className={styles.primaryMenuButton} onClick={closeMenu}>
-                  <span>{isArabic ? "كل الفئات" : "All categories"}</span>
-                  <ChevronRight size={20} strokeWidth={1.45} />
-                </Link>
                 {t(primaryMobileCategories.map(
                   (item) => (
                     <button
@@ -809,10 +1078,12 @@ export default function Navbar() {
               </span>
 
               <nav className={styles.simpleLinks}>
-                <Link
-                  href="/#health-goals"
+                <button
+                  type="button"
                   className={styles.simpleMenuButton}
-                  onClick={closeMenu}
+                  onClick={() =>
+                    setMobilePanel("health")
+                  }
                 >
                   <span className={styles.linkWithIcon}>
                     <Sparkles
@@ -826,7 +1097,7 @@ export default function Navbar() {
                     size={20}
                     strokeWidth={1.5}
                   />
-                </Link>
+                </button>
 
                 <Link
                   href="/brands"
