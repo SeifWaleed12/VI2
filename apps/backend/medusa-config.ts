@@ -6,7 +6,7 @@ import { loadEnv, defineConfig } from '@medusajs/framework/utils'
 loadEnv(process.env.NODE_ENV || 'development', process.cwd())
 
 module.exports = defineConfig({
-  featureFlags: { rbac: true },
+  featureFlags: { rbac: true, translation: true },
   projectConfig: {
     databaseUrl: process.env.DATABASE_URL,
     http: {
@@ -22,6 +22,7 @@ module.exports = defineConfig({
     }
   },
   modules: [
+    { resolve: "@medusajs/medusa/translation" },
     {
       resolve: "./src/modules/brand",
     },
