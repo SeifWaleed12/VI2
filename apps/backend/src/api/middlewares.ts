@@ -4,6 +4,7 @@ import type { ActorType } from "../lib/login-attempts"
 import { adminAccess, unlessInviteAcceptance } from "./admin-access"
 import { limitLoginAttempts, limitResetRequests } from "./login-rate-limit"
 import { managerLayoutView } from "./manager-layouts"
+import { assignOrderOwner } from "./order-owner"
 import { requireStrongPassword } from "./password-policy"
 
 // Staff and customers sign in, reset and set passwords through the same
@@ -43,7 +44,7 @@ export default defineMiddlewares({
           throw new MedusaError(MedusaError.Types.NOT_ALLOWED, "Production checkout is not configured")
         }
         return next()
-      }],
+      }, authenticate("customer", ["session", "bearer"], { allowUnauthenticated: true }), assignOrderOwner],
     },
   ],
 })
