@@ -57,10 +57,10 @@ medusaIntegrationTestRunner({
         const { data: { payment_collection } } = await api.post("/store/payment-collections", { cart_id: cartId }, store())
         expect((await api.post(`/store/payment-collections/${payment_collection.id}/payment-sessions`, { provider_id: "pp_system_default" }, store())).status).toBe(200)
       }
-      const complete = (cartId: string) => api.post(`/store/carts/${cartId}/complete`, {}, store())
-      const checkout = async (cartId: string) => {
+      const complete = (cartId: string, token?: string) => api.post(`/store/carts/${cartId}/complete`, {}, store(token))
+      const checkout = async (cartId: string, token?: string) => {
         await prepare(cartId)
-        return complete(cartId)
+        return complete(cartId, token)
       }
 
       const stockLevel = async () => (await getContainer().resolve(Modules.INVENTORY).listInventoryLevels({ inventory_item_id: inventoryItemId, location_id: locationId }))[0]
@@ -91,27 +91,33 @@ medusaIntegrationTestRunner({
         expect(moved.data.message).toBe("Country with code gb is not within region Egypt")
       })
 
-      // The storefront's browser client sends no login on cart calls (the token
-      // is an HttpOnly cookie), so its carts start as guest carts. Medusa then
-      // picks the customer by email, which finds the old guest record of anyone
-      // who ordered before registering. Linking the cart to the signed-in
-      // customer (POST /store/carts/:id/customer) is what reaches their history.
-      it("puts a returning customer's order in their history only when the cart is linked to them", async () => {
-        const beforeRegistering = await cartWith(1)
-        expect((await checkout(beforeRegistering.cartId)).data.type).toBe("order")
+      // Medusa picks a cart's customer by email. The order owner rule
+      // (src/api/order-owner.ts) gives the order to the customer signed in when
+      // it is placed, and makes it a guest order otherwise. Carts are built
+      // without a login, as the storefront does; only completion carries it.
+      const register = async () => {
         const registered = await api.post("/store/auth/register", { email: "sara@test.dev", password: "test-password-123", first_name: "Sara", last_name: "Ali" }, store())
         expect(registered.status).toBe(201)
-        const { token } = registered.data
+        return registered.data.token as string
+      }
+      const history = async (token: string) => (await api.get("/store/orders", store(token))).data.orders.map((order: { id: string }) => order.id)
 
-        const unlinked = await cartWith(1)
-        expect((await checkout(unlinked.cartId)).data.type).toBe("order")
-        const linked = await cartWith(1)
-        expect((await api.post(`/store/carts/${linked.cartId}/customer`, {}, store(token))).status).toBe(200)
-        const completed = await checkout(linked.cartId)
-        expect(completed.data.type).toBe("order")
+      it("never puts an order into an account because of the email typed at checkout", async () => {
+        const token = await register()
+        const placed = await checkout((await cartWith(1)).cartId)
+        expect(placed.data.type).toBe("order")
+        expect(await history(token)).toEqual([])
+        const query = getContainer().resolve(ContainerRegistrationKeys.QUERY)
+        const { data: [order] } = await query.graph({ entity: "order", fields: ["email", "customer.has_account"], filters: { id: placed.data.order.id } })
+        expect(order).toEqual(expect.objectContaining({ email: "sara@test.dev", customer: expect.objectContaining({ has_account: false }) }))
+      })
 
-        const { data } = await api.get("/store/orders", store(token))
-        expect(data.orders.map((order: { id: string }) => order.id)).toEqual([completed.data.order.id])
+      it("puts a signed-in customer's order in their history, even if they ordered as a guest before registering", async () => {
+        expect((await checkout((await cartWith(1)).cartId)).data.type).toBe("order")
+        const token = await register()
+        const placed = await checkout((await cartWith(1)).cartId, token)
+        expect(placed.data.type).toBe("order")
+        expect(await history(token)).toEqual([placed.data.order.id])
         expect((await api.get("/store/orders", store())).status).toBe(401)
       })
 
