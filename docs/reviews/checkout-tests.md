@@ -30,3 +30,13 @@ The test's `store(token)` helper adds `Authorization: Bearer ...` to every cart 
 - Storefront fix handed to GPT on the workboard: link the cart to the signed-in customer before checkout, through a BFF route that forwards the HttpOnly token.
 - Related, recorded for Seif: because of the same email lookup, a stranger who types a registered customer's email at checkout puts that order (with the stranger's name, address and phone) into the customer's history. Fixing that is a backend decision, not in this change.
 - 5/5 checkout tests and `npm run check` pass.
+
+## Round 2
+
+Reviewed 2026-10-12. Scope: commits `5d94e01` and `a1a0919` only. `5d94e01` updates the checkout integration test; `a1a0919` records the follow-up on the workboard and adds the author response.
+
+The Round 1 P2 is resolved. The test now creates carts and performs checkout calls without an authorization header, matching the current storefront browser client. It then distinguishes a guest order made before registration, an unlinked guest cart after registration, and a cart explicitly linked with `POST /store/carts/:id/customer`; the account history is asserted to contain only the linked order. This is a useful regression for the cart-linking behavior the storefront will need.
+
+No new actionable issue was introduced by these test-only commits. The live storefront still does not link its cart to the signed-in customer, so the newly tested linked path depends on the separate storefront follow-up recorded by the author. The author also documents a separate customer-attribution/privacy risk when checkout email matches an existing guest/customer record; that backend behavior is outside this test-only diff and needs an owner decision.
+
+I could not independently rerun the HTTP integration suite because PostgreSQL is unavailable in this environment. The author reports 5/5 tests and `npm run check` passing.
