@@ -43,24 +43,24 @@ medusaIntegrationTestRunner({
         await container.resolve(Modules.INVENTORY).createInventoryLevels([{ inventory_item_id: inventoryItemId, location_id: locationId, stocked_quantity: 5 }])
       })
 
-      async function cartWith(quantity: number, token?: string) {
-        const { data: { cart } } = await api.post("/store/carts", { region_id: regionId }, store(token))
-        const added = await api.post(`/store/carts/${cart.id}/line-items`, { variant_id: variantId, quantity }, store(token))
+      async function cartWith(quantity: number) {
+        const { data: { cart } } = await api.post("/store/carts", { region_id: regionId }, store())
+        const added = await api.post(`/store/carts/${cart.id}/line-items`, { variant_id: variantId, quantity }, store())
         return { cartId: cart.id as string, added }
       }
 
-      async function prepare(cartId: string, token?: string) {
-        expect((await api.post(`/store/carts/${cartId}`, { email: "sara@test.dev", shipping_address: cairo, billing_address: cairo }, store(token))).status).toBe(200)
-        const { data: { shipping_options } } = await api.get(`/store/shipping-options?cart_id=${cartId}`, store(token))
+      async function prepare(cartId: string) {
+        expect((await api.post(`/store/carts/${cartId}`, { email: "sara@test.dev", shipping_address: cairo, billing_address: cairo }, store())).status).toBe(200)
+        const { data: { shipping_options } } = await api.get(`/store/shipping-options?cart_id=${cartId}`, store())
         expect(shipping_options).toEqual([expect.objectContaining({ name: "Standard Delivery", amount: 70 })])
-        expect((await api.post(`/store/carts/${cartId}/shipping-methods`, { option_id: shipping_options[0].id }, store(token))).status).toBe(200)
-        const { data: { payment_collection } } = await api.post("/store/payment-collections", { cart_id: cartId }, store(token))
-        expect((await api.post(`/store/payment-collections/${payment_collection.id}/payment-sessions`, { provider_id: "pp_system_default" }, store(token))).status).toBe(200)
+        expect((await api.post(`/store/carts/${cartId}/shipping-methods`, { option_id: shipping_options[0].id }, store())).status).toBe(200)
+        const { data: { payment_collection } } = await api.post("/store/payment-collections", { cart_id: cartId }, store())
+        expect((await api.post(`/store/payment-collections/${payment_collection.id}/payment-sessions`, { provider_id: "pp_system_default" }, store())).status).toBe(200)
       }
-      const complete = (cartId: string, token?: string) => api.post(`/store/carts/${cartId}/complete`, {}, store(token))
-      const checkout = async (cartId: string, token?: string) => {
-        await prepare(cartId, token)
-        return complete(cartId, token)
+      const complete = (cartId: string) => api.post(`/store/carts/${cartId}/complete`, {}, store())
+      const checkout = async (cartId: string) => {
+        await prepare(cartId)
+        return complete(cartId)
       }
 
       const stockLevel = async () => (await getContainer().resolve(Modules.INVENTORY).listInventoryLevels({ inventory_item_id: inventoryItemId, location_id: locationId }))[0]
@@ -91,13 +91,25 @@ medusaIntegrationTestRunner({
         expect(moved.data.message).toBe("Country with code gb is not within region Egypt")
       })
 
-      it("shows a signed-in customer's order in their order history", async () => {
+      // The storefront's browser client sends no login on cart calls (the token
+      // is an HttpOnly cookie), so its carts start as guest carts. Medusa then
+      // picks the customer by email, which finds the old guest record of anyone
+      // who ordered before registering. Linking the cart to the signed-in
+      // customer (POST /store/carts/:id/customer) is what reaches their history.
+      it("puts a returning customer's order in their history only when the cart is linked to them", async () => {
+        const beforeRegistering = await cartWith(1)
+        expect((await checkout(beforeRegistering.cartId)).data.type).toBe("order")
         const registered = await api.post("/store/auth/register", { email: "sara@test.dev", password: "test-password-123", first_name: "Sara", last_name: "Ali" }, store())
         expect(registered.status).toBe(201)
         const { token } = registered.data
-        const { cartId } = await cartWith(1, token)
-        const completed = await checkout(cartId, token)
+
+        const unlinked = await cartWith(1)
+        expect((await checkout(unlinked.cartId)).data.type).toBe("order")
+        const linked = await cartWith(1)
+        expect((await api.post(`/store/carts/${linked.cartId}/customer`, {}, store(token))).status).toBe(200)
+        const completed = await checkout(linked.cartId)
         expect(completed.data.type).toBe("order")
+
         const { data } = await api.get("/store/orders", store(token))
         expect(data.orders.map((order: { id: string }) => order.id)).toEqual([completed.data.order.id])
         expect((await api.get("/store/orders", store())).status).toBe(401)
