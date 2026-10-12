@@ -140,13 +140,9 @@ export default function GlobalSearch({
         60,
       );
 
-    document.body.style.overflow =
-      "hidden";
 
     return () => {
       window.clearTimeout(timer);
-      document.body.style.overflow =
-        "";
     };
   }, [open]);
 

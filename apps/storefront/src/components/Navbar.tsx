@@ -81,7 +81,7 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
   const [accountOpen, setAccountOpen] =
     useState(false);
 
-  const { customer, isAuthenticated, signOut } = useAuth();
+  const { customer, isAuthenticated, isLoading, signOut } = useAuth();
   const displayName = customer
     ? customer.firstName?.trim() || customer.email?.split("@")[0] || ""
     : "";
@@ -92,22 +92,28 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
   const {
     itemCount,
     openCart,
+    isCartOpen,
   } = useCart();
 
   const isArabic =
     language === "ar";
 
+  const overlayOpen = menuOpen || searchOpen || isCartOpen;
   useEffect(() => {
-    document.body.style.overflow =
-      menuOpen
-        ? "hidden"
-        : "";
+    if (!overlayOpen) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = previous; };
+  }, [overlayOpen]);
 
-    return () => {
-      document.body.style.overflow =
-        "";
-    };
-  }, [menuOpen]);
+  useEffect(() => {
+    if (!isCartOpen) return;
+    setMenuOpen(false);
+    setMobilePanel(null);
+    setSearchOpen(false);
+    setMegaOpen(null);
+    setAccountOpen(false);
+  }, [isCartOpen]);
 
 
   useEffect(() => {
@@ -464,6 +470,9 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
 
               <button
                 type="button"
+                translate="no"
+                data-no-translate
+                aria-label={msg(isArabic ? "nav.switchEnglish" : "nav.switchArabic")}
                 onClick={() =>
                   setLanguage(
                     isArabic
@@ -472,9 +481,7 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
                   )
                 }
               >
-                {t(isArabic
-                  ? "EN"
-                  : "AR")}
+                {isArabic ? "ENG" : "AR"}
               </button>
 
               <span
@@ -624,15 +631,16 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
                 />
 
                 <div>
-                  <span>
-                    {t(copy.account)}
-                  </span>
-
-                  <strong>
-                    {isAuthenticated && displayName
-                      ? displayName
-                      : t(copy.signIn)}
-                  </strong>
+                  {isAuthenticated ? (
+                    <strong className={styles.customerName} title={displayName || msg("nav.account")}>
+                      <bdi>{displayName || msg("nav.account")}</bdi>
+                    </strong>
+                  ) : (
+                    <>
+                      <span>{t(copy.account)}</span>
+                      {!isLoading && <strong>{t(copy.signIn)}</strong>}
+                    </>
+                  )}
                 </div>
 
                 <ChevronDown
@@ -654,8 +662,15 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
             <button
               type="button"
               className={styles.cart}
+              data-cart-trigger
               aria-label={t(copy.cart)}
-              onClick={openCart}
+              onClick={() => {
+                closeMenu();
+                setMegaOpen(null);
+                setAccountOpen(false);
+                setSearchOpen(false);
+                openCart();
+              }}
             >
               <ShoppingBag
                 size={24}
@@ -1025,6 +1040,9 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
 
               <button
                 type="button"
+                translate="no"
+                data-no-translate
+                aria-label={msg(isArabic ? "nav.switchEnglish" : "nav.switchArabic")}
                 onClick={() =>
                   setLanguage(
                     isArabic
@@ -1033,9 +1051,7 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
                   )
                 }
               >
-                {t(isArabic
-                  ? "EN"
-                  : "AR")}
+                {isArabic ? "ENG" : "AR"}
               </button>
 
               <span

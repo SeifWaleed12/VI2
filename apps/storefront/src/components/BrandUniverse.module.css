@@ -152,3 +152,46 @@
     height: 3px;
   }
 }
+
+.section {
+  position: relative;
+}
+.motionControl {
+  position: absolute;
+  inset-inline-end: 0;
+  top: 0;
+  bottom: 0;
+  width: 36px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  color: #f7f3ed;
+  background: #11110f;
+  cursor: pointer;
+}
+.motionControl:focus-visible {
+  outline: 2px solid #f7f3ed;
+  outline-offset: -3px;
+}
+.section[data-browsing="true"] .track {
+  animation: none;
+  transform: none;
+  will-change: auto;
+}
+.section[data-browsing="true"] .marquee {
+  overflow-x: auto;
+}
+.section[data-browsing="true"] [data-ticker-copy="true"] {
+  display: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .marquee {
+    overflow-x: auto;
+  }
+  .section [data-ticker-copy="true"] {
+    display: none;
+  }
+  .motionControl {
+    display: none;
+  }
+}
