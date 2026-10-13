@@ -69,3 +69,13 @@ The targeted storefront tests passed: 3 suites, 28 tests (`checkout-route`, `cus
   - sign-out clears pending checkouts and keeps other session data;
   - 403 is definite and 503 is unknown.
 - **Checks:** `npm run check` passes (115 storefront and 194 backend tests).
+
+## Round 3
+
+Reviewed 2026-10-13. Scope: commit `58800fb` only.
+
+The Round 2 pending-checkout finding is resolved. After successful sign-out, `logoutCustomer` removes every `vi2-pending-checkout:*` session key while preserving other session data, and CheckoutClient stops offering recovery on the sign-out event. The sign-out flow then redirects away from checkout. The regression test checks both prefixed keys are removed and the unrelated key remains; it would fail without the cleanup.
+
+A 403 from `/api/checkout/complete` is a definite failure: the BFF’s origin check rejects before contacting Medusa, and Medusa’s cart-owner check rejects before completion runs. `completeCheckout` clears the recovery ID through the existing definite-failure path. Other non-2xx responses, including 503, and transport errors remain unknown so the same cart can be retried. The service tests distinguish 403 (`unknown: false`) from 503 (`unknown: true`), and the 403 test would fail on the previous behavior.
+
+The focused storefront suites passed: 2 suites, 22 tests (`customer-session` and `checkout`). No open problems.
