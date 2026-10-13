@@ -1,4 +1,3 @@
-import { medusa } from "../client";
 import { initiatePaymentSession } from "./payment";
 
 export type CheckoutResult =
@@ -18,7 +17,14 @@ export async function completeCheckout(cartId: string, resume = false): Promise<
       // authorized. Recovery would only retry a completion without a session.
       if (!payment.ok) return { ok: false, unknown: false, error: "Payment could not be started and your order was not placed. Your cart is retained; please try again." };
     }
-    const result = await medusa.store.cart.complete(cartId);
+    // Through the storefront server, so a signed-in customer's login goes along.
+    const response = await fetch("/api/checkout/complete", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ cartId }),
+    });
+    if (!response.ok) throw new Error(`Checkout completion failed with ${response.status}`);
+    const result = await response.json();
     if (result.type === "order" && typeof result.order?.id === "string" && result.order.id.startsWith("order_")) {
       return { ok: true, orderId: result.order.id };
     }

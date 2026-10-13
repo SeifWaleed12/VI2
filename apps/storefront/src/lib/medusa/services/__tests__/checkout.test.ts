@@ -3,13 +3,28 @@ import { initiatePaymentSession } from "../payment";
 import { completeCheckout } from "../checkout";
 import { getOrder } from "../orders";
 
-jest.mock("../../client", () => ({ medusa: { store: { cart: { complete: jest.fn() }, order: { retrieve: jest.fn() } } } }));
+jest.mock("../../client", () => ({ medusa: { store: { order: { retrieve: jest.fn() } } } }));
 jest.mock("../payment", () => ({ initiatePaymentSession: jest.fn() }));
-const complete = jest.mocked(medusa.store.cart.complete);
+// Completion goes through the storefront route /api/checkout/complete; this
+// stands in for Medusa's answer behind it.
+const complete = jest.fn<Promise<unknown>, [string]>();
 const payment = jest.mocked(initiatePaymentSession);
 const retrieve = jest.mocked(medusa.store.order.retrieve);
 
-beforeEach(() => { jest.resetAllMocks(); payment.mockResolvedValue({ ok: true } as Awaited<ReturnType<typeof initiatePaymentSession>>); });
+beforeEach(() => {
+  jest.resetAllMocks();
+  payment.mockResolvedValue({ ok: true } as Awaited<ReturnType<typeof initiatePaymentSession>>);
+  jest.spyOn(global, "fetch").mockImplementation(async (url, init) => {
+    expect(url).toBe("/api/checkout/complete");
+    return Response.json(await complete(JSON.parse(String(init?.body)).cartId));
+  });
+});
+afterEach(() => { jest.restoreAllMocks(); });
+
+it("treats a refused completion as unknown, so the same cart is retried", async () => {
+  jest.mocked(global.fetch).mockResolvedValueOnce(Response.json({ message: "refused" }, { status: 403 }));
+  expect(await completeCheckout("cart_123")).toMatchObject({ ok: false, unknown: true });
+});
 
 it.each([
   { type: "cart", error: { message: "provider-secret" } },
