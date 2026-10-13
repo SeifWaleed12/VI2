@@ -42,6 +42,16 @@ export default defineMiddlewares({
       ],
     },
     {
+      // Medusa stores export files at a public address (R2, or the local
+      // static folder), and order exports hold customer names, emails and
+      // addresses. Owner decision 2026-10-11: storage is for images only.
+      matcher: "/admin/orders/export",
+      method: "POST",
+      middlewares: [() => {
+        throw new MedusaError(MedusaError.Types.FORBIDDEN, "Order export is turned off because the file would hold customer details at a public address.")
+      }],
+    },
+    {
       matcher: "/store/carts/:id/complete",
       method: "POST",
       middlewares: [(_req, _res, next) => {
