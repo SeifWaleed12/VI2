@@ -5,6 +5,7 @@ import { adminAccess, unlessInviteAcceptance } from "./admin-access"
 import { limitLoginAttempts, limitResetRequests } from "./login-rate-limit"
 import { managerLayoutView } from "./manager-layouts"
 import { assignOrderOwner, cartOwnerOnly, noEmailOnNewGuestCart } from "./cart-access"
+import { filterProductsByBrand } from "./catalog-filters"
 import { requireStrongPassword } from "./password-policy"
 
 // Staff and customers sign in, reset and set passwords through the same
@@ -17,9 +18,10 @@ const emailPassRoutes = (["user", "customer"] as ActorType[]).flatMap((actor) =>
   { matcher: `/auth/${actor}/emailpass/update`, method: "POST" as const, middlewares: [requireStrongPassword] },
 ])
 
-// Our product data the storefront may request: the brand, and the EDA number
-// with its approval (shown to customers by owner decision, 2026-10-09).
-const STORE_PRODUCT_EXTRA_FIELDS = ["brand.name", "brand.status", "eda_registration.registration_number", "eda_registration.is_approved"]
+// Product data the storefront may request beyond Medusa's defaults: the brand,
+// the EDA number with its approval (shown to customers by owner decision,
+// 2026-10-09), and category fields Medusa only allows as a whole relation.
+const STORE_PRODUCT_EXTRA_FIELDS = ["brand.id", "brand.name", "brand.status", "eda_registration.registration_number", "eda_registration.is_approved", "categories.id", "categories.name", "categories.handle"]
 
 // Store cart routes do not read the customer's login on their own.
 const customerIfSignedIn = authenticate("customer", ["session", "bearer"], { allowUnauthenticated: true })
@@ -27,7 +29,7 @@ const customerIfSignedIn = authenticate("customer", ["session", "bearer"], { all
 export default defineMiddlewares({
   routes: [
     ...emailPassRoutes,
-    { matcher: "/store/products", middlewares: [allowFields(...STORE_PRODUCT_EXTRA_FIELDS)] },
+    { matcher: "/store/products", middlewares: [filterProductsByBrand, allowFields(...STORE_PRODUCT_EXTRA_FIELDS)] },
     { matcher: "/store/products/:id", middlewares: [allowFields(...STORE_PRODUCT_EXTRA_FIELDS)] },
     // Without a method these also cover every path under them (src/api/cart-access.ts).
     { matcher: "/store/carts/:id", middlewares: [customerIfSignedIn, cartOwnerOnly] },

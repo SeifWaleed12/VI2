@@ -7,10 +7,8 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
     const brandModuleService: BrandModuleService = req.scope.resolve(BRAND_MODULE)
     const brands = await brandModuleService.listBrands(
       { status: "active" },
-      {
-        order: { name: "ASC" },
-        take: 100, skip: 0,
-      }
+      // Every active brand: the shop's brand filter lists them all.
+      { order: { name: "ASC" } }
     )
     res.json({ brands })
   } catch {
