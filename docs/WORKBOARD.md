@@ -13,7 +13,7 @@ approval before any change.
 
 | Task | Owner | Status | Notes |
 |---|---|---|---|
-| Consolidate reviewed GPT header/cart/tickers and Claude Egypt/EDA/checkout tests into full-stack | GPT, authorized by Seif | in progress | Separate integration checkout. Preserve Claude active cart-access work and all drafts. Exclude R2 pending live setup and unfinished order/cart ownership. Synchronize working branches only when their active work is saved/reviewed. |
+| Consolidate reviewed GPT header/cart/tickers and Claude Egypt/EDA/checkout/cart-access into full-stack | GPT, authorized by Seif | merged locally on owner authorization | Seif authorized consolidation on 2026-10-13. Includes finalized cart-access fixes through 58800fb, approved in 03ef5cf. Both apps use one full-stack checkout and vi2_dev for manual testing. R2 remains excluded pending bucket/live checks. Claude local files and review drafts preserved. Evidence: docs/reviews/reviewed-baseline-consolidation.md. |
 
 ## How we work
 
@@ -221,4 +221,17 @@ Nothing below has been run on staging or production. Local `vi2_dev` already has
 
 | Task | Owner | Reviewer | Branch | Status | Notes |
 |---|---|---|---|---|---|
-| Language destination label, signed-in first name, cart layering/focus, product and brand motion | GPT | Claude | gpt/work | in review | Approved 2026-10-12. 352 tests and workspace check pass; production storefront build passes. Live EN/AR, empty/populated cart, keyboard, mobile and 981/980 breakpoint checked. Normal-motion visual loop and live signed-in customer check remain; see docs/reviews/storefront-header-cart-tickers.md. No backend/catalog/dependency changes. Owner merges. |
+| Language destination label, signed-in first name, cart layering/focus, product and brand motion | GPT | Claude | gpt/work | approved; included in consolidation | Approved 2026-10-12. 352 tests and workspace check pass; production storefront build passes. Live EN/AR, empty/populated cart, keyboard, mobile and 981/980 breakpoint checked. Normal-motion visual loop and live signed-in customer check remain; see docs/reviews/storefront-header-cart-tickers.md. No backend/catalog/dependency changes. Owner merges. |
+
+## Current follow-ups retained from Claude (2026-10-13)
+
+Cart access, checkout tests, Egypt setup and EDA backend are included in this consolidation. Their older ready-to-merge rows above describe the original reviews; the consolidation entry supersedes those release statuses.
+
+| Task | Owner | Status | Notes |
+|---|---|---|---|
+| R2 file provider and public-bucket order-export protection | Claude / Seif | excluded; waiting on bucket/live checks | e41dbf7, 8ad7860 approved in review, not merged here. No R2 setup performed. |
+| Readable category addresses /[locale]/shop/<handle> | GPT | open | Seif requested 2026-10-13. Existing ID links remain for this release. |
+| EDA registration display on product pages | GPT | open | Backend now consolidated. Show only the two owner-approved fields. |
+| Remove invented fallback delivery options | GPT | open | Preserve real backend prices; show retry on failure. |
+| R2 image hostname in next/image | GPT | blocked on R2 | Use the configured public hostname after Core 3. |
+| Shop, product, footer, Arabic typography and navigation design repairs | GPT / Claude | planning | Preserve agreed core filters; bilingual business/legal drafts require owner review. No redesign in this consolidation. |
