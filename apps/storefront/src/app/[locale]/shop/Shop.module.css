@@ -46,10 +46,10 @@
 .intro h1 {
   margin: 0;
 
-  font-family: var(--font-display), sans-serif;
+  font-family: var(--font-heading), sans-serif;
   font-size: var(--text-page-title);
-  font-weight: 400;
-  line-height: 0.72;
+  font-weight: var(--weight-display);
+  line-height: var(--leading-display);
 }
 
 .intro p {
