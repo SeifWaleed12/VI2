@@ -1,4 +1,4 @@
-import { mapMedusaProduct, getProducts } from "../products";
+import { mapMedusaProduct, getProducts, listProducts } from "../products";
 import { mapMedusaCart } from "../cart";
 import { selectRegion } from "../regions";
 import { medusa } from "../../client";
@@ -43,4 +43,70 @@ it("sends category IDs and locale in each isolated product request", async () =>
  await Promise.all([getProducts({locale:"ar",category_id:["parent","child"]}), getProducts({locale:"en"})]);
  expect(medusa.store.product.list).toHaveBeenCalledWith(expect.objectContaining({category_id:["parent","child"]}), {"x-medusa-locale":"ar-EG"});
  expect(medusa.store.product.list).toHaveBeenCalledWith(expect.anything(), {"x-medusa-locale":"en-US"});
+});
+
+describe("catalog contract (docs/CATALOG-CONTRACT.md)", () => {
+  const list = () => jest.mocked(medusa.store.product.list);
+  const sentQuery = () => list().mock.calls[0][0] as Record<string, unknown>;
+
+  it("maps the brand ID, every category and the EDA registration", () => {
+    const product = mapMedusaProduct({
+      id: "prod_1", variants: [],
+      brand: { id: "brand_1", name: "Optimum", status: "active" },
+      categories: [{ id: "pcat_1", name: "Vitamins", handle: "vitamins" }, { id: "pcat_2", name: "Vitamin C", handle: "vitamin-c" }],
+      eda_registration: { registration_number: "EDA-1", is_approved: false },
+    } as never);
+    expect(product).toMatchObject({
+      brand: "Optimum", brandId: "brand_1",
+      categories: [{ id: "pcat_1", name: "Vitamins", handle: "vitamins" }, { id: "pcat_2", name: "Vitamin C", handle: "vitamin-c" }],
+      eda: { registrationNumber: "EDA-1", approved: false },
+    });
+  });
+
+  it("omits an inactive brand and an absent EDA registration", () => {
+    const product = mapMedusaProduct({ id: "prod_1", variants: [], brand: { id: "brand_1", name: "Old", status: "inactive" }, eda_registration: null } as never);
+    expect(product).not.toHaveProperty("brandId");
+    expect(product).not.toHaveProperty("eda");
+    expect(product).not.toHaveProperty("categories");
+    expect(product.brand).toBe("");
+  });
+
+  it("sends locale, filters and page to Medusa and returns the total", async () => {
+    list().mockResolvedValue({ products: [{ id: "prod_1", variants: [] }], count: 240 } as never);
+    const page = await listProducts({ locale: "ar", category_id: ["pcat_1", "pcat_2"], brand_id: ["brand_1"], q: "  whey ", limit: 24, offset: 120 });
+    expect(page).toMatchObject({ count: 240, limit: 24, offset: 120, products: [{ id: "prod_1" }] });
+    expect(sentQuery()).toMatchObject({ category_id: ["pcat_1", "pcat_2"], brand_id: ["brand_1"], q: "whey", limit: 24, offset: 120, region_id: "reg_eg" });
+    expect(String(sentQuery().fields)).toContain("eda_registration.is_approved");
+    expect(list().mock.calls[0][1]).toEqual({ "x-medusa-locale": "ar-EG" });
+  });
+
+  it.each([
+    [{ limit: 0, offset: -5 }, { limit: 1, offset: 0 }],
+    [{ limit: 500, offset: 3.7 }, { limit: 100, offset: 3 }],
+    [{ limit: Number.NaN }, { limit: 50, offset: 0 }],
+  ])("keeps the page within bounds %j", async (input, bounded) => {
+    list().mockResolvedValue({ products: [], count: 0 } as never);
+    expect(await listProducts({ locale: "en", ...input })).toMatchObject({ ...bounded, count: 0, products: [] });
+    expect(sentQuery()).toMatchObject(bounded);
+  });
+
+  it("leaves out empty filters", async () => {
+    list().mockResolvedValue({ products: [], count: 0 } as never);
+    await listProducts({ locale: "en", category_id: [], brand_id: [], q: "   " });
+    expect(sentQuery()).not.toHaveProperty("category_id");
+    expect(sentQuery()).not.toHaveProperty("brand_id");
+    expect(sentQuery()).not.toHaveProperty("q");
+  });
+
+  it("reports an outage instead of an empty page", async () => {
+    list().mockRejectedValue(new Error("offline"));
+    await expect(listProducts({ locale: "en" })).rejects.toThrow("temporarily unavailable");
+  });
+
+  it("keeps getProducts as the first page of up to 100 products in English by default", async () => {
+    list().mockResolvedValue({ products: [{ id: "prod_1", variants: [] }], count: 900 } as never);
+    expect(await getProducts()).toEqual([expect.objectContaining({ id: "prod_1" })]);
+    expect(sentQuery()).toMatchObject({ limit: 100, offset: 0 });
+    expect(list().mock.calls[0][1]).toEqual({ "x-medusa-locale": "en-US" });
+  });
 });

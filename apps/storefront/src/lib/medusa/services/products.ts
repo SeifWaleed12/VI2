@@ -1,13 +1,17 @@
 import { medusaLocale, type Locale } from "@/lib/i18n";
 import { medusa } from "../client";
-import type { Product, ProductOption, ProductVariant } from "@/types/product";
+import type { Product, ProductCategoryRef, ProductOption, ProductVariant } from "@/types/product";
 
 import type { HttpTypes } from "@medusajs/types";
 import { resolveRegionId } from "./regions";
-type CatalogProduct = HttpTypes.StoreProduct & { brand?: { name: string; status?: string } | null };
+type CatalogProduct = HttpTypes.StoreProduct & {
+  brand?: { id?: string; name: string; status?: string } | null;
+  eda_registration?: { registration_number?: string | null; is_approved?: boolean | null } | null;
+};
 
+// Request and response fields are frozen in docs/CATALOG-CONTRACT.md.
 const PRODUCT_FIELDS =
-  "brand.name,brand.status,id,handle,title,description,thumbnail,images.url,metadata,variants.id,variants.title,variants.sku,variants.barcode,variants.manage_inventory,variants.allow_backorder,variants.calculated_price,variants.inventory_quantity,variants.options.id,variants.options.value,variants.options.option_id,options.id,options.title,options.values.id,options.values.value,categories.id,categories.name,categories.handle";
+  "brand.id,brand.name,brand.status,eda_registration.registration_number,eda_registration.is_approved,id,handle,title,description,thumbnail,images.url,metadata,variants.id,variants.title,variants.sku,variants.barcode,variants.manage_inventory,variants.allow_backorder,variants.calculated_price,variants.inventory_quantity,variants.options.id,variants.options.value,variants.options.option_id,options.id,options.title,options.values.id,options.values.value,categories.id,categories.name,categories.handle";
 
 export function mapMedusaProduct(p: CatalogProduct): Product {
   const meta: Record<string, unknown> = p.metadata ?? {};
@@ -33,6 +37,12 @@ export function mapMedusaProduct(p: CatalogProduct): Product {
     p.thumbnail ||
     p.images?.[0]?.url ||
     String(meta.image ?? "");
+
+  const categories: ProductCategoryRef[] = (p.categories ?? [])
+    .filter((c): c is NonNullable<typeof c> => typeof c?.id === "string")
+    .map((c) => ({ id: c.id, name: c.name ?? "", handle: c.handle ?? "" }));
+  const activeBrand = p.brand?.status === "active" ? p.brand : null;
+  const edaNumber = p.eda_registration?.registration_number;
 
   // Map options
   const options: ProductOption[] = Array.isArray(p.options)
@@ -109,11 +119,13 @@ export function mapMedusaProduct(p: CatalogProduct): Product {
     id: p.id ?? "",
     slug: p.handle ?? p.id ?? "",
     variantId: variant?.id,
-    brand: p.brand?.status === "active" ? p.brand.name : "",
+    brand: activeBrand?.name ?? "",
+    ...(activeBrand?.id ? { brandId: activeBrand.id } : {}),
     name: p.title ?? "",
     shortName: String(meta.shortName ?? p.title ?? ""),
     category: categoryName,
     categoryId: p.categories?.[0]?.id,
+    ...(categories.length > 0 ? { categories } : {}),
     description: p.description ?? "",
     price,
     ...(compareAtPrice !== undefined ? { compareAtPrice } : {}),
@@ -127,48 +139,65 @@ export function mapMedusaProduct(p: CatalogProduct): Product {
     inventoryKnown: typeof variant?.inventory_quantity === "number",
     inStock: variants.some((v) => v.inStock === true),
     ...(meta.badge ? { badge: String(meta.badge) } : {}),
+    ...(edaNumber ? { eda: { registrationNumber: edaNumber, approved: p.eda_registration?.is_approved === true } } : {}),
     ...(options.length > 0 ? { options } : {}),
     ...(variants.length > 0 ? { variants } : {}),
   };
 }
 
-export type GetProductsParams = {
-  locale?: "en" | "ar";
+export const MAX_PAGE_SIZE = 100;
+
+export type ListProductsParams = {
+  locale: Locale;
   regionId?: string;
+  // 1 to MAX_PAGE_SIZE; default 50, Medusa's own.
   limit?: number;
   offset?: number;
+  // Send a category with its subcategories: Medusa matches only the IDs given.
   category_id?: string[];
+  // Active brands only; unknown or inactive brands give an empty page.
+  brand_id?: string[];
   q?: string;
   order?: string;
 };
 
-export async function getProducts(
-  params: GetProductsParams = {},
-): Promise<Product[]> {
+export type ProductPage = {
+  products: Product[];
+  // Every product matching the filters, across all pages.
+  count: number;
+  limit: number;
+  offset: number;
+};
+
+const whole = (value: number | undefined, fallback: number) =>
+  value !== undefined && Number.isFinite(value) ? Math.trunc(value) : fallback;
+
+// One page of the catalog with its total, filtered by Medusa (never in the browser).
+export async function listProducts(params: ListProductsParams): Promise<ProductPage> {
+  const limit = Math.min(Math.max(whole(params.limit, 50), 1), MAX_PAGE_SIZE);
+  const offset = Math.max(whole(params.offset, 0), 0);
   try {
     const regionId = await resolveRegionId(params.regionId);
-    const query: Record<string, unknown> = {
-      limit: params.limit ?? 100,
-      offset: params.offset ?? 0,
-      fields: PRODUCT_FIELDS,
-      region_id: regionId,
-    };
+    const query: Record<string, unknown> = { limit, offset, fields: PRODUCT_FIELDS, region_id: regionId };
+    if (params.category_id?.length) query.category_id = params.category_id;
+    if (params.brand_id?.length) query.brand_id = params.brand_id;
+    if (params.q?.trim()) query.q = params.q.trim();
+    if (params.order) query.order = params.order;
 
-    if (params.category_id?.length) {
-      query.category_id = params.category_id;
-    }
-    if (params.q) {
-      query.q = params.q;
-    }
-    if (params.order) {
-      query.order = params.order;
-    }
-
-    const { products } = await medusa.store.product.list(query, { "x-medusa-locale": medusaLocale(params.locale ?? "en") });
-    return (products || []).map(mapMedusaProduct);
+    const { products, count } = await medusa.store.product.list(query, { "x-medusa-locale": medusaLocale(params.locale) });
+    return { products: (products || []).map(mapMedusaProduct), count: count ?? 0, limit, offset };
   } catch {
     throw new Error("Catalog temporarily unavailable.");
   }
+}
+
+export type GetProductsParams = Omit<ListProductsParams, "locale" | "brand_id"> & { locale?: Locale };
+
+// Kept for existing callers: the first page only (up to 100 products), no total.
+export async function getProducts(
+  params: GetProductsParams = {},
+): Promise<Product[]> {
+  return (await listProducts({ ...params, locale: params.locale ?? "en", limit: params.limit ?? MAX_PAGE_SIZE })).products;
 }
 
 export async function getProductByHandle(
