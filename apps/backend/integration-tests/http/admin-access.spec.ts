@@ -1,3 +1,4 @@
+import type BrandModuleService from "../../src/modules/brand/service"
 import { dirname, join } from "path"
 import { medusaIntegrationTestRunner } from "@medusajs/test-utils"
 import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
@@ -75,7 +76,7 @@ medusaIntegrationTestRunner({
         expect((await api.post("/admin/brands", { name: "Sneaky", slug: "sneaky" }, nobody)).status).toBe(403)
         expect((await api.get("/admin/custom", nobody)).status).toBe(403)
         expect((await api.get("/admin/orders", nobody)).status).toBe(403)
-        const brands = await getContainer().resolve("brand").listBrands({ slug: "sneaky" })
+        const brands = await getContainer().resolve<BrandModuleService>("brand").listBrands({ slug: "sneaky" })
         expect(brands).toEqual([])
       })
 

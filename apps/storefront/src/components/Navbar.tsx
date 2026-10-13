@@ -3,7 +3,8 @@ import { useLanguage } from "@/context/LanguageContext";
 
 
 import Image from "next/image";
-import Link from "next/link";
+import Link from "@/components/LocaleLink";
+import { localizedHref } from "@/lib/i18n";
 import {
   BadgePercent,
   ChevronDown,
@@ -23,6 +24,7 @@ import {
 import {
   useEffect,
   useState,
+  useRef,
 } from "react";
 
 import GlobalSearch from "@/components/GlobalSearch";
@@ -32,19 +34,38 @@ import AccountDropdown from "@/components/AccountDropdown";
 import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
 
+import { type CategoryDirectory, categoryHref, flattenCategories } from "@/lib/category-tree";
+import { getCategoryTree } from "@/lib/medusa/services/categories";
+import CategoryStatus from "@/components/CategoryStatus";
+
 import styles from "./Navbar.module.css";
 
 
-type MobileCatalogKey =
-  | "vitamins"
-  | "sports"
-  | "botanicals"
-  | "beauty"
-  | "kids"
-  | "health";
+type MobileCatalogKey = string;
 
-export default function Navbar() {
-  const { t } = useLanguage();
+export default function Navbar({ initialDirectory = { roots: [], error: false } }: { initialDirectory?: CategoryDirectory }) {
+  const { t, msg } = useLanguage();
+  const [directory, setDirectory] = useState(initialDirectory);
+  const [loadingCategories, setLoadingCategories] = useState(false);
+  const headerRef = useRef<HTMLElement>(null);
+  const focusMenuOnOpen = useRef(false);
+  async function retryCategories() {
+    setLoadingCategories(true);
+    try { setDirectory({ roots: await getCategoryTree(language), error: false }); }
+    catch { setDirectory({ roots: [], error: true }); }
+    finally { setLoadingCategories(false); }
+  }
+  useEffect(() => { setDirectory(initialDirectory); }, [initialDirectory]);
+  useEffect(() => {
+    const header = headerRef.current;
+    if (!header) return;
+    const update = () => document.documentElement.style.setProperty("--vi2-header-bottom", `${header.getBoundingClientRect().bottom}px`);
+    const observer = new ResizeObserver(update);
+    observer.observe(header);
+    window.addEventListener("scroll", update, { passive: true });
+    update();
+    return () => { observer.disconnect(); window.removeEventListener("scroll", update); };
+  }, []);
 
   const [menuOpen, setMenuOpen] =
     useState(false);
@@ -60,7 +81,7 @@ export default function Navbar() {
   const [accountOpen, setAccountOpen] =
     useState(false);
 
-  const { customer, isAuthenticated, signOut } = useAuth();
+  const { customer, isAuthenticated, isLoading, signOut } = useAuth();
   const displayName = customer
     ? customer.firstName?.trim() || customer.email?.split("@")[0] || ""
     : "";
@@ -71,22 +92,28 @@ export default function Navbar() {
   const {
     itemCount,
     openCart,
+    isCartOpen,
   } = useCart();
 
   const isArabic =
     language === "ar";
 
+  const overlayOpen = menuOpen || searchOpen || isCartOpen;
   useEffect(() => {
-    document.body.style.overflow =
-      menuOpen
-        ? "hidden"
-        : "";
+    if (!overlayOpen) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = previous; };
+  }, [overlayOpen]);
 
-    return () => {
-      document.body.style.overflow =
-        "";
-    };
-  }, [menuOpen]);
+  useEffect(() => {
+    if (!isCartOpen) return;
+    setMenuOpen(false);
+    setMobilePanel(null);
+    setSearchOpen(false);
+    setMegaOpen(null);
+    setAccountOpen(false);
+  }, [isCartOpen]);
 
 
   useEffect(() => {
@@ -126,6 +153,9 @@ export default function Navbar() {
         return;
       }
 
+      if (document.getElementById("desktop-category-menu")?.contains(document.activeElement)) {
+        headerRef.current?.querySelector<HTMLButtonElement>('[aria-controls="desktop-category-menu"][aria-expanded="true"]')?.focus();
+      }
       setMenuOpen(false);
       setSearchOpen(false);
       setMegaOpen(null);
@@ -144,6 +174,13 @@ export default function Navbar() {
       );
   }, []);
 
+  useEffect(() => {
+    if (megaOpen && focusMenuOnOpen.current) {
+      document.getElementById("desktop-category-menu")?.querySelector<HTMLAnchorElement>("a")?.focus();
+      focusMenuOnOpen.current = false;
+    }
+  }, [megaOpen]);
+
   function closeMenu() {
     setMenuOpen(false);
     setMobilePanel(null);
@@ -159,7 +196,7 @@ export default function Navbar() {
   const copy = isArabic
     ? {
         freeShipping:
-          "شحن مجاني للطلبات فوق ٢٬٥٠٠ جنيه",
+          "تسوق المكملات بالجنيه المصري",
         flash:
           "العروض اليومية",
         search:
@@ -189,7 +226,7 @@ export default function Navbar() {
         deals:
           "العروض",
         best:
-          "الأكثر مبيعًا",
+          "تسوق المنتجات",
         new:
           "جديد",
         bundles:
@@ -211,7 +248,7 @@ export default function Navbar() {
       }
     : {
         freeShipping:
-          "FREE SHIPPING ON ORDERS OVER 2,500 EGP",
+          "SHOP SUPPLEMENTS IN EGP",
         flash:
           "DAILY FLASH DEALS",
         search:
@@ -241,7 +278,7 @@ export default function Navbar() {
         deals:
           "Deals",
         best:
-          "Best Sellers",
+          "Shop Products",
         new:
           "New",
         bundles:
@@ -262,137 +299,7 @@ export default function Navbar() {
           "Cart",
       };
 
-  const mobileCatalog = {
-    vitamins: {
-      title: isArabic
-        ? "الفيتامينات والمعادن"
-        : "Vitamins & Minerals",
-      shopAllHref:
-        "/shop?category=Vitamins",
-      items: isArabic
-        ? [
-            ["الفيتامينات المتعددة", "/shop?q=Multivitamin"],
-            ["فيتامين C", "/shop?q=Vitamin%20C"],
-            ["فيتامين D3 و K2", "/shop?q=Vitamin%20D3"],
-            ["فيتامينات B المركبة", "/shop?q=B-Complex"],
-            ["المغنيسيوم", "/shop?q=Magnesium"],
-            ["الزنك", "/shop?q=Zinc"],
-            ["الحديد", "/shop?q=Iron"],
-            ["الكالسيوم", "/shop?q=Calcium"],
-          ]
-        : [
-            ["Multivitamins", "/shop?q=Multivitamin"],
-            ["Vitamin C", "/shop?q=Vitamin%20C"],
-            ["Vitamin D3 & K2", "/shop?q=Vitamin%20D3"],
-            ["B-Complex", "/shop?q=B-Complex"],
-            ["Magnesium (Glycinate, Citrate)", "/shop?q=Magnesium"],
-            ["Zinc", "/shop?q=Zinc"],
-            ["Iron", "/shop?q=Iron"],
-            ["Calcium", "/shop?q=Calcium"],
-          ],
-    },
-
-    sports: {
-      title: isArabic
-        ? "التغذية الرياضية"
-        : "Sports Nutrition",
-      shopAllHref:
-        "/shop?goal=Muscle%20%26%20Recovery",
-      items: isArabic
-        ? [
-            ["بروتين مصل اللبن", "/shop?category=Protein"],
-            ["البروتين النباتي", "/shop?q=Plant%20Protein"],
-            ["كرياتين مونوهيدرات", "/shop?category=Creatine"],
-            ["مكملات ما قبل التمرين", "/shop?category=Pre-Workout"],
-            ["BCAA / EAA", "/shop?q=BCAA"],
-            ["جلوتامين", "/shop?q=Glutamine"],
-            ["ماس جينر", "/shop?category=Mass%20Gainer"],
-            ["الإلكتروليتات", "/shop?q=Electrolytes"],
-          ]
-        : [
-            ["Whey Protein (Isolate, Concentrate)", "/shop?category=Protein"],
-            ["Plant Protein", "/shop?q=Plant%20Protein"],
-            ["Creatine Monohydrate", "/shop?category=Creatine"],
-            ["Pre-Workouts", "/shop?category=Pre-Workout"],
-            ["BCAAs / EAAs", "/shop?q=BCAA"],
-            ["Glutamine", "/shop?q=Glutamine"],
-            ["Mass Gainers", "/shop?category=Mass%20Gainer"],
-            ["Electrolytes", "/shop?q=Electrolytes"],
-          ],
-    },
-
-    botanicals: {
-      title: isArabic
-        ? "المكملات والمستخلصات النباتية"
-        : "Supplements & Botanicals",
-      shopAllHref: "/shop",
-      items: isArabic
-        ? [
-            ["أوميجا 3 وزيوت السمك", "/shop?q=Omega"],
-            ["البروبيوتك والبريبيوتك", "/shop?q=Probiotic"],
-            ["ببتيدات الكولاجين", "/shop?q=Collagen"],
-            ["أشواجاندا", "/shop?q=Ashwagandha"],
-            ["حليب الشوك", "/shop?q=Milk%20Thistle"],
-            ["مستخلصات الفطر", "/shop?q=Mushroom"],
-            ["CoQ10", "/shop?q=CoQ10"],
-            ["الكركمين", "/shop?q=Curcumin"],
-          ]
-        : [
-            ["Omega-3 & Fish Oils", "/shop?q=Omega"],
-            ["Probiotics & Prebiotics", "/shop?q=Probiotic"],
-            ["Collagen Peptides", "/shop?q=Collagen"],
-            ["Ashwagandha", "/shop?q=Ashwagandha"],
-            ["Milk Thistle", "/shop?q=Milk%20Thistle"],
-            ["Mushroom Extracts", "/shop?q=Mushroom"],
-            ["CoQ10", "/shop?q=CoQ10"],
-            ["Curcumin", "/shop?q=Curcumin"],
-          ],
-    },
-
-    beauty: {
-      title: isArabic
-        ? "الجمال وصحة البشرة"
-        : "Beauty & Skin Wellness",
-      shopAllHref:
-        "/shop?q=Collagen",
-      items: isArabic
-        ? [
-            ["بيوتين", "/shop?q=Biotin"],
-            ["حمض الهيالورونيك", "/shop?q=Hyaluronic"],
-            ["كولاجين بحري", "/shop?q=Marine%20Collagen"],
-            ["تركيبات مقاومة الشيخوخة", "/shop?q=Anti-Aging"],
-            ["تركيبات الشعر والبشرة والأظافر", "/shop?q=Hair%20Skin%20Nails"],
-          ]
-        : [
-            ["Biotin", "/shop?q=Biotin"],
-            ["Hyaluronic Acid", "/shop?q=Hyaluronic"],
-            ["Marine Collagen", "/shop?q=Marine%20Collagen"],
-            ["Anti-Aging Formulas", "/shop?q=Anti-Aging"],
-            ["Hair, Skin & Nails Blends", "/shop?q=Hair%20Skin%20Nails"],
-          ],
-    },
-
-    kids: {
-      title: isArabic
-        ? "صحة الأطفال والرضع"
-        : "Baby & Kids Health",
-      shopAllHref:
-        "/shop?q=Kids",
-      items: isArabic
-        ? [
-            ["قطرات D3 / بروبيوتك للرضع", "/shop?q=D3"],
-            ["فيتامينات متعددة للأطفال", "/shop?q=Multivitamin"],
-            ["دعم التسنين", "/shop?q=Teething"],
-            ["DHA للأطفال", "/shop?q=DHA"],
-          ]
-        : [
-            ["Infant Drops (D3 / Probiotics)", "/shop?q=D3"],
-            ["Children's Multivitamin Gummies", "/shop?q=Multivitamin"],
-            ["Teething Support", "/shop?q=Teething"],
-            ["DHA for Kids", "/shop?q=DHA"],
-          ],
-    },
-
+  const healthCatalog = {
     health: {
       title: isArabic
         ? "الأهداف الصحية"
@@ -421,68 +328,29 @@ export default function Navbar() {
             ["Specific Body Systems & Aesthetics", "/shop?goal=Daily%20Wellness"],
           ],
     },
-  } satisfies Record<
-    MobileCatalogKey,
-    {
-      title: string;
-      shopAllHref: string;
-      items: string[][];
-    }
-  >;
-
-  const primaryMobileCategories: {
-    key: MobileCatalogKey;
-    label: string;
-  }[] = [
-    {
-      key: "vitamins",
-      label: isArabic
-        ? "الفيتامينات والمعادن"
-        : "Vitamins & Minerals",
-    },
-    {
-      key: "sports",
-      label: copy.sports,
-    },
-    {
-      key: "botanicals",
-      label: isArabic
-        ? "المكملات والمستخلصات النباتية"
-        : "Supplements & Botanicals",
-    },
-    {
-      key: "beauty",
-      label: isArabic
-        ? "الجمال وصحة البشرة"
-        : "Beauty & Skin Wellness",
-    },
-    {
-      key: "kids",
-      label: isArabic
-        ? "صحة الأطفال والرضع"
-        : "Baby & Kids Health",
-    },
-  ];
-
-  const activeMobilePanel =
-    mobilePanel
-      ? mobileCatalog[mobilePanel]
-      : null;
+  };
+  const primaryMobileCategories = directory.roots.map(c => ({ key: c.id, label: c.name }));
+  const selectedCategory = directory.roots.find(c => c.id === mobilePanel);
+  const activeMobilePanel = mobilePanel === "health" ? healthCatalog.health : selectedCategory ? {
+    title: selectedCategory.name,
+    shopAllHref: categoryHref(selectedCategory.id),
+    items: flattenCategories(selectedCategory.children).map(c => [c.name, categoryHref(c.id)]),
+  } : null;
 
   const topMessages = isArabic
     ? [
         copy.freeShipping,
-        "جودة عالية",
-        "نتائج حقيقية",
-        "علامات موثوقة",
-        "غد أكثر صحة",
+        "فيتامينات ومعادن",
+        "اكتشف المنتجات",
+        "تغذية رياضية",
+        "العربية والإنجليزية",
       ]
     : [
         copy.freeShipping,
-        "HIGH QUALITY",
-        "REAL RESULTS",
-        "TRUSTED BRANDS",
-        "A HEALTHIER TOMORROW",
+        "VITAMINS & MINERALS",
+        "EXPLORE THE COLLECTION",
+        "SPORTS NUTRITION",
+        "ENGLISH & ARABIC",
       ];
 
   const topTickerMessages = [
@@ -493,6 +361,8 @@ export default function Navbar() {
   return (
     <>
       <header
+        ref={headerRef}
+        data-no-translate
         className={styles.header}
         onMouseLeave={() =>
           setMegaOpen(null)
@@ -600,6 +470,9 @@ export default function Navbar() {
 
               <button
                 type="button"
+                translate="no"
+                data-no-translate
+                aria-label={msg(isArabic ? "nav.switchEnglish" : "nav.switchArabic")}
                 onClick={() =>
                   setLanguage(
                     isArabic
@@ -608,9 +481,7 @@ export default function Navbar() {
                   )
                 }
               >
-                {t(isArabic
-                  ? "EN"
-                  : "AR")}
+                {isArabic ? "ENG" : "AR"}
               </button>
 
               <span
@@ -720,7 +591,7 @@ export default function Navbar() {
               type="button"
               className={styles.searchBar}
               onClick={openSearch}
-              aria-label={t("Search Vi2")}
+              aria-label={msg("nav.search")}
             >
               <span>
                 {t(copy.search)}
@@ -760,15 +631,16 @@ export default function Navbar() {
                 />
 
                 <div>
-                  <span>
-                    {t(copy.account)}
-                  </span>
-
-                  <strong>
-                    {isAuthenticated && displayName
-                      ? displayName
-                      : t(copy.signIn)}
-                  </strong>
+                  {isAuthenticated ? (
+                    <strong className={styles.customerName} title={displayName || msg("nav.account")}>
+                      <bdi>{displayName || msg("nav.account")}</bdi>
+                    </strong>
+                  ) : (
+                    <>
+                      <span>{t(copy.account)}</span>
+                      {!isLoading && <strong>{t(copy.signIn)}</strong>}
+                    </>
+                  )}
                 </div>
 
                 <ChevronDown
@@ -790,8 +662,15 @@ export default function Navbar() {
             <button
               type="button"
               className={styles.cart}
+              data-cart-trigger
               aria-label={t(copy.cart)}
-              onClick={openCart}
+              onClick={() => {
+                closeMenu();
+                setMegaOpen(null);
+                setAccountOpen(false);
+                setSearchOpen(false);
+                openCart();
+              }}
             >
               <ShoppingBag
                 size={24}
@@ -817,102 +696,24 @@ export default function Navbar() {
         <nav className={styles.desktopCategories}>
           <div className={styles.categoryInner}>
             <div className={styles.categoryMain}>
-              <button
-                type="button"
-                className={
-                  megaOpen === "supplements"
-                    ? styles.categoryTriggerActive
-                    : styles.categoryTrigger
-                }
-                onMouseEnter={() =>
-                  setMegaOpen("supplements")
-                }
-                onFocus={() =>
-                  setMegaOpen("supplements")
-                }
-                onClick={() =>
-                  setMegaOpen(
-                    megaOpen === "supplements"
-                      ? null
-                      : "supplements",
-                  )
-                }
-              >
-                {t(copy.supplements)}
-              </button>
-
-              <button
-                type="button"
-                className={
-                  megaOpen === "sports"
-                    ? styles.categoryTriggerActive
-                    : styles.categoryTrigger
-                }
-                onMouseEnter={() =>
-                  setMegaOpen("sports")
-                }
-                onFocus={() =>
-                  setMegaOpen("sports")
-                }
-                onClick={() =>
-                  setMegaOpen(
-                    megaOpen === "sports"
-                      ? null
-                      : "sports",
-                  )
-                }
-              >
-                {t(copy.sports)}
-              </button>
-
-              <button
-                type="button"
-                className={
-                  megaOpen === "vitamins"
-                    ? styles.categoryTriggerActive
-                    : styles.categoryTrigger
-                }
-                onMouseEnter={() =>
-                  setMegaOpen("vitamins")
-                }
-                onFocus={() =>
-                  setMegaOpen("vitamins")
-                }
-                onClick={() =>
-                  setMegaOpen(
-                    megaOpen === "vitamins"
-                      ? null
-                      : "vitamins",
-                  )
-                }
-              >
-                {t(copy.vitamins)}
-              </button>
-
-              <button
-                type="button"
-                className={
-                  megaOpen === "wellness"
-                    ? styles.categoryTriggerActive
-                    : styles.categoryTrigger
-                }
-                onMouseEnter={() =>
-                  setMegaOpen("wellness")
-                }
-                onFocus={() =>
-                  setMegaOpen("wellness")
-                }
-                onClick={() =>
-                  setMegaOpen(
-                    megaOpen === "wellness"
-                      ? null
-                      : "wellness",
-                  )
-                }
-              >
-                {t(copy.wellness)}
-              </button>
-
+              {directory.roots.map(category => (
+                <button key={category.id} type="button"
+                  className={megaOpen === category.id ? styles.categoryTriggerActive : styles.categoryTrigger}
+                  aria-expanded={megaOpen === category.id} aria-controls="desktop-category-menu"
+                  onMouseEnter={() => setMegaOpen(category.id)}
+                  onKeyDown={(event) => {
+                    if (!["ArrowDown", "Enter", " "].includes(event.key)) return;
+                    event.preventDefault();
+                    if (megaOpen === category.id) {
+                      document.getElementById("desktop-category-menu")?.querySelector<HTMLAnchorElement>("a")?.focus();
+                    } else {
+                      focusMenuOnOpen.current = true;
+                      setMegaOpen(category.id);
+                    }
+                  }}
+                  onClick={() => setMegaOpen(category.id)}>{category.name}</button>
+              ))}
+              {!directory.roots.length && <CategoryStatus error={directory.error} loading={loadingCategories} retry={retryCategories} />}
               <span
                 className={
                   styles.categoryDivider
@@ -931,11 +732,11 @@ export default function Navbar() {
                   setMegaOpen(null)
                 }
               >
-                {t(copy.brands)}
+                {msg("nav.brands")}
               </Link>
 
               <Link href="/#health-goals">
-                {t(copy.health)}
+                {msg("nav.health")}
               </Link>
             </div>
 
@@ -944,28 +745,29 @@ export default function Navbar() {
                 href="/deals"
                 className={styles.dealLink}
               >
-                {t(copy.deals)}
+                {msg("nav.deals")}
               </Link>
 
               <Link href="/#best-sellers">
-                {t(copy.best)}
+                {msg("nav.shop")}
               </Link>
 
               <Link href="/shop">
-                {t(copy.new)}
+                {msg("nav.new")}
               </Link>
 
               <Link
                 href="/#value-sets"
                 className={styles.bundleLink}
               >
-                {t(copy.bundles)}
+                {msg("nav.bundles")}
               </Link>
             </div>
           </div>
         </nav>
 
         <DesktopMegaMenu
+          categories={directory.roots}
           active={megaOpen}
           onClose={() =>
             setMegaOpen(null)
@@ -987,7 +789,7 @@ export default function Navbar() {
         onMouseDown={closeMenu}
         aria-hidden={!menuOpen}
       >
-        <aside
+        <aside data-no-translate
           className={
             menuOpen
               ? `${styles.drawer} ${styles.drawerOpen}`
@@ -1031,7 +833,7 @@ export default function Navbar() {
               type="button"
               className={styles.closeButton}
               onClick={closeMenu}
-              aria-label={t("Close menu")}
+              aria-label={msg("nav.close")}
             >
               <X
                 size={25}
@@ -1044,10 +846,11 @@ export default function Navbar() {
           <div className={styles.drawerScroll}>
             <section className={styles.menuSection}>
               <span className={styles.sectionLabel}>
-                {t(copy.categories)}
+                {msg("nav.categories")}
               </span>
 
               <nav className={styles.primaryMenuList}>
+                {!directory.roots.length && <CategoryStatus error={directory.error} loading={loadingCategories} retry={retryCategories} />}
                 {t(primaryMobileCategories.map(
                   (item) => (
                     <button
@@ -1059,7 +862,7 @@ export default function Navbar() {
                       }
                     >
                       <span>
-                        {t(item.label)}
+                        {item.label}
                       </span>
 
                       <ChevronRight
@@ -1090,7 +893,7 @@ export default function Navbar() {
                       size={18}
                       strokeWidth={1.4}
                     />
-                    {t(copy.health)}
+                    {msg("nav.health")}
                   </span>
 
                   <ChevronRight
@@ -1108,7 +911,7 @@ export default function Navbar() {
                       size={18}
                       strokeWidth={1.4}
                     />
-                    {t(copy.brands)}
+                    {msg("nav.brands")}
                   </span>
 
                   <ChevronRight
@@ -1127,7 +930,7 @@ export default function Navbar() {
                       size={18}
                       strokeWidth={1.4}
                     />
-                    {t(copy.deals)}
+                    {msg("nav.deals")}
                   </span>
 
                   <ChevronRight
@@ -1145,7 +948,7 @@ export default function Navbar() {
                       size={18}
                       strokeWidth={1.4}
                     />
-                    {t(copy.best)}
+                    {msg("nav.shop")}
                   </span>
 
                   <ChevronRight
@@ -1163,7 +966,7 @@ export default function Navbar() {
                       size={18}
                       strokeWidth={1.4}
                     />
-                    {t(copy.bundles)}
+                    {msg("nav.bundles")}
                   </span>
 
                   <ChevronRight
@@ -1237,6 +1040,9 @@ export default function Navbar() {
 
               <button
                 type="button"
+                translate="no"
+                data-no-translate
+                aria-label={msg(isArabic ? "nav.switchEnglish" : "nav.switchArabic")}
                 onClick={() =>
                   setLanguage(
                     isArabic
@@ -1245,9 +1051,7 @@ export default function Navbar() {
                   )
                 }
               >
-                {t(isArabic
-                  ? "EN"
-                  : "AR")}
+                {isArabic ? "ENG" : "AR"}
               </button>
 
               <span
@@ -1267,7 +1071,7 @@ export default function Navbar() {
                   signOut();
                   closeMenu();
 
-                  window.location.href = "/";
+                  window.location.href = localizedHref("/", language);
                 }}
                 style={{
                   width: "calc(100% - 36px)",
@@ -1320,9 +1124,7 @@ export default function Navbar() {
                     />
 
                     <span>
-                      {t(isArabic
-                        ? "رجوع"
-                        : "Back")}
+                      {msg("nav.back")}
                     </span>
                   </button>
 
@@ -1330,7 +1132,7 @@ export default function Navbar() {
                     type="button"
                     className={styles.closeButton}
                     onClick={closeMenu}
-                    aria-label={t("Close menu")}
+                    aria-label={msg("nav.close")}
                   >
                     <X
                       size={25}
@@ -1342,7 +1144,7 @@ export default function Navbar() {
                 <div className={styles.subMenuScroll}>
                   <div className={styles.subMenuTitleRow}>
                     <h2>
-                      {t(activeMobilePanel.title)}
+                      {activeMobilePanel.title}
                     </h2>
 
                     <Link
@@ -1351,9 +1153,7 @@ export default function Navbar() {
                       }
                       onClick={closeMenu}
                     >
-                      {t(isArabic
-                        ? "عرض الكل"
-                        : "Shop all")}
+                      {msg("nav.shopAll")}
                     </Link>
                   </div>
 
@@ -1365,7 +1165,7 @@ export default function Navbar() {
                           href={href}
                           onClick={closeMenu}
                         >
-                          {t(label)}
+                          {label}
                         </Link>
                       ),
                     ))}

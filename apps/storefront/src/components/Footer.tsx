@@ -1,8 +1,12 @@
-import Link from "next/link";
+"use client";
+import Link from "@/components/LocaleLink";
 
-export default function Footer() {
+import { LegacyTranslations, useLanguage } from "@/context/LanguageContext";
+import { categoryHref, type Category } from "@/lib/category-tree";
+export default function Footer({ categories = [] }: { categories?: Category[] }) {
+  const { msg } = useLanguage();
   return (
-    <footer className="footer">
+    <LegacyTranslations><footer className="footer">
       <div className="footer-grid">
         <section className="footer-brand">
           <Link
@@ -32,24 +36,10 @@ export default function Footer() {
           </span>
 
           <Link href="/shop">
-            All products
+            {msg("catalog.all")}
           </Link>
 
-          <Link href="/shop?category=Protein">
-            <span data-arabic-text="البروتين">Protein</span>
-          </Link>
-
-          <Link href="/shop?category=Creatine">
-            <span data-arabic-text="الكرياتين">Creatine</span>
-          </Link>
-
-          <Link href="/shop?category=Vitamins">
-            <span data-arabic-text="الفيتامينات">Vitamins</span>
-          </Link>
-
-          <Link href="/shop?category=Wellness">
-            <span data-arabic-text="العافية">Wellness</span>
-          </Link>
+          {categories.map(category => <Link key={category.id} href={categoryHref(category.id)} data-no-translate>{category.name}</Link>)}
         </section>
 
         <section className="footer-column">
@@ -111,6 +101,6 @@ export default function Footer() {
           Egypt
         </span>
       </div>
-    </footer>
+    </footer></LegacyTranslations>
   );
 }

@@ -9,6 +9,12 @@ Rules: see the root `AGENTS.md`. Shared files (`package.json`,
 `package-lock.json`, `AGENTS.md`, `docs/decisions/`) need the owner's (Seif's)
 approval before any change.
 
+## Approved baseline consolidation — 2026-10-13
+
+| Task | Owner | Status | Notes |
+|---|---|---|---|
+| Consolidate reviewed GPT header/cart/tickers and Claude Egypt/EDA/checkout/cart-access into full-stack | GPT, authorized by Seif | merged locally on owner authorization | Seif authorized consolidation on 2026-10-13. Includes finalized cart-access fixes through 58800fb, approved in 03ef5cf. Both apps use one full-stack checkout and vi2_dev for manual testing. R2 remains excluded pending bucket/live checks. Claude local files and review drafts preserved. Evidence: docs/reviews/reviewed-baseline-consolidation.md. |
+
 ## How we work
 
 Roles:
@@ -49,13 +55,34 @@ GPT review checklist (from `AGENTS.md`):
 - Tests added for the behavior and the negative cases; none deleted or weakened.
 - Style: no semicolons, double quotes, 2 spaces, kebab-case files.
 
+## Storefront author/reviewer exception (Seif, 2026-10-09)
+
+For the storefront tasks below, **GPT is the author on `gpt/work` in
+`vi2-gpt-review`; Claude is the reviewer**. The earlier Claude-author/GPT-reviewer
+flow continues for other tasks, including Claude's claimed Core 1 work.
+
+1. GPT prepares this backlog and returns to Seif for approval before implementation.
+2. After approval and resolution of any task-specific blockers, GPT claims one task
+   as in progress, implements it in its own folder on `gpt/work`, adds relevant
+   tests, and runs the configured checks required by `AGENTS.md`.
+3. GPT commits the task and moves it to "In review", recording the task commits,
+   checks and review focus. Seif passes the task to Claude for review.
+4. Claude records findings in `docs/reviews/storefront-<task-name>.md`; the reviewer
+   does not edit GPT's implementation. GPT resolves the findings on `gpt/work`.
+5. One review per task. Seif approves and performs any merge; GPT starts the next
+   task after the current task is merged or Seif explicitly permits it.
+
+Work only in the assigned folder. Shared-file changes still require Seif's
+approval. Integration work remains unreleased until Seif supplies the contracts.
+The initial update prepared tasks only. Seif authorized SF 1 on 2026-10-09; other task releases and merge approvals are recorded separately.
+
 ## Decided (by Seif)
 
 | Decision | Date |
 |---|---|
 | MVP has exactly two roles: `admin` (full access) and `manager` (the Catalog Manager role). More roles are Phase 2. | 2026-10-06 |
 | Login is email and password only. Phone OTP and OAuth 2 are Phase 2. | 2026-10-06 |
-| Claude writes all code, GPT reviews. Revisit once the process runs smoothly. | 2026-10-06 |
+| Claude writes all code, GPT reviews. Revisit once the process runs smoothly. See the storefront exception of 2026-10-09 above. | 2026-10-06 |
 | Code follows clean architecture and SOLID as written in `AGENTS.md` section 4.1. | 2026-10-06 |
 | One review per task, never batched. Claude does not start the next task until the current one is merged or Seif says otherwise. | 2026-10-06 |
 | Quick-variant merged with R3-1 and R3-2 accepted as known limitations; no further changes. | 2026-10-06 |
@@ -69,6 +96,7 @@ GPT review checklist (from `AGENTS.md`):
 | Managers may allocate stock to an order line ("Allocate items"), never more than the line still needs; they cannot reserve or release stock by hand. | 2026-10-06 |
 | New variants keep the stock settings the form sends for now; which products track stock is decided with the Odoo sync work. | 2026-10-06 |
 | Manager role redefined (replaces RD v1.1 section 2.2): full orders (incl. fulfil, refund, cancel, edit), products (incl. delete, publish, prices), brands, customers, promotions, price lists; inventory view only; in Settings only product types and tags. Store settings, staff, roles, API keys, regions, tax, shipping setup, workflows and future business pages (revenue) are admin only. Admin-only pages are hidden from managers in the dashboard. | 2026-10-06 |
+| Incomplete storefront tasks from `mvp-remaining-work.md` are assigned to GPT on `gpt/work`, with Claude reviewing. GPT prepares the board and returns to Seif for approval before implementation. Other task ownership stays as assigned. | 2026-10-09 |
 
 ## In review
 
@@ -84,6 +112,7 @@ GPT review checklist (from `AGENTS.md`):
 
 | Task | Owner | Commit | Notes |
 |---|---|---|---|
+| SF 1. Storefront UI integration verification | GPT, reviewed by Claude | `98f4b35`, `fa6636f`; review `3ddfc5e` on `claude/work` | Closed by Seif on 2026-10-09. UI content already incorporated in `full-stack`; 24 exact file matches and five intentional later differences. Documentation only. |
 | 1. Trustworthy checkout confirmation + regression tests | GPT, then Claude | cdfbea8, db8b2d8 | Success requires a Medusa `order_` ID; confirmation page reads the order from Medusa. Unknown outcomes keep the same cart for retry. |
 | 2. Lint/type errors; `npm run check` covers both apps | GPT, then Claude | cdfbea8, e2af23c | 0 errors. 21 storefront lint warnings remain (`<img>`, setState-in-effect), all in code not otherwise touched. |
 | 3. Remove invented availability/social proof; brand/region owners | GPT, then Claude | cdfbea8, 8497eca | Brand comes from the linked Brand module; region must be a real EGP/EG Medusa region; ratings shown only when reviews exist (none do). |
@@ -115,3 +144,99 @@ GPT review checklist (from `AGENTS.md`):
 | Core 4. Load the real supplement catalog (products, variants, SKUs, barcodes, images) | — | blocked | Size M. Blocked on a data source: an Odoo export once Odoo access is known, or a CSV from Seif. Depends on Core 1 (EGP prices) and Core 2 (attributes). |
 | Remaining storefront lint warnings | — | open | Low priority; style only. |
 | Split oversized storefront components (for example `ProductDetailClient.tsx`, `CheckoutClient.tsx`) | — | open | Matches the clean code goal, but is a refactor. Needs Seif's approval before starting. |
+
+## Storefront backlog preparation
+
+| Task | Owner | Branch | Status | Notes |
+|---|---|---|---|---|
+| Transfer incomplete storefront items from the MVP checklist | GPT | `gpt/work` | approved by Seif | Requested by Seif on 2026-10-09. Prepare the backlog for Seif's approval; implementation follows approval. |
+
+## Storefront: assigned backlog
+
+Source: `mvp-remaining-work.md`, section 2, assessment dated 2026-10-09 against
+`full-stack` at `caf81ea`. Source states and estimates are copied from that
+assessment, not a fresh implementation audit. All eight Partial/Not started
+items are included, plus the unmerged UI update and the remaining Arabic/RTL pass.
+Seif closed SF 1 and released SF 2 on 2026-10-09. SF 1's source state has been corrected after inspection; other source states remain assessment-derived. Each task uses the storefront author/reviewer exception above. "Blocked" tasks
+also await Seif's approval; approval alone does not resolve their dependencies.
+
+| Task | Source state | Size left | Owner | Reviewer | Branch | Status | Scope / dependencies |
+|---|---|---|---|---|---|---|---|
+| SF 1. Verify integration of the `front` UI update | Already incorporated (verified) | S | GPT | Claude | `gpt/work` | done; closed by Seif | Seif authorized SF 1 on 2026-10-09. All 29 UI-update files checked against `full-stack`: 24 exact matches, five preserve later data/auth/availability fixes. UI content entered through `cdfbea8`; no code reapplication or merge needed. Evidence: `docs/storefront-ui-integration-handoff.md`, commit `98f4b35`. Claude approved with no actionable findings in review commit `3ddfc5e` on `claude/work`. Seif approved closure and released SF 2 on 2026-10-09. The source checklist is in Claude's folder and must be corrected there by its owner; the corrected state is recorded here. |
+| SF 2. Categories page and mega menu from Medusa categories | Partial (assessment); SF 2 implementation reverted | S | GPT | Claude | `gpt/work` | reverted at Seif request; awaiting new direction | Seif requested full SF 2 rollback on 2026-10-11. Reverted implementation `f744658` and fixes `823c7eb`, removed SF 2 handoff/response documents, restored pre-SF 2 category/menu/shop behavior. Later homepage commits `c25bebd` and `6ab9652` and unrelated drafts preserved. Do not restart SF 2 without new direction. Rollback verified against pre-SF 2 blobs (20 exact restored/removed paths; two Navbar paths preserve only later homepage edits). Typecheck passes; lint passes with 0 errors/21 warnings. Normal storefront tests: 112 pass, 3 later homepage-render tests fail with the React 18/19 mismatch after reverting SF 2 Jest mapping; not hidden or fixed outside rollback scope.
+| SF 3. Product key-metrics bar, supplement facts and video preview | Partial | M | GPT | Claude | `gpt/work` | blocked | Depends on Core 2's confirmed supplement fields, units and store API. Confirm the video source/field before wiring the preview. Display authoritative values and handle absent data without invented claims. |
+| SF 4. Product warehouse stock badge | Partial | S | GPT | Claude | `gpt/work` | blocked | Generic in/out of stock already works. Exact quantity and Cairo-warehouse wording depend on the released Odoo stock contract and Medusa exposure of warehouse stock. No direct Odoo access or invented quantities. |
+| SF 5. Frequently bought together cross-sell | Not started | S | GPT | Claude | `gpt/work` | blocked | The assessment suggests admin-picked related products. Seif must confirm selection ownership and how the relationship is stored/exposed through Medusa before implementation. Use real products, variants, prices and availability. |
+| SF 6. Search beyond the first 100 products | Partial | M | GPT | Claude | `gpt/work` | blocked | Replace browser-only filtering of the first 100 products. Confirm the Medusa-facing search contract and Meilisearch setup/index ownership before implementation. Keep Medusa authoritative and paginate results; no full-catalog browser fetch or unapproved dependency. |
+| SF 7. Checkout district autocomplete | Not started | S | GPT | Claude | `gpt/work` | blocked | Confirm the district dataset/service and governorate-to-district mapping with Seif before implementation. Reuse checkout address validation and preserve entered address data. Do not invent geographic data or call private provider APIs from the browser. |
+| SF 8. Checkout payment method choice and bilingual failure/retry messages | Not started | M | GPT | Claude | `gpt/work` | blocked | Built with the released Paymob/backend payment work; use RD 2.4's bilingual matrix and confirmed method availability. Preserve unknown-payment recovery, duplicate-submit protection and real-order confirmation. Test-provider labels must not imply live payment support. |
+| SF 9. Account order detail and tracking page | Not started | M | GPT | Claude | `gpt/work` | blocked | Depends on the released Bosta tracking contract and Medusa-facing order/tracking data. Customer-owned orders must be authorized by the backend; handle loading, missing tracking and failures without invented delivery states. |
+| SF 10. Arabic / RTL pass with the real catalog | Done; follow-up remains | S | GPT | Claude | `gpt/work` | blocked | Existing Arabic/RTL is complete per the assessment. Run the remaining full pass after Core 4's real catalog is loaded and the approved storefront changes land. Check product/category content, selectors, navigation and checkout; fix findings within this task. |
+
+Proposed order after approval: SF 1, then SF 2; pick up SF 3-9 individually as
+their contracts/data are confirmed and released; SF 10 follows the real catalog
+and storefront changes. Existing lint-warning and component-refactor rows above
+remain separate and are not claimed by this transfer.
+
+## Impeccable setup
+
+| Task | Owner | Branch | Status | Notes |
+|---|---|---|---|---|
+| Impeccable storefront initialization | GPT | gpt/work | done | Seif requested init and confirmed storefront customers and comp-first on 2026-10-10. Created apps/storefront/PRODUCT.md; saved buildPath=comp and Next.js live configuration after CSP detection found no policy. No UI or application behavior changed. |
+
+| Impeccable storefront design documentation | GPT | gpt/work | done | Seif requested document on 2026-10-10 and confirmed The Wellness Editorial, confident and editorial atmosphere, Ink/Warm Paper/Muted Stone, flat at rest with softly layered panels, and crisp square commerce surfaces with pill utility controls. Created apps/storefront/DESIGN.md and .impeccable/design.json with seven component previews. Source-based extraction; no running preview available. Application code unchanged. |
+
+| Impeccable storefront homepage critique | GPT | gpt/work | done | Seif requested critique and authorized two independent assessments on 2026-10-10. Target apps/storefront/src/app/page.tsx and composed homepage/navigation. Independent source design review plus detector completed; provisional 21/40, two P1 and three P2 priorities. Snapshot stored under apps/storefront/.impeccable/critique. Browser localhost:3000 refused connection; no overlay or app services started. No application code changed. |
+
+| Homepage critique fixes (all five priorities) | GPT | gpt/work | merged `5d7bb9e`; 2 follow-ups open | Commit c25bebd. All five implemented; independent follow-up review clear, provisional 28/40. Storefront: 152 tests, typecheck and lint pass (19 warnings). Full check: 184 backend tests pass, blocked by unchanged admin-access.spec.ts:78 type error. Live homepage/cart verification limited by unavailable Medusa backend. See docs/reviews/storefront-homepage-critique-fixes.md. No integration/package changes; owner merges.  Claude approved with two should-fix items (`docs/reviews/storefront-homepage-critique-fixes.md` on `claude/work`): F1 the mega-menu "BEST SELLERS" link and `/best-sellers` page wording still claim popularity; F2 the other add-to-cart buttons (`ProductCard`, `FlashDeals`, `ProductDetailClient`, `AccountClient`, `ProductValueOffer`) still ignore the cart result. Not fixed yet. |
+
+| GPT worktree Turbopack startup fix | GPT | gpt/work | done | Seif reported external node_modules junction panic on 2026-10-11. Next root includes the sibling dependency checkout only when storefront modules resolve outside this workspace. Normal installations keep the workspace root. Verified Turbopack startup and GET /categories HTTP 200; typecheck and targeted config lint pass. Test server stopped. No dependency/package/UI changes. |
+
+## Staging and production to-do (remember before and after each deploy)
+
+Nothing below has been run on staging or production. Local `vi2_dev` already has the translation migration and the 38 categories. Full steps: `docs/CATEGORY-LOCALES-DEPLOYMENT.md`.
+
+| # | When | Do | Notes |
+|---|---|---|---|
+| 1 | Before deploying | Back up the target database. | Check the release runner uses that environment's database, not `vi2_dev`. |
+| 2 | Before the new backend starts | From `apps/backend`: `node ../../node_modules/@medusajs/cli/cli.js db:migrate` | Creates the Translation Module tables. No `--skip-links --skip-scripts --skip-search` flags (those were local only). `medusa-config.ts` and the migration ship together. |
+| 3 | After the migration | Dry run: `... exec src/scripts/setup-wellness-catalog.ts` | Prints the database host, port and name first; confirm it is the right one. Lists create/reuse for the 38 categories. |
+| 4 | After the dry run looks right | Apply: `... exec src/scripts/setup-wellness-catalog.ts apply`, then rerun the dry run | Second dry run must show reuse for all 38. Rerunning apply overwrites Admin edits to those names, ranks and Arabic labels. |
+| 5 | After apply | In Admin, set the old `supplements` root to Inactive. | Seif's decision 2026-10-11. Products keep their assignments. |
+| 6 | After the backend release | Start the storefront release. | Check `/en` and `/ar`, Arabic RTL, the category menus, shop filters, and that `/categories` returns 404. |
+| 7 | After release | Manual checks: edit a category translation in Admin as staff; switch language as a signed-in customer with items in the cart. | Neither was exercised by GPT or Claude. |
+| 8 | Before launch | Native Arabic speaker reviews the 38 labels (`apps/backend/src/lib/wellness-categories.ts`). | Owner task. |
+| 9 | After any deploy that changes the role table | `npx medusa exec ./src/scripts/setup-catalog-manager.ts <admin-user-id>` | From task 9 (manager role). |
+| 10 | When Core 1 (Egypt setup) merges | Run its setup script on staging/production and review the demo-data removal first. | Not merged yet; add exact commands then. |
+| 11 | Always | Production checkout stays disabled until Paymob, Bosta and Odoo are released. | See "Open: blocked". |
+
+
+## Category navigation and locale foundation (approved 2026-10-11)
+
+| Task | Owner | Branch | Status | Notes |
+|---|---|---|---|---|
+| Native catalog translations and bilingual category setup | GPT | gpt/work | merged `5d7bb9e` | f739bdc. Native translations, five parents/33 children, guarded local migrations and repeatable setup applied; dry run reuses all IDs. 187 backend tests, typecheck, lint and build pass. See docs/reviews/storefront-category-locales.md; Claude approved the initial series; follow-up recheck and owner merge pending.  Merged into `full-stack` as `5d7bb9e` on 2026-10-11 (local; not pushed). Claude approved: `docs/reviews/storefront-category-locales-review.md` on `claude/work`. |
+| Locale URLs and translation compatibility | GPT | gpt/work | merged `5d7bb9e` | b1f69a3 plus final compatibility completion in the dependent series. /en and /ar, server locale/RTL, keyed navigation/search text, localized links and screen-scoped legacy compatibility. 138 storefront tests, typecheck, lint and build pass; 19 existing warnings.  Merged into `full-stack` as `5d7bb9e` on 2026-10-11 (local; not pushed). Claude approved: `docs/reviews/storefront-category-locales-review.md` on `claude/work`. |
+| Shared desktop/mobile categories and removal of category directory | GPT | gpt/work | merged `5d7bb9e` | Final commit in this series. Shared native hierarchy and descendant-ID filters; desktop/mobile/breakpoint/keyboard and cart-language continuity verified. Category page/client/CSS deleted; all three removed URLs return 404. Unrelated supplements root preserved. See handoff for live-check limits. Claude approved the initial series; follow-up recheck and owner merge required.  Merged into `full-stack` as `5d7bb9e` on 2026-10-11 (local; not pushed). Claude approved: `docs/reviews/storefront-category-locales-review.md` on `claude/work`. |
+| Category locale review follow-up (F1-F5) | GPT | gpt/work | merged `5d7bb9e` | Seif requested fixes on 2026-10-11. F1 routing fixed; F2 performance limit recorded; F3 production runbook and safe database-target output added; F4 reconciliation overwrite documented; F5 owner decisions listed below. 341 tests, workspace check and both builds pass; final backend lint clean, 19 existing storefront warnings. Guarded local native dry run reports the target and reuses all 38 categories. See docs/reviews/storefront-category-locales.md. Claude recheck and owner merge pending; no catalog apply or deployment.  Merged into `full-stack` as `5d7bb9e` on 2026-10-11 (local; not pushed). Claude approved: `docs/reviews/storefront-category-locales-review.md` on `claude/work`. |
+| Category directory performance limit (F2) | GPT | gpt/work | known limit | MVP pages are dynamic and refetch paginated categories with no-store on every page view; React cache deduplicates only within each request/locale, up to 8 s per API request, no full-page CDN caching. Preserves Admin changes on refresh. Measure traffic/latency before agreeing per-locale revalidation. See docs/CATEGORY-LOCALES-DEPLOYMENT.md. |
+| Category content decisions (F5) | Seif | - | awaiting owner | Review Arabic wording with a native speaker and decide the preserved unrelated public supplements root's Arabic translation/visibility or reorganization. Existing assignments and the root remain intact. Signed-in Admin translation edits and customer language/cart checks still need manual verification.  Decided 2026-10-11: hide the old `supplements` root in Admin (Inactive); do it in every environment. Arabic wording review still open. |
+
+## Header, cart and ticker fixes (approved 2026-10-12)
+
+| Task | Owner | Reviewer | Branch | Status | Notes |
+|---|---|---|---|---|---|
+| Language destination label, signed-in first name, cart layering/focus, product and brand motion | GPT | Claude | gpt/work | approved; included in consolidation | Approved 2026-10-12. 352 tests and workspace check pass; production storefront build passes. Live EN/AR, empty/populated cart, keyboard, mobile and 981/980 breakpoint checked. Normal-motion visual loop and live signed-in customer check remain; see docs/reviews/storefront-header-cart-tickers.md. No backend/catalog/dependency changes. Owner merges. |
+
+## Current follow-ups retained from Claude (2026-10-13)
+
+Cart access, checkout tests, Egypt setup and EDA backend are included in this consolidation. Their older ready-to-merge rows above describe the original reviews; the consolidation entry supersedes those release statuses.
+
+| Task | Owner | Status | Notes |
+|---|---|---|---|
+| R2 file provider and public-bucket order-export protection | Claude / Seif | excluded; waiting on bucket/live checks | e41dbf7, 8ad7860 approved in review, not merged here. No R2 setup performed. |
+| Readable category addresses /[locale]/shop/<handle> | GPT | open | Seif requested 2026-10-13. Existing ID links remain for this release. |
+| EDA registration display on product pages | GPT | open | Backend now consolidated. Show only the two owner-approved fields. |
+| Remove invented fallback delivery options | GPT | open | Preserve real backend prices; show retry on failure. |
+| R2 image hostname in next/image | GPT | blocked on R2 | Use the configured public hostname after Core 3. |
+| Shop, product, footer, Arabic typography and navigation design repairs | GPT / Claude | planning | Preserve agreed core filters; bilingual business/legal drafts require owner review. No redesign in this consolidation. |

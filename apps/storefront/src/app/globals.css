@@ -1720,7 +1720,7 @@ img {
 
   inset: 0;
 
-  z-index: 98;
+  z-index: 600;
 
   border: 0;
 
@@ -1743,7 +1743,7 @@ img {
 .cart-drawer {
   position: fixed;
 
-  z-index: 100;
+  z-index: 610;
 
   top: 0;
   right: 0;
@@ -2804,4 +2804,49 @@ p,
 
 [dir="rtl"] .eyebrow {
   letter-spacing: 0.06em;
+}
+
+/* Scrollbar */
+html {
+  scrollbar-width: thin;
+  scrollbar-color:
+    #1a1b17
+    #eee7dd;
+}
+
+html::-webkit-scrollbar,
+body::-webkit-scrollbar {
+  width: 10px;
+}
+
+html::-webkit-scrollbar-track,
+body::-webkit-scrollbar-track {
+  background: #eee7dd;
+}
+
+html::-webkit-scrollbar-thumb,
+body::-webkit-scrollbar-thumb {
+  min-height: 72px;
+
+  border:
+    2px solid
+    #eee7dd;
+
+  border-radius: 999px;
+
+  background: #1a1b17;
+  background-clip: padding-box;
+}
+
+html::-webkit-scrollbar-thumb:hover,
+body::-webkit-scrollbar-thumb:hover {
+  background: #8d8881;
+}
+
+
+@media (max-width: 700px) {
+  html::-webkit-scrollbar,
+  body::-webkit-scrollbar {
+    width: 7px;
+  }
 }

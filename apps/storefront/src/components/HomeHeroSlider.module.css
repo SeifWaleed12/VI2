@@ -975,3 +975,16 @@
     font-size: 2.9px !important;
   }
 }
+
+/* Keep the mobile statement readable instead of shrinking the composition. */
+@media (max-width: 760px) {
+  .identityLockup { grid-template-columns: 1fr; gap: 16px; }
+  .supportCopy { display: block !important; }
+  .supportCopy .statement { font-size: 14px !important; line-height: 1.5 !important; letter-spacing: 0 !important; }
+  .supportCopy .statement br { display: block !important; }
+  .supportCopy .footerLine { display: none !important; }
+}
+.dot, .dotActive { width: 44px; height: 44px; padding: 0; border-radius: 0; background: transparent; display: grid; place-items: center; }
+.dot::after, .dotActive::after { content: ""; width: 20px; height: 6px; border-radius: 999px; background: var(--olive); }
+.dotActive::after { background: var(--ink); }
+.dot:focus-visible, .dotActive:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }

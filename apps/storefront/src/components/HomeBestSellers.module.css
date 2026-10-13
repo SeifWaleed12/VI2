@@ -239,3 +239,7 @@
     gap: 7px;
   }
 }
+
+.emptyState { padding: 24px; font-size: 14px; }
+.emptyState button { min-height: 44px; padding: 0 18px; color: var(--paper); background: var(--ink); border: 1px solid var(--ink); cursor: pointer; }
+.emptyState button:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }

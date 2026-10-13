@@ -1,102 +1,117 @@
 "use client";
-
-import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
-import { ArrowRight } from "lucide-react";
-
+import Link from "@/components/LocaleLink";
+import { ArrowRight, Pause, Play } from "lucide-react";
+import { useLanguage } from "@/context/LanguageContext";
+import { useTickerMotion } from "@/hooks/use-ticker-motion";
 import type { Product } from "@/types/product";
 import styles from "./TrendingNow.module.css";
 
 export default function TrendingNow({
-  products: passedProducts,
-}: {
-  products?: Product[];
-} = {}) {
-  const [arabic, setArabic] = useState(false);
-
-  useEffect(() => {
-    const updateLanguage = () => {
-      setArabic(document.documentElement.dir === "rtl");
-    };
-
-    updateLanguage();
-
-    const observer = new MutationObserver(updateLanguage);
-
-    observer.observe(document.documentElement, {
-      attributes: true,
-      attributeFilter: ["dir"],
-    });
-
-    window.addEventListener("storage", updateLanguage);
-
-    return () => {
-      observer.disconnect();
-      window.removeEventListener("storage", updateLanguage);
-    };
-  }, []);
-
-  const railProducts = useMemo(() => {
-    return (passedProducts || []).filter(Boolean);
-  }, [passedProducts]);
-
-  if (railProducts.length === 0) {
-    return null;
-  }
-
-  // Duplicate for smooth marquee effect if multiple products, otherwise repeat to fill track
-  const movingProducts =
-    railProducts.length >= 6
-      ? [...railProducts, ...railProducts]
-      : Array(Math.ceil(12 / railProducts.length))
-          .fill(railProducts)
-          .flat();
-
+  products = [],
+}: { products?: Product[] } = {}) {
+  const { isArabic, msg } = useLanguage();
+  const {
+    ref,
+    repetitions,
+    reducedMotion,
+    manualPause,
+    paused,
+    browsing,
+    togglePause,
+    interactions,
+  } = useTickerMotion(products.length);
+  if (!products.length) return null;
   return (
-    <section className={styles.section}>
+    <section
+      className={styles.section}
+      ref={ref}
+      {...interactions}
+      data-no-translate
+      data-browsing={browsing}
+    >
       <div className={styles.heading}>
         <div>
-          <span>{arabic ? "اختيارات Vi2" : "VI2 PICKS"}</span>
-          <h2>{arabic ? "رائج دلوقتي" : "TRENDING NOW"}</h2>
+          <span>{isArabic ? "اختيارات Vi2" : "VI2 PICKS"}</span>
+          <h2>{isArabic ? "اكتشف المنتجات" : "EXPLORE PRODUCTS"}</h2>
         </div>
-
         <Link href="/shop">
-          {arabic ? "عرض الكل" : "VIEW ALL"}
+          {isArabic ? "عرض الكل" : "VIEW ALL"}
           <ArrowRight size={16} strokeWidth={1.6} />
         </Link>
+        {!reducedMotion && (
+          <button
+            type="button"
+            className={styles.motionControl}
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={togglePause}
+            aria-label={msg(manualPause ? "ticker.resume" : "ticker.pause")}
+            aria-pressed={manualPause}
+          >
+            {manualPause ? <Play size={15} /> : <Pause size={15} />}
+          </button>
+        )}
       </div>
-
       <div className={styles.viewport} dir="ltr">
-        <div className={styles.track}>
-          {movingProducts.map((product, index) => {
-            const image = product.image;
-
-            return (
-              <Link
-                key={`${product.slug}-${index}`}
-                href={`/products/${product.slug}`}
-                className={styles.item}
-                aria-label={arabic ? `عرض ${product.name}` : `View ${product.name}`}
-                title={product.name}
-                dir="ltr"
-              >
-                <div className={styles.imageFrame}>
-                  {image ? (
-                    <img
-                      src={image}
-                      alt={product.name}
-                      loading="lazy"
-                      decoding="async"
-                    />
-                  ) : (
-                    <span style={{ fontSize: "10px", color: "#888" }}>
-                      {product.name}
-                    </span>
-                  )}
+        <div
+          className={styles.track}
+          style={{ animationPlayState: paused ? "paused" : "running" }}
+        >
+          {[0, 1].map((group) => (
+            <div
+              className={styles.group}
+              key={group}
+              data-ticker-copy={group === 1 || undefined}
+              aria-hidden={group === 1 || undefined}
+            >
+              {Array.from({ length: repetitions }, (_, repeat) => (
+                <div
+                  className={styles.cycle}
+                  key={repeat}
+                  data-ticker-base={(group === 0 && repeat === 0) || undefined}
+                  data-ticker-copy={repeat > 0 || undefined}
+                  aria-hidden={repeat > 0 || undefined}
+                >
+                  {products.map((product) => {
+                    const copy = group > 0 || repeat > 0;
+                    return (
+                      <Link
+                        key={product.id}
+                        href={"/products/" + product.slug}
+                        className={styles.item}
+                        tabIndex={copy ? -1 : undefined}
+                        onMouseDown={
+                          copy ? (event) => event.preventDefault() : undefined
+                        }
+                        aria-label={
+                          (isArabic ? "عرض " : "View ") + product.name
+                        }
+                        title={product.name}
+                        dir="auto"
+                      >
+                        <div className={styles.imageFrame}>
+                          {product.image ? (
+                            <img
+                              src={product.image}
+                              alt={product.name}
+                              loading="lazy"
+                              decoding="async"
+                            />
+                          ) : (
+                            <span className={styles.productName}>
+                              {product.name}
+                            </span>
+                          )}
+                        </div>
+                        <span className={styles.productName}>
+                          {product.shortName || product.name}
+                        </span>
+                      </Link>
+                    );
+                  })}
                 </div>
-              </Link>
-            );
-          })}
+              ))}
+            </div>
+          ))}
         </div>
       </div>
     </section>

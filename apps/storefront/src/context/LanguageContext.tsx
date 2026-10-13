@@ -6,26 +6,29 @@ import {
   useContext,
   useEffect,
   useMemo,
-  useSyncExternalStore,
+  useRef,
+
   type ReactNode,
 } from "react";
 
-type Language = "en" | "ar";
+import { usePathname } from "next/navigation";
+import { localizedHref, type Locale, message } from "@/lib/i18n";
+type Language = Locale;
 
 type LanguageContextValue = {
   language: Language;
   isArabic: boolean;
   setLanguage: (language: Language) => void;
   t: <T>(value: T) => T;
+  msg: (key: Parameters<typeof message>[1]) => string;
 };
 
 const STORAGE_KEY = "vi2-language";
 const LanguageContext = createContext<LanguageContextValue | null>(null);
 
-let currentLanguage: Language | null = null;
-const listeners = new Set<() => void>();
-
 const dictionary: Record<string, string> = {
+  "No products in this category yet.": "لا توجد منتجات في هذه الفئة حاليًا.",
+  "SHOW ALL CATEGORIES": "عرض كل الفئات",
   reviews: "تقييمات",
   ratings: "تقييمات",
   "LIVE WELL, LIVE FULLY.": "عيش بصحة، عيش حياتك.",
@@ -756,7 +759,6 @@ const dictionary: Record<string, string> = {
   "FIND YOUR": "اكتشف",
   "Explore products by supplement type, body system, health goal or life stage.":
     "اكتشف المنتجات حسب نوع المكمل أو أجهزة الجسم أو الهدف الصحي أو المرحلة العمرية.",
-  "Search categories and health goals...": "ابحث في الأقسام والأهداف الصحية...",
   "SHOP BY PRODUCT TYPE": "تسوق حسب نوع المنتج",
   "PRODUCT CATEGORIES": "أقسام المنتجات",
   "SHOP BY HEALTH CONDITION": "تسوق حسب احتياجك الصحي",
@@ -991,97 +993,20 @@ function translateDomText(root: ParentNode, language: Language) {
   }
 }
 
-function getLanguage(): Language {
-  if (currentLanguage) {
-    return currentLanguage;
-  }
-
-  try {
-    return localStorage.getItem(STORAGE_KEY) === "ar" ? "ar" : "en";
-  } catch {
-    return "en";
-  }
-}
-
-function getServerLanguage(): Language {
-  return "en";
-}
-
-function subscribe(listener: () => void) {
-  listeners.add(listener);
-
-  const handleStorage = (event: StorageEvent) => {
-    if (event.key === STORAGE_KEY || event.key === null) {
-      currentLanguage = null;
-      listener();
-    }
-  };
-
-  window.addEventListener("storage", handleStorage);
-
-  return () => {
-    listeners.delete(listener);
-    window.removeEventListener("storage", handleStorage);
-  };
-}
-
-function updateLanguage(language: Language) {
-  currentLanguage = language;
-
-  try {
-    localStorage.setItem(STORAGE_KEY, language);
-  } catch {
-    // The current browser session still updates through memory.
-  }
-
-  listeners.forEach((listener) => listener());
-}
-
-export function LanguageProvider({ children }: { children: ReactNode }) {
-  const language = useSyncExternalStore(
-    subscribe,
-    getLanguage,
-    getServerLanguage,
-  );
-
+export function LanguageProvider({ children, locale = "en" }: { children: ReactNode; locale?: Locale }) {
+  const language = locale;
+  const pathname = usePathname();
+  const setLanguage = useCallback((next: Locale) => {
+    document.cookie = `vi2-language=${next};path=/;max-age=31536000;SameSite=Lax`;
+    try { localStorage.setItem(STORAGE_KEY, next); } catch { /* The URL remains authoritative. */ }
+    // Reload the shared root layout so navigation and html direction arrive in the new locale from the server.
+    window.location.assign(localizedHref(`${pathname}${window.location.search}${window.location.hash}`, next));
+  }, [pathname]);
   useEffect(() => {
     document.documentElement.lang = language;
     document.documentElement.dir = language === "ar" ? "rtl" : "ltr";
     document.body.dataset.locale = language;
 
-    const observerOptions: MutationObserverInit = {
-      childList: true,
-      subtree: true,
-    };
-
-    const observer = new MutationObserver(() => {
-      // Disconnect before translating so the DOM writes we are about to make
-      // don't re-trigger this callback and cause an infinite loop.
-      observer.disconnect();
-
-      window.requestAnimationFrame(() => {
-        translateDomText(document.body, language);
-        // Reconnect after the translation paint so future dynamic content
-        // (e.g. lazy-loaded components) still gets translated.
-        observer.observe(document.body, observerOptions);
-      });
-    });
-
-    // Initial translation pass on language change.
-    window.requestAnimationFrame(() => {
-      translateDomText(document.body, language);
-      observer.observe(document.body, observerOptions);
-      // Reveal page after translation — removes the opacity:0 set by the
-      // beforeInteractive script so there is no English→Arabic flash on load.
-      if (document.documentElement.style.opacity === "0") {
-        document.documentElement.style.transition = "opacity 0.15s ease";
-        document.documentElement.style.opacity = "1";
-      }
-    });
-
-    return () => {
-      observer.disconnect();
-    };
   }, [language]);
 
   const t = useCallback(
@@ -1093,10 +1018,11 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     () => ({
       language,
       isArabic: language === "ar",
-      setLanguage: updateLanguage,
+      setLanguage,
+      msg: (key: Parameters<typeof message>[1]) => message(language, key),
       t,
     }),
-    [language, t],
+    [language, t, setLanguage],
   );
 
   return (
@@ -1104,6 +1030,32 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
       {children}
     </LanguageContext.Provider>
   );
+}
+
+// Mount inside a screen's hydration boundary; never observe the shared document.
+export function LegacyTranslations({ children }: { children: ReactNode }) {
+  const { language } = useLanguage();
+  const scope = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const root = scope.current;
+    if (!root) return;
+    let frame = 0;
+    const options = { childList: true, subtree: true };
+    const observer = new MutationObserver(() => {
+      observer.disconnect();
+      frame = window.requestAnimationFrame(() => {
+        translateDomText(root, language);
+        observer.observe(root, options);
+      });
+    });
+    translateDomText(root, language);
+    observer.observe(root, options);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      observer.disconnect();
+    };
+  }, [language]);
+  return <div ref={scope} style={{ display: "contents" }} data-legacy-translation>{children}</div>;
 }
 
 export function useLanguage() {
