@@ -45,3 +45,9 @@ export const allocationSchema = z.object({
   description: z.string().nullish(),
   metadata: z.record(z.string(), z.unknown()).nullish(),
 }).strict()
+
+// The number's format is not decided, so it is only trimmed and length-checked.
+export const productEdaSchema = z.object({
+  registration_number: text.max(100),
+  is_approved: z.boolean(),
+}).strict()

@@ -16,11 +16,15 @@ const emailPassRoutes = (["user", "customer"] as ActorType[]).flatMap((actor) =>
   { matcher: `/auth/${actor}/emailpass/update`, method: "POST" as const, middlewares: [requireStrongPassword] },
 ])
 
+// Our product data the storefront may request: the brand, and the EDA number
+// with its approval (shown to customers by owner decision, 2026-10-09).
+const STORE_PRODUCT_EXTRA_FIELDS = ["brand.name", "brand.status", "eda_registration.registration_number", "eda_registration.is_approved"]
+
 export default defineMiddlewares({
   routes: [
     ...emailPassRoutes,
-    { matcher: "/store/products", middlewares: [allowFields("brand.name", "brand.status")] },
-    { matcher: "/store/products/:id", middlewares: [allowFields("brand.name", "brand.status")] },
+    { matcher: "/store/products", middlewares: [allowFields(...STORE_PRODUCT_EXTRA_FIELDS)] },
+    { matcher: "/store/products/:id", middlewares: [allowFields(...STORE_PRODUCT_EXTRA_FIELDS)] },
     {
       matcher: "/admin/*",
       middlewares: [
