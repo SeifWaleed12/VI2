@@ -9,6 +9,12 @@ Rules: see the root `AGENTS.md`. Shared files (`package.json`,
 `package-lock.json`, `AGENTS.md`, `docs/decisions/`) need the owner's (Seif's)
 approval before any change.
 
+## Approved baseline consolidation — 2026-10-13
+
+| Task | Owner | Status | Notes |
+|---|---|---|---|
+| Consolidate reviewed GPT header/cart/tickers and Claude Egypt/EDA/checkout tests into full-stack | GPT, authorized by Seif | in progress | Separate integration checkout. Preserve Claude active cart-access work and all drafts. Exclude R2 pending live setup and unfinished order/cart ownership. Synchronize working branches only when their active work is saved/reviewed. |
+
 ## How we work
 
 Roles:
