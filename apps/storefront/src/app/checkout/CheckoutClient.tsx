@@ -272,6 +272,10 @@ export default function CheckoutClient() {
       const pendingId = window.sessionStorage.getItem(`vi2-pending-checkout:${buyNowSlug || "cart"}`);
       if (pendingId) { setRecovering(true); setStep(2); }
     } catch { /* recovery storage unavailable */ }
+    // Sign-out removes the pending checkout; stop offering to resume it.
+    const onSignedOut = () => setRecovering(false);
+    window.addEventListener("vi2-signed-out", onSignedOut);
+    return () => window.removeEventListener("vi2-signed-out", onSignedOut);
   }, [buyNowSlug]);
 
   const [

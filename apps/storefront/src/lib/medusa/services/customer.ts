@@ -127,7 +127,13 @@ export async function logoutCustomer(): Promise<void> {
     throw new Error("Unable to sign out. Please try again.");
   }
   if (typeof window !== "undefined") {
-    try { window.localStorage.removeItem("vi2-last-order"); } catch { /* Storage may be disabled. */ }
+    try {
+      window.localStorage.removeItem("vi2-last-order");
+      // An unconfirmed checkout belongs to the session that started it.
+      for (const key of Object.keys(window.sessionStorage)) {
+        if (key.startsWith("vi2-pending-checkout:")) window.sessionStorage.removeItem(key);
+      }
+    } catch { /* Storage may be disabled. */ }
     window.dispatchEvent(new Event("vi2-signed-out"));
     window.dispatchEvent(new Event("vi2-auth-change"));
   }
