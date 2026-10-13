@@ -140,6 +140,15 @@ medusaIntegrationTestRunner({
         expect(data.order.status).toBe("canceled")
       })
 
+      it("turns order export off for everyone, since the file would hold customer details", async () => {
+        for (const session of [admin, manager]) {
+          const response = await api.post("/admin/orders/export", {}, session)
+          expect(response.status).toBe(403)
+          expect(response.data.message).toMatch(/Order export is turned off/)
+        }
+        expect((await api.post("/admin/products/export", {}, admin)).status).toBe(202)
+      })
+
       it("lets a manager run customers, promotions and price lists", async () => {
         expect((await api.post("/admin/customers", { email: "shopper@test.dev", first_name: "Shop" }, manager)).status).toBe(200)
         for (const path of ["/admin/customers", "/admin/customer-groups", "/admin/promotions", "/admin/campaigns", "/admin/price-lists", "/admin/collections", "/admin/product-types", "/admin/product-tags"]) {
