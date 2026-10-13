@@ -32,3 +32,18 @@ Confirmed: the middleware's update runs before `completeCartWorkflow` takes its 
 - That is new locking code and a new failure mode, to close a window that grants nothing.
 
 **Re-opening:** this should be revisited if carts ever get per-customer access control (for example, store cart routes that require the owner's login). The owner assignment would then need to move inside the completion lock. Recorded on the workboard.
+
+## Round 2 scope (Claude)
+
+Seif (2026-10-13) widened the rule, so round 2 covers commits 1de0340 and 213ef3e:
+- **Backend (1de0340):**
+  - `src/api/cart-access.ts` replaces `order-owner.ts`.
+  - A cart becomes a customer's only through their login: created signed in, linked with `POST /store/carts/:id/customer`, or the order placed signed in.
+  - The checkout email no longer attaches an account. On `POST /store/carts/:id` the cart keeps a guest record, and `POST /store/carts` refuses an email without a login.
+  - A cart owned by a registered customer answers 403 to anyone else on every `/store/carts/:id` path and on `/store/payment-collections` for it.
+  - The completion middleware repeats the owner check, because Medusa sorts route middlewares by path shape.
+- **Storefront (213ef3e):**
+  - Checkout completes through `/api/checkout/complete`, which forwards the HttpOnly login cookie.
+  - `logoutCustomer` announces `vi2-signed-out`, and the cart provider clears the cart.
+
+**Effect on round 1's race finding:** an owned cart now refuses everyone else before the owner can change. The race only remains between two logins completing the same **guest** cart at once. For a guest cart, holding its id is still the only key, so the round 1 reasoning holds for what is left.
