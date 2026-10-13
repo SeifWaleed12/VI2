@@ -21,3 +21,17 @@ test("logout succeeds after the server clears the cookie", async () => {
   jest.spyOn(global, "fetch").mockResolvedValue(Response.json({ ok: true }));
   await expect(logoutCustomer()).resolves.toBeUndefined();
 });
+
+test("logout announces the sign-out so the cart is cleared for the next person", async () => {
+  const fakeWindow = Object.assign(new EventTarget(), { localStorage: { removeItem: jest.fn() } });
+  const signedOut = jest.fn();
+  fakeWindow.addEventListener("vi2-signed-out", signedOut);
+  Object.defineProperty(global, "window", { value: fakeWindow, configurable: true });
+  try {
+    jest.spyOn(global, "fetch").mockResolvedValue(Response.json({ ok: true }));
+    await logoutCustomer();
+    expect(signedOut).toHaveBeenCalledTimes(1);
+  } finally {
+    delete (global as { window?: unknown }).window;
+  }
+});

@@ -128,6 +128,7 @@ export async function logoutCustomer(): Promise<void> {
   }
   if (typeof window !== "undefined") {
     try { window.localStorage.removeItem("vi2-last-order"); } catch { /* Storage may be disabled. */ }
+    window.dispatchEvent(new Event("vi2-signed-out"));
     window.dispatchEvent(new Event("vi2-auth-change"));
   }
 }

@@ -383,6 +383,14 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  // Signing out leaves no cart (items, email, address) for the next person on
+  // this browser.
+  useEffect(() => {
+    const onSignedOut = () => { void clearCart(); };
+    window.addEventListener("vi2-signed-out", onSignedOut);
+    return () => window.removeEventListener("vi2-signed-out", onSignedOut);
+  }, [clearCart]);
+
   const value = useMemo<CartContextValue>(
     () => ({
       items,
