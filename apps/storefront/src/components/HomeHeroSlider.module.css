@@ -57,7 +57,7 @@
   color: #3f413b;
 
   font-weight: 800;
-  letter-spacing: 0.16em;
+  letter-spacing: var(--tracking-ui);
   line-height: 1.35;
 }
 
@@ -73,11 +73,11 @@
   margin: 0;
 
   font-family:
-    var(--font-display),
+    var(--font-heading),
     sans-serif;
 
-  font-weight: 400;
-  line-height: 0.77;
+  font-weight: var(--weight-display);
+  line-height: var(--leading-display);
   letter-spacing: -0.02em;
   text-transform: uppercase;
 }
@@ -97,14 +97,14 @@
   color: #3f413b;
 
   font-weight: 800;
-  letter-spacing: 0.1em;
+  letter-spacing: var(--tracking-ui);
 }
 
 .footerLine small {
   color: #5f5c55;
 
   font-weight: 800;
-  letter-spacing: 0.16em;
+  letter-spacing: var(--tracking-ui);
 }
 
 .visual {
@@ -316,13 +316,9 @@
       28px;
 
     font-size:
-      clamp(
-        8.5px,
-        0.62vw,
-        10px
-      );
+      var(--text-body);
 
-    line-height: 1;
+    line-height: var(--leading-ui);
     white-space: nowrap;
   }
 
@@ -351,13 +347,9 @@
 
   .footerLine small {
     font-size:
-      clamp(
-        7.5px,
-        0.48vw,
-        8.5px
-      );
+      var(--text-ui);
 
-    line-height: 1;
+    line-height: var(--leading-ui);
     white-space: nowrap;
   }
 
@@ -431,7 +423,7 @@
       0
       17px;
 
-    font-size: 6.1px;
+    font-size: var(--text-body);
   }
 
   .footerLine {
@@ -444,8 +436,8 @@
   }
 
   .footerLine small {
-    font-size: 4.7px;
-    letter-spacing: 0.11em;
+    font-size: var(--text-ui);
+    letter-spacing: var(--tracking-ui);
   }
 }
 
@@ -503,9 +495,9 @@
   }
 
   .brandDescriptor {
-    font-size: 4.4px;
-    letter-spacing: 0.12em;
-    line-height: 1.28;
+    font-size: var(--text-caption);
+    letter-spacing: var(--tracking-ui);
+    line-height: var(--leading-ui);
   }
 
   .brandRule {
@@ -584,9 +576,9 @@
     min-width: 0;
     margin: 0;
 
-    font-size: 5.05px;
-    line-height: 1.2;
-    letter-spacing: 0.075em;
+    font-size: var(--text-body);
+    line-height: var(--leading-ui);
+    letter-spacing: var(--tracking-ui);
     white-space: nowrap;
   }
 
@@ -611,9 +603,9 @@
   .supportCopy .footerLine small {
     max-width: none;
 
-    font-size: 3.85px;
-    line-height: 1.15;
-    letter-spacing: 0.085em;
+    font-size: var(--text-ui);
+    line-height: var(--leading-ui);
+    letter-spacing: var(--tracking-ui);
     white-space: nowrap;
   }
 
@@ -663,7 +655,7 @@
   }
 
   .brandDescriptor {
-    font-size: 3.9px;
+    font-size: var(--text-caption);
   }
 
   .brandRule {
@@ -692,8 +684,8 @@
   }
 
   .supportCopy .statement {
-    font-size: 4.25px;
-    letter-spacing: 0.06em;
+    font-size: var(--text-body);
+    letter-spacing: var(--tracking-ui);
   }
 
   .supportCopy .footerLine {
@@ -708,8 +700,8 @@
   .supportCopy .footerLine small {
     max-width: none;
 
-    font-size: 3.3px;
-    letter-spacing: 0.07em;
+    font-size: var(--text-ui);
+    letter-spacing: var(--tracking-ui);
   }
 }
 
@@ -745,11 +737,11 @@
   }
 
   .supportCopy .statement {
-    font-size: 3.8px;
+    font-size: var(--text-body);
   }
 
   .supportCopy .footerLine small {
-    font-size: 3px;
+    font-size: var(--text-ui);
   }
 }
 
@@ -841,9 +833,9 @@
 
     margin: 0 !important;
 
-    font-size: 4.5px !important;
-    line-height: 1.16 !important;
-    letter-spacing: 0.055em !important;
+    font-size: var(--text-body);
+    line-height: var(--leading-ui) !important;
+    letter-spacing: var(--tracking-ui) !important;
 
     white-space: normal !important;
   }
@@ -917,9 +909,9 @@
     min-width: 0;
     max-width: 100% !important;
 
-    font-size: 3.65px !important;
-    line-height: 1.14 !important;
-    letter-spacing: 0.06em !important;
+    font-size: var(--text-ui);
+    line-height: var(--leading-ui) !important;
+    letter-spacing: var(--tracking-ui) !important;
 
     white-space: normal !important;
   }
@@ -933,7 +925,7 @@
   .supportCopy .statement {
     flex-basis: 59%;
 
-    font-size: 4.05px !important;
+    font-size: var(--text-body);
   }
 
   .supportCopy .footerLine {
@@ -954,7 +946,7 @@
   }
 
   .supportCopy .footerLine small {
-    font-size: 3.2px !important;
+    font-size: var(--text-ui);
   }
 }
 
@@ -964,7 +956,7 @@
   }
 
   .supportCopy .statement {
-    font-size: 3.7px !important;
+    font-size: var(--text-body);
   }
 
   .supportCopy .footerLine {
@@ -972,7 +964,7 @@
   }
 
   .supportCopy .footerLine small {
-    font-size: 2.9px !important;
+    font-size: var(--text-ui);
   }
 }
 
@@ -980,7 +972,7 @@
 @media (max-width: 760px) {
   .identityLockup { grid-template-columns: 1fr; gap: 16px; }
   .supportCopy { display: block !important; }
-  .supportCopy .statement { font-size: 14px !important; line-height: 1.5 !important; letter-spacing: 0 !important; }
+  .supportCopy .statement { font-size: var(--text-body); line-height: 1.5 !important; letter-spacing: 0 !important; }
   .supportCopy .statement br { display: block !important; }
   .supportCopy .footerLine { display: none !important; }
 }

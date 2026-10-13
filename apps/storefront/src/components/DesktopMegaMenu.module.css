@@ -37,25 +37,25 @@
 
 .intro > span,
 .side > span {
-  color: #8b857d;
-  font-size: 9.5px;
+  color: var(--text-muted);
+  font-size: var(--text-ui);
   font-weight: 800;
-  letter-spacing: 0.12em;
+  letter-spacing: var(--tracking-ui);
 }
 
 .intro h3 {
   margin: 9px 0 0;
-  font-family: var(--font-display), sans-serif;
+  font-family: var(--font-heading), sans-serif;
   font-size: 46px;
-  font-weight: 400;
-  line-height: 0.9;
+  font-weight: var(--weight-display);
+  line-height: var(--leading-display);
 }
 
 .intro p {
   max-width: 220px;
   margin: 17px 0 0;
-  color: #777168;
-  font-size: 11px;
+  color: var(--text-muted);
+  font-size: var(--text-body);
   line-height: 1.6;
 }
 
@@ -68,9 +68,9 @@
   gap: 8px;
   border-bottom: 1px solid #181916;
   color: #181916;
-  font-size: 9.5px;
+  font-size: var(--text-ui);
   font-weight: 800;
-  letter-spacing: 0.08em;
+  letter-spacing: var(--tracking-ui);
 }
 
 .columns {
@@ -84,9 +84,9 @@
   display: block;
   margin-bottom: 13px;
   color: #5e5a55;
-  font-size: 11px;
+  font-size: var(--text-ui);
   font-weight: 800;
-  letter-spacing: 0.05em;
+  letter-spacing: var(--tracking-ui);
 }
 
 .column > div {
@@ -99,7 +99,7 @@
   display: flex;
   align-items: center;
   color: #484a44;
-  font-size: 11px;
+  font-size: var(--text-ui);
   font-weight: 500;
   transition: color 140ms ease, transform 140ms ease;
 }
@@ -130,9 +130,9 @@
   border: 1px solid rgba(24, 25, 22, 0.1);
   color: #343630;
   background: #f2ece4;
-  font-size: 9.5px;
+  font-size: var(--text-ui);
   font-weight: 800;
-  letter-spacing: 0.05em;
+  letter-spacing: var(--tracking-ui);
 }
 
 .side a:hover {
@@ -211,15 +211,15 @@
 
   margin-bottom: 12px;
 
-  color: #8d8881;
+  color: var(--text-muted);
 
   font-family:
-    var(--font-display),
+    var(--font-heading),
     sans-serif;
 
   font-size: 24px;
-  font-weight: 400;
-  line-height: 1;
+  font-weight: var(--weight-display);
+  line-height: var(--leading-display);
 }
 
 .brandColumn > div {
@@ -235,8 +235,8 @@
 
   color: #3c3e39;
 
-  font-size: 11px;
-  line-height: 1.25;
+  font-size: var(--text-ui);
+  line-height: var(--leading-ui);
 
   transition:
     color 150ms ease,
@@ -244,7 +244,7 @@
 }
 
 .brandColumn a:hover {
-  color: #8d8881;
+  color: var(--text-muted);
 
   transform:
     translateX(3px);
@@ -269,9 +269,9 @@
 
   color: #181916;
 
-  font-size: 6.5px;
+  font-size: var(--text-ui);
   font-weight: 850;
-  letter-spacing: 0.09em;
+  letter-spacing: var(--tracking-ui);
 }
 
 .brandsSide {
@@ -305,16 +305,16 @@
 .brandsSideTitle > span {
   color: #181916;
 
-  font-size: 11px;
+  font-size: var(--text-ui);
   font-weight: 800;
 }
 
 .brandsSideTitle > small {
   color: #817b72;
 
-  font-size: 4.5px;
+  font-size: var(--text-ui);
   font-weight: 850;
-  letter-spacing: 0.1em;
+  letter-spacing: var(--tracking-ui);
 }
 
 .brandLogoGrid {
@@ -378,11 +378,11 @@
 
   gap: 6px;
 
-  color: #8d8881;
+  color: var(--text-muted);
 
-  font-size: 6px;
+  font-size: var(--text-ui);
   font-weight: 850;
-  letter-spacing: 0.08em;
+  letter-spacing: var(--tracking-ui);
 }
 
 @media (max-width: 1180px) {
@@ -397,7 +397,7 @@
   }
 
   .brandColumn a {
-    font-size: 11px;
+    font-size: var(--text-ui);
   }
 }
 

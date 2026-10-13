@@ -39,7 +39,7 @@ function SuccessLoading() {
       >
         <strong
           style={{
-            fontSize: "12px",
+            fontSize: "var(--text-ui)",
             letterSpacing: "0.12em",
           }}
         >
@@ -48,7 +48,7 @@ function SuccessLoading() {
 
         <span
           style={{
-            fontSize: "7px",
+            fontSize: "var(--text-ui)",
             fontWeight: 800,
             letterSpacing: "0.14em",
           }}

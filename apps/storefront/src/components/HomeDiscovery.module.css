@@ -67,9 +67,9 @@
 
   color: #8d8881;
 
-  font-size: 7px;
+  font-size: var(--text-ui);
   font-weight: 850;
-  letter-spacing: 0.18em;
+  letter-spacing: var(--tracking-ui);
 }
 
 .headingLine {
@@ -83,18 +83,14 @@
   margin: 0;
 
   font-family:
-    var(--font-display),
+    var(--font-heading),
     sans-serif;
 
   font-size:
-    clamp(
-      64px,
-      6.4vw,
-      108px
-    );
+    var(--text-editorial);
 
-  font-weight: 400;
-  line-height: 0.82;
+  font-weight: var(--weight-display);
+  line-height: var(--leading-display);
   letter-spacing: -0.02em;
   text-transform: uppercase;
 }
@@ -125,7 +121,7 @@
 
   color: #5f5c55;
 
-  font-size: 13px;
+  font-size: var(--text-body);
   line-height: 1.5;
 }
 
@@ -143,9 +139,9 @@
 
   color: #181916;
 
-  font-size: 7px;
+  font-size: var(--text-ui);
   font-weight: 850;
-  letter-spacing: 0.12em;
+  letter-spacing: var(--tracking-ui);
 }
 
 .orbit {
@@ -374,7 +370,7 @@
 
   color: #777167;
 
-  font-size: 8px;
+  font-size: var(--text-ui);
   line-height: 1.4;
 
   text-align: center;
@@ -520,10 +516,10 @@
       0.92
     );
 
-  font-size: 7px;
+  font-size: var(--text-ui);
   font-weight: 850;
   line-height: 1.5;
-  letter-spacing: 0.24em;
+  letter-spacing: var(--tracking-ui);
 }
 
 .activeSummary {
@@ -582,9 +578,9 @@
 
   color: #8d8881;
 
-  font-size: 5.3px;
+  font-size: var(--text-ui);
   font-weight: 850;
-  letter-spacing: 0.11em;
+  letter-spacing: var(--tracking-ui);
 }
 
 .activeCopy {
@@ -599,7 +595,7 @@
 
   color: #5d5952;
 
-  font-size: 7px;
+  font-size: var(--text-body);
   line-height: 1.45;
 }
 
@@ -620,9 +616,9 @@
   color: #f7f2ea;
   background: #5e5a55;
 
-  font-size: 6px;
+  font-size: var(--text-ui);
   font-weight: 850;
-  letter-spacing: 0.1em;
+  letter-spacing: var(--tracking-ui);
 }
 
 @media (max-width: 980px) {
@@ -647,7 +643,7 @@
   }
 
   .short {
-    font-size: 7px;
+    font-size: var(--text-ui);
   }
 }
 
@@ -674,17 +670,17 @@
   .heading > span {
     margin-bottom: 6px;
 
-    font-size: 5.5px;
+    font-size: var(--text-ui);
   }
 
   .heading h2 {
-    font-size: clamp(50px, 14vw, 64px);
-    line-height: 0.82;
+    font-size: var(--text-editorial-mobile);
+    line-height: var(--leading-ui);
     letter-spacing: -0.02em;
   }
 
   .viewAll {
-    font-size: 5.5px;
+    font-size: var(--text-ui);
   }
 
   .orbit {
@@ -771,17 +767,17 @@
     top: 22px;
     left: 18px;
 
-    font-size: 5px;
+    font-size: var(--text-ui);
   }
 
   .goal > strong {
     margin-top: 13px;
 
-    font-size: 6.2px;
+    font-size: var(--text-ui);
   }
 
   .short {
-    font-size: 6.1px;
+    font-size: var(--text-ui);
   }
 
   .activeSummary {
@@ -804,7 +800,7 @@
   }
 
   .activeCopy p {
-    font-size: 6.5px;
+    font-size: var(--text-body);
   }
 
   .shopNow {
@@ -814,6 +810,6 @@
       0
       13px;
 
-    font-size: 5.5px;
+    font-size: var(--text-ui);
   }
 }

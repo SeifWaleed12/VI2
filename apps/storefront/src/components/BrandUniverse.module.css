@@ -80,11 +80,11 @@
       0.92
     );
 
-  font-size: 9.5px;
+  font-size: var(--text-ui);
   font-weight: 800;
   line-height: 1;
 
-  letter-spacing: 0.08em;
+  letter-spacing: var(--tracking-ui);
 
   text-transform: uppercase;
 
@@ -140,9 +140,9 @@
   }
 
   .item span {
-    font-size: 9px;
+    font-size: var(--text-ui);
     font-weight: 780;
-    letter-spacing: 0.13em;
+    letter-spacing: var(--tracking-ui);
 
     transform: scaleX(1.07);
   }

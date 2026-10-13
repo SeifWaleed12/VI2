@@ -54,9 +54,9 @@ export default function ProductCard({
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              fontSize: "0.6rem",
-              letterSpacing: "0.12em",
-              color: "#aaa",
+              fontSize: "var(--text-caption)",
+              letterSpacing: "var(--tracking-ui)",
+              color: "var(--text-muted)",
             }}
           >
             NO IMAGE

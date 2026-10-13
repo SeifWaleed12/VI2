@@ -64,9 +64,9 @@
   color: #181916;
   background: #e8dfd2;
 
-  font-size: 9.5px;
+  font-size: var(--text-ui);
   font-weight: 800;
-  letter-spacing: 0.08em;
+  letter-spacing: var(--tracking-ui);
   text-transform: uppercase;
 }
 
@@ -77,9 +77,9 @@
 .shippingText {
   color: #747067;
 
-  font-size: 9px;
+  font-size: var(--text-ui);
   font-weight: 700;
-  letter-spacing: 0.08em;
+  letter-spacing: var(--tracking-ui);
   text-transform: uppercase;
 }
 
@@ -100,9 +100,9 @@
 .utilityRight span,
 .utilityRight strong,
 .utilityRight button {
-  font-size: 9px;
+  font-size: var(--text-ui);
   font-weight: 800;
-  letter-spacing: 0.10em;
+  letter-spacing: var(--tracking-ui);
 }
 
 .utilityRight button {
@@ -216,7 +216,7 @@
 
   color: #8b867f;
 
-  font-size: 11px;
+  font-size: var(--text-ui);
 
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -251,15 +251,15 @@
 .account span {
   color: #5e5a55;
 
-  font-size: 8px;
+  font-size: var(--text-ui);
   font-weight: 800;
-  letter-spacing: 0.08em;
+  letter-spacing: var(--tracking-ui);
 }
 
 .account strong {
-  font-size: 10px;
+  font-size: var(--text-ui);
   font-weight: 800;
-  letter-spacing: 0.05em;
+  letter-spacing: var(--tracking-ui);
 }
 
 .cart {
@@ -285,8 +285,8 @@
   top: -1px;
   right: -2px;
 
-  width: 16px;
-  height: 16px;
+  width: auto;
+  height: auto;
   min-width: 16px;
 
   padding: 0;
@@ -299,8 +299,12 @@
   color: #f5f2ed;
   background: #242320;
 
-  font-size: 7.5px;
+  font-size: var(--text-caption);
   font-weight: 800;
+  min-inline-size: 1.25rem;
+  min-block-size: 1.25rem;
+  padding: 0.125rem;
+  line-height: 1;
 }
 
 /* ============================================================
@@ -349,9 +353,9 @@
 .categoryPromos a {
   color: #272824;
 
-  font-size: 10px;
+  font-size: var(--text-ui);
   font-weight: 700;
-  letter-spacing: 0.08em;
+  letter-spacing: var(--tracking-ui);
   text-transform: uppercase;
 
   white-space: nowrap;
@@ -515,9 +519,9 @@
 
   color: #888178;
 
-  font-size: 12px;
+  font-size: var(--text-ui);
   font-weight: 700;
-  letter-spacing: 0.05em;
+  letter-spacing: var(--tracking-ui);
   text-transform: uppercase;
 }
 
@@ -541,10 +545,10 @@
 
   color: #292a26;
 
-  font-size: 15px;
+  font-size: var(--text-ui);
   font-weight: 700;
   letter-spacing: -0.01em;
-  line-height: 1.2;
+  line-height: var(--leading-ui);
 }
 
 .simpleLinks a:hover {
@@ -591,9 +595,9 @@
 
   color: #353630;
 
-  font-size: 11px;
+  font-size: var(--text-ui);
   font-weight: 500;
-  line-height: 1.2;
+  line-height: var(--leading-ui);
 }
 
 .marketRow {
@@ -619,7 +623,7 @@
 .marketRow span,
 .marketRow strong,
 .marketRow button {
-  font-size: 10px;
+  font-size: var(--text-ui);
   font-weight: 750;
 }
 
@@ -660,9 +664,9 @@
   color: #f8f3ea;
   background: #5e5a55;
 
-  font-size: 9px;
+  font-size: var(--text-ui);
   font-weight: 800;
-  letter-spacing: 0.07em;
+  letter-spacing: var(--tracking-ui);
 }
 
 /* ============================================================
@@ -676,11 +680,12 @@
 
   .categoryPromos {
     gap: 14px;
+    flex-wrap: wrap;
   }
 
   .categoryMain a,
   .categoryPromos a {
-    font-size: 7px;
+    font-size: var(--text-ui);
   }
 }
 
@@ -702,9 +707,9 @@
     color: #f7f3ed;
     background: #181916;
 
-    font-size: 7px;
+    font-size: var(--text-ui);
     font-weight: 800;
-    letter-spacing: 0.05em;
+    letter-spacing: var(--tracking-ui);
 
     text-align: center;
   }
@@ -776,6 +781,10 @@
   .cartCount {
     color: #f7f3ed;
     background: #8d8881;
+    min-inline-size: 1.25rem;
+    min-block-size: 1.25rem;
+    padding: 0.125rem;
+    line-height: 1;
   }
 }
 
@@ -787,7 +796,7 @@
   .mobileAnnouncement {
     min-height: 34px;
 
-    font-size: 8px;
+    font-size: var(--text-ui);
   }
 
   .mainInner {
@@ -830,7 +839,7 @@
   }
 
   .searchBar span {
-    font-size: 10px;
+    font-size: var(--text-ui);
   }
 
   .searchBar svg {
@@ -872,7 +881,7 @@
   .simpleLinks a {
     min-height: 54px;
 
-    font-size: 15px;
+    font-size: var(--text-ui);
   }
 
   .drawerCta {
@@ -923,9 +932,9 @@
   color: #272824;
   background: transparent;
   cursor: pointer;
-  font-size: 10px;
+  font-size: var(--text-ui);
   font-weight: 700;
-  letter-spacing: 0.08em;
+  letter-spacing: var(--tracking-ui);
   text-transform: uppercase;
   white-space: nowrap;
 }
@@ -1042,10 +1051,10 @@
 }
 
 .primaryMenuButton {
-  font-size: 15px;
+  font-size: var(--text-ui);
   font-weight: 700;
   letter-spacing: -0.01em;
-  line-height: 1.2;
+  line-height: var(--leading-ui);
 }
 
 .primaryMenuButton:hover,
@@ -1056,10 +1065,10 @@
 .simpleLinks .simpleMenuButton {
   min-height: 57px;
 
-  font-size: 15px;
+  font-size: var(--text-ui);
   font-weight: 700;
   letter-spacing: -0.01em;
-  line-height: 1.2;
+  line-height: var(--leading-ui);
 }
 
 .subMenuPanel {
@@ -1210,10 +1219,10 @@
 
   color: #2b2d27;
 
-  font-size: 15px;
+  font-size: var(--text-ui);
   font-weight: 700;
   letter-spacing: -0.01em;
-  line-height: 1.2;
+  line-height: var(--leading-ui);
 
   transition:
     color 150ms ease,
@@ -1283,7 +1292,7 @@
   }
 
   .subMenuTitleRow > a {
-    font-size: 15px;
+    font-size: var(--text-ui);
   }
 
   .subMenuList a {
@@ -1351,9 +1360,9 @@
 
   color: #69675f;
 
-  font-size: 9px;
+  font-size: var(--text-caption);
   font-weight: 800;
-  letter-spacing: 0.075em;
+  letter-spacing: var(--tracking-ui);
 
   white-space: nowrap;
 }
@@ -1430,9 +1439,9 @@
 
     color: #f7f3ed;
 
-    font-size: 9px;
+    font-size: var(--text-caption);
     font-weight: 850;
-    letter-spacing: 0.075em;
+    letter-spacing: var(--tracking-ui);
   }
 
   .mobileAnnouncement

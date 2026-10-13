@@ -190,13 +190,13 @@ export default function AccountClient() {
               <h2>{lastOrder.reference}</h2>
             </div>
             {lastOrder.createdAt && (
-              <span style={{ fontSize: "0.75rem", opacity: 0.6 }}>
+              <span style={{ fontSize: "var(--text-ui)", opacity: 0.6 }}>
                 {formatDate(lastOrder.createdAt)}
               </span>
             )}
           </div>
 
-          <div style={{ display: "flex", gap: "0.5rem", fontSize: "0.75rem", opacity: 0.7, flexWrap: "wrap", paddingTop: "0.5rem" }}>
+          <div style={{ display: "flex", gap: "0.5rem", fontSize: "var(--text-ui)", opacity: 0.7, flexWrap: "wrap", paddingTop: "0.5rem" }}>
             {lastOrder.items?.map((item, i) => (
               <span key={i}>
                 {item.name} × {item.quantity}
@@ -205,7 +205,7 @@ export default function AccountClient() {
           </div>
 
           {lastOrder.total !== undefined && (
-            <p style={{ fontSize: "0.85rem", marginTop: "0.5rem" }}>
+            <p style={{ fontSize: "var(--text-ui)", marginTop: "0.5rem" }}>
               Total: <strong>{formatPrice(lastOrder.total)} EGP</strong>
               
             </p>
@@ -226,11 +226,11 @@ export default function AccountClient() {
           <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
             {medusaOrders.map((order) => (
               <div key={order.id} style={{ padding: "0.75rem", border: "1px solid rgba(0,0,0,0.1)", borderRadius: "4px" }}>
-                <strong style={{ fontSize: "0.8rem" }}>{order.displayId ? `#${order.displayId}` : order.reference || order.id}</strong>
-                <span style={{ marginLeft: "1rem", fontSize: "0.75rem", opacity: 0.6 }}>
+                <strong style={{ fontSize: "var(--text-ui)" }}>{order.displayId ? `#${order.displayId}` : order.reference || order.id}</strong>
+                <span style={{ marginLeft: "1rem", fontSize: "var(--text-ui)", opacity: 0.6 }}>
                   {order.createdAt ? formatDate(order.createdAt) : ""}
                 </span>
-                <p style={{ fontSize: "0.75rem", marginTop: "0.25rem" }}>
+                <p style={{ fontSize: "var(--text-ui)", marginTop: "0.25rem" }}>
                   Status: {order.status} · {order.items?.length ?? 0} item(s) · {formatPrice(order.total)} EGP
                 </p>
               </div>
@@ -306,7 +306,7 @@ export default function AccountClient() {
               <p>
                 Once an order is placed, its products appear here for quick reordering.
               </p>
-              <Link href="/shop" style={{ display: "inline-block", marginTop: "1rem", textDecoration: "underline", fontSize: "0.75rem", letterSpacing: "0.1em" }}>
+              <Link href="/shop" style={{ display: "inline-block", marginTop: "1rem", textDecoration: "underline", fontSize: "var(--text-ui)", letterSpacing: "var(--tracking-ui)" }}>
                 SHOP NOW <ArrowRight size={14} style={{ display: "inline" }} />
               </Link>
             </div>

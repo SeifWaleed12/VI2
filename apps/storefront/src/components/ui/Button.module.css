@@ -7,7 +7,7 @@
   border-radius: 6px;
   font-family: inherit;
   font-weight: 800;
-  letter-spacing: 0.08em;
+  letter-spacing: var(--tracking-ui);
   text-transform: uppercase;
   text-decoration: none;
   cursor: pointer;
@@ -18,7 +18,9 @@
     border-color 180ms ease,
     box-shadow 180ms ease;
   user-select: none;
-  white-space: nowrap;
+  white-space: normal;
+  line-height: var(--leading-ui);
+  text-align: center;
 }
 
 .button:hover:not(:disabled) {
@@ -39,21 +41,21 @@
 .sm {
   min-height: 38px;
   padding: 0 16px;
-  font-size: 8.5px;
+  font-size: var(--text-ui);
   border-radius: 5px;
 }
 
 .md {
   min-height: 48px;
   padding: 0 20px;
-  font-size: 9.5px;
+  font-size: var(--text-ui);
   border-radius: 6px;
 }
 
 .lg {
   min-height: 54px;
   padding: 0 24px;
-  font-size: 10.5px;
+  font-size: var(--text-ui);
   border-radius: 7px;
 }
 

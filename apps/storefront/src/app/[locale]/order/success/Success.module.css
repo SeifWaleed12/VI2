@@ -30,11 +30,11 @@
 
 .header > strong {
   font-family:
-    var(--font-display),
+    var(--font-heading),
     sans-serif;
 
   font-size: 31px;
-  font-weight: 400;
+  font-weight: var(--weight-display);
 }
 
 .progress {
@@ -45,9 +45,9 @@
 
   color: #99938a;
 
-  font-size: 5.7px;
+  font-size: var(--text-ui);
   font-weight: 850;
-  letter-spacing: 0.1em;
+  letter-spacing: var(--tracking-ui);
 }
 
 .progress i {
@@ -99,9 +99,9 @@
       0.09
     );
 
-  font-size: 5.5px;
+  font-size: var(--text-ui);
   font-weight: 850;
-  letter-spacing: 0.1em;
+  letter-spacing: var(--tracking-ui);
 }
 
 .successBand strong {
@@ -135,11 +135,11 @@
 }
 
 .eyebrow {
-  color: #8d8881;
+  color: var(--text-muted);
 
-  font-size: 6px;
+  font-size: var(--text-caption);
   font-weight: 850;
-  letter-spacing: 0.12em;
+  letter-spacing: var(--tracking-ui);
 }
 
 .main h1 {
@@ -149,18 +149,14 @@
     0;
 
   font-family:
-    var(--font-display),
+    var(--font-heading),
     sans-serif;
 
   font-size:
-    clamp(
-      82px,
-      8vw,
-      118px
-    );
+    var(--text-page-title);
 
-  font-weight: 400;
-  line-height: 0.72;
+  font-weight: var(--weight-display);
+  line-height: var(--leading-display);
 }
 
 .main h2 {
@@ -169,10 +165,10 @@
     0
     0;
 
-  color: #777169;
+  color: var(--text-muted);
 
   font-family:
-    var(--font-display),
+    var(--font-heading),
     sans-serif;
 
   font-size:
@@ -182,8 +178,8 @@
       72px
     );
 
-  font-weight: 400;
-  line-height: 0.8;
+  font-weight: var(--weight-display);
+  line-height: var(--leading-display);
 }
 
 .reference {
@@ -204,15 +200,16 @@
 }
 
 .reference span {
-  color: #777169;
+  color: var(--text-muted);
 
-  font-size: 5px;
+  font-size: var(--text-ui);
   font-weight: 850;
-  letter-spacing: 0.1em;
+  letter-spacing: var(--tracking-ui);
 }
 
 .reference strong {
-  font-size: 9px;
+  font-size: var(--text-ui);
+  overflow-wrap: anywhere;
 }
 
 .statusCard {
@@ -261,13 +258,13 @@
 }
 
 .statusCard strong {
-  font-size: 7px;
+  font-size: var(--text-ui);
 }
 
 .statusCard span {
-  color: #777169;
+  color: var(--text-muted);
 
-  font-size: 7px;
+  font-size: var(--text-ui);
   line-height: 1.45;
 }
 
@@ -302,13 +299,14 @@
 
   color: #817b72;
 
-  font-size: 5px;
+  font-size: var(--text-ui);
   font-weight: 850;
-  letter-spacing: 0.1em;
+  letter-spacing: var(--tracking-ui);
 }
 
 .detailGrid strong {
-  font-size: 9px;
+  font-size: var(--text-ui);
+  overflow-wrap: anywhere;
 }
 
 .detailGrid p {
@@ -317,9 +315,9 @@
     0
     0;
 
-  color: #777169;
+  color: var(--text-muted);
 
-  font-size: 7.5px;
+  font-size: var(--text-body);
   line-height: 1.5;
 }
 
@@ -346,9 +344,9 @@
 
   gap: 10px;
 
-  font-size: 6px;
+  font-size: var(--text-ui);
   font-weight: 850;
-  letter-spacing: 0.09em;
+  letter-spacing: var(--tracking-ui);
 }
 
 .primary {
@@ -372,9 +370,9 @@
 
   gap: 7px;
 
-  color: #777169;
+  color: var(--text-muted);
 
-  font-size: 6px;
+  font-size: var(--text-caption);
 }
 
 /* ============================================================
@@ -394,11 +392,11 @@
 }
 
 .summary > span {
-  color: #777169;
+  color: var(--text-muted);
 
-  font-size: 5px;
+  font-size: var(--text-ui);
   font-weight: 850;
-  letter-spacing: 0.1em;
+  letter-spacing: var(--tracking-ui);
 }
 
 .summary > h2 {
@@ -408,12 +406,12 @@
     22px;
 
   font-family:
-    var(--font-display),
+    var(--font-heading),
     sans-serif;
 
   font-size: 58px;
-  font-weight: 400;
-  line-height: 0.76;
+  font-weight: var(--weight-display);
+  line-height: var(--leading-display);
 }
 
 .item {
@@ -471,24 +469,24 @@
 }
 
 .item section span {
-  color: #777169;
+  color: var(--text-muted);
 
-  font-size: 4.8px;
+  font-size: var(--text-ui);
   font-weight: 850;
-  letter-spacing: 0.08em;
+  letter-spacing: var(--tracking-ui);
 }
 
 .item section strong {
   overflow: hidden;
 
-  font-size: 8px;
+  font-size: var(--text-ui);
 
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .item > strong {
-  font-size: 8px;
+  font-size: var(--text-ui);
   white-space: nowrap;
 }
 
@@ -511,7 +509,7 @@
 
 .total span {
   font-family:
-    var(--font-display),
+    var(--font-heading),
     sans-serif;
 
   color: #181916;
@@ -521,11 +519,11 @@
 
 .total strong {
   font-family:
-    var(--font-display),
+    var(--font-heading),
     sans-serif;
 
   font-size: 34px;
-  font-weight: 400;
+  font-weight: var(--weight-display);
 }
 
 .summaryNote {
@@ -540,7 +538,7 @@
 
   gap: 8px;
 
-  color: #8d8881;
+  color: var(--text-muted);
   background:
     rgba(
       255,
@@ -549,7 +547,7 @@
       0.55
     );
 
-  font-size: 7px;
+  font-size: var(--text-ui);
 }
 
 /* ============================================================
@@ -569,7 +567,7 @@
   .progress {
     gap: 7px;
 
-    font-size: 4.6px;
+    font-size: var(--text-ui);
   }
 
   .progress i {
@@ -598,7 +596,7 @@
   }
 
   .main h1 {
-    font-size: 68px;
+    font-size: var(--text-page-title-mobile);
   }
 
   .main h2 {
