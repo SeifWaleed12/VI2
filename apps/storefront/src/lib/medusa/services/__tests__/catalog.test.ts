@@ -1,4 +1,4 @@
-import { mapMedusaProduct, getProducts, listProducts } from "../products";
+import { mapMedusaProduct, getProducts, listProducts, InvalidCatalogFilterError } from "../products";
 import { mapMedusaCart } from "../cart";
 import { selectRegion } from "../regions";
 import { medusa } from "../../client";
@@ -99,8 +99,13 @@ describe("catalog contract (docs/CATALOG-CONTRACT.md)", () => {
   });
 
   it("reports an outage instead of an empty page", async () => {
-    list().mockRejectedValue(new Error("offline"));
+    list().mockRejectedValue(Object.assign(new Error("Service Unavailable"), { status: 503 }));
     await expect(listProducts({ locale: "en" })).rejects.toThrow("temporarily unavailable");
+  });
+
+  it("reports filters Medusa refuses as invalid filters, not an outage", async () => {
+    list().mockRejectedValue(Object.assign(new Error("brand_id must be 1 to 50 brand IDs."), { status: 400 }));
+    await expect(listProducts({ locale: "en", brand_id: ["not an id"] })).rejects.toBeInstanceOf(InvalidCatalogFilterError);
   });
 
   it("keeps getProducts as the first page of up to 100 products in English by default", async () => {

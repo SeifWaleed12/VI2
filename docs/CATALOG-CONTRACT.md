@@ -19,7 +19,10 @@ Request (`ListProductsParams`):
 | `offset` | 0 or more; default 0. |
 | `order` | Passed to Medusa unchanged (for example `title`, `-created_at`). No price or availability sorting is promised. |
 
-All filters combine with AND. Filtering happens in Medusa, never in the browser.
+Within one list, IDs combine with OR: a product matches when it is in any of
+the given categories, or has any of the given brands. Across category, brand
+and search, filters combine with AND. Filtering happens in Medusa, never in the
+browser.
 
 Response (`ProductPage`): `{ products, count, limit, offset }`. `count` is the
 number of matching products across all pages.
@@ -27,7 +30,8 @@ number of matching products across all pages.
 Outcomes:
 - **Unknown or inactive brand, or unknown category:** `{ products: [], count: 0 }`. Not an error.
 - **An offset past the end:** an empty `products` with the true `count`.
-- **Backend unreachable or failing:** throws `"Catalog temporarily unavailable."`. Show an outage, not "no products".
+- **Filters Medusa refuses (400):** for example a malformed brand ID or more than 50, typically from an edited or shared URL. Throws `InvalidCatalogFilterError` ("These catalog filters are not valid."). Show an invalid-filter message with a way to clear the filters, not an outage. The page may also validate URL input first; the service result stays the same.
+- **Backend unreachable or failing:** throws `"Catalog temporarily unavailable."`. Show an outage with retry, not "no products".
 
 `getProducts(params)` stays for existing callers: the first page (default 100 products, English), with no total and no brand filter. New listing code uses `listProducts`.
 

@@ -169,6 +169,15 @@ export type ProductPage = {
   offset: number;
 };
 
+// Medusa refused the filters (400): for example a malformed or too long brand
+// list from a shared URL. Show "these filters are not valid", not an outage.
+export class InvalidCatalogFilterError extends Error {
+  constructor() {
+    super("These catalog filters are not valid.");
+    this.name = "InvalidCatalogFilterError";
+  }
+}
+
 const whole = (value: number | undefined, fallback: number) =>
   value !== undefined && Number.isFinite(value) ? Math.trunc(value) : fallback;
 
@@ -186,7 +195,8 @@ export async function listProducts(params: ListProductsParams): Promise<ProductP
 
     const { products, count } = await medusa.store.product.list(query, { "x-medusa-locale": medusaLocale(params.locale) });
     return { products: (products || []).map(mapMedusaProduct), count: count ?? 0, limit, offset };
-  } catch {
+  } catch (error) {
+    if ((error as { status?: unknown } | null)?.status === 400) throw new InvalidCatalogFilterError();
     throw new Error("Catalog temporarily unavailable.");
   }
 }

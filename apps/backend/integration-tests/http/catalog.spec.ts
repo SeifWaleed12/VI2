@@ -18,6 +18,7 @@ medusaIntegrationTestRunner({
       let childId: string
       let activeBrandId: string
       let inactiveBrandId: string
+      let secondBrandId: string
       let zincId: string
 
       beforeEach(async () => {
@@ -33,9 +34,10 @@ medusaIntegrationTestRunner({
         parentId = parent.id
         childId = child.id
         const brands = getContainer().resolve<BrandModuleService>(BRAND_MODULE)
-        const [active, inactive] = await brands.createBrands([{ name: "Optimum", slug: "optimum" }, { name: "Retired", slug: "retired", status: "inactive" }])
+        const [active, inactive, second] = await brands.createBrands([{ name: "Optimum", slug: "optimum" }, { name: "Retired", slug: "retired", status: "inactive" }, { name: "Nutrex", slug: "nutrex" }])
         activeBrandId = active.id
         inactiveBrandId = inactive.id
+        secondBrandId = second.id
 
         const product = (title: string, categoryId: string) => ({
           title, status: "published" as const, category_ids: [categoryId],
@@ -52,7 +54,7 @@ medusaIntegrationTestRunner({
         })
         zincId = products[105].id
         const link = container.resolve(ContainerRegistrationKeys.LINK)
-        await link.create(products.slice(0, 105).map((p, i) => ({ [Modules.PRODUCT]: { product_id: p.id }, [BRAND_MODULE]: { brand_id: i < 103 ? activeBrandId : inactiveBrandId } })))
+        await link.create(products.map((p, i) => ({ [Modules.PRODUCT]: { product_id: p.id }, [BRAND_MODULE]: { brand_id: i < 103 ? activeBrandId : i < 105 ? inactiveBrandId : secondBrandId } })))
       })
 
       const list = async (params: string) => {
@@ -78,6 +80,13 @@ medusaIntegrationTestRunner({
         expect((await list(`brand_id=${activeBrandId}&q=Whey 10&limit=50`)).titles.sort()).toEqual(["Whey 10", "Whey 100", "Whey 101", "Whey 102", "Whey 103"])
         expect(await list(`brand_id=${activeBrandId}&category_id=${parentId}`)).toEqual(expect.objectContaining({ count: 0, ids: [] }))
         expect(await list(`brand_id=${activeBrandId}&brand_id=${inactiveBrandId}&limit=1`)).toEqual(expect.objectContaining({ count: 103 }))
+      })
+
+      it("matches any of several brands or categories, and all of brand, category and search", async () => {
+        expect(await list(`brand_id=${activeBrandId}&brand_id=${secondBrandId}&limit=1`)).toEqual(expect.objectContaining({ count: 104 }))
+        expect(await list(`brand_id=${activeBrandId}&brand_id=${secondBrandId}&category_id=${parentId}`)).toEqual(expect.objectContaining({ count: 1, ids: [zincId] }))
+        expect(await list(`brand_id=${activeBrandId}&brand_id=${secondBrandId}&category_id=${parentId}&q=Whey`)).toEqual(expect.objectContaining({ count: 0 }))
+        expect(await list(`category_id=${parentId}&category_id=${childId}&q=Zinc`)).toEqual(expect.objectContaining({ count: 1, ids: [zincId] }))
       })
 
       it("answers inactive or unknown brands and unknown categories with an empty page, not an error", async () => {
@@ -109,7 +118,7 @@ medusaIntegrationTestRunner({
       it("lists every active brand, past the first 100", async () => {
         await getContainer().resolve<BrandModuleService>(BRAND_MODULE).createBrands(Array.from({ length: 101 }, (_, i) => ({ name: `Brand ${i}`, slug: `brand-${i}` })))
         const { data } = await api.get("/store/brands", storeApi)
-        expect(data.brands).toHaveLength(102)
+        expect(data.brands).toHaveLength(103)
         expect(data.brands.map((b: { id: string }) => b.id)).not.toContain(inactiveBrandId)
       })
     })
