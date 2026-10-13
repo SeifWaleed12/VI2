@@ -23,6 +23,9 @@ export async function completeCheckout(cartId: string, resume = false): Promise<
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ cartId }),
     });
+    // 403: refused before Medusa ran (the cart belongs to another account's
+    // login), so nothing was placed and the same cart must not be retried.
+    if (response.status === 403) return { ok: false, unknown: false, error: "This checkout belongs to another account and was not placed. Sign in to that account, or start a new checkout." };
     if (!response.ok) throw new Error(`Checkout completion failed with ${response.status}`);
     const result = await response.json();
     if (result.type === "order" && typeof result.order?.id === "string" && result.order.id.startsWith("order_")) {

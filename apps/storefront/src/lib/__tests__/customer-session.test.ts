@@ -22,8 +22,10 @@ test("logout succeeds after the server clears the cookie", async () => {
   await expect(logoutCustomer()).resolves.toBeUndefined();
 });
 
-test("logout announces the sign-out so the cart is cleared for the next person", async () => {
-  const fakeWindow = Object.assign(new EventTarget(), { localStorage: { removeItem: jest.fn() } });
+test("logout clears pending checkouts and announces the sign-out so the cart is cleared for the next person", async () => {
+  const pending: Record<string, string> = { "vi2-pending-checkout:cart": "cart_1", "vi2-pending-checkout:whey": "cart_2", other: "kept" };
+  const sessionStorage = Object.assign(Object.create({ removeItem: (key: string) => { delete pending[key]; } }), pending);
+  const fakeWindow = Object.assign(new EventTarget(), { localStorage: { removeItem: jest.fn() }, sessionStorage });
   const signedOut = jest.fn();
   fakeWindow.addEventListener("vi2-signed-out", signedOut);
   Object.defineProperty(global, "window", { value: fakeWindow, configurable: true });
@@ -31,6 +33,7 @@ test("logout announces the sign-out so the cart is cleared for the next person",
     jest.spyOn(global, "fetch").mockResolvedValue(Response.json({ ok: true }));
     await logoutCustomer();
     expect(signedOut).toHaveBeenCalledTimes(1);
+    expect(pending).toEqual({ other: "kept" });
   } finally {
     delete (global as { window?: unknown }).window;
   }

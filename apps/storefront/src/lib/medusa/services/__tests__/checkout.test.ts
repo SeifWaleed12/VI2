@@ -21,9 +21,14 @@ beforeEach(() => {
 });
 afterEach(() => { jest.restoreAllMocks(); });
 
-it("treats a refused completion as unknown, so the same cart is retried", async () => {
+it("treats a refused completion as a definite failure, so the cart is not retried", async () => {
   jest.mocked(global.fetch).mockResolvedValueOnce(Response.json({ message: "refused" }, { status: 403 }));
-  expect(await completeCheckout("cart_123")).toMatchObject({ ok: false, unknown: true });
+  expect(await completeCheckout("cart_123", true)).toMatchObject({ ok: false, unknown: false });
+});
+
+it("treats other completion failures as unknown, so the same cart is retried", async () => {
+  jest.mocked(global.fetch).mockResolvedValueOnce(Response.json({ message: "busy" }, { status: 503 }));
+  expect(await completeCheckout("cart_123", true)).toMatchObject({ ok: false, unknown: true });
 });
 
 it.each([
