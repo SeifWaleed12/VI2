@@ -1,6 +1,8 @@
 "use client";
 
-import { LegacyTranslations } from "@/context/LanguageContext";
+import { useRef } from "react";
+import { useDrawerFocus } from "@/hooks/use-drawer-focus";
+import { LegacyTranslations, useLanguage } from "@/context/LanguageContext";
 import Link from "@/components/LocaleLink";
 import {
   Minus,
@@ -30,11 +32,17 @@ export default function CartDrawer() {
     removeItem,
   } = useCart();
 
+  const drawerRef = useRef<HTMLElement>(null);
+  const { msg } = useLanguage();
+  useDrawerFocus(drawerRef, isCartOpen, closeCart);
+
   return (
     <LegacyTranslations>
       <button
         type="button"
-        aria-label="Close cart"
+        aria-label={msg("cart.close")}
+        aria-hidden="true"
+        tabIndex={-1}
         className={
           isCartOpen
             ? "cart-backdrop cart-backdrop-open"
@@ -44,6 +52,12 @@ export default function CartDrawer() {
       />
 
       <aside
+        ref={drawerRef}
+        role="dialog"
+        aria-modal={isCartOpen ? true : undefined}
+        aria-labelledby="cart-drawer-title"
+        tabIndex={-1}
+        inert={!isCartOpen}
         className={
           isCartOpen
             ? "cart-drawer cart-drawer-open"
@@ -57,13 +71,13 @@ export default function CartDrawer() {
               YOUR BAG
             </span>
 
-            <h2>Cart</h2>
+            <h2 id="cart-drawer-title">Cart</h2>
           </div>
 
           <button
             type="button"
             className="nav-icon-button"
-            aria-label="Close cart"
+            aria-label={msg("cart.close")}
             onClick={closeCart}
           >
             <X size={22} />

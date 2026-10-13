@@ -123,9 +123,7 @@
 
 
 .track {
-  position: absolute;
-  inset-block: 0;
-  left: 0;
+  position: relative;
 
   width: max-content;
   height: 100%;
@@ -133,21 +131,16 @@
   display: flex;
   align-items: center;
 
-  gap: 34px;
+  gap: 0;
 
-  padding: 0 18px;
+  padding: 12px 0;
 
   animation: productRail 46s linear infinite;
 
   will-change: transform;
 }
 
-:global(html[dir="rtl"]) .track {
-  left: auto;
-  right: 0;
 
-  animation-name: productRailRtl;
-}
 
 @keyframes productRail {
   from {
@@ -159,15 +152,7 @@
   }
 }
 
-@keyframes productRailRtl {
-  from {
-    transform: translate3d(0, 0, 0);
-  }
 
-  to {
-    transform: translate3d(50%, 0, 0);
-  }
-}
 
 .item {
   width: 148px;
@@ -232,7 +217,7 @@
   }
 
   .track {
-    gap: 25px;
+    gap: 0;
 
     animation-duration: 42s;
   }
@@ -295,9 +280,7 @@
   }
 
   .track {
-    gap: 15px;
-
-    padding: 0 8px;
+    gap: 0;
 
     animation-duration: 36s;
   }
@@ -317,30 +300,107 @@
   }
 }
 
+
+.viewport {
+  height: auto;
+  overflow: hidden;
+}
+.viewport::before,
+.viewport::after {
+  display: none;
+}
+.track {
+  height: auto;
+}
+.group,
+.cycle {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+}
+.cycle {
+  gap: 34px;
+  padding-inline-end: 34px;
+}
+.item {
+  height: auto;
+  gap: 12px;
+  padding: 4px 0 12px;
+}
+.productName {
+  max-width: 100%;
+  text-align: center;
+  font-size: 13px;
+  line-height: 1.4;
+}
+.item:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 3px;
+}
+.motionControl {
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border: 1px solid currentColor;
+  color: #181916;
+  background: transparent;
+  cursor: pointer;
+}
+.motionControl:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 3px;
+}
+.heading > a {
+  margin-inline-start: auto;
+}
+.section[data-browsing="true"] .viewport {
+  overflow-x: auto;
+}
+.section[data-browsing="true"] .track {
+  animation: none;
+  transform: none;
+  will-change: auto;
+}
+.section[data-browsing="true"] [data-ticker-copy="true"] {
+  display: none;
+}
+@media (max-width: 1000px) {
+  .cycle {
+    gap: 25px;
+    padding-inline-end: 25px;
+  }
+}
+@media (max-width: 700px) {
+  .item {
+    width: 140px;
+    height: auto;
+  }
+  .productName {
+    font-size: 12px;
+  }
+  .cycle {
+    gap: 15px;
+    padding-inline-end: 15px;
+  }
+  .heading {
+    gap: 12px;
+  }
+}
 @media (prefers-reduced-motion: reduce) {
   .track {
     animation: none;
-
     transform: none;
+    will-change: auto;
   }
-
   .viewport {
     overflow-x: auto;
-
-    scrollbar-width: none;
   }
-
-  .viewport::-webkit-scrollbar {
+  .section [data-ticker-copy="true"] {
+    display: none;
+  }
+  .motionControl {
     display: none;
   }
 }
-
-/* Products stay still while customers browse. */
-.viewport { height: auto; overflow-x: auto; overflow-y: hidden; }
-.viewport::before, .viewport::after { display: none; }
-.track { position: relative; inset: auto; height: auto; animation: none; will-change: auto; padding: 12px 18px; }
-:global(html[dir="rtl"]) .track { left: auto; right: auto; animation: none; }
-.item { height: auto; gap: 12px; padding-bottom: 12px; }
-.productName { max-width: 100%; text-align: center; font-size: 13px; line-height: 1.4; }
-.item:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
-@media (max-width: 700px) { .item { width: 140px; height: auto; } .productName { font-size: 12px; } }

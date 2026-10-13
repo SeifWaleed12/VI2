@@ -3,11 +3,12 @@ import { renderToStaticMarkup } from "react-dom/server"
 import HomeBestSellers from "../HomeBestSellers"
 import TrendingNow from "../TrendingNow"
 import HomeHeroSlider from "../HomeHeroSlider"
+import { message } from "@/lib/i18n"
 import type { Product } from "@/types/product"
 
 jest.mock("next/link", () => ({ __esModule: true, default: ({ children, href, ...props }: { children: unknown; href: string }) => createElement("a", { href, ...props }, children as never) }))
 jest.mock("next/image", () => ({ __esModule: true, default: (props: { src: string; alt: string }) => createElement("img", { src: props.src, alt: props.alt }) }))
-jest.mock("@/context/LanguageContext", () => ({ useLanguage: () => ({ language: "en", isArabic: false, t: <T,>(value: T) => value }) }))
+jest.mock("@/context/LanguageContext", () => ({ useLanguage: () => ({ language: "en", isArabic: false, msg: (key: Parameters<typeof message>[1]) => message("en", key), t: <T,>(value: T) => value }) }))
 jest.mock("../BestSellerCard", () => ({ __esModule: true, default: ({ product, rank }: { product: Product; rank?: number }) => createElement("div", { "data-rank": rank }, product.name) }))
 jest.mock("../HomeBestSellers.module.css", () => ({}))
 jest.mock("../TrendingNow.module.css", () => ({}))
@@ -23,9 +24,9 @@ it("links the collection action to the shop without claiming sales rank", () => 
   expect(html).toContain('aria-pressed="true"')
 })
 
-it("renders each discovery product once with its visible name", () => {
+it("renders each discovery product once for keyboard browsing with its visible name", () => {
   const html = renderToStaticMarkup(createElement(() => TrendingNow({ products: [product] })))
-  expect(html.match(/href="\/en\/products\/protein"/g)).toHaveLength(1)
+  expect(html.match(/<a(?![^>]*tabindex="-1")[^>]*href="\/en\/products\/protein"/g)).toHaveLength(1)
   expect(html).toContain("EXPLORE PRODUCTS")
   expect(html).toContain(">Protein</span>")
 })

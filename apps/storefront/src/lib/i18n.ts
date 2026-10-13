@@ -17,6 +17,11 @@ export function removedCategoryPath(path: string) {
   return /^\/(?:en\/|ar\/)?categories(?:\/|$)/.test(path);
 }
 const en = {
+  "nav.switchArabic": "Switch to Arabic",
+  "nav.switchEnglish": "Switch to English",
+  "cart.close": "Close cart",
+  "ticker.pause": "Pause animation",
+  "ticker.resume": "Resume animation",
   "nav.shopShort": "Shop",
   "nav.searchShort": "Search",
   "search.placeholder": "Product, brand, health goal…",
@@ -66,6 +71,11 @@ const en = {
 } as const;
 type MessageKey = keyof typeof en;
 const ar: Record<MessageKey, string> = {
+  "nav.switchArabic": "التبديل إلى العربية",
+  "nav.switchEnglish": "التبديل إلى الإنجليزية",
+  "cart.close": "إغلاق السلة",
+  "ticker.pause": "إيقاف الحركة مؤقتاً",
+  "ticker.resume": "استئناف الحركة",
   "nav.shopShort": "المتجر",
   "nav.searchShort": "بحث",
   "search.placeholder": "منتج، علامة تجارية، هدف صحي…",
