@@ -4,7 +4,7 @@ import type { ActorType } from "../lib/login-attempts"
 import { adminAccess, unlessInviteAcceptance } from "./admin-access"
 import { limitLoginAttempts, limitResetRequests } from "./login-rate-limit"
 import { managerLayoutView } from "./manager-layouts"
-import { assignOrderOwner } from "./order-owner"
+import { assignOrderOwner, cartOwnerOnly, noEmailOnNewGuestCart } from "./cart-access"
 import { requireStrongPassword } from "./password-policy"
 
 // Staff and customers sign in, reset and set passwords through the same
@@ -21,11 +21,18 @@ const emailPassRoutes = (["user", "customer"] as ActorType[]).flatMap((actor) =>
 // with its approval (shown to customers by owner decision, 2026-10-09).
 const STORE_PRODUCT_EXTRA_FIELDS = ["brand.name", "brand.status", "eda_registration.registration_number", "eda_registration.is_approved"]
 
+// Store cart routes do not read the customer's login on their own.
+const customerIfSignedIn = authenticate("customer", ["session", "bearer"], { allowUnauthenticated: true })
+
 export default defineMiddlewares({
   routes: [
     ...emailPassRoutes,
     { matcher: "/store/products", middlewares: [allowFields(...STORE_PRODUCT_EXTRA_FIELDS)] },
     { matcher: "/store/products/:id", middlewares: [allowFields(...STORE_PRODUCT_EXTRA_FIELDS)] },
+    // Without a method these also cover every path under them (src/api/cart-access.ts).
+    { matcher: "/store/carts/:id", middlewares: [customerIfSignedIn, cartOwnerOnly] },
+    { matcher: "/store/payment-collections", middlewares: [customerIfSignedIn, cartOwnerOnly] },
+    { matcher: "/store/carts", method: "POST", middlewares: [customerIfSignedIn, noEmailOnNewGuestCart] },
     {
       matcher: "/admin/*",
       middlewares: [
@@ -44,7 +51,7 @@ export default defineMiddlewares({
           throw new MedusaError(MedusaError.Types.NOT_ALLOWED, "Production checkout is not configured")
         }
         return next()
-      }, authenticate("customer", ["session", "bearer"], { allowUnauthenticated: true }), assignOrderOwner],
+      }, customerIfSignedIn, assignOrderOwner],
     },
   ],
 })
