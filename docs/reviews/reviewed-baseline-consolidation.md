@@ -40,3 +40,18 @@ Storefront: localhost:3000, development with webpack; /en and /ar.
 GPT's gpt/work is fast-forwarded to the same release. Claude's checkout is kept intact for its pending work. Stop old frontend/backend processes before running this pair.
 
 Staging/production require their own database backup, native migrations, Egypt setup and category dry-run/apply as documented in docs/CATEGORY-LOCALES-DEPLOYMENT.md and WORKBOARD.md. Nothing was deployed there.
+
+## Final running-release verification
+
+After synchronizing GPT, the unmodified root npm run check passed there (368 unit tests, both type checks and both lint checks). Both apps now run from this single release checkout on ports 9000 and 3000.
+
+The native category API returns the same 38 IDs for en-US and ar-EG: five parents with 8, 8, 8, 5 and 4 children. All localized names use Arabic except the unchanged international label CoQ10. Browser verification shows Arabic parents and vitamin subcategories; switching to English reaches /en and restores English navigation.
+
+Existing local media was copied without overwriting destination files. The original environment files were copied into ignored release-local paths; credentials were not displayed or committed. Four intersecting GPT review drafts are preserved under C:/Users/Seif Waleed/AppData/Local/Temp/vi2-gpt-review-preserved-20261013-163858.
+
+To restart this exact manual-test pair from the canonical checkout:
+- Backend: npm run dev --workspace=@dtc/backend
+- Storefront: npm run dev --workspace=@dtc/storefront -- --webpack --port 3000
+- Avoid running the old author backend at the same time. Claude's pending R2 branch is intentionally not the manual-test backend.
+
+No remote push. Authenticated customer/header and full manual checkout acceptance still remain for Seif.
