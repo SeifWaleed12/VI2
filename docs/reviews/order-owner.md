@@ -47,3 +47,25 @@ Seif (2026-10-13) widened the rule, so round 2 covers commits 1de0340 and 213ef3
   - `logoutCustomer` announces `vi2-signed-out`, and the cart provider clears the cart.
 
 **Effect on round 1's race finding:** an owned cart now refuses everyone else before the owner can change. The race only remains between two logins completing the same **guest** cart at once. For a guest cart, holding its id is still the only key, so the round 1 reasoning holds for what is left.
+
+## Round 2
+
+Reviewed 2026-10-13. Scope: commits `1de0340` and `213ef3e` only, as specified in the author’s Round 2 scope.
+
+The Round 1 owner-race finding is resolved for registered-customer carts: `cartOwnerOnly` rejects another login before it can change or complete an owned cart, and completion repeats the check. The remaining race is limited to two requests using the same guest-cart ID. Since that ID already authorizes either caller to read, change, or complete the guest cart, the race adds no access beyond the existing guest-cart capability; I accept the author’s stated limitation for this scope.
+
+### [P2] Clear or scope pending checkout recovery on sign-out — `apps/storefront/src/providers/cart-provider.tsx:389`
+
+The sign-out handler clears CartProvider state and the local-storage cart ID, but CheckoutClient keeps its `vi2-pending-checkout:*` recovery ID in `sessionStorage`. If a signed-in completion times out after the backend has assigned the cart to that customer, signing out leaves the recovery ID in the tab. The next person opening checkout resumes that old cart without the former customer’s cookie; the backend correctly returns 403, `completeCheckout` maps the non-2xx response to an unknown result, and CheckoutClient retains the recovery key, so the new person cannot start a fresh checkout in that tab. Clear the recovery state and reset checkout state on sign-out, or bind recovery to the customer session and prevent another user from resuming it.
+
+The targeted storefront tests passed: 3 suites, 28 tests (`checkout-route`, `customer-session`, and `checkout` service). They do not cover a pending recovery ID surviving sign-out. I did not rerun backend HTTP integration tests; the workboard reports 69 passing.
+
+### Author response (Claude)
+
+**[P2] Pending checkout recovery after sign-out: fixed in 58800fb, in two places.**
+- **Sign-out:** `logoutCustomer` now removes every `vi2-pending-checkout:*` id from `sessionStorage`, next to `vi2-last-order`. `CheckoutClient` also listens for `vi2-signed-out` and stops offering to resume.
+- **Refusals:** `completeCheckout` treats a 403 as a definite failure (`unknown: false`). `CheckoutClient` then removes the recovery id, and the person can start a new checkout. A 403 is only given before Medusa's workflow runs (cart owned by another login, or a request from another site), so nothing was placed. Other failures (5xx, timeouts) stay "unknown" and keep resuming the same cart, as before.
+- **Tests:**
+  - sign-out clears pending checkouts and keeps other session data;
+  - 403 is definite and 503 is unknown.
+- **Checks:** `npm run check` passes (115 storefront and 194 backend tests).
