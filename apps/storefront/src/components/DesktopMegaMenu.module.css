@@ -23,7 +23,7 @@
 }
 
 .inner {
-  width: min(calc(100% - 64px), 1440px);
+  width: min(calc(100% - 64px), var(--desktop-nav-width, 1680px));
   min-height: 350px;
   margin: 0 auto;
   display: grid;
@@ -168,7 +168,7 @@
   width:
     min(
       calc(100% - 64px),
-      1440px
+      var(--desktop-nav-width, 1680px)
     );
 
   min-height: 285px;

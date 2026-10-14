@@ -714,6 +714,9 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
                   onClick={() => setMegaOpen(category.id)}>{category.name}</button>
               ))}
               {!directory.roots.length && <CategoryStatus error={directory.error} loading={loadingCategories} retry={retryCategories} />}
+            </div>
+
+            <div className={styles.categoryUtilities}>
               <span
                 className={
                   styles.categoryDivider

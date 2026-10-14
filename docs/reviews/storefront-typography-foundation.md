@@ -68,3 +68,7 @@ Retain each component's relevant role rather than forcing all headings to an ide
 Review only implementation commits 16899c0 and 8bf7e95 and this handoff. Record findings in docs/reviews/storefront-typography-foundation-review.md on claude/work. Do not modify implementation code or merge it during review. Seif approves merging after review.
 
 Preview: http://localhost:3001/en and http://localhost:3001/ar (candidate typography). The approved preview at port 3000 remains the full-stack release.
+
+## Navigation regression correction — 2026-10-15
+
+Seif reported English utility-row spill and Arabic vertical misalignment after RD-0. The earlier no-document-overflow checks did not establish correct row placement. RD-0-NAV corrects this explicitly and verifies per-control geometry in both locales; see docs/reviews/storefront-navigation-layout-fix.md. Review the correction together with RD-0 before any merge.
