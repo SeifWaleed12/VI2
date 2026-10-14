@@ -17,7 +17,6 @@ import {
   Search,
   ShoppingBag,
   Sparkles,
-  Trophy,
   UserRound,
   X,
 } from "lucide-react";
@@ -741,29 +740,11 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
               <Link href="/#health-goals">
                 {msg("nav.health")}
               </Link>
-            </div>
-
-            <div className={styles.categoryPromos}>
               <Link
                 href="/deals"
                 className={styles.dealLink}
               >
                 {msg("nav.deals")}
-              </Link>
-
-              <Link href="/#best-sellers">
-                {msg("nav.shop")}
-              </Link>
-
-              <Link href="/shop">
-                {msg("nav.new")}
-              </Link>
-
-              <Link
-                href="/#value-sets"
-                className={styles.bundleLink}
-              >
-                {msg("nav.bundles")}
               </Link>
             </div>
           </div>
@@ -884,6 +865,24 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
               </span>
 
               <nav className={styles.simpleLinks}>
+
+                <Link
+                  href="/brands"
+                  onClick={closeMenu}
+                >
+                  <span className={styles.linkWithIcon}>
+                    <Package
+                      size={18}
+                      strokeWidth={1.4}
+                    />
+                    {msg("nav.brands")}
+                  </span>
+
+                  <ChevronRight
+                    size={20}
+                    strokeWidth={1.5}
+                  />
+                </Link>
                 <button
                   type="button"
                   className={styles.simpleMenuButton}
@@ -906,24 +905,6 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
                 </button>
 
                 <Link
-                  href="/brands"
-                  onClick={closeMenu}
-                >
-                  <span className={styles.linkWithIcon}>
-                    <Package
-                      size={18}
-                      strokeWidth={1.4}
-                    />
-                    {msg("nav.brands")}
-                  </span>
-
-                  <ChevronRight
-                    size={20}
-                    strokeWidth={1.5}
-                  />
-                </Link>
-
-                <Link
                   href="/deals"
                   onClick={closeMenu}
                   className={styles.accentLink}
@@ -934,42 +915,6 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
                       strokeWidth={1.4}
                     />
                     {msg("nav.deals")}
-                  </span>
-
-                  <ChevronRight
-                    size={20}
-                    strokeWidth={1.5}
-                  />
-                </Link>
-
-                <Link
-                  href="/#best-sellers"
-                  onClick={closeMenu}
-                >
-                  <span className={styles.linkWithIcon}>
-                    <Trophy
-                      size={18}
-                      strokeWidth={1.4}
-                    />
-                    {msg("nav.shop")}
-                  </span>
-
-                  <ChevronRight
-                    size={20}
-                    strokeWidth={1.5}
-                  />
-                </Link>
-
-                <Link
-                  href="/#value-sets"
-                  onClick={closeMenu}
-                >
-                  <span className={styles.linkWithIcon}>
-                    <ShoppingBag
-                      size={18}
-                      strokeWidth={1.4}
-                    />
-                    {msg("nav.bundles")}
                   </span>
 
                   <ChevronRight

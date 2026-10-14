@@ -1,5 +1,5 @@
 .header {
-  --desktop-nav-width: 1680px;
+  --desktop-nav-width: 1440px;
   position: sticky;
   top: 0;
 
@@ -326,26 +326,25 @@
   width: min(calc(100% - 64px), var(--desktop-nav-width));
   margin: 0 auto;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: stretch;
-  column-gap: 20px;
+  column-gap: 32px;
 }
 
 .categoryMain,
-.categoryUtilities,
-.categoryPromos {
+.categoryUtilities {
   min-width: 0;
   display: flex;
   align-items: stretch;
-  gap: 12px;
+  gap: 16px;
 }
 
 .categoryMain {
   flex-wrap: nowrap;
+  gap: 24px;
 }
 
-.categoryUtilities > a,
-.categoryPromos > a {
+.categoryUtilities > a {
   min-height: 64px;
   display: inline-flex;
   align-items: center;
@@ -358,8 +357,7 @@
   white-space: nowrap;
 }
 
-.categoryUtilities > a:hover,
-.categoryPromos > a:hover {
+.categoryUtilities > a:hover {
   color: #8d8881;
 }
 
@@ -373,13 +371,11 @@
     rgba(24, 25, 22, 0.16);
 }
 
-.categoryPromos .dealLink {
+.categoryUtilities .dealLink {
+  margin-inline-start: 8px;
   color: #934e3c;
 }
 
-.categoryPromos .bundleLink {
-  color: #5e5a55;
-}
 
 /* ============================================================
    DRAWER
@@ -683,8 +679,12 @@
     grid-column: 1 / -1;
   }
 
-  .categoryUtilities > a,
-  .categoryPromos > a {
+  .categoryUtilities {
+    grid-column: 1 / -1;
+    justify-self: end;
+  }
+
+  .categoryUtilities > a {
     min-height: 44px;
   }
 

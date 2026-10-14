@@ -23,11 +23,10 @@
 }
 
 .inner {
-  width: min(calc(100% - 64px), var(--desktop-nav-width, 1680px));
-  min-height: 350px;
+  width: min(calc(100% - 64px), var(--desktop-nav-width, 1440px));
   margin: 0 auto;
   display: grid;
-  grid-template-columns: 0.8fr 3.4fr 0.9fr;
+  grid-template-columns: 0.8fr 4.3fr;
 }
 
 .intro {
@@ -35,8 +34,7 @@
   border-right: 1px solid rgba(24, 25, 22, 0.1);
 }
 
-.intro > span,
-.side > span {
+.intro > span {
   color: var(--text-muted);
   font-size: var(--text-ui);
   font-weight: 800;
@@ -109,42 +107,13 @@
   transform: translateX(3px);
 }
 
-.side {
-  padding: 26px 0 26px 26px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  border-left: 1px solid rgba(24, 25, 22, 0.1);
-}
 
-.side > span {
-  margin-bottom: 5px;
-}
 
-.side a {
-  min-height: 56px;
-  padding: 0 13px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  border: 1px solid rgba(24, 25, 22, 0.1);
-  color: #343630;
-  background: #f2ece4;
-  font-size: var(--text-ui);
-  font-weight: 800;
-  letter-spacing: var(--tracking-ui);
-}
 
-.side a:hover {
-  background: #e7dfd3;
-}
 
 @media (max-width: 1180px) {
   .inner {
     grid-template-columns: 0.75fr 3fr;
-  }
-  .side {
-    display: none;
   }
   .columns {
     gap: 22px;
@@ -168,7 +137,7 @@
   width:
     min(
       calc(100% - 64px),
-      var(--desktop-nav-width, 1680px)
+      var(--desktop-nav-width, 1440px)
     );
 
   min-height: 285px;

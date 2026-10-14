@@ -69,6 +69,7 @@ jest.mock("../AccountDropdown", () => ({
 jest.mock("../Navbar.module.css", () => ({
   account: "account",
   customerName: "customerName",
+  desktopCategories: "desktopCategories",
 }));
 jest.mock("../TrendingNow.module.css", () => ({}));
 jest.mock("../BrandUniverse.module.css", () => ({}));
@@ -189,3 +190,30 @@ it("keeps the decorative brand names unchanged and provides a separate pause con
     renderToStaticMarkup(createElement(BrandUniverse, { brands: [] })),
   ).toBe("");
 });
+
+it.each(["en", "ar"] as const)(
+  "keeps catalog navigation and removes redundant global shortcuts in %s",
+  (locale) => {
+    mockLocale = locale;
+    const roots = ["Alpha", "Beta"].map((name, index) => ({
+      id: "category-" + index, name, handle: name.toLowerCase(),
+      parent_category_id: null, rank: index, children: [],
+    }));
+    const html = renderToStaticMarkup(createElement(Navbar, {
+      initialDirectory: { roots, error: false },
+    }));
+    const desktop = html.match(/<nav class="desktopCategories">([\s\S]*?)<\/nav>/)![1];
+    expect(desktop.match(/<button /g)).toHaveLength(2);
+    expect(desktop).toContain("Alpha");
+    expect(desktop).toContain("Beta");
+    expect(desktop.match(/<a /g)).toHaveLength(3);
+    expect(desktop).toContain('href="/' + locale + '/brands"');
+    expect(desktop).toContain('href="/' + locale + '/#health-goals"');
+    expect(desktop).toContain('href="/' + locale + '/deals"');
+    expect(html).not.toContain("#best-sellers");
+    expect(html).not.toContain("#value-sets");
+    for (const key of ["nav.new", "nav.shop", "nav.bundles"] as const) {
+      expect(html).not.toContain(">" + message(locale, key) + "<");
+    }
+  },
+);
