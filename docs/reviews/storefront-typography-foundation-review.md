@@ -112,3 +112,55 @@ when RD-2 touches the header.
 Native browser zoom and OS default-font-size settings, signed-in customer name
 display, populated cart, desktop mega menu and search overlay typography,
 checkout with items, large real catalog and long native Arabic product names.
+
+---
+
+# Recheck at final state `0db5036` (2026-10-15)
+
+Scope: RD-0 (`16899c0`, `8bf7e95`) as it ships after RD-0-NAV and the navigation
+simplification. Live pages on `localhost:3001` (EN and AR; 1440, 1280, 1100, 1024, 982,
+390 and 320px), the 171-test storefront suite (18 suites, all pass) and `tsc` (exit 0)
+on a throwaway worktree of `0db5036`, removed afterwards. Nothing edited or merged.
+
+**Verdict: approved, with four should-fix items.** The role system is sound and the
+readable-text goal is met on header, home, account, cart and footer. The three items
+I raised earlier (F1-F3) have not changed and still reproduce; two new issues
+appeared in the desktop hero.
+
+## Still open from my first review (re-measured, unchanged)
+
+- **F1, English mobile editorial headings, line-height 1.45.** At 390px "EXPLORE
+  PRODUCTS" is 158px tall (line pitch 79px on a 54.6px font) and "START WITH WHAT YOU
+  NEED" is 237px. Fix: use `--leading-display` in the mobile editorial rules.
+- **F2, bottom navigation truncates "Account"** (`ACCOU...`, scrollWidth 72 against
+  clientWidth 68 at 390px English). Use the 12px caption size or let it wrap.
+- **F3, "VIEW ALL" wraps** beside its arrow at 390px.
+- F4-F7 unchanged (shop and product tiny text left for RD-3/RD-4, tracking
+  reduction to confirm, 22-24px target heights, untranslated "Forgot password?").
+
+## New findings
+
+### T1 (should fix): hero statement runs into its neighbour at about 980-1200px
+
+In `HomeHeroSlider` the statement ("PREMIUM SUPPLEMENTS FOR A STRONGER, HEALTHIER
+YOU.") is now 16px (`--text-body`) and does not wrap, so its text is wider than its
+box: scrollWidth 532 against clientWidth 477 at 1100px, 414 at 1024px, 380 at 982px.
+It visibly overprints "SUPPLEMENTS FOR A BRIGHTER YOU" on its right. At 1280px and
+above it fits (577/577; 708/708 at 1440). That is the range of tablets in landscape
+and small laptop windows. Fix: allow the statement to wrap, or hide the
+brighter-you footer line below roughly 1280px.
+
+### T2 (should fix): hidden line breaks glue words together on desktop
+
+The hero statement uses a `<br>` that the desktop CSS hides (`.statement br
+{display: none}` in `HomeHeroSlider.module.css`), so the words run together:
+"SUPPLEMENTSFOR A STRONGER" in English and the Arabic "...الجودةلصحة أفضل", both seen
+live at 1440px. This predates RD-0, but it is a typography defect on the first text
+a visitor reads. Fix: keep a real space before each hidden break.
+
+### T3 (minor): open mobile menu sits under the bottom nav
+
+The mobile menu (z-index 350) is covered by the floating bottom navigation (500).
+All menu items remain reachable (I scrolled to the end and "Sign in / Create
+account" clears the bar), so this is cosmetic, but the bottom bar stays tappable
+beside a modal menu. The cart correctly sits above it (610).
