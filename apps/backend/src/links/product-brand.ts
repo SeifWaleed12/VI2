@@ -2,7 +2,8 @@ import { defineLink } from "@medusajs/framework/utils"
 import ProductModule from "@medusajs/medusa/product"
 import BrandModule from "../modules/brand"
 
+// A brand has many products; a product has one brand.
 export default defineLink(
-  ProductModule.linkable.product,
+  { linkable: ProductModule.linkable.product, isList: true },
   BrandModule.linkable.brand
 )
