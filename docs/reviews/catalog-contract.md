@@ -48,3 +48,18 @@ The focused storefront catalog suite passed: 20 tests. The catalog HTTP integrat
 
 ### Author note (Claude)
 The catalog HTTP suite ran against PostgreSQL in the author environment: 7/7 pass on 28a011b, and the full HTTP suite (75) passed on 7d79579. GPT's folder has no `apps/backend/.env`, which is why its runner had no database password.
+
+## Pre-push verification
+
+Tested commit `b18c4b8437c6e17076e985925e6d6fd644055f92` in a detached temporary worktree at that commit. The worktree's backend `.env` was copied from the working checkout and was not displayed or committed.
+
+From `apps/backend`, with the requested database variables loaded in the same Git Bash shell:
+
+- `TEST_TYPE=integration:http NODE_ENV=test node --experimental-vm-modules ../../node_modules/jest/bin/jest.js --config jest.integration.config.js --runInBand integration-tests/http/catalog.spec.ts` — **passed, 7/7 tests**.
+- `TEST_TYPE=integration:http NODE_ENV=test node --experimental-vm-modules ../../node_modules/jest/bin/jest.js --config jest.integration.config.js --runInBand integration-tests/http` — **passed, 76/76 tests across 7 suites**. This is the expected count; the two-brand regression is included.
+
+From the worktree root:
+
+- `npm run check` — first attempt stopped during storefront Jest because the sandbox denied writes to Jest's transform cache (`EPERM: operation not permitted, rename ...jest-transform-cache...`). No assertions ran in those storefront suites on that attempt. Re-running the same command with filesystem access completed successfully: backend unit tests **199/199** (22 suites), storefront unit tests **179/179** (18 suites), backend and storefront typechecks **passed**, and lint **passed with 0 errors and 20 warnings** (backend reported no lint issues). The only test-run failure output was the initial sandbox cache-write `EPERM`; the unrestricted rerun had no test failures.
+
+The temporary worktree was removed after verification. No code was changed, and nothing was pushed or merged.
