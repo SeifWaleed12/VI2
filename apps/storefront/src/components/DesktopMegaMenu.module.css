@@ -11,8 +11,8 @@
 }
 
 .menu {
-  position: absolute;
-  top: 100%;
+  position: fixed;
+  top: var(--vi2-header-bottom, 154px);
   left: 0;
   right: 0;
   z-index: 116;

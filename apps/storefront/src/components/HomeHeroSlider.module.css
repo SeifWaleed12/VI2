@@ -223,7 +223,7 @@
     display: grid;
     grid-template-columns: 1fr;
     grid-template-rows:
-      72px
+      auto
       clamp(
         300px,
         31.315vw,
@@ -242,7 +242,8 @@
         1480px
       );
 
-    height: 72px;
+    min-height: 72px;
+    padding: 12px 0;
 
     margin: 0 auto;
 
@@ -319,7 +320,9 @@
       var(--text-body);
 
     line-height: var(--leading-ui);
-    white-space: nowrap;
+    min-width: 0;
+    white-space: normal;
+    overflow-wrap: break-word;
   }
 
   .statement br {
@@ -375,7 +378,7 @@
 @media (min-width: 761px) and (max-width: 1120px) {
   .hero {
     grid-template-rows:
-      68px
+      auto
       clamp(
         300px,
         31.315vw,
@@ -387,7 +390,8 @@
     width:
       calc(100% - 38px);
 
-    height: 68px;
+    min-height: 68px;
+    padding: 12px 0;
   }
 
   .brandCluster {
@@ -980,3 +984,9 @@
 .dot::after, .dotActive::after { content: ""; width: 20px; height: 6px; border-radius: 999px; background: var(--olive); }
 .dotActive::after { background: var(--ink); }
 .dot:focus-visible, .dotActive:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+
+/* Give the primary statement the space on compact desktop screens. */
+@media (min-width: 761px) and (max-width: 1279px) {
+  .identityLockup { grid-template-columns: auto minmax(0, 1fr); }
+  .footerLine { display: none; }
+}

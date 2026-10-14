@@ -81,6 +81,8 @@
 }
 
 .viewAll {
+  flex: 0 0 auto;
+  white-space: nowrap;
   padding-bottom: 7px;
 
   display: inline-flex;
@@ -205,7 +207,7 @@
 
   .titleWrap h2 {
     font-size: var(--text-editorial-mobile);
-    line-height: var(--leading-ui);
+    line-height: var(--leading-display);
     letter-spacing: -0.02em;
   }
 

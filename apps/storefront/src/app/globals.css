@@ -2410,7 +2410,7 @@ img {
 
   .section-heading h2 {
     font-size: var(--text-editorial-mobile);
-    line-height: var(--leading-ui);
+    line-height: var(--leading-display);
     letter-spacing: -0.02em;
   }
 
@@ -2718,7 +2718,7 @@ p,
   .section-heading h2,
   .section-h2 {
     font-size: var(--text-editorial-mobile);
-    line-height: var(--leading-ui);
+    line-height: var(--leading-display);
   }
 
   .simple-commerce-content h2,

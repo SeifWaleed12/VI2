@@ -46,7 +46,7 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
   const { t, msg } = useLanguage();
   const [directory, setDirectory] = useState(initialDirectory);
   const [loadingCategories, setLoadingCategories] = useState(false);
-  const headerRef = useRef<HTMLElement>(null);
+  const headerRef = useRef<HTMLDivElement>(null);
   const focusMenuOnOpen = useRef(false);
   async function retryCategories() {
     setLoadingCategories(true);
@@ -58,9 +58,13 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
   useEffect(() => {
     const header = headerRef.current;
     if (!header) return;
-    const update = () => document.documentElement.style.setProperty("--vi2-header-bottom", `${header.getBoundingClientRect().bottom}px`);
+    const rows = header.querySelectorAll<HTMLElement>("[data-header-row]");
+    const update = () => {
+      const bottom = Math.max(0, ...Array.from(rows, row => row.getBoundingClientRect().bottom));
+      document.documentElement.style.setProperty("--vi2-header-bottom", `${bottom}px`);
+    };
     const observer = new ResizeObserver(update);
-    observer.observe(header);
+    rows.forEach(row => observer.observe(row));
     window.addEventListener("scroll", update, { passive: true });
     update();
     return () => { observer.disconnect(); window.removeEventListener("scroll", update); };
@@ -359,7 +363,7 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
 
   return (
     <>
-      <header
+      <div
         ref={headerRef}
         data-no-translate
         className={styles.header}
@@ -555,7 +559,7 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
         {/* ======================================================
             MAIN DESKTOP / MOBILE HEADER
             ====================================================== */}
-        <div className={styles.mainBar}>
+        <header className={styles.mainBar} data-header-row>
           <div className={styles.mainInner}>
             <button
               type="button"
@@ -687,12 +691,12 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
               ))}
             </button>
           </div>
-        </div>
+        </header>
 
         {/* ======================================================
             DESKTOP CATEGORY ROW
             ====================================================== */}
-        <nav className={styles.desktopCategories}>
+        <nav className={styles.desktopCategories} data-header-row>
           <div className={styles.categoryInner}>
             <div className={styles.categoryMain}>
               {directory.roots.map(category => (
@@ -757,7 +761,7 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
             setMegaOpen(null)
           }
         />
-      </header>
+      </div>
 
       {/* ======================================================
           MOBILE TWO-LEVEL CATALOG DRAWER
@@ -1134,6 +1138,7 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
       />
 
       <MobileBottomNav
+        hidden={menuOpen}
         onOpenSearch={openSearch}
       />
     </>

@@ -1,12 +1,6 @@
 .header {
   --desktop-nav-width: 1440px;
-  position: sticky;
-  top: 0;
-
-  z-index: 120;
-
-  width: 100%;
-
+  display: contents;
   color: #181916;
 }
 
@@ -132,6 +126,9 @@
    ============================================================ */
 
 .mainBar {
+  position: sticky;
+  top: 0;
+  z-index: 120;
   border-bottom:
     1px solid
     rgba(24, 25, 22, 0.08);

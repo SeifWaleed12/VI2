@@ -8,6 +8,7 @@ import {
 } from "react";
 
 import styles from "./HomeHeroSlider.module.css";
+import { useLanguage } from "@/context/LanguageContext";
 
 const slides = [
   {
@@ -45,6 +46,7 @@ const slides = [
 ];
 
 export default function HomeHeroSlider() {
+  const { msg } = useLanguage();
   const [
     active,
     setActive,
@@ -200,12 +202,10 @@ export default function HomeHeroSlider() {
                 className={
                   styles.statement
                 }
-                data-arabic-text="مكملات متميزة لحياة أقوى وأكثر صحة."
+                data-no-translate
+                data-preserve-language
               >
-                PREMIUM SUPPLEMENTS
-                <br />
-                FOR A STRONGER,
-                HEALTHIER YOU.
+                {msg("hero.statement")}
               </p>
 
               <div

@@ -31,6 +31,7 @@
 }
 
 .heading > div {
+  min-width: 0;
   display: flex;
   align-items: baseline;
 
@@ -57,6 +58,8 @@
 }
 
 .heading > a {
+  flex: 0 0 auto;
+  white-space: nowrap;
   min-height: 36px;
 
   padding: 0 2px;
@@ -260,7 +263,7 @@
 
   .heading h2 {
     font-size: var(--text-editorial-mobile);
-    line-height: var(--leading-ui);
+    line-height: var(--leading-display);
     letter-spacing: -0.02em;
   }
 

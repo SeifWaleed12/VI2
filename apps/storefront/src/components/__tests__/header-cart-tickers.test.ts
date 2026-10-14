@@ -9,6 +9,7 @@ import type { Product } from "@/types/product";
 
 jest.mock("next/navigation", () => ({
   useRouter: () => ({ refresh: jest.fn() }),
+  usePathname: () => "/en",
 }));
 let mockLocale: Locale = "en";
 let mockCustomer: { firstName?: string; email?: string } | null = null;
@@ -71,6 +72,7 @@ jest.mock("../Navbar.module.css", () => ({
   customerName: "customerName",
   desktopCategories: "desktopCategories",
 }));
+jest.mock("../MobileBottomNav.module.css", () => ({}));
 jest.mock("../TrendingNow.module.css", () => ({}));
 jest.mock("../BrandUniverse.module.css", () => ({}));
 jest.mock("@/hooks/use-ticker-motion", () => ({
@@ -202,7 +204,7 @@ it.each(["en", "ar"] as const)(
     const html = renderToStaticMarkup(createElement(Navbar, {
       initialDirectory: { roots, error: false },
     }));
-    const desktop = html.match(/<nav class="desktopCategories">([\s\S]*?)<\/nav>/)![1];
+    const desktop = html.match(/<nav class="desktopCategories"[^>]*>([\s\S]*?)<\/nav>/)![1];
     expect(desktop.match(/<button /g)).toHaveLength(2);
     expect(desktop).toContain("Alpha");
     expect(desktop).toContain("Beta");
@@ -217,3 +219,20 @@ it.each(["en", "ar"] as const)(
     }
   },
 );
+
+it.each(["en", "ar"] as const)("hides bottom navigation while the mobile drawer is open in %s", (locale) => {
+  mockLocale = locale;
+  const BottomNav = jest.requireActual("../MobileBottomNav").default;
+  expect(renderToStaticMarkup(createElement(BottomNav, { hidden: true, onOpenSearch: jest.fn() }))).toBe("");
+  const html = renderToStaticMarkup(createElement(BottomNav, { hidden: false, onOpenSearch: jest.fn() }));
+  expect(html).toContain(message(locale, "nav.mobile"));
+  expect(html).toContain(message(locale, "nav.account"));
+});
+it("keeps search and cart in the banner while category navigation scrolls separately", () => {
+  const html = renderToStaticMarkup(createElement(Navbar));
+  const banner = html.match(/<header[^>]*>([\s\S]*?)<\/header>/)![1];
+  expect(banner).toContain(message("en", "nav.search"));
+  expect(banner).toContain(message("en", "nav.cart"));
+  expect(banner).not.toContain("desktopCategories");
+  expect(html).toContain('class="desktopCategories"');
+});
