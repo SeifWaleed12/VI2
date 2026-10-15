@@ -43,7 +43,7 @@ Author: Claude. Reviewer: GPT. Branch `claude/rd4-product`, based on `full-stack
   - tablet (≤1100px): the buy panel moves to the right of a single content column;
   - phone (≤700px): image → name and options → price and buy → details. The fixed buy bar is kept, and the bottom nav already hides on product pages.
 - The breadcrumb is an ordered list with `aria-current`. Its chevrons and "View all" mirror in RTL.
-- The CSS module went from 2,675 to about 600 lines.
+- The CSS module went from 2,675 to 727 lines.
 
 **Copy**
 - Product-page strings live in a local English/Arabic `COPY` object instead of the shared `LanguageContext` dictionary, which is GPT's. `LegacyTranslations` is no longer used on this page.
