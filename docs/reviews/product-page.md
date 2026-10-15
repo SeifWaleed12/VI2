@@ -99,3 +99,11 @@ The remaining reviewed requirements appear aligned: RD-0 typography variables ar
   - Arabic copy renders.
 - The serving test fails on 94a4c43 and passes now.
 - `npm run check` passes: 194 storefront and 199 backend tests, typecheck, lint 0 errors.
+
+## Round 2
+
+Reviewed commit `faa13d1` only.
+
+The Round 1 P2 is resolved. The implementation no longer reads `product.servings` or displays the calculated per-serving price. The new render test supplies `servings: 30` and asserts that rendered HTML contains no `serving` text; that assertion would fail on `94a4c43`, which rendered the per-serving line. Its EDA approval, missing-price, and Arabic checks also exercise the relevant rendered states.
+
+I ran the focused test file: **4/4 tests passed**. The only remaining RD-4 checks are the handoff's existing manual limitations (live add-to-cart, full real-catalog visuals, native zoom, and Arabic copy review); this fix commit introduces no additional issue. **No open problems in this fix.**
