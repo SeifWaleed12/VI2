@@ -1,6 +1,7 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import Navbar from "../Navbar";
+import AnnouncementTicker from "../AnnouncementTicker";
 import CartDrawer from "../CartDrawer";
 import BrandUniverse from "../BrandUniverse";
 import TrendingNow from "../TrendingNow";
@@ -16,6 +17,8 @@ let mockCustomer: { firstName?: string; email?: string } | null = null;
 let mockAuthenticated = false;
 let mockLoading = false;
 let mockCartOpen = false;
+let mockReducedMotion = false;
+let mockManualPause = false;
 jest.mock("@/context/LanguageContext", () => ({
   useLanguage: () => ({
     language: mockLocale,
@@ -79,10 +82,10 @@ jest.mock("@/hooks/use-ticker-motion", () => ({
   useTickerMotion: () => ({
     ref: { current: null },
     repetitions: 2,
-    reducedMotion: false,
-    manualPause: false,
-    paused: false,
-    browsing: false,
+    reducedMotion: mockReducedMotion,
+    manualPause: mockManualPause,
+    paused: mockReducedMotion || mockManualPause,
+    browsing: mockReducedMotion,
     interactions: {},
     togglePause: jest.fn(),
   }),
@@ -93,6 +96,8 @@ beforeEach(() => {
   mockAuthenticated = false;
   mockLoading = false;
   mockCartOpen = false;
+  mockReducedMotion = false;
+  mockManualPause = false;
 });
 function accountMarkup() {
   const html = renderToStaticMarkup(createElement(Navbar));
@@ -235,4 +240,34 @@ it("keeps search and cart in the banner while category navigation scrolls separa
   expect(banner).toContain(message("en", "nav.cart"));
   expect(banner).not.toContain("desktopCategories");
   expect(html).toContain('class="desktopCategories"');
+});
+
+it.each(["en", "ar"] as const)("renders truthful localized announcements and named navigation in %s", locale => {
+  mockLocale = locale;
+  const html = renderToStaticMarkup(createElement(Navbar));
+  expect(html).not.toMatch(/SHOP SUPPLEMENTS IN EGP|ENGLISH &amp; ARABIC|تسوق المكملات بالجنيه المصري|العربية والإنجليزية/);
+  for (const key of ["announcement.essentials", "announcement.range", "announcement.collection", "nav.preferences", "nav.mainCategories", "nav.shopBy"] as const) {
+    expect(html).toContain(message(locale, key).replace(/&/g, "&amp;"));
+  }
+  expect(html).toContain('role="region" aria-label="' + message(locale, "nav.preferences") + '"');
+});
+it("announces only one message cycle, preserves duplicates visually and offers pause/resume", () => {
+  const html = renderToStaticMarkup(createElement(AnnouncementTicker));
+  const primary = html.match(/data-ticker-base="true"[^>]*>([\s\S]*?)<\/div>/)![1];
+  expect(primary.match(/Find your daily essentials/g)).toHaveLength(1);
+  expect(html.match(/Find your daily essentials/g)).toHaveLength(4);
+  expect(html.match(/aria-hidden="true"/g)!.length).toBeGreaterThan(3);
+  expect(html).toContain('aria-label="Pause animation" aria-pressed="false"');
+  mockManualPause = true;
+  const paused = renderToStaticMarkup(createElement(AnnouncementTicker));
+  expect(paused).toContain('aria-label="Resume animation" aria-pressed="true"');
+  expect(paused).toContain("animation-play-state:paused");
+});
+it("keeps reduced-motion announcements static and keyboard browsable", () => {
+  mockReducedMotion = true;
+  const html = renderToStaticMarkup(createElement(AnnouncementTicker));
+  expect(html).toContain('data-browsing="true"');
+  expect(html).toContain('tabindex="0"');
+  expect(html).toContain("animation-play-state:paused");
+  expect(html).not.toContain("<button");
 });

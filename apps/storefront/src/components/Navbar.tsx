@@ -27,6 +27,7 @@ import {
 } from "react";
 
 import GlobalSearch from "@/components/GlobalSearch";
+import AnnouncementTicker from "@/components/AnnouncementTicker";
 import MobileBottomNav from "@/components/MobileBottomNav";
 import DesktopMegaMenu, { type MegaMenuKey } from "@/components/DesktopMegaMenu";
 import AccountDropdown from "@/components/AccountDropdown";
@@ -48,6 +49,7 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
   const [loadingCategories, setLoadingCategories] = useState(false);
   const headerRef = useRef<HTMLDivElement>(null);
   const focusMenuOnOpen = useRef(false);
+  const searchTriggerRef = useRef<HTMLButtonElement>(null);
   async function retryCategories() {
     setLoadingCategories(true);
     try { setDirectory({ roots: await getCategoryTree(language), error: false }); }
@@ -80,6 +82,27 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
 
   const [megaOpen, setMegaOpen] =
     useState<MegaMenuKey | null>(null);
+
+  useEffect(() => {
+    if (!megaOpen) return;
+    const closeIfScrolledAway = () => {
+      const header = headerRef.current;
+      const band = header?.querySelector<HTMLElement>("nav[data-header-row]");
+      const pinned = header?.querySelector<HTMLElement>("header[data-header-row]");
+      if (!band || !pinned || band.getBoundingClientRect().bottom > pinned.getBoundingClientRect().bottom) return;
+      if (document.getElementById("desktop-category-menu")?.contains(document.activeElement)) {
+        searchTriggerRef.current?.focus({ preventScroll: true });
+      }
+      setMegaOpen(null);
+    };
+    window.addEventListener("scroll", closeIfScrolledAway, { passive: true });
+    window.addEventListener("resize", closeIfScrolledAway);
+    closeIfScrolledAway();
+    return () => {
+      window.removeEventListener("scroll", closeIfScrolledAway);
+      window.removeEventListener("resize", closeIfScrolledAway);
+    };
+  }, [megaOpen]);
 
   const [accountOpen, setAccountOpen] =
     useState(false);
@@ -198,8 +221,6 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
 
   const copy = isArabic
     ? {
-        freeShipping:
-          "تسوق المكملات بالجنيه المصري",
         flash:
           "العروض اليومية",
         search:
@@ -250,8 +271,6 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
           "السلة",
       }
     : {
-        freeShipping:
-          "SHOP SUPPLEMENTS IN EGP",
         flash:
           "DAILY FLASH DEALS",
         search:
@@ -340,27 +359,6 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
     items: flattenCategories(selectedCategory.children).map(c => [c.name, categoryHref(c.id)]),
   } : null;
 
-  const topMessages = isArabic
-    ? [
-        copy.freeShipping,
-        "فيتامينات ومعادن",
-        "اكتشف المنتجات",
-        "تغذية رياضية",
-        "العربية والإنجليزية",
-      ]
-    : [
-        copy.freeShipping,
-        "VITAMINS & MINERALS",
-        "EXPLORE THE COLLECTION",
-        "SPORTS NUTRITION",
-        "ENGLISH & ARABIC",
-      ];
-
-  const topTickerMessages = [
-    ...topMessages,
-    ...topMessages,
-  ];
-
   return (
     <>
       <div
@@ -374,7 +372,7 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
         {/* ======================================================
             DESKTOP UTILITY STRIP
             ====================================================== */}
-        <div className={styles.utilityStrip}>
+        <div className={styles.utilityStrip} role="region" aria-label={msg("nav.preferences")}>
           <div className={styles.utilityInner}>
             <div className={styles.utilityLeft}>
               <Link href="/deals">
@@ -401,60 +399,7 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
                 }
               />
 
-              <div
-                className={
-                  styles.topMarquee
-                }
-                aria-label={
-                  t(copy.freeShipping)
-                }
-              >
-                <div
-                  className={
-                    styles.topMarqueeTrack
-                  }
-                >
-                  {t([0, 1].map(
-                    (group) => (
-                      <div
-                        key={
-                          group
-                        }
-                        className={
-                          styles.topMarqueeGroup
-                        }
-                        aria-hidden={
-                          group === 1
-                        }
-                      >
-                        {t(topTickerMessages.map(
-                          (
-                            message,
-                            index,
-                          ) => (
-                            <span
-                              key={`${group}-${index}-${message}`}
-                              className={
-                                styles.topMarqueeItem
-                              }
-                            >
-                              {t(message)}
-
-                              {t(index <
-                                topTickerMessages.length -
-                                  1 && (
-                                <i
-                                  aria-hidden="true"
-                                />
-                              ))}
-                            </span>
-                          ),
-                        ))}
-                      </div>
-                    ),
-                  ))}
-                </div>
-              </div>
+              <AnnouncementTicker />
             </div>
 
             <div className={styles.utilityRight}>
@@ -500,60 +445,7 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
 
         {/* MOBILE PROMO BAR */}
         <div className={styles.mobileAnnouncement}>
-          <div
-            className={
-              styles.topMarquee
-            }
-            aria-label={
-              t(copy.freeShipping)
-            }
-          >
-            <div
-              className={
-                styles.topMarqueeTrack
-              }
-            >
-              {t([0, 1].map(
-                (group) => (
-                  <div
-                    key={
-                      group
-                    }
-                    className={
-                      styles.topMarqueeGroup
-                    }
-                    aria-hidden={
-                      group === 1
-                    }
-                  >
-                    {t(topTickerMessages.map(
-                      (
-                        message,
-                        index,
-                      ) => (
-                        <span
-                          key={`${group}-${index}-${message}`}
-                          className={
-                            styles.topMarqueeItem
-                          }
-                        >
-                          {t(message)}
-
-                          {t(index <
-                            topTickerMessages.length -
-                              1 && (
-                            <i
-                              aria-hidden="true"
-                            />
-                          ))}
-                        </span>
-                      ),
-                    ))}
-                  </div>
-                ),
-              ))}
-            </div>
-          </div>
+          <AnnouncementTicker />
         </div>
 
         {/* ======================================================
@@ -593,6 +485,7 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
             <button
               type="button"
               className={styles.searchBar}
+              ref={searchTriggerRef}
               onClick={openSearch}
               aria-label={msg("nav.search")}
             >
@@ -696,7 +589,7 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
         {/* ======================================================
             DESKTOP CATEGORY ROW
             ====================================================== */}
-        <nav className={styles.desktopCategories} data-header-row>
+        <nav className={styles.desktopCategories} aria-label={msg("nav.mainCategories")} data-header-row>
           <div className={styles.categoryInner}>
             <div className={styles.categoryMain}>
               {directory.roots.map(category => (
@@ -837,7 +730,7 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
                 {msg("nav.categories")}
               </span>
 
-              <nav className={styles.primaryMenuList}>
+              <nav className={styles.primaryMenuList} aria-label={msg("nav.mainCategories")}>
                 {!directory.roots.length && <CategoryStatus error={directory.error} loading={loadingCategories} retry={retryCategories} />}
                 {t(primaryMobileCategories.map(
                   (item) => (
@@ -868,7 +761,7 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
                 {t(copy.shopBy)}
               </span>
 
-              <nav className={styles.simpleLinks}>
+              <nav className={styles.simpleLinks} aria-label={msg("nav.shopBy")}>
 
                 <Link
                   href="/brands"
@@ -1109,7 +1002,7 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
                     </Link>
                   </div>
 
-                  <nav className={styles.subMenuList}>
+                  <nav className={styles.subMenuList} aria-label={activeMobilePanel.title}>
                     {t(activeMobilePanel.items.map(
                       ([label, href]) => (
                         <Link
