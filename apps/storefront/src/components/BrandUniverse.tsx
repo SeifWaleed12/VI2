@@ -64,7 +64,6 @@ export default function BrandUniverse({ brands }: { brands: string[] }) {
           onMouseDown={(event) => event.preventDefault()}
           onClick={togglePause}
           aria-label={msg(manualPause ? "ticker.resume" : "ticker.pause")}
-          aria-pressed={manualPause}
         >
           {manualPause ? <Play size={13} /> : <Pause size={13} />}
         </button>

@@ -1356,6 +1356,12 @@
   overflow-x: auto;
 }
 
+.announcementTicker[data-browsing="true"] .topMarquee,
+.announcementTicker[data-browsing="true"] .topMarqueeTrack,
+.announcementTicker[data-browsing="true"] .topMarqueeGroup {
+  direction: inherit;
+}
+
 .announcementTicker[data-browsing="true"] [data-ticker-copy="true"] {
   display: none;
 }

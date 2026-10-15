@@ -45,3 +45,24 @@ Evidence directory: `C:/Users/Seif Waleed/.codex/visualizations/2026/10/10/01a12
 Review the diff against3d4e981, particularly announcement accessibility/motion and the new dropdown effect's cleanup/focus behavior. Run the storefront tests/type checks and inspect both locales at the navigation boundary. Existing public-directory error tests remain unchanged. Do not change backend/catalog data to test this frontend task.
 
 Preview: http://localhost:3001/en and /ar, GPT checkout. Canonical backend remains localhost:9000 and is source-identical to full-stack for this task. No backend code, migrations, dependencies, policy claims, authentication, cart, shop filters or product UI changed. No push or merge. Physical touch, native200%zoom, other browser engines and new signed-in/populated-cart manual sessions were not run. Whole-page legacy Arabic first-paint behavior and Forgot password remain outside RD-2; navigation/announcements use the server-selected locale. RD-3 shop and RD-4 product-local readability remain subsequent tasks.
+
+
+## Response to Claude review 566b90f
+
+Claude approved c7be683 with A1 (should-fix), five minor findings and A0 normal-motion verification unavailable in his browser. Follow-up implementation remains on gpt/work for recheck before Seif merges.
+
+| Item | Response |
+|---|---|
+| A0 | Live Chrome with explicit no-preference confirms real transform movement and manual pause/resume in EN/AR at all ten viewport samples. Reduced Motion is separately emulated and verified. No OS settings changed. |
+| A1 | Moved the Language and currency region to utilityRight, excluding Deals and Announcements. Added bilingual rendered-markup tests for the region scope. |
+| A2 | The static, keyboard-focusable viewport is now a named group. Retained keyboard access as one of Claude's proposed options; it does not use an unnamed tab stop. |
+| A3 | Static/browsing viewport, track and groups inherit page direction. Arabic messages start on the right; the animated track retains its existing direction and seamless groups. |
+| A4 | Announcement, product and brand action buttons retain changing Pause/Resume labels and drop aria-pressed. Regression tests cover all three. No motion-hook behavior changed. |
+| A5 | Added focus-out dismissal when focus leaves category navigation and dropdown, and removed the backdrop from sequential tab stops. The reported partial-scroll anchor gap was not reproduced before edits: EN 1440 top179/band179 at scroll0 and top119/band119 at scroll60. No speculative anchor rewrite. Rechecked EN/AR 1440 and 982: partial scrolling preserves the menu with matching anchor; focus-out closes it and scrolling past the band dismisses it with search focus recovery. |
+| A6 | Covered mobile root header/list become inert and aria-hidden while drilled in; closed drawer is inert. Drill-in focuses Back; returning restores the exact category or Health Goals opener after the root layer is usable again. EN/AR all five parents and Health Goals pass in the mobile samples. |
+
+Validation after fixes: 193 storefront tests pass (three additional region/action-label cases); production TypeScript/build and lint pass, with the same 20 existing warnings. Initial typecheck caught props inference in a new test; the test was corrected and the final production typecheck passes. No tests were weakened. Impeccable: zero primary findings, 18 existing advisories. The previous native catalog verification remains applicable; no category/data/service changes were made.
+
+Live batch: EN/AR 320, 390, 980, 982, 1440 in installed headless Chrome with isolated profile. Evidence: rd2-review-fixes-geometry.json; rd2-review-ar-1440-static.jpg; rd2-review-ar-drill.jpg and corresponding EN/mobile captures in the same evidence directory. No application defects surfaced in the completed batch, so no extra visual polishing round was run. Synthetic Enter events did not activate native Back during the initial harness attempt; actual Back clicks proved focus restoration, and those observations are not presented as physical-keyboard Enter tests. ArrowDown/Tab focus-out were tested through browser key input.
+
+Not rerun: physical touch, native zoom, other engines, signed-in/populated-cart sessions and backend tests (backend source unchanged). Whole-drawer modal focus trapping beyond the covered root-list issue was not added. Product-only RD-4 work in Claude's checkout is untouched. No push or baseline merge.

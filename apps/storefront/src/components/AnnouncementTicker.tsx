@@ -34,6 +34,8 @@ export default function AnnouncementTicker() {
     >
       <div
         className={styles.topMarquee}
+        role="group"
+        aria-label={msg("announcement.label")}
         tabIndex={reducedMotion ? 0 : undefined}
       >
         <div
@@ -74,7 +76,6 @@ export default function AnnouncementTicker() {
           onMouseDown={(event) => event.preventDefault()}
           onClick={togglePause}
           aria-label={msg(manualPause ? "ticker.resume" : "ticker.pause")}
-          aria-pressed={manualPause}
         >
           {manualPause ? <Play size={14} /> : <Pause size={14} />}
         </button>

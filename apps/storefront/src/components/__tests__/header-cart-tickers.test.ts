@@ -74,6 +74,8 @@ jest.mock("../Navbar.module.css", () => ({
   account: "account",
   customerName: "customerName",
   desktopCategories: "desktopCategories",
+  utilityStrip: "utilityStrip",
+  utilityRight: "utilityRight",
 }));
 jest.mock("../MobileBottomNav.module.css", () => ({}));
 jest.mock("../TrendingNow.module.css", () => ({}));
@@ -257,17 +259,38 @@ it("announces only one message cycle, preserves duplicates visually and offers p
   expect(primary.match(/Find your daily essentials/g)).toHaveLength(1);
   expect(html.match(/Find your daily essentials/g)).toHaveLength(4);
   expect(html.match(/aria-hidden="true"/g)!.length).toBeGreaterThan(3);
-  expect(html).toContain('aria-label="Pause animation" aria-pressed="false"');
+  expect(html).toContain('aria-label="Pause animation"');
+  expect(html).not.toContain("aria-pressed");
   mockManualPause = true;
   const paused = renderToStaticMarkup(createElement(AnnouncementTicker));
-  expect(paused).toContain('aria-label="Resume animation" aria-pressed="true"');
+  expect(paused).toContain('aria-label="Resume animation"');
+  expect(paused).not.toContain("aria-pressed");
   expect(paused).toContain("animation-play-state:paused");
 });
 it("keeps reduced-motion announcements static and keyboard browsable", () => {
   mockReducedMotion = true;
   const html = renderToStaticMarkup(createElement(AnnouncementTicker));
   expect(html).toContain('data-browsing="true"');
-  expect(html).toContain('tabindex="0"');
+  expect(html).toContain('role="group" aria-label="Announcements" tabindex="0"');
   expect(html).toContain("animation-play-state:paused");
   expect(html).not.toContain("<button");
+});
+
+it.each(["en", "ar"] as const)("names only language/currency preferences, excluding deals and announcements in %s", locale => {
+  mockLocale = locale;
+  const html = renderToStaticMarkup(createElement(Navbar));
+  const preferences = html.match(/<div class="utilityRight"[^>]*>([\s\S]*?)<\/div>/)![1];
+  expect(html).toContain('class="utilityRight" role="region" aria-label="' + message(locale, "nav.preferences") + '"');
+  expect(preferences).toContain(message(locale, locale === "ar" ? "nav.switchEnglish" : "nav.switchArabic"));
+  expect(preferences).not.toContain("/deals");
+  expect(preferences).not.toContain(message(locale, "announcement.essentials"));
+});
+it("uses changing action labels without redundant toggle state on product and brand tickers", () => {
+  mockManualPause = true;
+  const brand = renderToStaticMarkup(createElement(BrandUniverse, { brands: ["Brand"] }));
+  const product = renderToStaticMarkup(createElement(() => TrendingNow({ products: [{ id: "p", slug: "p", name: "P" } as Product] })));
+  for (const html of [brand, product]) {
+    expect(html).toContain('aria-label="Resume animation"');
+    expect(html).not.toContain("aria-pressed");
+  }
 });

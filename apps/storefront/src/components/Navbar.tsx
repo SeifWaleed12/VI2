@@ -50,6 +50,8 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
   const headerRef = useRef<HTMLDivElement>(null);
   const focusMenuOnOpen = useRef(false);
   const searchTriggerRef = useRef<HTMLButtonElement>(null);
+  const mobilePanelBackRef = useRef<HTMLButtonElement>(null);
+  const mobilePanelOpenerRef = useRef<HTMLButtonElement | null>(null);
   async function retryCategories() {
     setLoadingCategories(true);
     try { setDirectory({ roots: await getCategoryTree(language), error: false }); }
@@ -114,6 +116,17 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
 
   const [mobilePanel, setMobilePanel] =
     useState<MobileCatalogKey | null>(null);
+
+  useEffect(() => {
+    if (!menuOpen) {
+      mobilePanelOpenerRef.current = null;
+    } else if (mobilePanel) {
+      mobilePanelBackRef.current?.focus({ preventScroll: true });
+    } else if (mobilePanelOpenerRef.current) {
+      mobilePanelOpenerRef.current.focus({ preventScroll: true });
+      mobilePanelOpenerRef.current = null;
+    }
+  }, [menuOpen, mobilePanel]);
 
   const {
     itemCount,
@@ -365,6 +378,14 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
         ref={headerRef}
         data-no-translate
         className={styles.header}
+        onBlur={event => {
+          const next = event.relatedTarget;
+          const nav = event.currentTarget.querySelector("nav[data-header-row]");
+          const menu = document.getElementById("desktop-category-menu");
+          if (!(next instanceof Node) || (!nav?.contains(next) && !menu?.contains(next))) {
+            setMegaOpen(null);
+          }
+        }}
         onMouseLeave={() =>
           setMegaOpen(null)
         }
@@ -372,7 +393,7 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
         {/* ======================================================
             DESKTOP UTILITY STRIP
             ====================================================== */}
-        <div className={styles.utilityStrip} role="region" aria-label={msg("nav.preferences")}>
+        <div className={styles.utilityStrip}>
           <div className={styles.utilityInner}>
             <div className={styles.utilityLeft}>
               <Link href="/deals">
@@ -402,7 +423,7 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
               <AnnouncementTicker />
             </div>
 
-            <div className={styles.utilityRight}>
+            <div className={styles.utilityRight} role="region" aria-label={msg("nav.preferences")}>
               <Globe2
                 size={15}
                 strokeWidth={1.4}
@@ -669,6 +690,7 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
         }
         onMouseDown={closeMenu}
         aria-hidden={!menuOpen}
+        inert={!menuOpen}
       >
         <aside data-no-translate
           className={
@@ -686,7 +708,7 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
           }
         >
           {/* ROOT MENU HEADER */}
-          <div className={styles.drawerHeader}>
+          <div className={styles.drawerHeader} inert={!!activeMobilePanel} aria-hidden={!!activeMobilePanel}>
             <Link
               href={
                 isAuthenticated
@@ -724,7 +746,7 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
           </div>
 
           {/* ROOT MENU */}
-          <div className={styles.drawerScroll}>
+          <div className={styles.drawerScroll} inert={!!activeMobilePanel} aria-hidden={!!activeMobilePanel}>
             <section className={styles.menuSection}>
               <span className={styles.sectionLabel}>
                 {msg("nav.categories")}
@@ -738,9 +760,10 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
                       key={item.key}
                       type="button"
                       className={styles.primaryMenuButton}
-                      onClick={() =>
-                        setMobilePanel(item.key)
-                      }
+                      onClick={event => {
+                        mobilePanelOpenerRef.current = event.currentTarget;
+                        setMobilePanel(item.key);
+                      }}
                     >
                       <span>
                         {item.label}
@@ -783,9 +806,10 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
                 <button
                   type="button"
                   className={styles.simpleMenuButton}
-                  onClick={() =>
-                    setMobilePanel("health")
-                  }
+                  onClick={event => {
+                    mobilePanelOpenerRef.current = event.currentTarget;
+                    setMobilePanel("health");
+                  }}
                 >
                   <span className={styles.linkWithIcon}>
                     <Sparkles
@@ -959,6 +983,7 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
                   <button
                     type="button"
                     className={styles.backButton}
+                    ref={mobilePanelBackRef}
                     onClick={() =>
                       setMobilePanel(null)
                     }
