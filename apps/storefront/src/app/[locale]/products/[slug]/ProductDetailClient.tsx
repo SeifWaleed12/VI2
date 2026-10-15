@@ -31,7 +31,6 @@ const COPY = {
     currency: "EGP",
     priceUnavailable: "Price unavailable",
     unavailable: "Not available",
-    perServing: "per serving",
     inStock: "In stock",
     lowStock: (left: number) => `Only ${left} left`,
     outOfStock: "Out of stock",
@@ -67,7 +66,6 @@ const COPY = {
     currency: "ج.م",
     priceUnavailable: "السعر غير متاح",
     unavailable: "غير متاح",
-    perServing: "للحصة",
     inStock: "متوفر",
     lowStock: (left: number) => `متبقي ${left} بس`,
     outOfStock: "غير متوفر",
@@ -171,7 +169,6 @@ export default function ProductDetailClient({
   const inStock = selectedVariant ? (selectedVariant.inStock ?? stock > 0) : product.inStock === true;
   const canBuy = priced && inStock;
   const maxQuantity = Math.max(1, Math.min(stock > 0 ? stock : 10, 10));
-  const perServing = priced && product.servings ? price / product.servings : null;
 
   const availability = !inStock
     ? (inventoryKnown === false ? copy.unconfirmed : copy.outOfStock)
@@ -347,9 +344,6 @@ export default function ProductDetailClient({
                   <s className={styles.comparePrice}>{formatPrice(compareAtPrice)} {copy.currency}</s>
                 )}
               </div>
-              {perServing !== null && (
-                <p className={styles.muted}>{formatPrice(perServing)} {copy.currency} {copy.perServing}</p>
-              )}
               <p className={inStock ? styles.stock : styles.stockOut}>
                 <span className={styles.stockDot} aria-hidden="true" />
                 {availability}
