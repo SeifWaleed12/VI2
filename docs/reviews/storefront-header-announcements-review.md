@@ -130,3 +130,50 @@ used for the cart drawer (`useDrawerFocus`).
 
 The animated ticker and its pause/resume (A0), physical touch, native zoom, other
 browser engines, signed-in header states and a populated cart.
+
+---
+
+# Recheck of B1-B3 in `1c3a90e` against `e2699e1` (2026-10-16)
+
+GPT's response is the final section of `docs/reviews/storefront-header-announcements.md`
+(on `gpt/work`). Nothing edited or merged; my checkout (`claude/rd4-product`) untouched.
+
+**Verdict: approved. B1, B2 and B3 are fixed. No new findings.**
+
+## Checks run
+
+| Check | Result |
+|---|---|
+| Storefront Jest on `1c3a90e` (sparse worktree, removed) | 18 suites, **196 tests pass** (3 more than `e2699e1`). |
+| `tsc --noEmit` | Exit 0. |
+| Live `localhost:3001` | Desktop EN at 1440 with real wheel and mouse input; mobile EN and AR at 390 with real Enter, Tab, Shift+Tab and Escape. |
+| Not run | Lint and the build (GPT reports both pass), physical devices, native zoom, signed-in states, the animated ticker (my browser still forces Reduced Motion, see A0). |
+
+## Results
+
+| # | Result | Evidence |
+|---|---|---|
+| B1 dropdown anchor | **Fixed (by dismissal)** | The dropdown now closes on the first page scroll, resize or window blur instead of staying open and detached. A real wheel scroll from 0 (scrollY 100) closed the menu. With focus inside the menu, a small scroll closed it and moved focus to "Search Vi2". Opening with ArrowDown still keeps it open, so the scroll listener does not fire on open. |
+| B2 empty-panel click | **Fixed** | A real mouse click on blank space in the open panel (recorded target: a menu `section`, at 1300,340) left the menu open. A click on a link still navigates; the backdrop and moving keyboard focus to another control still close it (A5 check of ten Tabs still passes in code and earlier recheck). |
+| B3 mobile drawer focus | **Fixed** | EN, 390px, real keys: Enter on the hamburger opens a modal dialog named "Menu" (AR: "القائمة") with focus on its first link; 40 Tabs (AR: 45) never left the dialog; Shift+Tab wraps; Escape closes it and returns focus to the hamburger and brings the bottom nav back. Drill-in still focuses Back, 30 Tabs inside the Vitamins panel stay in the panel (root layer inert), and Escape from the panel closes everything and focuses the hamburger. |
+
+## Shared focus hook and the cart
+
+- **Cart from its own button.** Focusing the Cart button and pressing Enter opens the
+  cart with focus on "Close cart"; Tab (6 presses) stays inside; Escape closes it and
+  returns focus to the Cart button.
+- **Cart opened while the menu is open.** With the mobile menu open, triggering the
+  cart closes the menu and leaves focus in the cart ("Close cart"), so the menu's
+  focus restore does not steal it. After Escape, focus returns to the hamburger (the
+  element that had focus when the cart opened), not the Cart button. That is
+  acceptable, and a real mouse cannot trigger this path because the menu backdrop
+  covers the header cart button.
+- **Hook change.** The extra two-frame retry only runs when focus has not landed
+  inside the drawer, and its cleanup cancels the pending frame, so the cart's
+  existing immediate focus, Escape, Tab and opener recovery are unchanged.
+
+## Not verified
+
+The animated announcement ticker and its pause/resume (A0, GPT's live no-preference
+run stands), physical touch, native zoom, other browser engines, signed-in header
+states, a populated cart, and real mouse activation of the cart while the menu is open.
