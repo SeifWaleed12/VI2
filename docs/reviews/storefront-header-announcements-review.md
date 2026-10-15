@@ -63,3 +63,70 @@ On mobile the drill-in panel sits on top of the main category list (rects overla
 ## Not verified
 
 Physical touch, native zoom, other browser engines, signed-in header states, a populated cart, adding or renaming catalog entries (GPT correctly made no catalog writes), and the offscreen and hidden-tab pause paths (covered only by the shared hook's unit tests).
+
+---
+
+# Recheck of `e2699e1` against `c7be683` (2026-10-16)
+
+GPT's response is the A0-A6 table in `docs/reviews/storefront-header-announcements.md`
+(on `gpt/work`). Nothing edited or merged; my checkout (`claude/rd4-product`) untouched.
+
+**Verdict: approved. A1, A2, A3, A4 and A6 are fixed, A5 is fixed except the
+anchor gap, and A0 is still unverified by me.** Two minor findings remain (B1, B2)
+plus one low-priority note (B3).
+
+## Checks run
+
+| Check | Result |
+|---|---|
+| Storefront Jest on `e2699e1` (sparse worktree, removed) | 18 suites, **193 tests pass** (3 more than before). |
+| `tsc --noEmit` | Exit 0. |
+| Live `localhost:3001` | Desktop EN and AR at 1440; mobile AR at 390 with real keyboard input (Enter, Escape, Tab, ArrowDown through the browser). |
+| Not run | Lint and the build (GPT reports both pass), physical devices, native zoom, signed-in states. |
+
+## Finding by finding
+
+| # | Result | Evidence |
+|---|---|---|
+| A0 | **Still not verified by me** | My browser forces OS Reduced Motion (`matchMedia` returns true), so the pause button never renders and I cannot see the moving loop. GPT reports a live no-preference run showing transform movement and pause/resume in EN and AR; I could not reproduce that. Please have someone with Reduced Motion off take one look. |
+| A1 | **Fixed** | The only region on the page is "اللغة والعملة" (Language and currency) and it contains just the language button. The Deals link and the announcements are outside it. Rendered-markup tests cover the scope. |
+| A2 | **Fixed (with a small remainder)** | The Reduced Motion viewport is now `role="group"` with the label "إعلانات المتجر"/"Announcements". It is still a tab stop even when nothing overflows, but it has a name now. It repeats the name of its enclosing section (same label twice), which is redundant but harmless. |
+| A3 | **Fixed** | In Arabic static view the messages now run right to left: first message at x 871, then 621, then 469. The animated track keeps its seamless direction. |
+| A4 | **Fixed in code, not seen live** | `aria-pressed` is removed from the announcement, product and brand pause buttons; only the Pause/Resume label changes (diff and tests). The button itself is not rendered in my browser (A0). |
+| A5 | **Mostly fixed** | Focus-out now closes the menu: ArrowDown opened Vitamins and moved focus to "Shop all"; ten Tabs later focus was on the hero's "Show slide 2" and the menu had closed. The backdrop is no longer a tab stop. **The anchor gap is still there** (B1). |
+| A6 | **Fixed** | Real keyboard in AR at 390px: Enter on a category moves focus to "رجوع" (Back); the root header and list are `inert` and `aria-hidden` while drilled in; the sub-panel has its own "إغلاق القائمة" (Close menu); Enter on Back returns focus to the exact opener ("التغذية الرياضية"), and the root list is usable again. The Health Goals drill-in and Back behave the same way. |
+
+## Remaining findings
+
+### B1 (minor): the open dropdown still does not follow its trigger on a small scroll
+
+GPT could not reproduce this because it opened the menu already scrolled. Reproduction:
+open a category at scroll 0 (menu top 178 = band bottom 178), then scroll to 60px.
+The menu stays at top 178 while the band bottom moves to 118, a 60px gap (the same
+until dismissal at about 105px of scroll); scrolling back to 0 realigns it. It is a
+fixed-position panel that keeps its open-time position. Smallest fix: update the
+panel top from the band's bottom in the existing scroll handler (or close at the
+first scroll).
+
+### B2 (minor): a click on empty space inside the menu closes it
+
+The new focus-out rule closes the menu whenever the new focus target is not another
+element in the nav or menu. A click on non-focusable space in the panel moves focus
+to nothing (`relatedTarget` null), so the menu closes. I confirmed the handler by
+dispatching a `focusout` with no related target (a simulation, not a mouse click).
+Fix: ignore focusout when the pointer is inside the menu (for example check
+`document.hasFocus()` and pointer capture, or treat null `relatedTarget` as a close
+only for keyboard focus loss).
+
+### B3 (low, existing): drawer focus on open and close
+
+Opening the mobile menu with Enter leaves focus on the hamburger button outside the
+drawer, and after Escape closes the drawer focus stays on the (now inert) Health
+Goals button instead of returning to the hamburger. GPT states that whole-drawer
+focus trapping was deliberately not added. Worth a follow-up with the same pattern
+used for the cart drawer (`useDrawerFocus`).
+
+## Not verified
+
+The animated ticker and its pause/resume (A0), physical touch, native zoom, other
+browser engines, signed-in header states and a populated cart.

@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import {
   useEffect,
+  useCallback,
   useState,
   useRef,
 } from "react";
@@ -33,6 +34,7 @@ import DesktopMegaMenu, { type MegaMenuKey } from "@/components/DesktopMegaMenu"
 import AccountDropdown from "@/components/AccountDropdown";
 import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
+import { useDrawerFocus } from "@/hooks/use-drawer-focus";
 
 import { type CategoryDirectory, categoryHref, flattenCategories } from "@/lib/category-tree";
 import { getCategoryTree } from "@/lib/medusa/services/categories";
@@ -48,6 +50,7 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
   const [directory, setDirectory] = useState(initialDirectory);
   const [loadingCategories, setLoadingCategories] = useState(false);
   const headerRef = useRef<HTMLDivElement>(null);
+  const drawerRef = useRef<HTMLElement>(null);
   const focusMenuOnOpen = useRef(false);
   const searchTriggerRef = useRef<HTMLButtonElement>(null);
   const mobilePanelBackRef = useRef<HTMLButtonElement>(null);
@@ -87,22 +90,19 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
 
   useEffect(() => {
     if (!megaOpen) return;
-    const closeIfScrolledAway = () => {
-      const header = headerRef.current;
-      const band = header?.querySelector<HTMLElement>("nav[data-header-row]");
-      const pinned = header?.querySelector<HTMLElement>("header[data-header-row]");
-      if (!band || !pinned || band.getBoundingClientRect().bottom > pinned.getBoundingClientRect().bottom) return;
-      if (document.getElementById("desktop-category-menu")?.contains(document.activeElement)) {
+    const dismiss = () => {
+      if (document.hasFocus() && document.getElementById("desktop-category-menu")?.contains(document.activeElement)) {
         searchTriggerRef.current?.focus({ preventScroll: true });
       }
       setMegaOpen(null);
     };
-    window.addEventListener("scroll", closeIfScrolledAway, { passive: true });
-    window.addEventListener("resize", closeIfScrolledAway);
-    closeIfScrolledAway();
+    window.addEventListener("scroll", dismiss, { passive: true });
+    window.addEventListener("resize", dismiss);
+    window.addEventListener("blur", dismiss);
     return () => {
-      window.removeEventListener("scroll", closeIfScrolledAway);
-      window.removeEventListener("resize", closeIfScrolledAway);
+      window.removeEventListener("scroll", dismiss);
+      window.removeEventListener("resize", dismiss);
+      window.removeEventListener("blur", dismiss);
     };
   }, [megaOpen]);
 
@@ -116,6 +116,12 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
 
   const [mobilePanel, setMobilePanel] =
     useState<MobileCatalogKey | null>(null);
+
+  const closeMenu = useCallback(() => {
+    setMenuOpen(false);
+    setMobilePanel(null);
+  }, [setMenuOpen, setMobilePanel]);
+  useDrawerFocus(drawerRef, menuOpen, closeMenu);
 
   useEffect(() => {
     if (!menuOpen) {
@@ -219,11 +225,6 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
       focusMenuOnOpen.current = false;
     }
   }, [megaOpen]);
-
-  function closeMenu() {
-    setMenuOpen(false);
-    setMobilePanel(null);
-  }
 
   function openSearch() {
     setMenuOpen(false);
@@ -380,6 +381,8 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
         className={styles.header}
         onBlur={event => {
           const next = event.relatedTarget;
+          // Empty panel space can blur a link without moving keyboard focus outside.
+          if (next === null) return;
           const nav = event.currentTarget.querySelector("nav[data-header-row]");
           const menu = document.getElementById("desktop-category-menu");
           if (!(next instanceof Node) || (!nav?.contains(next) && !menu?.contains(next))) {
@@ -693,6 +696,11 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
         inert={!menuOpen}
       >
         <aside data-no-translate
+          ref={drawerRef}
+          role="dialog"
+          aria-modal={menuOpen ? true : undefined}
+          aria-label={msg("nav.menu")}
+          tabIndex={-1}
           className={
             menuOpen
               ? `${styles.drawer} ${styles.drawerOpen}`

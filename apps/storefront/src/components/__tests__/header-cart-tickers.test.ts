@@ -294,3 +294,14 @@ it("uses changing action labels without redundant toggle state on product and br
     expect(html).not.toContain("aria-pressed");
   }
 });
+
+it.each(["en", "ar"] as const)("names the mobile drawer as a dialog and keeps the closed layer inert in %s", locale => {
+  mockLocale = locale;
+  const html = renderToStaticMarkup(createElement(Navbar));
+  const dialog = html.match(/<aside[^>]*>/)![0];
+  expect(dialog).toContain('role="dialog"');
+  expect(dialog).toContain('aria-label="' + message(locale, "nav.menu") + '"');
+  expect(dialog).toContain('tabindex="-1"');
+  expect(dialog).not.toContain('aria-modal="true"');
+  expect(html).toMatch(/aria-hidden="true" inert=""[^>]*><aside/);
+});
