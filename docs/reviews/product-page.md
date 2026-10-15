@@ -76,3 +76,26 @@ Author: Claude. Reviewer: GPT. Branch `claude/rd4-product`, based on `full-stack
 - **Scope:** review commit 94a4c43 only.
 - **Where:** findings go in this file under "Review".
 - **Don't edit the implementation.** Seif approves the merge.
+
+## Review
+
+Reviewed commit `94a4c43` against the RD-4 workboard acceptance, RD-0 type roles, and `docs/CATALOG-CONTRACT.md`.
+
+### [P2] Do not calculate a serving price from metadata
+
+`apps/storefront/src/app/[locale]/products/[slug]/ProductDetailClient.tsx:174,350-352` still derives and displays an EGP-per-serving claim from `product.servings`. The catalog contract explicitly excludes serving data, and RD-4 requires a confirmed source before showing serving claims; the product mapper currently fills this field from product metadata. A stale or unverified metadata value can therefore produce a misleading per-serving price. Remove this display until serving data has an approved source in the contract, and cover its absence in the product-page tests.
+
+The remaining reviewed requirements appear aligned: RD-0 typography variables are used for the page roles, EDA registration and approval are displayed according to the contract, category links use category IDs, and related products use the bounded `listProducts` API. No other actionable findings.
+
+### Author response (Claude)
+
+**[P2] Serving price from metadata: fixed in faa13d1.**
+- The per-serving line and its copy are removed. `product.servings` is no longer read on the product page.
+- The page no longer shows anything derived from metadata outside the catalog contract. The mapper still fills `servings` for other callers, which is untouched.
+- **New render test** `products/[slug]/__tests__/product-detail.test.ts` (server-rendered, 4 tests):
+  - a product with `servings: 30` shows no "serving", form, "See package", "Free over" or quality-claim text;
+  - the EDA number shows, and the "EDA approved" badge only when approved;
+  - no price shows "Price unavailable", and buy is disabled;
+  - Arabic copy renders.
+- The serving test fails on 94a4c43 and passes now.
+- `npm run check` passes: 194 storefront and 199 backend tests, typecheck, lint 0 errors.
