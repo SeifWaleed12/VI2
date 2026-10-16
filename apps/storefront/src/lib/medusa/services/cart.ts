@@ -101,14 +101,19 @@ export function mapMedusaCart(c: any): Cart {
   };
 }
 
+// null only when Medusa says the cart is gone (404) or belongs to another
+// account's login (403). Any other failure throws, so a network blip never
+// makes the caller replace the shopper's cart with an empty one.
 export async function getCart(cartId: string): Promise<Cart | null> {
   try {
     const { cart } = await medusa.store.cart.retrieve(cartId, {
       fields: CART_FIELDS,
     });
     return mapMedusaCart(cart);
-  } catch {
-    return null;
+  } catch (error) {
+    const status = (error as { status?: unknown } | null)?.status;
+    if (status === 404 || status === 403) return null;
+    throw error;
   }
 }
 
