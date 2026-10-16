@@ -44,6 +44,23 @@ export function selectRegion(regions: StoreRegion[], configuredId?: string): Sto
   return region;
 }
 
+// Every product and cart call needs the region first; share one lookup between them.
+// shortcut: a region added in Medusa shows up after the TTL, not at once; an empty
+// answer (Medusa down) is never kept, so the next call asks again.
+const REGION_TTL_MS = 60_000;
+let cachedRegions: { at: number; regions: Promise<StoreRegion[]> } | undefined;
+
+function sharedRegions(): Promise<StoreRegion[]> {
+  if (!cachedRegions || Date.now() - cachedRegions.at > REGION_TTL_MS) {
+    const regions = getRegions();
+    cachedRegions = { at: Date.now(), regions };
+    void regions.then((list) => {
+      if (!list.length && cachedRegions?.regions === regions) cachedRegions = undefined;
+    });
+  }
+  return cachedRegions.regions;
+}
+
 export async function resolveRegionId(id?: string): Promise<string> {
-  return selectRegion(await getRegions(), id || process.env.NEXT_PUBLIC_MEDUSA_REGION_ID).id;
+  return selectRegion(await sharedRegions(), id || process.env.NEXT_PUBLIC_MEDUSA_REGION_ID).id;
 }

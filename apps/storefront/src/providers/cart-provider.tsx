@@ -6,6 +6,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -113,57 +114,45 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  // One load-or-create at a time. React runs effects twice in development, and
+  // an add can start before the first load ends; without this each caller
+  // creates its own cart and all but one are orphaned.
+  const pendingCart = useRef<Promise<Cart> | null>(null);
+  const loadOrCreateCart = useCallback((): Promise<Cart> => {
+    pendingCart.current ??= (async () => {
+      let storedId: string | null = null;
+      try {
+        storedId = window.localStorage.getItem(CART_ID_KEY);
+      } catch {}
+      // getCart throws on outages, so only a gone or foreign cart is replaced.
+      const existing = storedId ? await getCart(storedId) : null;
+      return existing ?? (await createCart(regionId));
+    })().finally(() => {
+      pendingCart.current = null;
+    });
+    return pendingCart.current;
+  }, [regionId]);
+
   // Ensure an active cart exists in Medusa associated with the region
   const getOrCreateCart = useCallback(async (): Promise<Cart> => {
     if (cart) return cart;
-
-    let existingId: string | null = null;
-    if (typeof window !== "undefined") {
-      existingId = window.localStorage.getItem(CART_ID_KEY);
-    }
-
-    if (existingId) {
-      const existingCart = await getCart(existingId);
-      if (existingCart) {
-        syncFromMedusaCart(existingCart);
-        return existingCart;
-      }
-    }
-
-    // Create fresh cart in Medusa associated with regionId
-    const newCart = await createCart(regionId);
-    syncFromMedusaCart(newCart);
-    return newCart;
-  }, [cart, regionId, syncFromMedusaCart]);
+    const active = await loadOrCreateCart();
+    syncFromMedusaCart(active);
+    return active;
+  }, [cart, loadOrCreateCart, syncFromMedusaCart]);
 
   // Initial load
   const refreshCart = useCallback(async () => {
     setLoading(true);
     setMutationError(null);
     try {
-      let storedId: string | null = null;
-      if (typeof window !== "undefined") {
-        storedId = window.localStorage.getItem(CART_ID_KEY);
-      }
-
-      if (storedId) {
-        const existing = await getCart(storedId);
-        if (existing) {
-          syncFromMedusaCart(existing);
-          setLoading(false);
-          return;
-        }
-      }
-
-      // If no valid stored cart, create one with the current region
-      const fresh = await createCart(regionId);
-      syncFromMedusaCart(fresh);
+      syncFromMedusaCart(await loadOrCreateCart());
     } catch (err) {
       console.error("CartProvider initialization error:", err);
     } finally {
       setLoading(false);
     }
-  }, [regionId, syncFromMedusaCart]);
+  }, [loadOrCreateCart, syncFromMedusaCart]);
 
   useEffect(() => {
     refreshCart();

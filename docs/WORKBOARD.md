@@ -22,6 +22,35 @@ approval before any change.
 |---|---|---|---|
 | Bring latest reviewed RD-0 and menu fixes into reviewed-baseline | GPT, authorized by Seif | complete locally | full-stack fast-forwarded from a68cbd1 to approved candidate 43a7b97. Includes RD-0, RD-0-NAV, RD-NAV-SIMPLE and RD-REVIEW-FIX; approved RD-1 retained. Backend source is unchanged from a68cbd1. Claude approval 84f3573 is copied into the review artifact. No push, database changes or service restart. Remaining manual checks: signed-in/populated-cart states and native zoom. |
 
+## Cart and region hardening (requested by Seif, 2026-10-16)
+
+Seif asked Claude to audit the cart and fix what the audit found. This includes the "Remove invented fallback delivery options" follow-up that was listed for GPT. Seif reassigned it to Claude in this request. GPT: please don't start it.
+
+| ID | Task | Author | Reviewer | Status | Notes |
+|---|---|---|---|---|---|
+| CART-1 | Shared region lookup | Claude | GPT | done, awaiting review | `resolveRegionId` (`apps/storefront/src/lib/medusa/services/regions.ts`) now shares one `GET /store/regions` between concurrent product/cart calls and keeps it 60 s. An empty answer (Medusa down) is not kept. `RegionProvider` still calls `getRegions` directly. Test: `services/__tests__/regions.test.ts`. |
+| CART-2 | A Medusa outage no longer replaces the shopper's cart | Claude | GPT | done, awaiting review | `getCart` returned `null` for every error, so `CartProvider` created a new empty cart and overwrote the saved id on any network blip. Now `null` is returned only for 404 (gone) or 403 (belongs to another account's login); other failures throw and the saved id is kept. `removeCartItem` keeps its existing "failed to retrieve" error. Tests: `services/__tests__/cart-shipping.test.ts`, `providers/__tests__/cart-load.test.ts`. |
+| CART-3 | One cart per browser, not two | Claude | GPT | done, awaiting review | `CartProvider` loaded or created the cart from both `refreshCart` and `getOrCreateCart` with no guard. React's double effect in dev, or an Add before the first load ended, sent two `POST /store/carts` and orphaned one. Both now share one in-flight promise (`loadOrCreateCart`, `useRef`). Test: `providers/__tests__/cart-load.test.ts`. |
+| CART-4 | Remove invented fallback delivery options | Claude | GPT | done, awaiting review | `getShippingOptions` no longer invents "Standard 85 / Express 140" options with env or fake IDs. Only Medusa's options are shown, and failures throw. Checkout shows "Loading delivery options…", or "Delivery options could not be loaded. Try again" with a retry button. Ordering still refuses to continue without an option (existing check). `MEDUSA_SHIPPING_STANDARD_ID`/`_EXPRESS_ID` were removed from `apps/storefront/.env.template`. Local `.env.local` still has them; they are now unused. |
+| CART-5 | Rate-limit `POST /store/carts` | — | — | blocked, waiting on Seif | Seif decided 2026-10-16: not built now. Guest cart creation has no account, so the limit must count per visitor IP. Behind Cloudflare/Coolify every visitor shares the proxy's IP unless Medusa trusts the proxy's client-IP header (no trust-proxy setting exists today). Needs the deployment/proxy decision first, then a policy (suggested 30 carts / 15 min per IP, reusing `attemptLimiterFrom`). |
+| CART-6 | Clean up abandoned guest carts | — | — | blocked, waiting on Seif | Seif decided 2026-10-16: open decision, no deletion code. Needs a retention period from Seif (for example 30 days untouched, no account, not completed) before a scheduled job is built. |
+
+Branch: `claude/work`, after merging `full-stack` into it (RD-4 is not included; it stays on `claude/rd4-product`). Checks on that branch (2026-10-16): `npm run check` passes. 197 storefront tests (11 new), 203 backend tests, typecheck, lint 0 errors / 21 warnings (all existing). Not verified in a running browser. The preview port 3002 is not in `STORE_CORS`, so browser cart calls fail there. Use port 3001 or add 3002 to `STORE_CORS`/`AUTH_CORS` in `apps/backend/.env`.
+
+Review focus for GPT:
+- `loadOrCreateCart` resets the shared promise in `finally`, so a failed load can be retried.
+- A 403 cart is treated as "start a new cart", the same as the old behavior for that case.
+- Checkout's delivery card when options are empty or loading.
+
+Also added `docs/API-REFERENCE.md`, a documentation-only inventory of every HTTP request in the project.
+
+Known audit findings not fixed (no owner decision yet):
+- A signed-in shopper's cart stays a guest cart until checkout (`assignOrderOwner`, documented shortcut).
+- A guest cart id in localStorage gives read access to that cart's email and address (Medusa default).
+- Rapid quantity clicks are not queued.
+- The optimistic add matches on product, not variant.
+- Missing postal code defaults to `00000`.
+
 ## Storefront redesign delivery (released by Seif, 2026-10-13)
 
 Seif asked to start the redesign plan, divide tasks between GPT and Claude, and record ownership here. This entry authorizes the scoped repair sequence; it does not claim implementation has started in Claude's chat. Initial shared baseline: full-stack f63599e. Existing cart-access work is finished and consolidated.
@@ -188,7 +217,7 @@ The initial update prepared tasks only. Seif authorized SF 1 on 2026-10-09; othe
 | Storefront: show the EDA number and an "EDA approved" badge on the product page | GPT | open | Size S. Backend done in Core 2: request `eda_registration.registration_number,eda_registration.is_approved` in the store product fields (`apps/storefront/src/lib/medusa/services/products.ts`). Show the badge only when `is_approved` is true; show nothing when a product has no registration. Owner decision 2026-10-09. Needs Core 2 merged, and step 1 of the database update above on the database the storefront uses. |
 | Storefront: allow the R2 image host in `next/image` | GPT | open | Size S. Needs Core 3. `apps/storefront/next.config.ts` `images.remotePatterns` must allow the bucket's public hostname (the backend's `S3_FILE_URL`, an r2.dev address in dev, a custom domain in production), read from an env var the way `NEXT_PUBLIC_MEDUSA_BACKEND_URL` is today. Without it product images uploaded after Core 3 do not render. |
 | Storefront: readable category addresses (`/[locale]/shop/<handle>`) | GPT | open | Size S. Seif (2026-10-13). Today choosing a category opens `/en/shop?category_id=pcat_...`: bad for search ranking, unreadable when shared, and every link breaks if the category is recreated (for example when the real catalog loads in Core 4). Use the category's Medusa `handle` (e.g. `/en/shop/protein`, same English handle for `/ar/`); `getCategoryByHandle` already exists in `lib/medusa/services/categories.ts`. Menus and category links point to the new address; old `?category_id=` links redirect permanently (308) to it; unknown handle shows the 404 page. Filters and sorting stay query parameters (`?brand=...&sort=...`). |
-| Storefront: remove invented fallback delivery options | GPT | open | Size S. `apps/storefront/src/lib/medusa/services/shipping.ts` shows hard-coded "Standard 85 EGP / Express 140 EGP" with env or fake IDs when the backend call fails or returns nothing. Those prices are invented and the IDs cannot be ordered. Show an error and let the customer retry instead. Found during Core 1. |
+| Storefront: remove invented fallback delivery options | Claude (reassigned by Seif 2026-10-16) | done as CART-4 (see "Cart and region hardening"), awaiting review | Size S. `apps/storefront/src/lib/medusa/services/shipping.ts` shows hard-coded "Standard 85 EGP / Express 140 EGP" with env or fake IDs when the backend call fails or returns nothing. Those prices are invented and the IDs cannot be ordered. Show an error and let the customer retry instead. Found during Core 1. |
 | Core 4. Load the real supplement catalog (products, variants, SKUs, barcodes, images) | — | blocked | Size M. Blocked on a data source: an Odoo export once Odoo access is known, or a CSV from Seif. Depends on Core 1 (EGP prices) and Core 2 (attributes). |
 | Remaining storefront lint warnings | — | open | Low priority; style only. |
 | Split oversized storefront components (for example `ProductDetailClient.tsx`, `CheckoutClient.tsx`) | — | open | Matches the clean code goal, but is a refactor. Needs Seif's approval before starting. |
@@ -287,6 +316,6 @@ Cart access, checkout tests, Egypt setup and EDA backend are included in this co
 | R2 file provider (Core 3) | Claude / Seif | approved; waiting on bucket and live check | e41dbf7 approved in `docs/reviews/r2-storage.md`, kept out of `full-stack` until the bucket exists. The order-export block from the same review (8ad7860) is in `full-stack` as 09ab9cb (2026-10-13), since the local static folder is public too; admin-access 18/18 passed there. |
 | Readable category addresses /[locale]/shop/<handle> | GPT | open | Seif requested 2026-10-13. Existing ID links remain for this release. |
 | EDA registration display on product pages | GPT | open | Backend now consolidated. Show only the two owner-approved fields. |
-| Remove invented fallback delivery options | GPT | open | Preserve real backend prices; show retry on failure. |
+| Remove invented fallback delivery options | Claude (reassigned by Seif 2026-10-16) | done as CART-4, awaiting review | Preserve real backend prices; show retry on failure. |
 | R2 image hostname in next/image | GPT | blocked on R2 | Use the configured public hostname after Core 3. |
 | Shop, product, footer, Arabic typography and navigation design repairs | GPT / Claude | planning | Preserve agreed core filters; bilingual business/legal drafts require owner review. No redesign in this consolidation. |

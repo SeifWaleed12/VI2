@@ -12,6 +12,7 @@ import {
   Truck,
 } from "lucide-react";
 import {
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -144,17 +145,25 @@ export default function CheckoutClient() {
   const [promoMsg, setPromoMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [promoLoading, setPromoLoading] = useState(false);
 
-  useEffect(() => {
-    if (!cartId) return;
-    getShippingOptions(cartId)
+  const [shippingLoaded, setShippingLoaded] = useState(false);
+
+  const loadShippingOptions = useCallback((id: string) => {
+    setShippingLoaded(false);
+    getShippingOptions(id)
       .then((opts) => {
         setShippingOptions(opts);
         if (opts.length > 0) {
           setSelectedShippingOptionId((prev) => prev || opts[0].id);
         }
       })
-      .catch(() => {});
-  }, [cartId]);
+      // An outage leaves no options; the order step then refuses to continue.
+      .catch(() => {})
+      .finally(() => setShippingLoaded(true));
+  }, []);
+
+  useEffect(() => {
+    if (cartId) loadShippingOptions(cartId);
+  }, [cartId, loadShippingOptions]);
 
   const [recovering, setRecovering] = useState(false);
   const buyNowSlug =
@@ -1336,20 +1345,22 @@ export default function CheckoutClient() {
                           ))}
                         </div>
                       ) : (
-                        <>
-                          <strong>
-                            Standard
-                            Delivery
-                          </strong>
-
-                          <p>
-                            {delivery === 0
-                              ? "Free delivery"
-                              : `${formatPrice(delivery)} EGP`}
-                            <br />
-                            Across Egypt
-                          </p>
-                        </>
+                        <p role="status">
+                          {shippingLoaded ? (
+                            <>
+                              Delivery options could not be loaded.{" "}
+                              <button
+                                type="button"
+                                onClick={() => cartId && loadShippingOptions(cartId)}
+                                style={{ textDecoration: "underline", fontWeight: 600 }}
+                              >
+                                Try again
+                              </button>
+                            </>
+                          ) : (
+                            "Loading delivery options…"
+                          )}
+                        </p>
                       )}
                     </div>
 
