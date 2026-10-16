@@ -36,6 +36,7 @@ import type { ShippingOption } from "@/types/shipping";
 import type { Product } from "@/types/product";
 
 import styles from "./Checkout.module.css";
+import { deliveryStatus, type ShippingLoad } from "./delivery-status";
 
 type CheckoutItem = {
   product: Product;
@@ -137,6 +138,8 @@ export default function CheckoutClient() {
     promotions,
     applyPromotion,
     removePromotion,
+    loading: cartLoading,
+    refreshCart,
   } = useCart();
 
   const [shippingOptions, setShippingOptions] = useState<ShippingOption[]>([]);
@@ -145,21 +148,25 @@ export default function CheckoutClient() {
   const [promoMsg, setPromoMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [promoLoading, setPromoLoading] = useState(false);
 
-  const [shippingLoaded, setShippingLoaded] = useState(false);
+  const [shippingLoad, setShippingLoad] = useState<ShippingLoad>("loading");
 
   const loadShippingOptions = useCallback((id: string) => {
-    setShippingLoaded(false);
+    setShippingLoad("loading");
     getShippingOptions(id)
       .then((opts) => {
         setShippingOptions(opts);
         if (opts.length > 0) {
           setSelectedShippingOptionId((prev) => prev || opts[0].id);
         }
+        setShippingLoad("loaded");
       })
       // An outage leaves no options; the order step then refuses to continue.
-      .catch(() => {})
-      .finally(() => setShippingLoaded(true));
+      .catch(() => {
+        setShippingOptions([]);
+        setShippingLoad("failed");
+      });
   }, []);
+  const deliveryCard = deliveryStatus(cartId, cartLoading, shippingLoad, shippingOptions.length);
 
   useEffect(() => {
     if (cartId) loadShippingOptions(cartId);
@@ -1314,7 +1321,7 @@ export default function CheckoutClient() {
                         DELIVERY OPTION
                       </span>
 
-                      {shippingOptions.length > 0 ? (
+                      {deliveryCard === "ready" ? (
                         <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginTop: "8px" }}>
                           {shippingOptions.map((opt) => (
                             <label
@@ -1346,19 +1353,19 @@ export default function CheckoutClient() {
                         </div>
                       ) : (
                         <p role="status">
-                          {shippingLoaded ? (
+                          {deliveryCard === "loading" && "Loading delivery options…"}
+                          {deliveryCard === "empty" && "No delivery options are available for this order right now."}
+                          {(deliveryCard === "failed" || deliveryCard === "no-cart") && (
                             <>
-                              Delivery options could not be loaded.{" "}
+                              {deliveryCard === "failed" ? "Delivery options could not be loaded." : "Your cart could not be loaded."}{" "}
                               <button
                                 type="button"
-                                onClick={() => cartId && loadShippingOptions(cartId)}
+                                onClick={() => (deliveryCard === "failed" && cartId ? loadShippingOptions(cartId) : void refreshCart())}
                                 style={{ textDecoration: "underline", fontWeight: 600 }}
                               >
                                 Try again
                               </button>
                             </>
-                          ) : (
-                            "Loading delivery options…"
                           )}
                         </p>
                       )}
