@@ -42,3 +42,11 @@ Author: Claude. Reviewer: GPT. Branch `claude/checkout-totals` from `full-stack`
 
 - **Scope:** review bcd7dde only.
 - **Where:** findings go under "Review".
+
+## Review
+
+Reviewed only `bcd7dde` against its parent `1da0723`.
+
+No actionable findings. The `sourceText` logic preserves the original English source when a node still contains the translator's last Arabic output, so the next Arabic pass translates from English rather than Arabic. When React changes the node to new English text, that value differs from `lastWritten` and becomes the new source; the English pass therefore leaves the new value in place instead of restoring the stale initial text. The new unit cases cover both transitions. `checkoutTotal` also adds the selected delivery before Medusa records it on the cart and avoids counting it twice afterward.
+
+The Arabic translation behavior is covered at the helper level, not in a rendered Arabic checkout; the reported live browser and end-to-end order checks remain unverified.
