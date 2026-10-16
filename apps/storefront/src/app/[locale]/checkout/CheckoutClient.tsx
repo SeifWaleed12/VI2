@@ -37,6 +37,7 @@ import type { Product } from "@/types/product";
 
 import styles from "./Checkout.module.css";
 import { deliveryStatus, type ShippingLoad } from "./delivery-status";
+import { checkoutTotal } from "./checkout-total";
 
 type CheckoutItem = {
   product: Product;
@@ -258,10 +259,7 @@ export default function CheckoutClient() {
 
   const discountTotal = cartDiscountTotal;
 
-  const total = useMemo(() => {
-    if (cartTotal > 0) return cartTotal;
-    return Math.max(0, subtotal + delivery - discountTotal);
-  }, [cartTotal, subtotal, delivery, discountTotal]);
+  const total = checkoutTotal(cartTotal, cartShippingTotal, subtotal, discountTotal, delivery);
 
   const itemCount =
     checkoutItems.reduce(

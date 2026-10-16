@@ -951,6 +951,14 @@ function translate<T>(value: T, language: Language): T {
 }
 
 const originalText = new WeakMap<Text, string>();
+const writtenText = new WeakMap<Text, string>();
+
+// The text a node is translated from. React may replace a node's text after it
+// was first seen (a price once the cart loads); text other than what was last
+// written here is that new source, not something to overwrite.
+export function sourceText(current: string, lastWritten: string | undefined, original: string | undefined) {
+  return original === undefined || current !== lastWritten ? current : original;
+}
 
 function shouldSkipDomNode(node: Node) {
   const parent = node.parentElement;
@@ -979,17 +987,11 @@ function translateDomText(root: ParentNode, language: Language) {
       continue;
     }
 
-    if (!originalText.has(node)) {
-      originalText.set(node, node.nodeValue ?? "");
-    }
-
-    const original = originalText.get(node) ?? "";
-
-    if (language === "ar") {
-      node.nodeValue = translateString(original);
-    } else {
-      node.nodeValue = original;
-    }
+    const original = sourceText(node.nodeValue ?? "", writtenText.get(node), originalText.get(node));
+    originalText.set(node, original);
+    const next = language === "ar" ? translateString(original) : original;
+    if (node.nodeValue !== next) node.nodeValue = next;
+    writtenText.set(node, next);
   }
 }
 
