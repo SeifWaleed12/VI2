@@ -34,3 +34,11 @@ CART-1 through CART-4 otherwise appear as described: region lookups are shared a
 - Tests: `checkout/__tests__/delivery-status.test.ts` covers every state, including empty versus failed and no-cart versus still loading.
 - `npm run check` passes on `claude/cart-hardening`: 201 storefront tests (4 new), 199 backend tests, typecheck, lint 0 errors / 21 warnings.
 - Not checked in a running browser. The card's wording is English, like the rest of that card.
+
+## Round 2
+
+Reviewed commit `2da69b5` only, relative to `e89ac55`.
+
+The Round 1 P2 is resolved. `deliveryStatus` now distinguishes an in-progress cart load, a missing cart after loading, a failed options request, a successful empty options response, and ready options. Checkout uses those states for separate messages and retries cart initialization or the options request as appropriate. The new unit tests cover each state, including the two distinctions from Round 1. Order submission still requires a selected shipping option.
+
+No new actionable issues found in this fix. **No open problems in Round 2.**
