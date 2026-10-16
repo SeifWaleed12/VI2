@@ -1,1552 +1,418 @@
 "use client";
-import { LegacyTranslations } from "@/context/LanguageContext";
-import { useLocaleRouter } from "@/hooks/use-locale-router";
-
-import Link from "@/components/LocaleLink";
 
 import {
   BadgeCheck,
   Check,
-  CheckCircle2,
-  ChevronDown,
   ChevronRight,
-  Copy,
-  FileCheck2,
-  FlaskConical,
-  Heart,
-  Leaf,
   Minus,
-  PackageCheck,
   Plus,
   Share2,
-  ShieldCheck,
   ShoppingBag,
-  Star,
   Truck,
 } from "lucide-react";
-import {
-  useMemo,
-  useState,
-} from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
-import ProductSocialProof from "@/components/ProductSocialProof";
-import ProductValueOffer from "@/components/ProductValueOffer";
+import Link from "@/components/LocaleLink";
 import VariantSelector from "@/components/VariantSelector";
 import { useCart } from "@/context/CartContext";
-import {
-  getProductForm,
-  getProductHealthGoals,
-} from "@/lib/catalogMeta";
+import { useLanguage } from "@/context/LanguageContext";
+import { useLocaleRouter } from "@/hooks/use-locale-router";
 import type { Product, ProductOption, ProductVariant } from "@/types/product";
 
 import styles from "./ProductDetail.module.css";
 
-function formatPrice(
-  value: number,
-) {
-  return new Intl.NumberFormat(
-    "en-EG",
-    {
-      maximumFractionDigits: 2,
-    },
-  ).format(value);
-}
+// Product-page copy lives here so the shared dictionary stays with its owner.
+const COPY = {
+  en: {
+    breadcrumb: "Breadcrumb",
+    home: "Home",
+    shop: "Shop",
+    by: "By",
+    currency: "EGP",
+    priceUnavailable: "Price unavailable",
+    unavailable: "Not available",
+    inStock: "In stock",
+    lowStock: (left: number) => `Only ${left} left`,
+    outOfStock: "Out of stock",
+    unconfirmed: "Availability unconfirmed",
+    quantity: "Quantity",
+    decrease: "Decrease quantity",
+    increase: "Increase quantity",
+    addToCart: "Add to cart",
+    adding: "Adding…",
+    added: "Added to cart",
+    addFailed: "Could not add to cart. Please try again.",
+    buyNow: "Buy now",
+    share: "Share product",
+    linkCopied: "Link copied",
+    delivery: "Delivery across Egypt",
+    deliveryFee: "The delivery fee is shown at checkout, before you place the order.",
+    details: "Product details",
+    brand: "Brand",
+    categories: "Categories",
+    sku: "SKU",
+    eda: "EDA registration",
+    edaApproved: "EDA approved",
+    description: "Description",
+    noDescription: "No description yet.",
+    similar: "Similar products",
+    viewAll: "View all",
+  },
+  ar: {
+    breadcrumb: "مسار التصفح",
+    home: "الرئيسية",
+    shop: "المتجر",
+    by: "من",
+    currency: "ج.م",
+    priceUnavailable: "السعر غير متاح",
+    unavailable: "غير متاح",
+    inStock: "متوفر",
+    lowStock: (left: number) => `متبقي ${left} بس`,
+    outOfStock: "غير متوفر",
+    unconfirmed: "التوفر غير مؤكد",
+    quantity: "الكمية",
+    decrease: "تقليل الكمية",
+    increase: "زيادة الكمية",
+    addToCart: "أضف للسلة",
+    adding: "جاري الإضافة…",
+    added: "اتضاف للسلة",
+    addFailed: "مقدرناش نضيف المنتج للسلة. حاول تاني.",
+    buyNow: "اشتري دلوقتي",
+    share: "مشاركة المنتج",
+    linkCopied: "تم نسخ الرابط",
+    delivery: "توصيل لكل مصر",
+    deliveryFee: "رسوم التوصيل بتظهر في صفحة الدفع قبل تأكيد الطلب.",
+    details: "تفاصيل المنتج",
+    brand: "البراند",
+    categories: "الأقسام",
+    sku: "رمز المنتج",
+    eda: "تسجيل هيئة الدواء المصرية",
+    edaApproved: "معتمد من هيئة الدواء",
+    description: "الوصف",
+    noDescription: "مفيش وصف لسه.",
+    similar: "منتجات مشابهة",
+    viewAll: "عرض الكل",
+  },
+};
 
-function formatReviews(
-  value: number,
-) {
-  return new Intl.NumberFormat(
-    "en-EG",
-  ).format(value);
-}
+// Medusa gives products without real options one placeholder option.
+const isPlaceholderOption = (option: ProductOption) =>
+  option.title === "Default option" || option.values.every((value) => value === "Default option value");
 
-type AccordionKey =
-  | "information"
-  | "quality"
-  | "delivery"
-  | null;
+const formatPrice = (value: number) => new Intl.NumberFormat("en-EG", { maximumFractionDigits: 2 }).format(value);
+const shopHref = (categoryId?: string) => (categoryId ? `/shop?category_id=${encodeURIComponent(categoryId)}` : "/shop");
+
+function ProductImage({ src, alt, className }: { src: string; alt: string; className?: string }) {
+  const [failed, setFailed] = useState(false);
+  if (!src || failed) {
+    return (
+      <div className={`${styles.imagePlaceholder} ${className ?? ""}`} role="img" aria-label={alt}>
+        <span aria-hidden="true">{alt.trim().charAt(0) || "V"}</span>
+      </div>
+    );
+  }
+  // eslint-disable-next-line @next/next/no-img-element -- catalog images come from any configured host
+  return <img src={src} alt={alt} className={className} onError={() => setFailed(true)} />;
+}
 
 export default function ProductDetailClient({
   product,
-  allProducts,
+  similar,
 }: {
   product: Product;
-  allProducts: Product[];
+  similar: Product[];
 }) {
   const router = useLocaleRouter();
   const { addItem } = useCart();
+  const { language } = useLanguage();
+  const copy = COPY[language === "ar" ? "ar" : "en"];
 
-  const [quantity, setQuantity] =
-    useState(1);
+  const [quantity, setQuantity] = useState(1);
+  const [cartState, setCartState] = useState<"idle" | "pending" | "added" | "failed">("idle");
+  const [shareCopied, setShareCopied] = useState(false);
+  const addInFlight = useRef(false);
+  const resetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => {
+    if (resetTimer.current) clearTimeout(resetTimer.current);
+  }, []);
 
-  const [added, setAdded] =
-    useState(false);
+  const options = useMemo(
+    () => (product.options ?? []).filter((option) => !isPlaceholderOption(option)),
+    [product.options],
+  );
+  const choices = options.filter((option) => option.values.length > 1);
+  const fixedOptions = options.filter((option) => option.values.length === 1);
+  const variants: ProductVariant[] = product.variants ?? [];
 
-  const [saved, setSaved] =
-    useState(false);
-
-  const [shareCopied, setShareCopied] =
-    useState(false);
-
-  const [openAccordion, setOpenAccordion] =
-    useState<AccordionKey>(
-      "information",
-    );
-
-  // ─── Options & Variants Resolution ──────────────────────────────────
-  const productOptions: ProductOption[] = useMemo(() => {
-    if (product.options && product.options.length > 0) {
-      return product.options;
-    }
-    if (product.flavor) {
-      return [
-        {
-          id: "opt_flavor",
-          title: "Flavor",
-          values: [product.flavor],
-        },
-      ];
-    }
-    return [];
-  }, [product.options, product.flavor]);
-
-  const productVariants: ProductVariant[] = useMemo(() => {
-    return product.variants || [];
-  }, [product.variants]);
-
-  // Selected options state (e.g. { "Flavor": "Caramel", "Size": "2.27 KG" })
-  const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>(
-    () => {
-      const initial: Record<string, string> = {};
-      if (productOptions.length > 0) {
-        productOptions.forEach((opt) => {
-          if (
-            opt.title.toLowerCase() === "flavor" &&
-            product.flavor &&
-            opt.values.some((v) => v.toLowerCase() === product.flavor?.toLowerCase())
-          ) {
-            initial[opt.title] = product.flavor;
-          } else if (
-            opt.title.toLowerCase() === "size" &&
-            product.size &&
-            opt.values.some((v) => v.toLowerCase() === product.size?.toLowerCase())
-          ) {
-            initial[opt.title] = product.size;
-          } else {
-            initial[opt.title] = opt.values[0] || "";
-          }
-        });
-      } else {
-        if (product.flavor) initial["Flavor"] = product.flavor;
-        if (product.size) initial["Size"] = product.size;
-      }
-      return initial;
-    }
+  const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>(() =>
+    Object.fromEntries(options.map((option) => [option.title, option.values[0] ?? ""])),
   );
 
-  // Active selected variant matching selected options
   const selectedVariant = useMemo(() => {
-    if (!productVariants || productVariants.length === 0) return null;
+    if (variants.length === 0) return null;
+    const same = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
+    return (
+      variants.find((variant) =>
+        Object.entries(variant.options ?? {}).every(([title, value]) => {
+          const chosen = Object.entries(selectedOptions).find(([key]) => same(key, title))?.[1];
+          return !chosen || same(chosen, value);
+        }),
+      ) ?? variants[0]
+    );
+  }, [variants, selectedOptions]);
 
-    // 1. Match variants against user selection
-    const match = productVariants.find((v) => {
-      // If variant has an options map (e.g. { "Flavor": "Vanilla" })
-      if (v.options && Object.keys(v.options).length > 0) {
-        // Every option specified on this variant must match what the user selected
-        return Object.entries(v.options).every(([vOptKey, vOptVal]) => {
-          const userVal = Object.entries(selectedOptions).find(
-            ([sKey]) => sKey.trim().toLowerCase() === vOptKey.trim().toLowerCase()
-          )?.[1];
-          if (!userVal) return true;
-          return String(userVal).trim().toLowerCase() === String(vOptVal).trim().toLowerCase();
-        });
-      }
+  const price = selectedVariant?.price ?? product.price;
+  const compareAtPrice = selectedVariant?.compareAtPrice ?? product.compareAtPrice;
+  const stock = selectedVariant?.stock ?? product.stock;
+  const inventoryKnown = selectedVariant?.inventoryKnown ?? product.inventoryKnown;
+  const priced = price > 0;
+  const inStock = selectedVariant ? (selectedVariant.inStock ?? stock > 0) : product.inStock === true;
+  const canBuy = priced && inStock;
+  const maxQuantity = Math.max(1, Math.min(stock > 0 ? stock : 10, 10));
 
-      // If no options map on variant, match variant title to any selected option value
-      return Object.values(selectedOptions).some((sVal) => {
-        if (!sVal) return false;
-        const normTitle = v.title.toLowerCase();
-        const normVal = sVal.toLowerCase();
-        return normTitle === normVal || normTitle.includes(normVal);
-      });
-    });
+  const availability = !inStock
+    ? (inventoryKnown === false ? copy.unconfirmed : copy.outOfStock)
+    : stock > 0 && stock <= 8
+      ? copy.lowStock(stock)
+      : copy.inStock;
 
-    if (match) return match;
-
-    // 2. Fallback: match by title containing any selected option value
-    const titleMatch = productVariants.find((v) => {
-      return Object.values(selectedOptions).some((sVal) => {
-        if (!sVal) return false;
-        return v.title.toLowerCase().includes(sVal.toLowerCase());
-      });
-    });
-    if (titleMatch) return titleMatch;
-
-    return productVariants[0] || null;
-  }, [productVariants, selectedOptions]);
-
-  // Active pricing and stock derived from selected variant
-  const currentPrice = selectedVariant?.price ?? product.price;
-  const currentCompareAtPrice =
-    selectedVariant?.compareAtPrice ?? product.compareAtPrice;
-  const currentStock = selectedVariant?.stock ?? product.stock;
-  const isVariantInStock = selectedVariant
-    ? (selectedVariant.inStock ?? currentStock > 0)
-    : product.inStock === true;
-
-  function handleSelectOption(optionTitle: string, value: string) {
-    setSelectedOptions((prev) => ({
-      ...prev,
-      [optionTitle]: value,
-    }));
-  }
-
-  const maxQuantity = Math.max(
-    1,
-    Math.min(currentStock, 10),
-  );
-
-  const total = useMemo(
-    () => currentPrice * quantity,
-    [currentPrice, quantity],
-  );
-
-  const productForm = getProductForm(product);
-
-  const healthGoalLabels = getProductHealthGoals(product);
-
-  const perServing = product.servings
-    ? currentPrice / product.servings
-    : null;
-
-  const sameCategory =
-    allProducts
-      .filter(
-        (item) =>
-          item.slug !==
-            product.slug &&
-          item.category ===
-            product.category,
-      )
-      .sort(
-        (a, b) =>
-          b.rating -
-            a.rating ||
-          b.reviewCount -
-            a.reviewCount,
-      );
-
-  const fallbackProducts =
-    allProducts
-      .filter(
-        (item) =>
-          item.slug !==
-            product.slug &&
-          !sameCategory.some(
-            (same) =>
-              same.slug ===
-              item.slug,
+  const firstCategory = product.categories?.[0];
+  const sku = selectedVariant?.sku;
+  const facts: { label: string; value: ReactNode }[] = [
+    ...(product.brand ? [{ label: copy.brand, value: product.brand }] : []),
+    ...(product.categories?.length
+      ? [{
+          label: copy.categories,
+          value: (
+            <span className={styles.chips}>
+              {product.categories.map((category) => (
+                <Link key={category.id} href={shopHref(category.id)} className={styles.chip}>
+                  {category.name}
+                </Link>
+              ))}
+            </span>
           ),
-      )
-      .sort(
-        (a, b) =>
-          b.rating -
-            a.rating ||
-          b.reviewCount -
-            a.reviewCount,
-      );
+        }]
+      : []),
+    ...fixedOptions.map((option) => ({ label: option.title, value: option.values[0] })),
+    ...(sku ? [{ label: copy.sku, value: <span dir="ltr">{sku}</span> }] : []),
+    ...(product.eda
+      ? [{
+          label: copy.eda,
+          value: (
+            <span className={styles.eda}>
+              <span dir="ltr">{product.eda.registrationNumber}</span>
+              {product.eda.approved && (
+                <span className={styles.edaBadge}>
+                  <BadgeCheck size={16} strokeWidth={1.6} aria-hidden="true" />
+                  {copy.edaApproved}
+                </span>
+              )}
+            </span>
+          ),
+        }]
+      : []),
+  ];
 
-  const similarProducts =
-    [
-      ...sameCategory,
-      ...fallbackProducts,
-    ].slice(0, 5);
-
-  const recommendation =
-    similarProducts[0];
-
-  const relatedLabels =
-    Array.from(
-      new Set([
-        product.category,
-        ...healthGoalLabels,
-        product.brand,
-      ]),
-    ).slice(0, 5);
-
-  function decreaseQuantity() {
-    setQuantity(
-      (current) =>
-        Math.max(
-          1,
-          current - 1,
-        ),
-    );
+  function selectOption(title: string, value: string) {
+    setSelectedOptions((current) => ({ ...current, [title]: value }));
+    setQuantity(1);
   }
 
-  function increaseQuantity() {
-    setQuantity(
-      (current) =>
-        Math.min(
-          maxQuantity,
-          current + 1,
-        ),
-    );
-  }
-
-  function handleAddToCart() {
-    if (!isVariantInStock) return;
-
-    const productToAdd: Product = {
-      ...product,
-      variantId: selectedVariant?.id || product.variantId,
-      price: currentPrice,
-      compareAtPrice: currentCompareAtPrice,
-      flavor:
-        selectedOptions["Flavor"] ||
-        selectedVariant?.options?.["Flavor"] ||
-        product.flavor,
-      size:
-        selectedOptions["Size"] ||
-        selectedVariant?.options?.["Size"] ||
-        product.size,
-      stock: currentStock,
-    };
-
-    addItem(productToAdd, quantity);
-
-    setAdded(true);
-
-    window.setTimeout(() => {
-      setAdded(false);
-    }, 1400);
-  }
-
-  function handleBuyNow() {
-    if (!isVariantInStock) return;
-    const variantQuery = selectedVariant?.id
-      ? `&variantId=${encodeURIComponent(selectedVariant.id)}`
-      : "";
-
-    router.push(
-      `/checkout?buyNow=${encodeURIComponent(
-        product.slug,
-      )}&quantity=${quantity}${variantQuery}`,
-    );
-  }
-
-  async function handleShare() {
-    const url =
-      window.location.href;
-
+  async function addToCart() {
+    if (!canBuy || addInFlight.current) return;
+    addInFlight.current = true;
+    if (resetTimer.current) clearTimeout(resetTimer.current);
+    setCartState("pending");
     try {
-      if (
-        navigator.share
-      ) {
-        await navigator.share({
-          title:
-            product.name,
-          url,
-        });
+      const success = await addItem(
+        {
+          ...product,
+          variantId: selectedVariant?.id ?? product.variantId,
+          price,
+          compareAtPrice,
+          size: selectedOptions.Size ?? product.size,
+          flavor: selectedOptions.Flavor ?? product.flavor,
+          stock,
+        },
+        quantity,
+      );
+      setCartState(success ? "added" : "failed");
+      if (success) resetTimer.current = setTimeout(() => setCartState("idle"), 1400);
+    } catch {
+      setCartState("failed");
+    } finally {
+      addInFlight.current = false;
+    }
+  }
 
+  function buyNow() {
+    if (!canBuy) return;
+    const variant = selectedVariant?.id ? `&variantId=${encodeURIComponent(selectedVariant.id)}` : "";
+    router.push(`/checkout?buyNow=${encodeURIComponent(product.slug)}&quantity=${quantity}${variant}`);
+  }
+
+  async function share() {
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: product.name, url: window.location.href });
         return;
       }
-
-      await navigator.clipboard.writeText(
-        url,
-      );
-
+      await navigator.clipboard.writeText(window.location.href);
       setShareCopied(true);
-
-      window.setTimeout(
-        () =>
-          setShareCopied(
-            false,
-          ),
-        1400,
-      );
+      setTimeout(() => setShareCopied(false), 1600);
     } catch {
-      // User cancelled sharing.
+      // The shopper cancelled sharing.
     }
   }
 
-  function toggleAccordion(
-    key: AccordionKey,
-  ) {
-    setOpenAccordion(
-      (current) =>
-        current === key
-          ? null
-          : key,
-    );
-  }
+  const priceText = priced ? `${formatPrice(price)} ${copy.currency}` : copy.priceUnavailable;
+  const descriptionIsHtml = /<[a-z][\s\S]*>/i.test(product.description);
 
   return (
     <>
-      <LegacyTranslations><main
-        className={styles.page}
-      >
-        <div
-          className={
-            styles.shell
-          }
-        >
-          {/* ==================================================
-              BREADCRUMBS
-              ================================================== */}
-          <nav
-            className={
-              styles.breadcrumbs
-            }
-            aria-label="Breadcrumb"
-          >
-            <Link href="/">
-              Home
-            </Link>
-
-            <ChevronRight
-              size={13}
-              strokeWidth={1.5}
-            />
-
-            <Link href="/shop">
-              Shop
-            </Link>
-
-            <ChevronRight
-              size={13}
-              strokeWidth={1.5}
-            />
-
-            <Link
-              href={product.categoryId ? `/shop?category_id=${encodeURIComponent(product.categoryId)}` : "/shop"}
-            >
-              {
-                product.category
-              }
-            </Link>
-
-            <ChevronRight
-              size={13}
-              strokeWidth={1.5}
-            />
-
-            <span>
-              {
-                product.shortName
-              }
-            </span>
+      <main className={styles.page}>
+        <div className={styles.shell}>
+          <nav className={styles.breadcrumbs} aria-label={copy.breadcrumb}>
+            <ol>
+              <li><Link href="/">{copy.home}</Link></li>
+              <li><ChevronRight size={14} strokeWidth={1.6} aria-hidden="true" /><Link href="/shop">{copy.shop}</Link></li>
+              {firstCategory && (
+                <li><ChevronRight size={14} strokeWidth={1.6} aria-hidden="true" /><Link href={shopHref(firstCategory.id)}>{firstCategory.name}</Link></li>
+              )}
+              <li><ChevronRight size={14} strokeWidth={1.6} aria-hidden="true" /><span aria-current="page">{product.name}</span></li>
+            </ol>
           </nav>
 
-          {/* ==================================================
-              MAIN PRODUCT STRUCTURE
-              ================================================== */}
-          <section
-            className={
-              styles.productGrid
-            }
-          >
-            {/* ================================================
-                PRODUCT GALLERY
-                ================================================ */}
-            <div
-              className={
-                styles.gallery
-              }
-            >
-              <div
-                className={
-                  styles.mainVisual
-                }
-              >
-                <div
-                  className={
-                    styles.visualActions
-                  }
-                >
-                  <button
-                    type="button"
-                    className={
-                      saved
-                        ? `${styles.roundAction} ${styles.roundActionActive}`
-                        : styles.roundAction
-                    }
-                    aria-label="Save product"
-                    onClick={() =>
-                      setSaved(
-                        (current) =>
-                          !current,
-                      )
-                    }
-                  >
-                    <Heart
-                      size={18}
-                      strokeWidth={
-                        1.45
-                      }
-                      fill={
-                        saved
-                          ? "currentColor"
-                          : "none"
-                      }
-                    />
-                  </button>
-
-                  <button
-                    type="button"
-                    className={
-                      styles.roundAction
-                    }
-                    aria-label="Share product"
-                    onClick={
-                      handleShare
-                    }
-                  >
-                    {shareCopied ? (
-                      <Copy
-                        size={18}
-                        strokeWidth={
-                          1.45
-                        }
-                      />
-                    ) : (
-                      <Share2
-                        size={18}
-                        strokeWidth={
-                          1.45
-                        }
-                      />
-                    )}
-                  </button>
-                </div>
-
-                {product.badge && (
-                  <span
-                    className={
-                      styles.productBadge
-                    }
-                  >
-                    {
-                      product.badge
-                    }
-                  </span>
-                )}
-
-                <div
-                  className={
-                    styles.productImageWrap
-                  }
-                >
-                  <img
-                    src={
-                      selectedVariant?.image || product.image
-                    }
-                    alt={
-                      product.name
-                    }
-                    className={
-                      styles.productImage
-                    }
-                  />
-                </div>
+          <section className={styles.product}>
+            <div className={styles.gallery}>
+              <div className={styles.stage}>
+                {product.badge && <span className={styles.badge}>{product.badge}</span>}
+                <button type="button" className={styles.shareButton} onClick={share} aria-label={shareCopied ? copy.linkCopied : copy.share}>
+                  {shareCopied ? <Check size={18} strokeWidth={1.6} /> : <Share2 size={18} strokeWidth={1.6} />}
+                </button>
+                <ProductImage key={selectedVariant?.image || product.image} src={selectedVariant?.image || product.image} alt={product.name} className={styles.image} />
               </div>
+              <span className={styles.srOnly} aria-live="polite">{shareCopied ? copy.linkCopied : ""}</span>
             </div>
 
-            {/* ================================================
-                PRODUCT INFORMATION
-                ================================================ */}
-            <div
-              className={
-                styles.details
-              }
-            >
-              <div
-                className={
-                  styles.brandLine
-                }
-              >
-                <span>
-                  {
-                    product.brand
-                  }
-                </span>
-
-                <BadgeCheck
-                  size={15}
-                  strokeWidth={
-                    1.4
-                  }
-                />
-              </div>
-
-              <h1>
-                {product.name}
-              </h1>
-
-              <Link
-                href={`/shop?brand=${encodeURIComponent(
-                  product.brand,
-                )}`}
-                className={
-                  styles.byBrand
-                }
-              >
-                By{" "}
-                <strong>
-                  {
-                    product.brand
-                  }
-                </strong>
-              </Link>
-
-              {product.reviewCount > 0 && (
-              <div
-                className={
-                  styles.ratingRow
-                }
-              >
-                <div
-                  className={
-                    styles.stars
-                  }
-                >
-                  {Array.from({
-                    length: 5,
-                  }).map(
-                    (
-                      _,
-                      index,
-                    ) => (
-                      <Star
-                        key={
-                          index
-                        }
-                        size={15}
-                        strokeWidth={
-                          1.3
-                        }
-                        fill={
-                          index <
-                          Math.round(
-                            product.rating,
-                          )
-                            ? "currentColor"
-                            : "none"
-                        }
-                      />
-                    ),
-                  )}
-                </div>
-
-                <strong>
-                  {product.rating}
-                </strong>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    document
-                      .getElementById(
-                        "verified-reviews",
-                      )
-                      ?.scrollIntoView({
-                        behavior:
-                          "smooth",
-                      });
-                  }}
-                >
-                  {formatReviews(
-                    product.reviewCount,
-                  )}{" "}
-                  reviews
-                </button>
-              </div>
-              )}
-
-              <div
-                className={
-                  styles.detailDivider
-                }
-              />
-
-              {/* VARIANT / FLAVOR SELECTOR */}
-              {productOptions.length > 0 && (
+            <div className={styles.head}>
+              {product.brand && <p className={styles.brand}>{copy.by} <strong>{product.brand}</strong></p>}
+              <h1 className={styles.title}>{product.name}</h1>
+              {choices.length > 0 && (
                 <VariantSelector
-                  options={productOptions}
-                  variants={productVariants}
+                  options={choices}
+                  variants={variants}
                   selectedOptions={selectedOptions}
-                  onSelectOption={handleSelectOption}
+                  onSelectOption={selectOption}
+                  outOfStockLabel={copy.outOfStock}
                 />
-              )}
-
-              <div
-                className={
-                  styles.packageBlock
-                }
-              >
-                <span
-                  className={
-                    styles.sectionLabel
-                  }
-                >
-                  PACKAGE QUANTITY
-                </span>
-
-                <button
-                  type="button"
-                  className={
-                    styles.packageOption
-                  }
-                >
-                  <strong>
-                    1 PACK
-                  </strong>
-
-                  <span>
-                    {product.size ??
-                      "Current package"}
-                  </span>
-
-                  <small>
-                    {formatPrice(
-                      currentPrice,
-                    )}{" "}
-                    EGP
-                  </small>
-                </button>
-              </div>
-
-              <div
-                className={
-                  styles.keyInfo
-                }
-              >
-                <span
-                  className={
-                    styles.sectionLabel
-                  }
-                >
-                  KEY INFO
-                </span>
-
-                <div
-                  className={
-                    styles.keyInfoGrid
-                  }
-                >
-                  <div>
-                    <span>
-                      FORM
-                    </span>
-
-                    <strong>
-                      {
-                        productForm
-                      }
-                    </strong>
-                  </div>
-
-                  <div>
-                    <span>
-                      TOTAL
-                      SERVINGS
-                    </span>
-
-                    <strong>
-                      {product.servings ??
-                        "—"}
-                    </strong>
-                  </div>
-
-                  <div>
-                    <span>
-                      PACKAGE SIZE
-                    </span>
-
-                    <strong>
-                      {selectedOptions["Size"] ?? product.size ?? "See package"}
-                    </strong>
-                  </div>
-
-                  <div>
-                    <span>
-                      STOCK
-                    </span>
-
-                    <strong
-                      className={
-                        isVariantInStock
-                          ? (currentStock <= 0 ? "Available" : currentStock > 8
-                            ? styles.inStockText
-                            : styles.lowStockText)
-                          : styles.lowStockText
-                      }
-                    >
-                      {isVariantInStock
-                        ? (currentStock <= 0 ? "Available" : currentStock > 8
-                          ? "IN STOCK"
-                          : `LOW STOCK (${currentStock})`)
-                        : "OUT OF STOCK"}
-                    </strong>
-                  </div>
-                </div>
-              </div>
-
-              <div
-                className={
-                  styles.certifications
-                }
-              >
-                <span
-                  className={
-                    styles.sectionLabel
-                  }
-                >
-                  QUALITY & PRODUCT DATA
-                </span>
-
-                <div
-                  className={
-                    styles.certificationRow
-                  }
-                >
-                  <span>
-                    <ShieldCheck
-                      size={20}
-                      strokeWidth={
-                        1.35
-                      }
-                    />
-                    AUTHENTICITY
-                    FOCUSED
-                  </span>
-
-                  <span>
-                    <FlaskConical
-                      size={20}
-                      strokeWidth={
-                        1.35
-                      }
-                    />
-                    LAB DATA
-                    READY
-                  </span>
-
-                  <span>
-                    <FileCheck2
-                      size={20}
-                      strokeWidth={
-                        1.35
-                      }
-                    />
-                    BATCH INFO
-                    READY
-                  </span>
-                </div>
-              </div>
-
-              {recommendation && (
-                <div
-                  className={
-                    styles.recommendation
-                  }
-                >
-                  <img
-                    src={
-                      recommendation.image
-                    }
-                    alt={
-                      recommendation.name
-                    }
-                  />
-
-                  <div>
-                    <span>
-                      SIMILAR
-                      RECOMMENDATION
-                    </span>
-
-                    <strong>
-                      {
-                        recommendation.shortName
-                      }
-                    </strong>
-
-                    <small>
-                      {formatPrice(
-                        recommendation.price,
-                      )}{" "}
-                      EGP
-                    </small>
-                  </div>
-
-                  <Link
-                    href={`/products/${recommendation.slug}`}
-                  >
-                    VIEW
-                  </Link>
-                </div>
               )}
             </div>
 
-            {/* ================================================
-                PURCHASE PANEL
-                ================================================ */}
-            <aside
-              className={
-                styles.purchaseColumn
-              }
-            >
-              <div
-                className={
-                  styles.purchaseCard
-                }
-              >
-                <div
-                  className={
-                    styles.priceHeader
-                  }
-                >
-                  <span>
-                    OUR PRICE
-                  </span>
+            <div className={styles.info}>
+              {facts.length > 0 && (
+                <section className={styles.block} aria-labelledby="product-details">
+                  <h2 id="product-details" className={styles.blockTitle}>{copy.details}</h2>
+                  <dl className={styles.facts}>
+                    {facts.map((fact) => (
+                      <div key={fact.label}>
+                        <dt>{fact.label}</dt>
+                        <dd>{fact.value}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                </section>
+              )}
 
-                  <strong>
-                    {formatPrice(
-                      currentPrice,
-                    )}{" "}
-                    EGP
-                  </strong>
+              <section className={styles.block} aria-labelledby="product-description">
+                <h2 id="product-description" className={styles.blockTitle}>{copy.description}</h2>
+                {!product.description ? (
+                  <p className={styles.muted}>{copy.noDescription}</p>
+                ) : descriptionIsHtml ? (
+                  <div className={styles.prose} dangerouslySetInnerHTML={{ __html: product.description }} />
+                ) : (
+                  <p className={styles.prose}>{product.description}</p>
+                )}
+              </section>
+            </div>
 
-                  {perServing && (
-                    <small>
-                      {formatPrice(
-                        perServing,
-                      )}{" "}
-                      EGP /
-                      serving
-                    </small>
-                  )}
-                </div>
+            <aside className={styles.buy} aria-label={product.name}>
+              <div className={styles.priceRow}>
+                <strong className={priced ? styles.price : styles.priceMissing}>{priceText}</strong>
+                {priced && compareAtPrice !== undefined && compareAtPrice > price && (
+                  <s className={styles.comparePrice}>{formatPrice(compareAtPrice)} {copy.currency}</s>
+                )}
+              </div>
+              <p className={inStock ? styles.stock : styles.stockOut}>
+                <span className={styles.stockDot} aria-hidden="true" />
+                {availability}
+              </p>
 
-                <div
-                  className={
-                    styles.stockLine
-                  }
-                >
-                  <CheckCircle2
-                    size={17}
-                    strokeWidth={
-                      1.6
-                    }
-                  />
-
-                  <span>
-                    {isVariantInStock
-                      ? (currentStock <= 0 ? "Available" : currentStock > 8
-                        ? "In Stock"
-                        : `Low Stock · ${currentStock} left`)
-                      : (selectedVariant?.inventoryKnown === false || product.inventoryKnown === false ? "Availability unconfirmed" : "Out of Stock")}
-                  </span>
-                </div>
-
-                <div
-                  className={
-                    styles.buyRow
-                  }
-                >
-                  <div
-                    className={
-                      styles.quantity
-                    }
-                  >
-                    <button
-                      type="button"
-                      aria-label="Decrease quantity"
-                      onClick={
-                        decreaseQuantity
-                      }
-                      disabled={
-                        quantity <=
-                        1
-                      }
-                    >
-                      <Minus
-                        size={14}
-                      />
-                    </button>
-
-                    <span>
-                      {quantity}
-                    </span>
-
-                    <button
-                      type="button"
-                      aria-label="Increase quantity"
-                      onClick={
-                        increaseQuantity
-                      }
-                      disabled={
-                        quantity >=
-                        maxQuantity
-                      }
-                    >
-                      <Plus
-                        size={14}
-                      />
-                    </button>
-                  </div>
-
-                  <button
-                    type="button"
-                    className={
-                      isVariantInStock
-                        ? styles.addButton
-                        : `${styles.addButton} ${styles.addButtonDisabled}`
-                    }
-                    disabled={!isVariantInStock}
-                    onClick={
-                      handleAddToCart
-                    }
-                  >
-                    {!isVariantInStock ? (
-                      "OUT OF STOCK"
-                    ) : added ? (
-                      <>
-                        <Check
-                          size={16}
-                        />
-                        ADDED
-                      </>
-                    ) : (
-                      <>
-                        <ShoppingBag
-                          size={16}
-                        />
-                        ADD TO CART
-                      </>
-                    )}
+              <div className={styles.buyRow}>
+                <div className={styles.quantity} role="group" aria-label={copy.quantity}>
+                  <button type="button" aria-label={copy.decrease} onClick={() => setQuantity((q) => Math.max(1, q - 1))} disabled={!canBuy || quantity <= 1}>
+                    <Minus size={16} />
+                  </button>
+                  <output aria-live="polite">{quantity}</output>
+                  <button type="button" aria-label={copy.increase} onClick={() => setQuantity((q) => Math.min(maxQuantity, q + 1))} disabled={!canBuy || quantity >= maxQuantity}>
+                    <Plus size={16} />
                   </button>
                 </div>
-
-                <button
-                  type="button"
-                  className={
-                    isVariantInStock
-                      ? styles.buyButton
-                      : `${styles.buyButton} ${styles.buyButtonDisabled}`
-                  }
-                  disabled={!isVariantInStock}
-                  onClick={
-                    handleBuyNow
-                  }
-                >
-                  {isVariantInStock ? "BUY NOW" : "OUT OF STOCK"}
+                <button type="button" className={styles.addButton} disabled={!canBuy || cartState === "pending"} onClick={addToCart}>
+                  {canBuy && (cartState === "added" ? <Check size={18} /> : <ShoppingBag size={18} />)}
+                  {!canBuy ? (priced ? copy.outOfStock : copy.unavailable) : cartState === "pending" ? copy.adding : cartState === "added" ? copy.added : copy.addToCart}
                 </button>
-
-                <div
-                  className={
-                    styles.shippingLine
-                  }
-                >
-                  <Truck
-                    size={20}
-                    strokeWidth={
-                      1.35
-                    }
-                  />
-
-                  <div>
-                    <strong>
-                      FAST SHIPPING
-                    </strong>
-
-                    <span>
-                      Free over
-                      2,500 EGP
-                    </span>
-                  </div>
-                </div>
               </div>
+              {cartState === "failed" && <p className={styles.error} role="alert">{copy.addFailed}</p>}
+              <button type="button" className={styles.buyNow} disabled={!canBuy} onClick={buyNow}>
+                {copy.buyNow}
+              </button>
 
-              <div
-                className={
-                  styles.sideAccordions
-                }
-              >
-                <button
-                  type="button"
-                  onClick={() =>
-                    toggleAccordion(
-                      "information",
-                    )
-                  }
-                >
-                  <span>
-                    PRODUCT
-                    INFORMATION
-                  </span>
-
-                  <ChevronDown
-                    size={16}
-                    className={
-                      openAccordion ===
-                      "information"
-                        ? styles.chevronOpen
-                        : ""
-                    }
-                  />
-                </button>
-
-                {openAccordion ===
-                  "information" && (
-                  <div
-                    className={
-                      styles.accordionContent
-                    }
-                  >
-                    {product.description ? (
-                      /<[a-z][\s\S]*>/i.test(
-                        product.description,
-                      ) ? (
-                        <div
-                          dangerouslySetInnerHTML={{
-                            __html:
-                              product.description,
-                          }}
-                        />
-                      ) : (
-                        <p>
-                          {
-                            product.description
-                          }
-                        </p>
-                      )
-                    ) : (
-                      <p
-                        style={{
-                          opacity: 0.5,
-                          fontStyle:
-                            "italic",
-                        }}
-                      >
-                        No description
-                        available.
-                      </p>
-                    )}
-
-                    {healthGoalLabels.length >
-                      0 && (
-                      <ul>
-                        {healthGoalLabels.map(
-                          (
-                            goal,
-                          ) => (
-                            <li
-                              key={
-                                goal
-                              }
-                            >
-                              {
-                                goal
-                              }
-                            </li>
-                          ),
-                        )}
-                      </ul>
-                    )}
-                  </div>
-                )}
-
-                <button
-                  type="button"
-                  onClick={() =>
-                    toggleAccordion(
-                      "quality",
-                    )
-                  }
-                >
-                  <span>
-                    QUALITY,
-                    BATCH &
-                    COMPLIANCE
-                  </span>
-
-                  <ChevronDown
-                    size={16}
-                    className={
-                      openAccordion ===
-                      "quality"
-                        ? styles.chevronOpen
-                        : ""
-                    }
-                  />
-                </button>
-
-                {openAccordion ===
-                  "quality" && (
-                  <div
-                    className={
-                      styles.accordionContent
-                    }
-                  >
-                    <div
-                      className={
-                        styles.qualityList
-                      }
-                    >
-                      <span>
-                        <FileCheck2
-                          size={15}
-                        />
-                        Certificate
-                        / COA area
-                      </span>
-
-                      <span>
-                        <BadgeCheck
-                          size={15}
-                        />
-                        Batch &
-                        expiry area
-                      </span>
-
-                      <span>
-                        <ShieldCheck
-                          size={15}
-                        />
-                        Regulatory
-                        status area
-                      </span>
-                    </div>
-                  </div>
-                )}
-
-                <button
-                  type="button"
-                  onClick={() =>
-                    toggleAccordion(
-                      "delivery",
-                    )
-                  }
-                >
-                  <span>
-                    DELIVERY &
-                    RETURNS
-                  </span>
-
-                  <ChevronDown
-                    size={16}
-                    className={
-                      openAccordion ===
-                      "delivery"
-                        ? styles.chevronOpen
-                        : ""
-                    }
-                  />
-                </button>
-
-                {openAccordion ===
-                  "delivery" && (
-                  <div
-                    className={
-                      styles.accordionContent
-                    }
-                  >
-                    <p>
-                      Delivery
-                      pricing is
-                      shown before
-                      the order is
-                      placed.
-                      Orders over
-                      2,500 EGP
-                      receive free
-                      delivery.
-                    </p>
-                  </div>
-                )}
-              </div>
+              <p className={styles.delivery}>
+                <Truck size={20} strokeWidth={1.5} aria-hidden="true" />
+                <span><strong>{copy.delivery}</strong>{copy.deliveryFee}</span>
+              </p>
             </aside>
           </section>
 
-          {/* ==================================================
-              RELATED CATEGORIES
-              ================================================== */}
-          <section
-            className={
-              styles.relatedSection
-            }
-          >
-            <h2>
-              RELATED
-              CATEGORIES
-            </h2>
-
-            <div
-              className={
-                styles.relatedPills
-              }
-            >
-              {relatedLabels.map(
-                (
-                  item,
-                ) => (
-                  <Link
-                    key={
-                      item
-                    }
-                    href={`/shop?search=${encodeURIComponent(
-                      item,
-                    )}`}
-                  >
-                    {
-                      item
-                    }
-                  </Link>
-                ),
-              )}
-            </div>
-          </section>
-
-          {/* ==================================================
-              SIMILAR ITEMS
-              ================================================== */}
-          <section
-            className={
-              styles.similarSection
-            }
-          >
-            <div
-              className={
-                styles.similarHeading
-              }
-            >
-              <div>
-                <span>
-                  DISCOVER
-                  MORE
-                </span>
-
-                <h2>
-                  SIMILAR ITEMS
-                  TO CONSIDER
-                </h2>
+          {similar.length > 0 && (
+            <section className={styles.similar} aria-labelledby="similar-products">
+              <div className={styles.similarHead}>
+                <h2 id="similar-products">{copy.similar}</h2>
+                <Link href={shopHref(firstCategory?.id)} className={styles.viewAll}>
+                  {copy.viewAll}
+                  <ChevronRight size={16} strokeWidth={1.6} aria-hidden="true" />
+                </Link>
               </div>
-
-              <Link
-                href={product.categoryId ? `/shop?category_id=${encodeURIComponent(product.categoryId)}` : "/shop"}
-              >
-                VIEW ALL
-                <ChevronRight
-                  size={15}
-                />
-              </Link>
-            </div>
-
-            <div
-              className={
-                styles.similarGrid
-              }
-            >
-              {similarProducts.map(
-                (
-                  item,
-                ) => (
-                  <Link
-                    key={
-                      item.slug
-                    }
-                    href={`/products/${item.slug}`}
-                    className={
-                      styles.similarCard
-                    }
-                  >
-                    <div
-                      className={
-                        styles.similarImage
-                      }
-                    >
-                      <img
-                        src={
-                          item.image
-                        }
-                        alt={
-                          item.name
-                        }
-                      />
-                    </div>
-
-                    <span>
-                      {
-                        item.brand
-                      }
-                    </span>
-
-                    <strong>
-                      {
-                        item.shortName
-                      }
-                    </strong>
-
-                    <div>
-                      {item.reviewCount > 0 && (
-                        <span>
-                          <Star
-                            size={12}
-                            fill="currentColor"
-                          />
-                          {
-                            item.rating
-                          }
-                        </span>
-                      )}
-
-                      <strong>
-                        {formatPrice(
-                          item.price,
-                        )}{" "}
-                        EGP
-                      </strong>
-                    </div>
-                  </Link>
-                ),
-              )}
-            </div>
-          </section>
+              <ul className={styles.similarGrid}>
+                {similar.map((item) => (
+                  <li key={item.id}>
+                    <Link href={`/products/${item.slug}`} className={styles.similarCard}>
+                      <div className={styles.similarStage}>
+                        <ProductImage src={item.image} alt={item.name} />
+                      </div>
+                      {item.brand && <span className={styles.similarBrand}>{item.brand}</span>}
+                      <span className={styles.similarName}>{item.name}</span>
+                      <span className={styles.similarPrice}>
+                        {item.price > 0 ? `${formatPrice(item.price)} ${copy.currency}` : copy.priceUnavailable}
+                      </span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
         </div>
+      </main>
 
-        <ProductValueOffer
-          product={
-            product
-          }
-        />
-
-        <div
-          id="verified-reviews"
-        >
-          <ProductSocialProof
-            product={
-              product
-            }
-          />
-        </div>
-
-        <section
-          className={
-            styles.trustSection
-          }
-        >
-          <div>
-            <ShieldCheck
-              size={23}
-              strokeWidth={
-                1.35
-              }
-            />
-
-            <strong>
-              AUTHENTIC
-              PRODUCTS
-            </strong>
-
-            <span>
-              Carefully
-              selected for
-              Vi2.
-            </span>
-          </div>
-
-          <div>
-            <PackageCheck
-              size={23}
-              strokeWidth={
-                1.35
-              }
-            />
-
-            <strong>
-              SECURE
-              PACKAGING
-            </strong>
-
-            <span>
-              Prepared
-              carefully for
-              delivery.
-            </span>
-          </div>
-
-          <div>
-            <Truck
-              size={23}
-              strokeWidth={
-                1.35
-              }
-            />
-
-            <strong>
-              ACROSS EGYPT
-            </strong>
-
-            <span>
-              Simple local
-              delivery
-              experience.
-            </span>
-          </div>
-
-          <div>
-            <Leaf
-              size={23}
-              strokeWidth={
-                1.35
-              }
-            />
-
-            <strong>
-              LIVE FULLY
-            </strong>
-
-            <span>
-              Wellness
-              made easier.
-            </span>
-          </div>
-        </section>
-      </main></LegacyTranslations>
-
-      {/* ======================================================
-          MOBILE QUICK BUY
-          ====================================================== */}
-      <div
-        className={
-          styles.mobileBuyBar
-        }
-      >
+      <div className={styles.mobileBar}>
         <div>
-          <span>
-            {
-              product.shortName
-            }
-          </span>
-
-          <strong>
-            {formatPrice(
-              total,
-            )}{" "}
-            EGP
-          </strong>
+          <span>{product.name}</span>
+          <strong>{priced ? `${formatPrice(price * quantity)} ${copy.currency}` : copy.priceUnavailable}</strong>
         </div>
-
-        <button
-          type="button"
-          disabled={!isVariantInStock}
-          onClick={
-            handleBuyNow
-          }
-        >
-          {isVariantInStock ? "BUY NOW" : "OUT OF STOCK"}
+        <button type="button" disabled={!canBuy} onClick={buyNow}>
+          {canBuy ? copy.buyNow : priced ? copy.outOfStock : copy.unavailable}
         </button>
       </div>
     </>

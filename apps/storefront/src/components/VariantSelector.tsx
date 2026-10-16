@@ -9,6 +9,7 @@ export type VariantSelectorProps = {
   variants?: ProductVariant[];
   selectedOptions: Record<string, string>;
   onSelectOption: (optionTitle: string, value: string) => void;
+  outOfStockLabel?: string;
   className?: string;
 };
 
@@ -17,6 +18,7 @@ export default function VariantSelector({
   variants = [],
   selectedOptions,
   onSelectOption,
+  outOfStockLabel = "Out of stock",
   className = "",
 }: VariantSelectorProps) {
   // Check if a specific option value has in-stock inventory
@@ -67,7 +69,7 @@ export default function VariantSelector({
               <span className={styles.label}>{option.title}</span>
               <span className={styles.currentValue}>{selectedValue}</span>
               {isSelectedOutOfStock && (
-                <span className={styles.outOfStockNotice}>— Out of stock</span>
+                <span className={styles.outOfStockNotice}>{outOfStockLabel}</span>
               )}
             </div>
 
@@ -95,7 +97,7 @@ export default function VariantSelector({
                     type="button"
                     role="radio"
                     aria-checked={isSelected}
-                    title={!isAvailable ? `${val} (Out of stock)` : val}
+                    aria-label={!isAvailable ? `${val} (${outOfStockLabel})` : undefined}
                     className={`${styles.pill} ${pillClass}`}
                     onClick={() => onSelectOption(option.title, val)}
                   >
