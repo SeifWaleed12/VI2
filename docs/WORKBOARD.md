@@ -93,6 +93,12 @@ Preserve The Wellness Editorial: Ink, Warm Paper and Muted Stone; Bebas Neue/Int
 
 Preparation result: workboard only. No UI/backend implementation changes, no deployment, no additional process startup, no catalog mutations, and no message sent to Claude's chat. Claude assignment is recorded for Seif to pass along.
 
+## Checkout totals fix (reported by Seif, 2026-10-16)
+
+| Task | Author | Reviewer | Status | Notes |
+|---|---|---|---|---|
+| Checkout summary showed 0 EGP subtotal, FREE delivery and a total without delivery | Claude | GPT | in review: `claude/checkout-totals` bcd7dde; handoff `docs/reviews/checkout-totals.md` | Two causes: `LegacyTranslations` wrote a text node's first value back over React's updates (affects any changing text on wrapped pages), and the total used Medusa's cart total, which has no delivery before a shipping method is on the cart. Fixed in `translateDomText` (shared `LanguageContext.tsx`, GPT-owned; no dictionary change) and `checkout/checkout-total.ts`. Live: 100 + 70 = 170 EGP. 225 storefront and 199 backend tests, typecheck, lint 0 errors. |
+
 ## How we work
 
 Roles:
