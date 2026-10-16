@@ -31,6 +31,7 @@
 }
 
 .heading > div {
+  min-width: 0;
   display: flex;
   align-items: baseline;
 
@@ -40,23 +41,25 @@
 .heading span {
   color: #8a857d;
 
-  font-size: 10px;
+  font-size: var(--text-ui);
   font-weight: 800;
-  letter-spacing: 0.13em;
+  letter-spacing: var(--tracking-ui);
 }
 
 .heading h2 {
   margin: 0;
 
-  font-family: var(--font-display), sans-serif;
-  font-size: clamp(64px, 6.4vw, 108px);
-  font-weight: 400;
-  line-height: 0.82;
+  font-family: var(--font-heading), sans-serif;
+  font-size: var(--text-editorial);
+  font-weight: var(--weight-display);
+  line-height: var(--leading-display);
   letter-spacing: -0.02em;
   text-transform: uppercase;
 }
 
 .heading > a {
+  flex: 0 0 auto;
+  white-space: nowrap;
   min-height: 36px;
 
   padding: 0 2px;
@@ -69,9 +72,9 @@
 
   border-bottom: 1px solid #181916;
 
-  font-size: 10px;
+  font-size: var(--text-ui);
   font-weight: 800;
-  letter-spacing: 0.09em;
+  letter-spacing: var(--tracking-ui);
 }
 
 .viewport {
@@ -255,19 +258,19 @@
 
     margin-bottom: 5px;
 
-    font-size: 6px;
+    font-size: var(--text-ui);
   }
 
   .heading h2 {
-    font-size: clamp(50px, 14vw, 64px);
-    line-height: 0.82;
+    font-size: var(--text-editorial-mobile);
+    line-height: var(--leading-display);
     letter-spacing: -0.02em;
   }
 
   .heading > a {
     min-height: 30px;
 
-    font-size: 10px;
+    font-size: var(--text-ui);
   }
 
   .viewport {
@@ -330,7 +333,7 @@
 .productName {
   max-width: 100%;
   text-align: center;
-  font-size: 13px;
+  font-size: var(--text-ui);
   line-height: 1.4;
 }
 .item:focus-visible {
@@ -378,7 +381,7 @@
     height: auto;
   }
   .productName {
-    font-size: 12px;
+    font-size: var(--text-ui);
   }
   .cycle {
     gap: 15px;

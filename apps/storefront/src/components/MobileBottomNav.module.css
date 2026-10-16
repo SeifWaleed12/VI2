@@ -69,7 +69,7 @@
     border: 0;
     border-radius: 17px;
 
-    color: #777168;
+    color: var(--text-muted);
     background: transparent;
 
     cursor: pointer;
@@ -87,17 +87,18 @@
   }
 
   .nav span {
-    overflow: hidden;
+    overflow: visible;
 
     max-width: 100%;
 
-    font-size: 9px;
+    font-size: var(--text-caption);
     font-weight: 700;
-    line-height: 1.2;
-    text-transform: uppercase;
+    line-height: var(--leading-ui);
+    text-transform: none;
+    text-align: center;
 
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    overflow-wrap: anywhere;
+    white-space: normal;
   }
 
   .nav .active {
@@ -125,7 +126,7 @@
     color: #f8f3ea;
     background: #181916;
 
-    font-size: 7.5px;
+    font-size: var(--text-ui);
     font-weight: 800;
   }
 }

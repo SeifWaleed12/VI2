@@ -1,11 +1,6 @@
 .header {
-  position: sticky;
-  top: 0;
-
-  z-index: 120;
-
-  width: 100%;
-
+  --desktop-nav-width: 1440px;
+  display: contents;
   color: #181916;
 }
 
@@ -27,7 +22,7 @@
   width:
     min(
       calc(100% - 64px),
-      1440px
+      var(--desktop-nav-width)
     );
 
   min-height: 40px;
@@ -64,9 +59,9 @@
   color: #181916;
   background: #e8dfd2;
 
-  font-size: 9.5px;
+  font-size: var(--text-ui);
   font-weight: 800;
-  letter-spacing: 0.08em;
+  letter-spacing: var(--tracking-ui);
   text-transform: uppercase;
 }
 
@@ -77,9 +72,9 @@
 .shippingText {
   color: #747067;
 
-  font-size: 9px;
+  font-size: var(--text-ui);
   font-weight: 700;
-  letter-spacing: 0.08em;
+  letter-spacing: var(--tracking-ui);
   text-transform: uppercase;
 }
 
@@ -100,9 +95,9 @@
 .utilityRight span,
 .utilityRight strong,
 .utilityRight button {
-  font-size: 9px;
+  font-size: var(--text-ui);
   font-weight: 800;
-  letter-spacing: 0.10em;
+  letter-spacing: var(--tracking-ui);
 }
 
 .utilityRight button {
@@ -131,6 +126,9 @@
    ============================================================ */
 
 .mainBar {
+  position: sticky;
+  top: 0;
+  z-index: 120;
   border-bottom:
     1px solid
     rgba(24, 25, 22, 0.08);
@@ -142,7 +140,7 @@
   width:
     min(
       calc(100% - 64px),
-      1440px
+      var(--desktop-nav-width)
     );
 
   min-height: 72px;
@@ -216,7 +214,7 @@
 
   color: #8b867f;
 
-  font-size: 11px;
+  font-size: var(--text-ui);
 
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -251,15 +249,15 @@
 .account span {
   color: #5e5a55;
 
-  font-size: 8px;
+  font-size: var(--text-ui);
   font-weight: 800;
-  letter-spacing: 0.08em;
+  letter-spacing: var(--tracking-ui);
 }
 
 .account strong {
-  font-size: 10px;
+  font-size: var(--text-ui);
   font-weight: 800;
-  letter-spacing: 0.05em;
+  letter-spacing: var(--tracking-ui);
 }
 
 .cart {
@@ -285,8 +283,8 @@
   top: -1px;
   right: -2px;
 
-  width: 16px;
-  height: 16px;
+  width: auto;
+  height: auto;
   min-width: 16px;
 
   padding: 0;
@@ -299,8 +297,12 @@
   color: #f5f2ed;
   background: #242320;
 
-  font-size: 7.5px;
+  font-size: var(--text-caption);
   font-weight: 800;
+  min-inline-size: 1.25rem;
+  min-block-size: 1.25rem;
+  padding: 0.125rem;
+  line-height: 1;
 }
 
 /* ============================================================
@@ -318,51 +320,47 @@
 }
 
 .categoryInner {
-  width:
-    min(
-      calc(100% - 64px),
-      1440px
-    );
-
-  min-height: 42px;
-
+  width: min(calc(100% - 64px), var(--desktop-nav-width));
   margin: 0 auto;
-
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-
-  gap: 20px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: stretch;
+  column-gap: 32px;
 }
 
 .categoryMain,
-.categoryPromos {
+.categoryUtilities {
   min-width: 0;
-
   display: flex;
-  align-items: center;
-
-  gap: 22px;
+  align-items: stretch;
+  gap: 16px;
 }
 
-.categoryMain a,
-.categoryPromos a {
+.categoryMain {
+  flex-wrap: nowrap;
+  gap: 24px;
+}
+
+.categoryUtilities > a {
+  min-height: 64px;
+  display: inline-flex;
+  align-items: center;
   color: #272824;
-
-  font-size: 10px;
+  font-size: var(--text-ui);
   font-weight: 700;
-  letter-spacing: 0.08em;
+  line-height: var(--leading-ui);
+  letter-spacing: var(--tracking-ui);
   text-transform: uppercase;
-
   white-space: nowrap;
 }
 
-.categoryMain a:hover,
-.categoryPromos a:hover {
+.categoryUtilities > a:hover {
   color: #8d8881;
 }
 
 .categoryDivider {
+  align-self: center;
+  flex: 0 0 1px;
   width: 1px;
   height: 18px;
 
@@ -370,13 +368,11 @@
     rgba(24, 25, 22, 0.16);
 }
 
-.categoryPromos .dealLink {
+.categoryUtilities .dealLink {
+  margin-inline-start: 8px;
   color: #934e3c;
 }
 
-.categoryPromos .bundleLink {
-  color: #5e5a55;
-}
 
 /* ============================================================
    DRAWER
@@ -515,9 +511,9 @@
 
   color: #888178;
 
-  font-size: 12px;
+  font-size: var(--text-ui);
   font-weight: 700;
-  letter-spacing: 0.05em;
+  letter-spacing: var(--tracking-ui);
   text-transform: uppercase;
 }
 
@@ -541,10 +537,10 @@
 
   color: #292a26;
 
-  font-size: 15px;
+  font-size: var(--text-ui);
   font-weight: 700;
   letter-spacing: -0.01em;
-  line-height: 1.2;
+  line-height: var(--leading-ui);
 }
 
 .simpleLinks a:hover {
@@ -591,9 +587,9 @@
 
   color: #353630;
 
-  font-size: 11px;
+  font-size: var(--text-ui);
   font-weight: 500;
-  line-height: 1.2;
+  line-height: var(--leading-ui);
 }
 
 .marketRow {
@@ -619,7 +615,7 @@
 .marketRow span,
 .marketRow strong,
 .marketRow button {
-  font-size: 10px;
+  font-size: var(--text-ui);
   font-weight: 750;
 }
 
@@ -660,27 +656,37 @@
   color: #f8f3ea;
   background: #5e5a55;
 
-  font-size: 9px;
+  font-size: var(--text-ui);
   font-weight: 800;
-  letter-spacing: 0.07em;
+  letter-spacing: var(--tracking-ui);
 }
 
 /* ============================================================
    TABLET
    ============================================================ */
 
-@media (max-width: 1180px) {
+/* Keep the complete category group above the secondary destinations. */
+@media (min-width: 981px) and (max-width: 1399px) {
+  .categoryInner {
+    grid-template-columns: minmax(0, 1fr) auto;
+    column-gap: 24px;
+  }
+
   .categoryMain {
-    gap: 14px;
+    grid-column: 1 / -1;
   }
 
-  .categoryPromos {
-    gap: 14px;
+  .categoryUtilities {
+    grid-column: 1 / -1;
+    justify-self: end;
   }
 
-  .categoryMain a,
-  .categoryPromos a {
-    font-size: 7px;
+  .categoryUtilities > a {
+    min-height: 44px;
+  }
+
+  .categoryDivider {
+    display: none;
   }
 }
 
@@ -702,9 +708,9 @@
     color: #f7f3ed;
     background: #181916;
 
-    font-size: 7px;
+    font-size: var(--text-ui);
     font-weight: 800;
-    letter-spacing: 0.05em;
+    letter-spacing: var(--tracking-ui);
 
     text-align: center;
   }
@@ -776,6 +782,10 @@
   .cartCount {
     color: #f7f3ed;
     background: #8d8881;
+    min-inline-size: 1.25rem;
+    min-block-size: 1.25rem;
+    padding: 0.125rem;
+    line-height: 1;
   }
 }
 
@@ -787,7 +797,7 @@
   .mobileAnnouncement {
     min-height: 34px;
 
-    font-size: 8px;
+    font-size: var(--text-ui);
   }
 
   .mainInner {
@@ -830,7 +840,7 @@
   }
 
   .searchBar span {
-    font-size: 10px;
+    font-size: var(--text-ui);
   }
 
   .searchBar svg {
@@ -872,7 +882,7 @@
   .simpleLinks a {
     min-height: 54px;
 
-    font-size: 15px;
+    font-size: var(--text-ui);
   }
 
   .drawerCta {
@@ -916,18 +926,25 @@
 
 .categoryTrigger,
 .categoryTriggerActive {
-  min-height: 42px;
-  padding: 0;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 64px;
+  padding: 8px 0;
+  display: inline-flex;
+  align-items: center;
   border: 0;
   border-bottom: 2px solid transparent;
   color: #272824;
   background: transparent;
   cursor: pointer;
-  font-size: 10px;
+  font-size: var(--text-ui);
   font-weight: 700;
-  letter-spacing: 0.08em;
+  letter-spacing: var(--tracking-ui);
   text-transform: uppercase;
-  white-space: nowrap;
+  line-height: var(--leading-ui);
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-align: start;
 }
 
 .categoryTrigger:hover,
@@ -1042,10 +1059,10 @@
 }
 
 .primaryMenuButton {
-  font-size: 15px;
+  font-size: var(--text-ui);
   font-weight: 700;
   letter-spacing: -0.01em;
-  line-height: 1.2;
+  line-height: var(--leading-ui);
 }
 
 .primaryMenuButton:hover,
@@ -1056,10 +1073,10 @@
 .simpleLinks .simpleMenuButton {
   min-height: 57px;
 
-  font-size: 15px;
+  font-size: var(--text-ui);
   font-weight: 700;
   letter-spacing: -0.01em;
-  line-height: 1.2;
+  line-height: var(--leading-ui);
 }
 
 .subMenuPanel {
@@ -1210,10 +1227,10 @@
 
   color: #2b2d27;
 
-  font-size: 15px;
+  font-size: var(--text-ui);
   font-weight: 700;
   letter-spacing: -0.01em;
-  line-height: 1.2;
+  line-height: var(--leading-ui);
 
   transition:
     color 150ms ease,
@@ -1283,7 +1300,7 @@
   }
 
   .subMenuTitleRow > a {
-    font-size: 15px;
+    font-size: var(--text-ui);
   }
 
   .subMenuList a {
@@ -1351,9 +1368,9 @@
 
   color: #69675f;
 
-  font-size: 9px;
+  font-size: var(--text-caption);
   font-weight: 800;
-  letter-spacing: 0.075em;
+  letter-spacing: var(--tracking-ui);
 
   white-space: nowrap;
 }
@@ -1430,9 +1447,9 @@
 
     color: #f7f3ed;
 
-    font-size: 9px;
+    font-size: var(--text-caption);
     font-weight: 850;
-    letter-spacing: 0.075em;
+    letter-spacing: var(--tracking-ui);
   }
 
   .mobileAnnouncement
@@ -1454,9 +1471,6 @@
 }
 
 /* Desktop layout remains independent of the mobile drawer. */
-.categoryMain { flex-wrap: wrap; }
-.categoryInner { align-items: flex-start; flex-wrap: wrap; row-gap: 8px; }
-.categoryTrigger, .categoryTriggerActive { white-space: normal; max-width: 220px; text-align: start; }
 .categoryTrigger:focus-visible, .categoryTriggerActive:focus-visible { outline: 2px solid var(--ink); outline-offset: 4px; }
 
 .customerName {

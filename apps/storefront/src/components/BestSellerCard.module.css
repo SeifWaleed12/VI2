@@ -71,7 +71,7 @@
   color: #f8f4ed;
   background: #8d8881;
 
-  font-size: 10.5px;
+  font-size: var(--text-caption);
   font-weight: 850;
 }
 
@@ -112,11 +112,11 @@
 .brand {
   overflow: hidden;
 
-  color: #777269;
+  color: var(--text-muted);
 
-  font-size: 10px;
+  font-size: var(--text-ui);
   font-weight: 800;
-  letter-spacing: 0.09em;
+  letter-spacing: var(--tracking-ui);
   text-transform: uppercase;
 
   text-overflow: ellipsis;
@@ -132,13 +132,14 @@
 
   color: #191a17;
 
-  font-size: 13px;
+  font-size: var(--text-product-title);
   font-weight: 700;
-  line-height: 1.35;
+  line-height: var(--leading-ui);
 
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
+  min-inline-size: 0;
 }
 
 .rating {
@@ -155,14 +156,14 @@
 .rating strong {
   color: #292a26;
 
-  font-size: 10.5px;
+  font-size: var(--text-ui);
   font-weight: 700;
 }
 
 .rating span {
   color: #8c877f;
 
-  font-size: 9.5px;
+  font-size: var(--text-ui);
   font-weight: 600;
 }
 
@@ -184,23 +185,28 @@
   flex-direction: column;
 
   gap: 3px;
+
+  min-inline-size: 0;
 }
 
 .price strong {
   color: #181916;
 
-  font-size: 12px;
+  font-size: var(--text-price);
   font-weight: 700;
+  min-inline-size: 0;
 }
 
 .price span {
-  color: #aaa59d;
+  color: var(--text-muted);
 
-  font-size: 10.5px;
+  font-size: var(--text-ui);
   font-weight: 400;
 
   text-decoration:
     line-through;
+
+  min-inline-size: 0;
 }
 
 .addButton {
@@ -225,9 +231,9 @@
 
   cursor: pointer;
 
-  font-size: 10px;
+  font-size: var(--text-ui);
   font-weight: 800;
-  letter-spacing: 0.11em;
+  letter-spacing: var(--tracking-ui);
   text-transform: uppercase;
 
   transition:
@@ -279,7 +285,9 @@
 .compact .name {
   min-height: 33px;
 
-  font-size: 10.5px;
+  font-size: var(--text-product-title);
+
+  min-inline-size: 0;
 }
 
 .compact .rating {
@@ -291,7 +299,8 @@
 }
 
 .compact .price strong {
-  font-size: 10px;
+  font-size: var(--text-price);
+  min-inline-size: 0;
 }
 
 .compact .addButton {
@@ -333,7 +342,9 @@
   .name {
     min-height: 40px;
 
-    font-size: 10px;
+    font-size: var(--text-product-title);
+
+    min-inline-size: 0;
   }
 
   .bottom {
@@ -341,7 +352,8 @@
   }
 
   .price strong {
-    font-size: 10px;
+    font-size: var(--text-price);
+    min-inline-size: 0;
   }
 
   .addButton {
@@ -384,7 +396,7 @@
   }
 
   .compact .brand {
-    font-size: 10.5px;
+    font-size: var(--text-ui);
   }
 
   .compact .name {
@@ -392,7 +404,9 @@
 
     margin-top: 5px;
 
-    font-size: 10px;
+    font-size: var(--text-product-title);
+
+    min-inline-size: 0;
   }
 
   .compact .rating {
@@ -401,11 +415,12 @@
 
   .compact .rating strong,
   .compact .rating span {
-    font-size: 10.5px;
+    font-size: var(--text-ui);
   }
 
   .compact .price strong {
-    font-size: 10.5px;
+    font-size: var(--text-price);
+    min-inline-size: 0;
   }
 
   .compact .addButton {
@@ -417,4 +432,4 @@
 
 .addButton:disabled { opacity: .6; cursor: wait; }
 .addButton:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
-.addStatus { min-height: 18px; margin: 8px 0 0; font-size: 12px; line-height: 1.5; color: var(--ink); }
+.addStatus { min-height: 18px; margin: 8px 0 0; font-size: var(--text-ui); line-height: 1.5; color: var(--ink); }

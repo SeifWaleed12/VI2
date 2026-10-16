@@ -66,6 +66,9 @@ it("renders Arabic native names and stable localized parent and child destinatio
   expect(html).toContain("/ar/shop?category_id=child-id");
   expect(html).toContain("data-no-translate");
   expect(html).not.toContain("/categories");
+  expect(html).not.toContain(message("ar", "nav.shop"));
+  expect(html).not.toContain(message("ar", "nav.bundles"));
+  expect(html).not.toContain("#value-sets");
 });
 it("scopes a parent through Medusa using descendants and the requested locale", async () => {
   await ShopPage({

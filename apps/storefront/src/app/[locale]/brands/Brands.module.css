@@ -51,27 +51,23 @@
 
   color: #8d8881;
 
-  font-size: 6px;
+  font-size: var(--text-caption);
   font-weight: 850;
-  letter-spacing: 0.15em;
+  letter-spacing: var(--tracking-ui);
 }
 
 .header h1 {
   margin: 0;
 
   font-family:
-    var(--font-display),
+    var(--font-heading),
     sans-serif;
 
   font-size:
-    clamp(
-      52px,
-      5vw,
-      76px
-    );
+    var(--text-page-title);
 
-  font-weight: 400;
-  line-height: 0.82;
+  font-weight: var(--weight-display);
+  line-height: var(--leading-display);
 }
 
 .header p {
@@ -84,7 +80,7 @@
 
   color: #6f6a62;
 
-  font-size: 10px;
+  font-size: var(--text-body);
   line-height: 1.5;
 }
 
@@ -108,20 +104,20 @@
 
 .count strong {
   font-family:
-    var(--font-display),
+    var(--font-heading),
     sans-serif;
 
   font-size: 44px;
-  line-height: 0.75;
+  line-height: var(--leading-display);
 }
 
 .count span {
   color: #766f66;
 
-  font-size: 4.8px;
+  font-size: var(--text-ui);
   font-weight: 850;
   line-height: 1.4;
-  letter-spacing: 0.12em;
+  letter-spacing: var(--tracking-ui);
 }
 
 /* ============================================================
@@ -196,11 +192,11 @@
   color: #8d8881;
 
   font-family:
-    var(--font-display),
+    var(--font-heading),
     sans-serif;
 
   font-size: 26px;
-  line-height: 1;
+  line-height: var(--leading-display);
 }
 
 .brandLinks {
@@ -256,7 +252,7 @@
 .brandLink span {
   display: block;
 
-  font-size: 11px;
+  font-size: var(--text-ui);
   line-height: 1.25;
 }
 
@@ -267,7 +263,7 @@
 
   color: #8a847b;
 
-  font-size: 6px;
+  font-size: var(--text-ui);
 }
 
 .viewAll {
@@ -307,9 +303,9 @@
       0.06
     );
 
-  font-size: 6px;
+  font-size: var(--text-ui);
   font-weight: 850;
-  letter-spacing: 0.09em;
+  letter-spacing: var(--tracking-ui);
 }
 
 /* ============================================================
@@ -341,16 +337,16 @@
 }
 
 .railTitle span {
-  font-size: 11px;
+  font-size: var(--text-ui);
   font-weight: 800;
 }
 
 .railTitle small {
   color: #7c766e;
 
-  font-size: 4.6px;
+  font-size: var(--text-ui);
   font-weight: 850;
-  letter-spacing: 0.1em;
+  letter-spacing: var(--tracking-ui);
 }
 
 .logoList {
@@ -433,9 +429,9 @@
   color: #f7f2ea;
   background: #181916;
 
-  font-size: 3.5px;
+  font-size: var(--text-ui);
   font-weight: 850;
-  letter-spacing: 0.08em;
+  letter-spacing: var(--tracking-ui);
 }
 
 .shopAll {
@@ -448,9 +444,9 @@
 
   color: #8d8881;
 
-  font-size: 6px;
+  font-size: var(--text-ui);
   font-weight: 850;
-  letter-spacing: 0.08em;
+  letter-spacing: var(--tracking-ui);
 }
 
 /* ============================================================
@@ -499,13 +495,13 @@
   }
 
   .header h1 {
-    font-size: 48px;
+    font-size: var(--text-page-title-mobile);
   }
 
   .header p {
     max-width: 245px;
 
-    font-size: 8px;
+    font-size: var(--text-body);
   }
 
   .count {
@@ -553,7 +549,7 @@
   }
 
   .brandLink span {
-    font-size: 10px;
+    font-size: var(--text-ui);
   }
 
   .brandRail {

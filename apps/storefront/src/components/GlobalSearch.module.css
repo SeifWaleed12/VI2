@@ -75,16 +75,16 @@
 
 .header span {
   font-family:
-    var(--font-display),
+    var(--font-heading),
     sans-serif;
 
   font-size: 29px;
-  line-height: 1;
+  line-height: var(--leading-display);
 }
 
 .header strong {
-  font-size: 7px;
-  letter-spacing: 0.13em;
+  font-size: var(--text-ui);
+  letter-spacing: var(--tracking-ui);
 }
 
 .header > button {
@@ -135,7 +135,7 @@
   background: transparent;
 
   font-family:
-    var(--font-body),
+    var(--font-ui),
     sans-serif;
   font-size: clamp(
     18px,
@@ -145,7 +145,7 @@
 }
 
 .searchForm input::placeholder {
-  color: #aaa39a;
+  color: var(--text-muted);
 }
 
 .searchForm button {
@@ -195,9 +195,9 @@
 
   color: #6e6961;
 
-  font-size: 6px;
+  font-size: var(--text-ui);
   font-weight: 800;
-  letter-spacing: 0.11em;
+  letter-spacing: var(--tracking-ui);
 }
 
 .quickHeading > button {
@@ -211,7 +211,7 @@
 
   cursor: pointer;
 
-  font-size: 6px;
+  font-size: var(--text-ui);
   font-weight: 800;
 }
 
@@ -240,9 +240,9 @@
 
   cursor: pointer;
 
-  font-size: 8.5px;
+  font-size: var(--text-ui);
   font-weight: 700;
-  letter-spacing: 0.08em;
+  letter-spacing: var(--tracking-ui);
 
   transition:
     color 140ms ease,
@@ -274,11 +274,11 @@
 }
 
 .resultsHead > span {
-  color: #777168;
+  color: var(--text-muted);
 
-  font-size: 6px;
+  font-size: var(--text-ui);
   font-weight: 800;
-  letter-spacing: 0.12em;
+  letter-spacing: var(--tracking-ui);
 }
 
 .resultsHead > button {
@@ -294,9 +294,9 @@
 
   cursor: pointer;
 
-  font-size: 6px;
+  font-size: var(--text-ui);
   font-weight: 800;
-  letter-spacing: 0.08em;
+  letter-spacing: var(--tracking-ui);
 }
 
 .results {
@@ -367,32 +367,32 @@
 }
 
 .resultCopy > span {
-  color: #7b756d;
+  color: var(--text-muted);
 
-  font-size: 6px;
+  font-size: var(--text-ui);
   font-weight: 800;
-  letter-spacing: 0.07em;
+  letter-spacing: var(--tracking-ui);
 }
 
 .resultCopy > strong {
   overflow: hidden;
 
   font-family:
-    var(--font-display),
+    var(--font-heading),
     sans-serif;
 
   font-size: 25px;
-  font-weight: 400;
-  line-height: 0.95;
+  font-weight: var(--weight-display);
+  line-height: var(--leading-display);
 
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .resultCopy > small {
-  color: #7b756d;
+  color: var(--text-muted);
 
-  font-size: 7px;
+  font-size: var(--text-ui);
 }
 
 .resultPrice {
@@ -404,13 +404,13 @@
 }
 
 .resultPrice strong {
-  font-size: 10px;
+  font-size: var(--text-price);
 }
 
 .resultPrice span {
-  color: #7b756d;
+  color: var(--text-muted);
 
-  font-size: 6px;
+  font-size: var(--text-ui);
   font-weight: 800;
 }
 
@@ -426,7 +426,7 @@
 
   gap: 12px;
 
-  color: #777168;
+  color: var(--text-muted);
 
   text-align: center;
 }
@@ -436,7 +436,7 @@
 
   margin: 0;
 
-  font-size: 9px;
+  font-size: var(--text-body);
   line-height: 1.6;
 }
 
@@ -536,6 +536,6 @@
   }
 
   .resultPrice strong {
-    font-size: 9px;
+    font-size: var(--text-price);
   }
 }

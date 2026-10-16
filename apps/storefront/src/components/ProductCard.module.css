@@ -46,10 +46,10 @@
   color: #f7f3ed;
   background: #181916;
 
-  font-size: 7px;
+  font-size: var(--text-caption);
   font-weight: 800;
-  line-height: 1;
-  letter-spacing: 0.12em;
+  line-height: var(--leading-ui);
+  letter-spacing: var(--tracking-ui);
   text-transform: uppercase;
 }
 
@@ -68,11 +68,11 @@
 .brand {
   overflow: hidden;
 
-  color: #777269;
+  color: var(--text-muted);
 
-  font-size: 8px;
+  font-size: var(--text-ui);
   font-weight: 800;
-  letter-spacing: 0.09em;
+  letter-spacing: var(--tracking-ui);
 
   text-overflow: ellipsis;
   text-transform: uppercase;
@@ -88,14 +88,14 @@
 
   color: #292a26;
 
-  font-size: 9px;
+  font-size: var(--text-ui);
   font-weight: 700;
 }
 
 .reviewCount {
-  font-size: 7.5px;
+  font-size: var(--text-ui);
   font-weight: 600;
-  color: #8c877f;
+  color: var(--text-muted);
 }
 
 .name {
@@ -104,9 +104,10 @@
   display: inline-block;
 
   color: #191a17;
-  font-size: 13px;
+  font-size: var(--text-product-title);
   font-weight: 700;
-  line-height: 1.35;
+  line-height: var(--leading-ui);
+  min-inline-size: 0;
 }
 
 .meta {
@@ -116,13 +117,14 @@
 
   overflow: hidden;
 
-  color: #8c877f;
+  color: var(--text-muted);
 
-  font-size: 9px;
+  font-size: var(--text-ui);
   font-weight: 400;
 
   text-overflow: ellipsis;
   white-space: nowrap;
+  min-inline-size: 0;
 }
 
 .bottom {
@@ -139,19 +141,23 @@
   display: flex;
   flex-direction: column;
   gap: 3px;
+  min-inline-size: 0;
 }
 
 .price strong {
   color: #181916;
-  font-size: 12px;
+  font-size: var(--text-price);
+  min-inline-size: 0;
 }
 
 .price span {
-  color: #aaa59d;
+  color: var(--text-muted);
 
-  font-size: 9px;
+  font-size: var(--text-ui);
 
   text-decoration: line-through;
+
+  min-inline-size: 0;
 }
 
 .addButton {
@@ -220,8 +226,8 @@
 
     overflow: hidden;
 
-    font-size: 5.5px;
-    letter-spacing: 0.08em;
+    font-size: var(--text-caption);
+    letter-spacing: var(--tracking-ui);
 
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -230,13 +236,13 @@
   .brand {
     max-width: 75%;
 
-    font-size: 6.5px;
+    font-size: var(--text-ui);
   }
 
   .rating {
     gap: 2px;
 
-    font-size: 7px;
+    font-size: var(--text-ui);
   }
 
   .rating svg {
@@ -249,8 +255,9 @@
 
     margin-top: 5px;
 
-    font-size: 10.5px;
-    line-height: 1.35;
+    font-size: var(--text-product-title);
+    line-height: var(--leading-ui);
+    min-inline-size: 0;
   }
 
   .meta {
@@ -258,7 +265,9 @@
 
     margin-top: 4px;
 
-    font-size: 7px;
+    font-size: var(--text-ui);
+
+    min-inline-size: 0;
   }
 
   .bottom {
@@ -268,11 +277,13 @@
   }
 
   .price strong {
-    font-size: 9.5px;
+    font-size: var(--text-price);
+    min-inline-size: 0;
   }
 
   .price span {
-    font-size: 7px;
+    font-size: var(--text-ui);
+    min-inline-size: 0;
   }
 
   .addButton {
@@ -283,7 +294,8 @@
 
 @media (max-width: 380px) {
   .name {
-    font-size: 10px;
+    font-size: var(--text-product-title);
+    min-inline-size: 0;
   }
 
   .addButton {
@@ -302,11 +314,11 @@
   align-items: center;
   gap: 6px;
 
-  color: #8d8881;
+  color: var(--text-muted);
 
-  font-size: 7.5px;
+  font-size: var(--text-ui);
   font-weight: 800;
-  letter-spacing: 0.08em;
+  letter-spacing: var(--tracking-ui);
   text-transform: uppercase;
 }
 
@@ -324,5 +336,5 @@
 }
 
 .stockLine:has(.lowStock) {
-  color: #92583b;
+  color: var(--text-muted);
 }

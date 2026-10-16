@@ -9,6 +9,7 @@ import type { Product } from "@/types/product";
 
 jest.mock("next/navigation", () => ({
   useRouter: () => ({ refresh: jest.fn() }),
+  usePathname: () => "/en",
 }));
 let mockLocale: Locale = "en";
 let mockCustomer: { firstName?: string; email?: string } | null = null;
@@ -69,7 +70,9 @@ jest.mock("../AccountDropdown", () => ({
 jest.mock("../Navbar.module.css", () => ({
   account: "account",
   customerName: "customerName",
+  desktopCategories: "desktopCategories",
 }));
+jest.mock("../MobileBottomNav.module.css", () => ({}));
 jest.mock("../TrendingNow.module.css", () => ({}));
 jest.mock("../BrandUniverse.module.css", () => ({}));
 jest.mock("@/hooks/use-ticker-motion", () => ({
@@ -188,4 +191,48 @@ it("keeps the decorative brand names unchanged and provides a separate pause con
   expect(
     renderToStaticMarkup(createElement(BrandUniverse, { brands: [] })),
   ).toBe("");
+});
+
+it.each(["en", "ar"] as const)(
+  "keeps catalog navigation and removes redundant global shortcuts in %s",
+  (locale) => {
+    mockLocale = locale;
+    const roots = ["Alpha", "Beta"].map((name, index) => ({
+      id: "category-" + index, name, handle: name.toLowerCase(),
+      parent_category_id: null, rank: index, children: [],
+    }));
+    const html = renderToStaticMarkup(createElement(Navbar, {
+      initialDirectory: { roots, error: false },
+    }));
+    const desktop = html.match(/<nav class="desktopCategories"[^>]*>([\s\S]*?)<\/nav>/)![1];
+    expect(desktop.match(/<button /g)).toHaveLength(2);
+    expect(desktop).toContain("Alpha");
+    expect(desktop).toContain("Beta");
+    expect(desktop.match(/<a /g)).toHaveLength(3);
+    expect(desktop).toContain('href="/' + locale + '/brands"');
+    expect(desktop).toContain('href="/' + locale + '/#health-goals"');
+    expect(desktop).toContain('href="/' + locale + '/deals"');
+    expect(html).not.toContain("#best-sellers");
+    expect(html).not.toContain("#value-sets");
+    for (const key of ["nav.new", "nav.shop", "nav.bundles"] as const) {
+      expect(html).not.toContain(">" + message(locale, key) + "<");
+    }
+  },
+);
+
+it.each(["en", "ar"] as const)("hides bottom navigation while the mobile drawer is open in %s", (locale) => {
+  mockLocale = locale;
+  const BottomNav = jest.requireActual("../MobileBottomNav").default;
+  expect(renderToStaticMarkup(createElement(BottomNav, { hidden: true, onOpenSearch: jest.fn() }))).toBe("");
+  const html = renderToStaticMarkup(createElement(BottomNav, { hidden: false, onOpenSearch: jest.fn() }));
+  expect(html).toContain(message(locale, "nav.mobile"));
+  expect(html).toContain(message(locale, "nav.account"));
+});
+it("keeps search and cart in the banner while category navigation scrolls separately", () => {
+  const html = renderToStaticMarkup(createElement(Navbar));
+  const banner = html.match(/<header[^>]*>([\s\S]*?)<\/header>/)![1];
+  expect(banner).toContain(message("en", "nav.search"));
+  expect(banner).toContain(message("en", "nav.cart"));
+  expect(banner).not.toContain("desktopCategories");
+  expect(html).toContain('class="desktopCategories"');
 });

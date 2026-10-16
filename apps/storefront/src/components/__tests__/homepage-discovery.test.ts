@@ -5,10 +5,12 @@ import TrendingNow from "../TrendingNow"
 import HomeHeroSlider from "../HomeHeroSlider"
 import { message } from "@/lib/i18n"
 import type { Product } from "@/types/product"
+let mockHeroLocale: "en" | "ar" = "en"
+beforeEach(() => { mockHeroLocale = "en" })
 
 jest.mock("next/link", () => ({ __esModule: true, default: ({ children, href, ...props }: { children: unknown; href: string }) => createElement("a", { href, ...props }, children as never) }))
 jest.mock("next/image", () => ({ __esModule: true, default: (props: { src: string; alt: string }) => createElement("img", { src: props.src, alt: props.alt }) }))
-jest.mock("@/context/LanguageContext", () => ({ useLanguage: () => ({ language: "en", isArabic: false, msg: (key: Parameters<typeof message>[1]) => message("en", key), t: <T,>(value: T) => value }) }))
+jest.mock("@/context/LanguageContext", () => ({ useLanguage: () => ({ language: mockHeroLocale, isArabic: mockHeroLocale === "ar", msg: (key: Parameters<typeof message>[1]) => message(mockHeroLocale, key), t: <T,>(value: T) => value }) }))
 jest.mock("../BestSellerCard", () => ({ __esModule: true, default: ({ product, rank }: { product: Product; rank?: number }) => createElement("div", { "data-rank": rank }, product.name) }))
 jest.mock("../HomeBestSellers.module.css", () => ({}))
 jest.mock("../TrendingNow.module.css", () => ({}))
@@ -45,4 +47,12 @@ it("explains an empty selected category and offers a reset", () => {
   expect(html).toContain("No products in this category yet.")
   expect(html).toContain("SHOW ALL CATEGORIES")
   expect(html).toContain('role="status"')
+})
+it.each(["en", "ar"] as const)("renders the whole localized hero statement before hydration in %s", (locale) => {
+  mockHeroLocale = locale
+  const html = renderToStaticMarkup(createElement(HomeHeroSlider))
+  expect(html).toContain(message(locale, "hero.statement"))
+  expect(html).toContain("data-no-translate")
+  expect(html).toContain("data-preserve-language")
+  expect(html).not.toContain("<br")
 })

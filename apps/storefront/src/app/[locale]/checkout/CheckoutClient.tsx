@@ -1327,9 +1327,9 @@ export default function CheckoutClient() {
                                   checked={selectedShippingOptionId === opt.id}
                                   onChange={() => setSelectedShippingOptionId(opt.id)}
                                 />
-                                <span style={{ fontSize: "12px", fontWeight: 600 }}>{opt.name}</span>
+                                <span style={{ fontSize: "var(--text-body)", fontWeight: 600 }}>{opt.name}</span>
                               </div>
-                              <strong style={{ fontSize: "12px" }}>
+                              <strong style={{ fontSize: "var(--text-body)" }}>
                                 {opt.amount === 0 ? "FREE" : `${formatPrice(opt.amount)} EGP`}
                               </strong>
                             </label>
@@ -1565,7 +1565,7 @@ export default function CheckoutClient() {
 
               {/* PROMO / DISCOUNT CODE BOX */}
               <div style={{ padding: "16px 0", borderTop: "1px solid #e5e5e5", borderBottom: "1px solid #e5e5e5", margin: "16px 0" }}>
-                <span style={{ fontSize: "11px", fontWeight: 800, letterSpacing: "0.1em", display: "block", marginBottom: "8px", color: "#666" }}>
+                <span style={{ fontSize: "var(--text-ui)", fontWeight: 800, letterSpacing: "var(--tracking-ui)", display: "block", marginBottom: "8px", color: "#666" }}>
                   PROMO CODE
                 </span>
                 <div style={{ display: "flex", gap: "6px" }}>
@@ -1574,7 +1574,7 @@ export default function CheckoutClient() {
                     placeholder="ENTER CODE"
                     value={promoInput}
                     onChange={(e) => setPromoInput(e.target.value.toUpperCase())}
-                    style={{ flex: 1, padding: "8px 10px", border: "1px solid #ccc", fontSize: "12px", textTransform: "uppercase" }}
+                    style={{ flex: 1, padding: "8px 10px", border: "1px solid #ccc", fontSize: "var(--text-body)", textTransform: "uppercase" }}
                   />
                   <button
                     type="button"
@@ -1592,23 +1592,23 @@ export default function CheckoutClient() {
                         setPromoMsg({ type: "error", text: res.message || "Invalid promotion code." });
                       }
                     }}
-                    style={{ padding: "8px 14px", background: "#111", color: "#fff", border: "none", fontSize: "11px", fontWeight: 800, cursor: "pointer" }}
+                    style={{ padding: "8px 14px", background: "#111", color: "#fff", border: "none", fontSize: "var(--text-ui)", fontWeight: 800, cursor: "pointer" }}
                   >
                     {promoLoading ? "..." : "APPLY"}
                   </button>
                 </div>
                 {promoMsg && (
-                  <p style={{ fontSize: "11px", marginTop: "6px", color: promoMsg.type === "success" ? "#16a34a" : "#dc2626" }}>
+                  <p style={{ fontSize: "var(--text-ui)", marginTop: "6px", color: promoMsg.type === "success" ? "#16a34a" : "#dc2626" }}>
                     {promoMsg.text}
                   </p>
                 )}
                 {promotions.map((p) => (
-                  <div key={p.code} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "8px", fontSize: "12px", background: "#f5f5f5", padding: "6px 10px" }}>
+                  <div key={p.code} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "8px", fontSize: "var(--text-body)", background: "#f5f5f5", padding: "6px 10px" }}>
                     <span>🎟️ <strong>{p.code}</strong></span>
                     <button
                       type="button"
                       onClick={() => removePromotion(p.code)}
-                      style={{ background: "none", border: "none", color: "#dc2626", cursor: "pointer", fontSize: "11px", fontWeight: 700 }}
+                      style={{ background: "none", border: "none", color: "#dc2626", cursor: "pointer", fontSize: "var(--text-ui)", fontWeight: 700 }}
                     >
                       REMOVE
                     </button>

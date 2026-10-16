@@ -17,6 +17,7 @@ export function removedCategoryPath(path: string) {
   return /^\/(?:en\/|ar\/)?categories(?:\/|$)/.test(path);
 }
 const en = {
+  "hero.statement": "PREMIUM SUPPLEMENTS FOR A STRONGER, HEALTHIER YOU.",
   "nav.switchArabic": "Switch to Arabic",
   "nav.switchEnglish": "Switch to English",
   "cart.close": "Close cart",
@@ -71,6 +72,7 @@ const en = {
 } as const;
 type MessageKey = keyof typeof en;
 const ar: Record<MessageKey, string> = {
+  "hero.statement": "مكملات غذائية عالية الجودة لصحة أفضل وقوة أكبر.",
   "nav.switchArabic": "التبديل إلى العربية",
   "nav.switchEnglish": "التبديل إلى الإنجليزية",
   "cart.close": "إغلاق السلة",

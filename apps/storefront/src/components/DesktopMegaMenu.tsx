@@ -4,8 +4,6 @@ import Link from "@/components/LocaleLink";
 import {
   ArrowRight,
   ChevronRight,
-  ShoppingBag,
-  BadgePercent,
 } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 import { getBrands } from "@/lib/medusa/services/brands";
@@ -89,20 +87,6 @@ export default function DesktopMegaMenu({
               </section>
             ))}
           </div>
-          <aside className={styles.side}>
-            <span>{msg("nav.collection")}</span>
-            <Link href="/shop" onClick={onClose}>
-              {msg("nav.shop")}
-            </Link>
-            <Link href="/deals" onClick={onClose}>
-              <BadgePercent size={18} />
-              {msg("nav.deals")}
-            </Link>
-            <Link href="/#value-sets" onClick={onClose}>
-              <ShoppingBag size={18} />
-              {msg("nav.bundles")}
-            </Link>
-          </aside>
         </div>
       </div>
     </>

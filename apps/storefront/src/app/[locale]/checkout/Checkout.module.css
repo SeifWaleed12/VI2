@@ -55,9 +55,9 @@
 
   color: #181916;
 
-  font-size: 7px;
+  font-size: var(--text-ui);
   font-weight: 850;
-  letter-spacing: 0.08em;
+  letter-spacing: var(--tracking-ui);
 }
 
 .checkoutBrand {
@@ -69,20 +69,20 @@
 
 .checkoutBrand strong {
   font-family:
-    var(--font-display),
+    var(--font-heading),
     sans-serif;
 
   font-size: 30px;
-  font-weight: 400;
-  line-height: 1;
+  font-weight: var(--weight-display);
+  line-height: var(--leading-display);
 }
 
 .checkoutBrand span {
   color: #6d685f;
 
-  font-size: 5.5px;
+  font-size: var(--text-caption);
   font-weight: 850;
-  letter-spacing: 0.12em;
+  letter-spacing: var(--tracking-ui);
 }
 
 .progress {
@@ -104,14 +104,14 @@
 }
 
 .progress > div span {
-  font-size: 5px;
+  font-size: var(--text-caption);
   font-weight: 850;
-  letter-spacing: 0.08em;
+  letter-spacing: var(--tracking-ui);
 }
 
 .progress > div strong {
-  font-size: 7px;
-  letter-spacing: 0.11em;
+  font-size: var(--text-ui);
+  letter-spacing: var(--tracking-ui);
 }
 
 .progress > i {
@@ -133,7 +133,7 @@
 }
 
 .progressDone {
-  color: #8d8881 !important;
+  color: var(--text-muted) !important;
 }
 
 /* ============================================================
@@ -184,11 +184,11 @@
 
 .intro span,
 .confirmKicker span {
-  color: #8d8881;
+  color: var(--text-muted);
 
-  font-size: 5.8px;
+  font-size: var(--text-caption);
   font-weight: 850;
-  letter-spacing: 0.13em;
+  letter-spacing: var(--tracking-ui);
 }
 
 .intro h1 {
@@ -198,18 +198,14 @@
     0;
 
   font-family:
-    var(--font-display),
+    var(--font-heading),
     sans-serif;
 
   font-size:
-    clamp(
-      74px,
-      7vw,
-      108px
-    );
+    var(--text-page-title);
 
-  font-weight: 400;
-  line-height: 0.72;
+  font-weight: var(--weight-display);
+  line-height: var(--leading-display);
 }
 
 .intro > p {
@@ -222,7 +218,7 @@
 
   color: #6c675f;
 
-  font-size: 11px;
+  font-size: var(--text-body);
   line-height: 1.55;
 }
 
@@ -265,21 +261,20 @@
 
   color: #8a847b;
 
-  font-size: 5px;
+  font-size: var(--text-ui);
   font-weight: 850;
-  letter-spacing: 0.12em;
+  letter-spacing: var(--tracking-ui);
 }
 
 .cardHeader h2 {
   margin: 0;
 
   font-family:
-    var(--font-display),
-    sans-serif;
+    var(--font-ui), Arial, sans-serif;
 
-  font-size: 40px;
-  font-weight: 400;
-  line-height: 0.85;
+  font-size: var(--text-section);
+  font-weight: 700;
+  line-height: var(--leading-ui);
 }
 
 .cardHeader > small {
@@ -287,9 +282,9 @@
 
   color: #8a847b;
 
-  font-size: 4.8px;
+  font-size: var(--text-ui);
   font-weight: 850;
-  letter-spacing: 0.11em;
+  letter-spacing: var(--tracking-ui);
 }
 
 .fields {
@@ -320,9 +315,9 @@
 .fields label > span {
   color: #5d5952;
 
-  font-size: 5.5px;
+  font-size: var(--text-ui);
   font-weight: 850;
-  letter-spacing: 0.1em;
+  letter-spacing: var(--tracking-ui);
 }
 
 .fullField {
@@ -349,7 +344,7 @@
   background: #f0ede8;
 
   font: inherit;
-  font-size: 11px;
+  font-size: var(--text-body);
 
   transition:
     border-color
@@ -374,7 +369,7 @@
 .fieldError {
   color: #9d3e2e;
 
-  font-size: 7px;
+  font-size: var(--text-body);
   line-height: 1.4;
 }
 
@@ -424,13 +419,13 @@
 }
 
 .deliveryMethod strong {
-  font-size: 9px;
+  font-size: var(--text-ui);
 }
 
 .deliveryMethod span {
-  color: #777169;
+  color: var(--text-muted);
 
-  font-size: 8px;
+  font-size: var(--text-body);
 }
 
 .error {
@@ -461,7 +456,7 @@
       0.13
     );
 
-  font-size: 8px;
+  font-size: var(--text-body);
   line-height: 1.45;
 }
 
@@ -484,9 +479,9 @@
   color: #f8f4ed;
   background: #181916;
 
-  font-size: 7px;
+  font-size: var(--text-ui);
   font-weight: 850;
-  letter-spacing: 0.11em;
+  letter-spacing: var(--tracking-ui);
 
   cursor: pointer;
 }
@@ -534,18 +529,14 @@
     0;
 
   font-family:
-    var(--font-display),
+    var(--font-heading),
     sans-serif;
 
   font-size:
-    clamp(
-      68px,
-      6.5vw,
-      96px
-    );
+    var(--text-page-title);
 
-  font-weight: 400;
-  line-height: 0.78;
+  font-weight: var(--weight-display);
+  line-height: var(--leading-display);
 }
 
 .confirmIntro p {
@@ -558,7 +549,7 @@
 
   color: #6d685f;
 
-  font-size: 11px;
+  font-size: var(--text-body);
   line-height: 1.55;
 }
 
@@ -594,20 +585,19 @@
   margin: 0;
 
   font-family:
-    var(--font-display),
-    sans-serif;
+    var(--font-ui), Arial, sans-serif;
 
-  font-size: 40px;
-  font-weight: 400;
-  line-height: 0.86;
+  font-size: var(--text-section);
+  font-weight: 700;
+  line-height: var(--leading-ui);
 }
 
 .confirmSectionHeader span {
   color: #8a847b;
 
-  font-size: 4.8px;
+  font-size: var(--text-ui);
   font-weight: 850;
-  letter-spacing: 0.11em;
+  letter-spacing: var(--tracking-ui);
 }
 
 .paymentGrid {
@@ -676,15 +666,15 @@
 
 .paymentOption strong,
 .paymentSelected strong {
-  font-size: 9px;
-  line-height: 1.25;
+  font-size: var(--text-body);
+  line-height: var(--leading-ui);
 }
 
 .paymentOption span,
 .paymentSelected span {
-  color: #777169;
+  color: var(--text-muted);
 
-  font-size: 7px;
+  font-size: var(--text-body);
   line-height: 1.4;
 }
 
@@ -717,7 +707,7 @@
       0.07
     );
 
-  font-size: 7px;
+  font-size: var(--text-body);
   line-height: 1.5;
 }
 
@@ -755,9 +745,9 @@
 
   color: #8a847b;
 
-  font-size: 5px;
+  font-size: var(--text-ui);
   font-weight: 850;
-  letter-spacing: 0.11em;
+  letter-spacing: var(--tracking-ui);
 }
 
 .reviewCard > strong {
@@ -765,15 +755,15 @@
 
   margin-bottom: 6px;
 
-  font-size: 10px;
+  font-size: var(--text-ui);
 }
 
 .reviewCard p {
   margin: 0;
 
-  color: #777169;
+  color: var(--text-muted);
 
-  font-size: 8px;
+  font-size: var(--text-body);
   line-height: 1.55;
 }
 
@@ -793,9 +783,9 @@
   color: #181916;
   background: transparent;
 
-  font-size: 5px;
+  font-size: var(--text-ui);
   font-weight: 850;
-  letter-spacing: 0.08em;
+  letter-spacing: var(--tracking-ui);
 
   cursor: pointer;
 }
@@ -809,9 +799,9 @@
 
   gap: 7px;
 
-  color: #777169;
+  color: var(--text-muted);
 
-  font-size: 6px;
+  font-size: var(--text-caption);
 }
 
 /* ============================================================
@@ -837,11 +827,11 @@
 }
 
 .summaryEyebrow {
-  color: #777169;
+  color: var(--text-muted);
 
-  font-size: 5.5px;
+  font-size: var(--text-caption);
   font-weight: 850;
-  letter-spacing: 0.11em;
+  letter-spacing: var(--tracking-ui);
 }
 
 .summary h2 {
@@ -851,7 +841,7 @@
     24px;
 
   font-family:
-    var(--font-display),
+    var(--font-heading),
     sans-serif;
 
   font-size:
@@ -861,8 +851,8 @@
       74px
     );
 
-  font-weight: 400;
-  line-height: 0.76;
+  font-weight: var(--weight-display);
+  line-height: var(--leading-display);
 }
 
 .orderItems {
@@ -937,7 +927,7 @@
   color: #f8f4ed;
   background: #181916;
 
-  font-size: 6px;
+  font-size: var(--text-caption);
 }
 
 .orderItemInfo {
@@ -950,31 +940,32 @@
 }
 
 .orderItemInfo > span {
-  color: #777169;
+  color: var(--text-muted);
 
-  font-size: 5px;
+  font-size: var(--text-ui);
   font-weight: 850;
-  letter-spacing: 0.09em;
+  letter-spacing: var(--tracking-ui);
 }
 
 .orderItemInfo > strong {
   overflow: hidden;
 
-  font-size: 9px;
-  line-height: 1.25;
+  font-size: var(--text-product-title);
+  line-height: var(--leading-ui);
 
   text-overflow: ellipsis;
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .orderItemInfo > small {
-  color: #8b857d;
+  color: var(--text-muted);
 
-  font-size: 6px;
+  font-size: var(--text-ui);
 }
 
 .orderItemPrice {
-  font-size: 8px;
+  font-size: var(--text-price);
   white-space: nowrap;
 }
 
@@ -989,13 +980,13 @@
 
   gap: 10px;
 
-  font-size: 5px;
+  font-size: var(--text-ui);
   font-weight: 850;
-  letter-spacing: 0.07em;
+  letter-spacing: var(--tracking-ui);
 }
 
 .freeDelivery strong {
-  color: #8d8881;
+  color: var(--text-muted);
 }
 
 .progressTrack {
@@ -1044,13 +1035,13 @@
 
   color: #67625b;
 
-  font-size: 9px;
+  font-size: var(--text-price);
 }
 
 .totals > div strong {
   color: #181916;
 
-  font-size: 9px;
+  font-size: var(--text-price);
 }
 
 .grandTotal {
@@ -1067,7 +1058,7 @@
 
 .grandTotal span {
   font-family:
-    var(--font-display),
+    var(--font-heading),
     sans-serif;
 
   color: #181916 !important;
@@ -1077,11 +1068,11 @@
 
 .grandTotal strong {
   font-family:
-    var(--font-display),
+    var(--font-heading),
     sans-serif;
 
   font-size: 34px !important;
-  font-weight: 400;
+  font-weight: var(--weight-display);
 }
 
 .deliveryNote {
@@ -1106,9 +1097,9 @@
       0.54
     );
 
-  color: #8d8881;
+  color: var(--text-muted);
 
-  font-size: 7px;
+  font-size: var(--text-ui);
 }
 
 .emptyOrder {
@@ -1120,13 +1111,13 @@
 }
 
 .emptyOrder p {
-  color: #777169;
+  color: var(--text-muted);
 
-  font-size: 8px;
+  font-size: var(--text-body);
 }
 
 .emptyOrder a {
-  font-size: 6px;
+  font-size: var(--text-ui);
   font-weight: 850;
 }
 
@@ -1234,11 +1225,11 @@
   }
 
   .progress > div strong {
-    font-size: 6px;
+    font-size: var(--text-ui);
   }
 
   .progress > div span {
-    font-size: 4.5px;
+    font-size: var(--text-caption);
   }
 
   .progressActive {
@@ -1301,13 +1292,13 @@
   .mobileSummary span {
     color: #817b72;
 
-    font-size: 5.8px;
+    font-size: var(--text-ui);
     font-weight: 850;
-    letter-spacing: 0.1em;
+    letter-spacing: var(--tracking-ui);
   }
 
   .mobileSummary strong {
-    font-size: 9px;
+    font-size: var(--text-ui);
   }
 
   .summaryChevronOpen {
@@ -1388,7 +1379,7 @@
     color: #f8f4ed;
     background: #181916;
 
-    font-size: 5px;
+    font-size: var(--text-caption);
   }
 
   .mobileOrderItem > div:last-child {
@@ -1400,13 +1391,14 @@
   }
 
   .mobileOrderItem strong {
-    font-size: 8px;
+    font-size: var(--text-product-title);
+    overflow-wrap: anywhere;
   }
 
   .mobileOrderItem small {
-    color: #777169;
+    color: var(--text-muted);
 
-    font-size: 7px;
+    font-size: var(--text-ui);
   }
 
   .mobileTotals {
@@ -1466,7 +1458,7 @@
   }
 
   .intro h1 {
-    font-size: 58px;
+    font-size: var(--text-page-title-mobile);
   }
 
   .intro > p {
@@ -1474,7 +1466,7 @@
 
     margin: 0;
 
-    font-size: 9px;
+    font-size: var(--text-body);
   }
 
   .formCard,
@@ -1486,7 +1478,7 @@
 
   .cardHeader h2,
   .confirmSectionHeader h2 {
-    font-size: 34px;
+    font-size: var(--text-section);
   }
 
   .cardHeader > small,
@@ -1536,13 +1528,13 @@
   }
 
   .confirmIntro h1 {
-    font-size: 55px;
+    font-size: var(--text-page-title-mobile);
   }
 
   .confirmIntro p {
     margin-top: 12px;
 
-    font-size: 9px;
+    font-size: var(--text-body);
   }
 
   .paymentGrid,
@@ -1662,13 +1654,13 @@
   .mobileAction span {
     color: #817b72;
 
-    font-size: 5.5px;
+    font-size: var(--text-ui);
     font-weight: 850;
-    letter-spacing: 0.1em;
+    letter-spacing: var(--tracking-ui);
   }
 
   .mobileAction strong {
-    font-size: 11px;
+    font-size: var(--text-ui);
   }
 
   .mobileAction button {
@@ -1681,9 +1673,9 @@
     color: #f8f4ed;
     background: #181916;
 
-    font-size: 7px;
+    font-size: var(--text-ui);
     font-weight: 850;
-    letter-spacing: 0.08em;
+    letter-spacing: var(--tracking-ui);
   }
 
   .mobileAction button:disabled {

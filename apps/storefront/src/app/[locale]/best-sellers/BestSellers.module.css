@@ -29,7 +29,7 @@
 
   color: #777168;
 
-  font-size: 8px;
+  font-size: var(--text-ui);
   font-weight: 650;
 }
 
@@ -84,27 +84,23 @@
 
   color: #8d8881;
 
-  font-size: 7px;
+  font-size: var(--text-ui);
   font-weight: 850;
-  letter-spacing: 0.16em;
+  letter-spacing: var(--tracking-ui);
 }
 
 .hero h1 {
   margin: 0;
 
   font-family:
-    var(--font-display),
+    var(--font-heading),
     sans-serif;
 
   font-size:
-    clamp(
-      78px,
-      8vw,
-      132px
-    );
+    var(--text-page-title);
 
-  font-weight: 400;
-  line-height: 0.75;
+  font-weight: var(--weight-display);
+  line-height: var(--leading-display);
 }
 
 .heroCopy {
@@ -121,7 +117,7 @@
 
   color: #656159;
 
-  font-size: 11px;
+  font-size: var(--text-body);
   line-height: 1.7;
 }
 
@@ -141,9 +137,9 @@
 
   color: #181916;
 
-  font-size: 7px;
+  font-size: var(--text-ui);
   font-weight: 850;
-  letter-spacing: 0.09em;
+  letter-spacing: var(--tracking-ui);
 }
 
 .categoryBar {
@@ -200,9 +196,9 @@
 
   cursor: pointer;
 
-  font-size: 7px;
+  font-size: var(--text-ui);
   font-weight: 800;
-  letter-spacing: 0.05em;
+  letter-spacing: var(--tracking-ui);
 
   transition:
     color 150ms ease,
@@ -233,15 +229,15 @@
 }
 
 .resultsMeta span {
-  font-size: 6.5px;
+  font-size: var(--text-ui);
   font-weight: 850;
-  letter-spacing: 0.12em;
+  letter-spacing: var(--tracking-ui);
 }
 
 .resultsMeta strong {
   color: #8d8881;
 
-  font-size: 7px;
+  font-size: var(--text-ui);
   font-weight: 800;
 }
 
@@ -273,9 +269,9 @@
 }
 
 .empty span {
-  font-size: 8px;
+  font-size: var(--text-ui);
   font-weight: 850;
-  letter-spacing: 0.1em;
+  letter-spacing: var(--tracking-ui);
 }
 
 .empty button {
@@ -291,9 +287,9 @@
   color: #f8f4ed;
   background: #8d8881;
 
-  font-size: 7px;
+  font-size: var(--text-ui);
   font-weight: 850;
-  letter-spacing: 0.07em;
+  letter-spacing: var(--tracking-ui);
 }
 
 @media (max-width: 1050px) {
@@ -330,7 +326,7 @@
   .breadcrumbs {
     min-height: 48px;
 
-    font-size: 6px;
+    font-size: var(--text-ui);
   }
 
   .hero {
@@ -349,11 +345,7 @@
 
   .hero h1 {
     font-size:
-      clamp(
-        72px,
-        22vw,
-        98px
-      );
+      var(--text-page-title-mobile);
   }
 
   .heroCopy p {
@@ -361,7 +353,7 @@
 
     margin-bottom: 17px;
 
-    font-size: 9px;
+    font-size: var(--text-body);
   }
 
   .categoryBar {
@@ -380,7 +372,7 @@
       0
       13px;
 
-    font-size: 6.4px;
+    font-size: var(--text-ui);
   }
 
   .resultsMeta {

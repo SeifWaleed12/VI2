@@ -19,11 +19,13 @@ import { localizedHref } from "@/lib/i18n";
 import styles from "./MobileBottomNav.module.css";
 
 type Props = {
+  hidden?: boolean;
   onOpenSearch: () => void;
 };
 
 export default function MobileBottomNav({
   onOpenSearch,
+  hidden = false,
 }: Props) {
   const pathname =
     usePathname().replace(/^\/(en|ar)(?=\/|$)/, "") || "/";
@@ -37,6 +39,7 @@ export default function MobileBottomNav({
   const { isAuthenticated } = useAuth();
 
   if (
+    hidden ||
     pathname.startsWith(
       "/products/",
     ) ||

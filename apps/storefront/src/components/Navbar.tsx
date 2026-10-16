@@ -17,7 +17,6 @@ import {
   Search,
   ShoppingBag,
   Sparkles,
-  Trophy,
   UserRound,
   X,
 } from "lucide-react";
@@ -47,7 +46,7 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
   const { t, msg } = useLanguage();
   const [directory, setDirectory] = useState(initialDirectory);
   const [loadingCategories, setLoadingCategories] = useState(false);
-  const headerRef = useRef<HTMLElement>(null);
+  const headerRef = useRef<HTMLDivElement>(null);
   const focusMenuOnOpen = useRef(false);
   async function retryCategories() {
     setLoadingCategories(true);
@@ -59,9 +58,13 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
   useEffect(() => {
     const header = headerRef.current;
     if (!header) return;
-    const update = () => document.documentElement.style.setProperty("--vi2-header-bottom", `${header.getBoundingClientRect().bottom}px`);
+    const rows = header.querySelectorAll<HTMLElement>("[data-header-row]");
+    const update = () => {
+      const bottom = Math.max(0, ...Array.from(rows, row => row.getBoundingClientRect().bottom));
+      document.documentElement.style.setProperty("--vi2-header-bottom", `${bottom}px`);
+    };
     const observer = new ResizeObserver(update);
-    observer.observe(header);
+    rows.forEach(row => observer.observe(row));
     window.addEventListener("scroll", update, { passive: true });
     update();
     return () => { observer.disconnect(); window.removeEventListener("scroll", update); };
@@ -360,7 +363,7 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
 
   return (
     <>
-      <header
+      <div
         ref={headerRef}
         data-no-translate
         className={styles.header}
@@ -556,7 +559,7 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
         {/* ======================================================
             MAIN DESKTOP / MOBILE HEADER
             ====================================================== */}
-        <div className={styles.mainBar}>
+        <header className={styles.mainBar} data-header-row>
           <div className={styles.mainInner}>
             <button
               type="button"
@@ -688,12 +691,12 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
               ))}
             </button>
           </div>
-        </div>
+        </header>
 
         {/* ======================================================
             DESKTOP CATEGORY ROW
             ====================================================== */}
-        <nav className={styles.desktopCategories}>
+        <nav className={styles.desktopCategories} data-header-row>
           <div className={styles.categoryInner}>
             <div className={styles.categoryMain}>
               {directory.roots.map(category => (
@@ -714,6 +717,9 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
                   onClick={() => setMegaOpen(category.id)}>{category.name}</button>
               ))}
               {!directory.roots.length && <CategoryStatus error={directory.error} loading={loadingCategories} retry={retryCategories} />}
+            </div>
+
+            <div className={styles.categoryUtilities}>
               <span
                 className={
                   styles.categoryDivider
@@ -738,29 +744,11 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
               <Link href="/#health-goals">
                 {msg("nav.health")}
               </Link>
-            </div>
-
-            <div className={styles.categoryPromos}>
               <Link
                 href="/deals"
                 className={styles.dealLink}
               >
                 {msg("nav.deals")}
-              </Link>
-
-              <Link href="/#best-sellers">
-                {msg("nav.shop")}
-              </Link>
-
-              <Link href="/shop">
-                {msg("nav.new")}
-              </Link>
-
-              <Link
-                href="/#value-sets"
-                className={styles.bundleLink}
-              >
-                {msg("nav.bundles")}
               </Link>
             </div>
           </div>
@@ -773,7 +761,7 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
             setMegaOpen(null)
           }
         />
-      </header>
+      </div>
 
       {/* ======================================================
           MOBILE TWO-LEVEL CATALOG DRAWER
@@ -881,6 +869,24 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
               </span>
 
               <nav className={styles.simpleLinks}>
+
+                <Link
+                  href="/brands"
+                  onClick={closeMenu}
+                >
+                  <span className={styles.linkWithIcon}>
+                    <Package
+                      size={18}
+                      strokeWidth={1.4}
+                    />
+                    {msg("nav.brands")}
+                  </span>
+
+                  <ChevronRight
+                    size={20}
+                    strokeWidth={1.5}
+                  />
+                </Link>
                 <button
                   type="button"
                   className={styles.simpleMenuButton}
@@ -903,24 +909,6 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
                 </button>
 
                 <Link
-                  href="/brands"
-                  onClick={closeMenu}
-                >
-                  <span className={styles.linkWithIcon}>
-                    <Package
-                      size={18}
-                      strokeWidth={1.4}
-                    />
-                    {msg("nav.brands")}
-                  </span>
-
-                  <ChevronRight
-                    size={20}
-                    strokeWidth={1.5}
-                  />
-                </Link>
-
-                <Link
                   href="/deals"
                   onClick={closeMenu}
                   className={styles.accentLink}
@@ -931,42 +919,6 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
                       strokeWidth={1.4}
                     />
                     {msg("nav.deals")}
-                  </span>
-
-                  <ChevronRight
-                    size={20}
-                    strokeWidth={1.5}
-                  />
-                </Link>
-
-                <Link
-                  href="/#best-sellers"
-                  onClick={closeMenu}
-                >
-                  <span className={styles.linkWithIcon}>
-                    <Trophy
-                      size={18}
-                      strokeWidth={1.4}
-                    />
-                    {msg("nav.shop")}
-                  </span>
-
-                  <ChevronRight
-                    size={20}
-                    strokeWidth={1.5}
-                  />
-                </Link>
-
-                <Link
-                  href="/#value-sets"
-                  onClick={closeMenu}
-                >
-                  <span className={styles.linkWithIcon}>
-                    <ShoppingBag
-                      size={18}
-                      strokeWidth={1.4}
-                    />
-                    {msg("nav.bundles")}
                   </span>
 
                   <ChevronRight
@@ -1186,6 +1138,7 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
       />
 
       <MobileBottomNav
+        hidden={menuOpen}
         onOpenSearch={openSearch}
       />
     </>

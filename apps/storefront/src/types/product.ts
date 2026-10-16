@@ -18,6 +18,18 @@ export type ProductOption = {
   values: string[];
 };
 
+export type ProductCategoryRef = {
+  id: string;
+  name: string;
+  handle: string;
+};
+
+// Registration with Egypt's Drug Authority; approval never blocks buying.
+export type EdaRegistration = {
+  registrationNumber: string;
+  approved: boolean;
+};
+
 export type Product = {
   id: string;
   slug: string;
@@ -26,11 +38,15 @@ export type Product = {
   variantId?: string;
 
   brand: string;
+  // Set only for an active brand, like `brand`.
+  brandId?: string;
   name: string;
   shortName: string;
 
   category: string;
   categoryId?: string;
+  // Every category the product is assigned to, as Medusa returns them.
+  categories?: ProductCategoryRef[];
   description: string;
 
   price: number;
@@ -50,6 +66,8 @@ export type Product = {
 
   inStock?: boolean;
   badge?: string;
+
+  eda?: EdaRegistration;
 
   options?: ProductOption[];
   variants?: ProductVariant[];

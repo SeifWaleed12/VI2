@@ -61,33 +61,33 @@
 .rewardsPanel > span {
   margin-top: 16px;
 
-  color: #8d8881;
+  color: var(--text-muted);
 
-  font-size: 8px;
+  font-size: var(--text-ui);
   font-weight: 800;
-  letter-spacing: 0.12em;
+  letter-spacing: var(--tracking-ui);
 }
 
 .rewardsPanel > strong {
   margin-top: 13px;
 
   font-family:
-    var(--font-display),
+    var(--font-heading),
     sans-serif;
 
   font-size: 62px;
-  font-weight: 400;
-  line-height: 0.9;
+  font-weight: var(--weight-display);
+  line-height: var(--leading-display);
 }
 
 .rewardsPanel > small {
   margin-top: 3px;
 
-  color: #817b73;
+  color: var(--text-muted);
 
-  font-size: 7px;
+  font-size: var(--text-ui);
   font-weight: 800;
-  letter-spacing: 0.1em;
+  letter-spacing: var(--tracking-ui);
 }
 
 .rewardsPanel p {
@@ -97,7 +97,7 @@
 
   color: #706a62;
 
-  font-size: 9px;
+  font-size: var(--text-body);
   line-height: 1.55;
 }
 
@@ -111,9 +111,9 @@
 
   color: #5e5a55;
 
-  font-size: 7px;
+  font-size: var(--text-ui);
   font-weight: 800;
-  letter-spacing: 0.08em;
+  letter-spacing: var(--tracking-ui);
 }
 
 .menuPanel {
@@ -128,11 +128,11 @@
   color: #5e5a55;
 
   font-family:
-    var(--font-display),
+    var(--font-heading),
     sans-serif;
 
   font-size: 31px;
-  line-height: 1;
+  line-height: var(--leading-display);
 }
 
 .menuLinks {
@@ -154,7 +154,7 @@
 
   color: #474943;
 
-  font-size: 10px;
+  font-size: var(--text-ui);
   font-weight: 600;
 }
 
@@ -180,9 +180,9 @@
   border-radius: 6px;
   color: #f8f3ea;
   background: #5e5a55;
-  font-size: 9px;
+  font-size: var(--text-ui);
   font-weight: 800;
-  letter-spacing: 0.08em;
+  letter-spacing: var(--tracking-ui);
   text-transform: uppercase;
   text-decoration: none;
   cursor: pointer;
@@ -243,13 +243,13 @@
 .signedInIdentity strong {
   color: #181916;
 
-  font-size: 10px;
+  font-size: var(--text-ui);
 }
 
 .signedInIdentity span {
-  color: #817b73;
+  color: var(--text-muted);
 
-  font-size: 7px;
+  font-size: var(--text-ui);
 }
 
 .signOutCta {
@@ -273,9 +273,9 @@
   color: #f8f3ea;
   background: #181916;
 
-  font-size: 9px;
+  font-size: var(--text-ui);
   font-weight: 800;
-  letter-spacing: 0.08em;
+  letter-spacing: var(--tracking-ui);
   text-transform: uppercase;
   cursor: pointer;
   transition: transform 180ms ease, background-color 180ms ease;

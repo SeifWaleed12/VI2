@@ -32,9 +32,9 @@
 
   margin-bottom: 14px;
 
-  font-size: 8px;
+  font-size: var(--text-ui);
   font-weight: 800;
-  letter-spacing: 0.16em;
+  letter-spacing: var(--tracking-ui);
 }
 
 .hero h1,
@@ -42,13 +42,13 @@
 .emptyOrder h3 {
   margin: 0;
 
-  font-family: var(--font-display), sans-serif;
-  font-weight: 400;
-  line-height: 0.8;
+  font-family: var(--font-heading), sans-serif;
+  font-weight: var(--weight-display);
+  line-height: var(--leading-display);
 }
 
 .hero h1 {
-  font-size: clamp(92px, 10vw, 160px);
+  font-size: var(--text-page-title);
 }
 
 .hero > div:first-child > p {
@@ -58,7 +58,7 @@
 
   color: #655f57;
 
-  font-size: 11px;
+  font-size: var(--text-body);
   line-height: 1.7;
 }
 
@@ -79,18 +79,18 @@
 .pointsCard > span {
   margin-top: 26px;
 
-  font-size: 7px;
+  font-size: var(--text-ui);
   font-weight: 800;
-  letter-spacing: 0.14em;
+  letter-spacing: var(--tracking-ui);
 }
 
 .pointsCard > strong {
   margin-top: 4px;
 
-  font-family: var(--font-display), sans-serif;
+  font-family: var(--font-heading), sans-serif;
   font-size: 86px;
-  font-weight: 400;
-  line-height: 0.9;
+  font-weight: var(--weight-display);
+  line-height: var(--leading-display);
 }
 
 .pointsCard p {
@@ -100,7 +100,7 @@
 
   color: rgba(248, 243, 234, 0.6);
 
-  font-size: 9px;
+  font-size: var(--text-body);
   line-height: 1.6;
 }
 
@@ -135,8 +135,8 @@
 .quickGrid strong {
   margin-top: 5px;
 
-  font-size: 8px;
-  letter-spacing: 0.1em;
+  font-size: var(--text-ui);
+  letter-spacing: var(--tracking-ui);
 }
 
 .quickGrid span {
@@ -144,7 +144,7 @@
 
   color: #777168;
 
-  font-size: 9px;
+  font-size: var(--text-ui);
   line-height: 1.55;
 }
 
@@ -177,9 +177,9 @@
 
   border-bottom: 1px solid #181916;
 
-  font-size: 8px;
+  font-size: var(--text-ui);
   font-weight: 800;
-  letter-spacing: 0.1em;
+  letter-spacing: var(--tracking-ui);
 }
 
 .reorderGrid {
@@ -228,17 +228,17 @@
 .reorderContent > span {
   color: #79736b;
 
-  font-size: 7px;
+  font-size: var(--text-ui);
   font-weight: 800;
-  letter-spacing: 0.08em;
+  letter-spacing: var(--tracking-ui);
 }
 
 .reorderContent h3 {
   margin: 7px 0 0;
 
-  font-family: var(--font-display), sans-serif;
+  font-family: var(--font-heading), sans-serif;
   font-size: 35px;
-  font-weight: 400;
+  font-weight: var(--weight-display);
 }
 
 .reorderMeta {
@@ -252,13 +252,13 @@
 
   color: #777168;
 
-  font-size: 7px;
+  font-size: var(--text-ui);
 }
 
 .reorderMeta strong {
   color: #181916;
 
-  font-size: 9px;
+  font-size: var(--text-ui);
 }
 
 .reorderContent button {
@@ -280,9 +280,9 @@
 
   cursor: pointer;
 
-  font-size: 8px;
+  font-size: var(--text-ui);
   font-weight: 800;
-  letter-spacing: 0.08em;
+  letter-spacing: var(--tracking-ui);
 }
 
 .recommended {
@@ -305,9 +305,9 @@
 }
 
 .emptyOrder > span {
-  font-size: 7px;
+  font-size: var(--text-ui);
   font-weight: 800;
-  letter-spacing: 0.12em;
+  letter-spacing: var(--tracking-ui);
 }
 
 .emptyOrder h3 {
@@ -325,7 +325,7 @@
 
   color: #6f6961;
 
-  font-size: 9px;
+  font-size: var(--text-body);
   line-height: 1.6;
 }
 
@@ -365,14 +365,14 @@
 .miniProducts span {
   color: #7d7770;
 
-  font-size: 6px;
+  font-size: var(--text-ui);
   font-weight: 800;
 }
 
 .miniProducts strong {
-  font-family: var(--font-display), sans-serif;
+  font-family: var(--font-heading), sans-serif;
   font-size: 27px;
-  font-weight: 400;
+  font-weight: var(--weight-display);
 }
 
 .miniProducts small {
@@ -381,7 +381,7 @@
 
   gap: 4px;
 
-  font-size: 8px;
+  font-size: var(--text-ui);
 }
 
 @media (max-width: 900px) {
@@ -419,7 +419,7 @@
   }
 
   .hero h1 {
-    font-size: clamp(74px, 23vw, 104px);
+    font-size: var(--text-page-title-mobile);
   }
 
   .pointsCard {
