@@ -22,16 +22,19 @@ import {
 } from "lucide-react";
 import {
   useEffect,
+  useCallback,
   useState,
   useRef,
 } from "react";
 
 import GlobalSearch from "@/components/GlobalSearch";
+import AnnouncementTicker from "@/components/AnnouncementTicker";
 import MobileBottomNav from "@/components/MobileBottomNav";
 import DesktopMegaMenu, { type MegaMenuKey } from "@/components/DesktopMegaMenu";
 import AccountDropdown from "@/components/AccountDropdown";
 import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
+import { useDrawerFocus } from "@/hooks/use-drawer-focus";
 
 import { type CategoryDirectory, categoryHref, flattenCategories } from "@/lib/category-tree";
 import { getCategoryTree } from "@/lib/medusa/services/categories";
@@ -47,7 +50,11 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
   const [directory, setDirectory] = useState(initialDirectory);
   const [loadingCategories, setLoadingCategories] = useState(false);
   const headerRef = useRef<HTMLDivElement>(null);
+  const drawerRef = useRef<HTMLElement>(null);
   const focusMenuOnOpen = useRef(false);
+  const searchTriggerRef = useRef<HTMLButtonElement>(null);
+  const mobilePanelBackRef = useRef<HTMLButtonElement>(null);
+  const mobilePanelOpenerRef = useRef<HTMLButtonElement | null>(null);
   async function retryCategories() {
     setLoadingCategories(true);
     try { setDirectory({ roots: await getCategoryTree(language), error: false }); }
@@ -81,6 +88,24 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
   const [megaOpen, setMegaOpen] =
     useState<MegaMenuKey | null>(null);
 
+  useEffect(() => {
+    if (!megaOpen) return;
+    const dismiss = () => {
+      if (document.hasFocus() && document.getElementById("desktop-category-menu")?.contains(document.activeElement)) {
+        searchTriggerRef.current?.focus({ preventScroll: true });
+      }
+      setMegaOpen(null);
+    };
+    window.addEventListener("scroll", dismiss, { passive: true });
+    window.addEventListener("resize", dismiss);
+    window.addEventListener("blur", dismiss);
+    return () => {
+      window.removeEventListener("scroll", dismiss);
+      window.removeEventListener("resize", dismiss);
+      window.removeEventListener("blur", dismiss);
+    };
+  }, [megaOpen]);
+
   const [accountOpen, setAccountOpen] =
     useState(false);
 
@@ -91,6 +116,23 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
 
   const [mobilePanel, setMobilePanel] =
     useState<MobileCatalogKey | null>(null);
+
+  const closeMenu = useCallback(() => {
+    setMenuOpen(false);
+    setMobilePanel(null);
+  }, [setMenuOpen, setMobilePanel]);
+  useDrawerFocus(drawerRef, menuOpen, closeMenu);
+
+  useEffect(() => {
+    if (!menuOpen) {
+      mobilePanelOpenerRef.current = null;
+    } else if (mobilePanel) {
+      mobilePanelBackRef.current?.focus({ preventScroll: true });
+    } else if (mobilePanelOpenerRef.current) {
+      mobilePanelOpenerRef.current.focus({ preventScroll: true });
+      mobilePanelOpenerRef.current = null;
+    }
+  }, [menuOpen, mobilePanel]);
 
   const {
     itemCount,
@@ -184,11 +226,6 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
     }
   }, [megaOpen]);
 
-  function closeMenu() {
-    setMenuOpen(false);
-    setMobilePanel(null);
-  }
-
   function openSearch() {
     setMenuOpen(false);
     setMegaOpen(null);
@@ -198,8 +235,6 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
 
   const copy = isArabic
     ? {
-        freeShipping:
-          "تسوق المكملات بالجنيه المصري",
         flash:
           "العروض اليومية",
         search:
@@ -250,8 +285,6 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
           "السلة",
       }
     : {
-        freeShipping:
-          "SHOP SUPPLEMENTS IN EGP",
         flash:
           "DAILY FLASH DEALS",
         search:
@@ -340,33 +373,22 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
     items: flattenCategories(selectedCategory.children).map(c => [c.name, categoryHref(c.id)]),
   } : null;
 
-  const topMessages = isArabic
-    ? [
-        copy.freeShipping,
-        "فيتامينات ومعادن",
-        "اكتشف المنتجات",
-        "تغذية رياضية",
-        "العربية والإنجليزية",
-      ]
-    : [
-        copy.freeShipping,
-        "VITAMINS & MINERALS",
-        "EXPLORE THE COLLECTION",
-        "SPORTS NUTRITION",
-        "ENGLISH & ARABIC",
-      ];
-
-  const topTickerMessages = [
-    ...topMessages,
-    ...topMessages,
-  ];
-
   return (
     <>
       <div
         ref={headerRef}
         data-no-translate
         className={styles.header}
+        onBlur={event => {
+          const next = event.relatedTarget;
+          // Empty panel space can blur a link without moving keyboard focus outside.
+          if (next === null) return;
+          const nav = event.currentTarget.querySelector("nav[data-header-row]");
+          const menu = document.getElementById("desktop-category-menu");
+          if (!(next instanceof Node) || (!nav?.contains(next) && !menu?.contains(next))) {
+            setMegaOpen(null);
+          }
+        }}
         onMouseLeave={() =>
           setMegaOpen(null)
         }
@@ -401,63 +423,10 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
                 }
               />
 
-              <div
-                className={
-                  styles.topMarquee
-                }
-                aria-label={
-                  t(copy.freeShipping)
-                }
-              >
-                <div
-                  className={
-                    styles.topMarqueeTrack
-                  }
-                >
-                  {t([0, 1].map(
-                    (group) => (
-                      <div
-                        key={
-                          group
-                        }
-                        className={
-                          styles.topMarqueeGroup
-                        }
-                        aria-hidden={
-                          group === 1
-                        }
-                      >
-                        {t(topTickerMessages.map(
-                          (
-                            message,
-                            index,
-                          ) => (
-                            <span
-                              key={`${group}-${index}-${message}`}
-                              className={
-                                styles.topMarqueeItem
-                              }
-                            >
-                              {t(message)}
-
-                              {t(index <
-                                topTickerMessages.length -
-                                  1 && (
-                                <i
-                                  aria-hidden="true"
-                                />
-                              ))}
-                            </span>
-                          ),
-                        ))}
-                      </div>
-                    ),
-                  ))}
-                </div>
-              </div>
+              <AnnouncementTicker />
             </div>
 
-            <div className={styles.utilityRight}>
+            <div className={styles.utilityRight} role="region" aria-label={msg("nav.preferences")}>
               <Globe2
                 size={15}
                 strokeWidth={1.4}
@@ -500,60 +469,7 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
 
         {/* MOBILE PROMO BAR */}
         <div className={styles.mobileAnnouncement}>
-          <div
-            className={
-              styles.topMarquee
-            }
-            aria-label={
-              t(copy.freeShipping)
-            }
-          >
-            <div
-              className={
-                styles.topMarqueeTrack
-              }
-            >
-              {t([0, 1].map(
-                (group) => (
-                  <div
-                    key={
-                      group
-                    }
-                    className={
-                      styles.topMarqueeGroup
-                    }
-                    aria-hidden={
-                      group === 1
-                    }
-                  >
-                    {t(topTickerMessages.map(
-                      (
-                        message,
-                        index,
-                      ) => (
-                        <span
-                          key={`${group}-${index}-${message}`}
-                          className={
-                            styles.topMarqueeItem
-                          }
-                        >
-                          {t(message)}
-
-                          {t(index <
-                            topTickerMessages.length -
-                              1 && (
-                            <i
-                              aria-hidden="true"
-                            />
-                          ))}
-                        </span>
-                      ),
-                    ))}
-                  </div>
-                ),
-              ))}
-            </div>
-          </div>
+          <AnnouncementTicker />
         </div>
 
         {/* ======================================================
@@ -593,6 +509,7 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
             <button
               type="button"
               className={styles.searchBar}
+              ref={searchTriggerRef}
               onClick={openSearch}
               aria-label={msg("nav.search")}
             >
@@ -696,7 +613,7 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
         {/* ======================================================
             DESKTOP CATEGORY ROW
             ====================================================== */}
-        <nav className={styles.desktopCategories} data-header-row>
+        <nav className={styles.desktopCategories} aria-label={msg("nav.mainCategories")} data-header-row>
           <div className={styles.categoryInner}>
             <div className={styles.categoryMain}>
               {directory.roots.map(category => (
@@ -776,8 +693,14 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
         }
         onMouseDown={closeMenu}
         aria-hidden={!menuOpen}
+        inert={!menuOpen}
       >
         <aside data-no-translate
+          ref={drawerRef}
+          role="dialog"
+          aria-modal={menuOpen ? true : undefined}
+          aria-label={msg("nav.menu")}
+          tabIndex={-1}
           className={
             menuOpen
               ? `${styles.drawer} ${styles.drawerOpen}`
@@ -793,7 +716,7 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
           }
         >
           {/* ROOT MENU HEADER */}
-          <div className={styles.drawerHeader}>
+          <div className={styles.drawerHeader} inert={!!activeMobilePanel} aria-hidden={!!activeMobilePanel}>
             <Link
               href={
                 isAuthenticated
@@ -831,13 +754,13 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
           </div>
 
           {/* ROOT MENU */}
-          <div className={styles.drawerScroll}>
+          <div className={styles.drawerScroll} inert={!!activeMobilePanel} aria-hidden={!!activeMobilePanel}>
             <section className={styles.menuSection}>
               <span className={styles.sectionLabel}>
                 {msg("nav.categories")}
               </span>
 
-              <nav className={styles.primaryMenuList}>
+              <nav className={styles.primaryMenuList} aria-label={msg("nav.mainCategories")}>
                 {!directory.roots.length && <CategoryStatus error={directory.error} loading={loadingCategories} retry={retryCategories} />}
                 {t(primaryMobileCategories.map(
                   (item) => (
@@ -845,9 +768,10 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
                       key={item.key}
                       type="button"
                       className={styles.primaryMenuButton}
-                      onClick={() =>
-                        setMobilePanel(item.key)
-                      }
+                      onClick={event => {
+                        mobilePanelOpenerRef.current = event.currentTarget;
+                        setMobilePanel(item.key);
+                      }}
                     >
                       <span>
                         {item.label}
@@ -868,7 +792,7 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
                 {t(copy.shopBy)}
               </span>
 
-              <nav className={styles.simpleLinks}>
+              <nav className={styles.simpleLinks} aria-label={msg("nav.shopBy")}>
 
                 <Link
                   href="/brands"
@@ -890,9 +814,10 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
                 <button
                   type="button"
                   className={styles.simpleMenuButton}
-                  onClick={() =>
-                    setMobilePanel("health")
-                  }
+                  onClick={event => {
+                    mobilePanelOpenerRef.current = event.currentTarget;
+                    setMobilePanel("health");
+                  }}
                 >
                   <span className={styles.linkWithIcon}>
                     <Sparkles
@@ -1066,6 +991,7 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
                   <button
                     type="button"
                     className={styles.backButton}
+                    ref={mobilePanelBackRef}
                     onClick={() =>
                       setMobilePanel(null)
                     }
@@ -1109,7 +1035,7 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
                     </Link>
                   </div>
 
-                  <nav className={styles.subMenuList}>
+                  <nav className={styles.subMenuList} aria-label={activeMobilePanel.title}>
                     {t(activeMobilePanel.items.map(
                       ([label, href]) => (
                         <Link

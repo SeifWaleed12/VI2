@@ -25,6 +25,12 @@ export function useDrawerFocus(
       );
     const focusFirst = () => (focusable()[0] || drawer).focus();
     focusFirst();
+    // Visibility transitions can reject focus in the commit's first frame.
+    let focusFrame = requestAnimationFrame(() => {
+      focusFrame = requestAnimationFrame(() => {
+        if (!drawer.contains(document.activeElement)) focusFirst();
+      });
+    });
     function onKey(event: KeyboardEvent) {
       if (event.key === "Escape") {
         event.preventDefault();
@@ -55,6 +61,7 @@ export function useDrawerFocus(
     document.addEventListener("keydown", onKey);
     document.addEventListener("focusin", onFocus);
     return () => {
+      cancelAnimationFrame(focusFrame);
       document.removeEventListener("keydown", onKey);
       document.removeEventListener("focusin", onFocus);
       if (

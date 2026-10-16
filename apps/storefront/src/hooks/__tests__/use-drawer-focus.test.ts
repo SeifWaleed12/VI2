@@ -26,12 +26,20 @@ class Element {
   }
 }
 const oldDocument = globalThis.document,
-  oldHTMLElement = globalThis.HTMLElement;
+  oldHTMLElement = globalThis.HTMLElement,
+  oldFrame = globalThis.requestAnimationFrame,
+  oldCancelFrame = globalThis.cancelAnimationFrame;
+let openingFrame: FrameRequestCallback;
 beforeEach(() => {
   handlers.clear();
   jest.clearAllMocks();
   Object.assign(globalThis, {
     HTMLElement: Element,
+    requestAnimationFrame: jest.fn((callback: FrameRequestCallback) => {
+      openingFrame = callback;
+      return 1;
+    }),
+    cancelAnimationFrame: jest.fn(),
     document: {
       activeElement: null,
       addEventListener: (name: string, handler: (event: unknown) => void) =>
@@ -44,6 +52,8 @@ afterEach(() =>
   Object.assign(globalThis, {
     document: oldDocument,
     HTMLElement: oldHTMLElement,
+    requestAnimationFrame: oldFrame,
+    cancelAnimationFrame: oldCancelFrame,
   }),
 );
 it("focuses the close control, wraps Tab both ways, blocks escaped focus, closes with Escape and restores the opener", () => {
@@ -70,6 +80,7 @@ it("focuses the close control, wraps Tab both ways, blocks escaped focus, closes
   if (typeof cleanup === "function") cleanup();
   expect(opener.focus).toHaveBeenCalledTimes(1);
   expect(handlers.size).toBe(0);
+  expect(cancelAnimationFrame).toHaveBeenCalledWith(1);
 });
 it("leaves closed drawers alone and handles a drawer without interactive content", () => {
   const drawer = new Element(),
@@ -81,4 +92,22 @@ it("leaves closed drawers alone and handles a drawer without interactive content
   expect(drawer.focus).toHaveBeenCalled();
   handlers.get("keydown")!({ key: "Tab", preventDefault: jest.fn() });
   expect(drawer.focus).toHaveBeenCalledTimes(2);
+});
+
+it("retries initial focus after a visibility transition rejects the first attempt", () => {
+  const opener = new Element(), drawer = new Element(), first = new Element();
+  drawer.children = [first];
+  first.focus.mockImplementationOnce(() => undefined);
+  Object.assign(document, { activeElement: opener });
+  useDrawerFocus({ current: drawer } as never, true, jest.fn());
+  const cleanup = jest.mocked(useEffect).mock.calls[0][0]();
+  expect(document.activeElement).toBe(opener);
+  openingFrame(16);
+  expect(document.activeElement).toBe(opener);
+  openingFrame(32);
+  expect(document.activeElement).toBe(first);
+  openingFrame(48);
+  expect(first.focus).toHaveBeenCalledTimes(2);
+  if (typeof cleanup === "function") cleanup();
+  expect(cancelAnimationFrame).toHaveBeenCalledWith(1);
 });

@@ -57,6 +57,7 @@ export default function DesktopMegaMenu({
       <button
         type="button"
         className={styles.backdrop}
+        tabIndex={-1}
         aria-label={msg("nav.close")}
         onClick={onClose}
       />

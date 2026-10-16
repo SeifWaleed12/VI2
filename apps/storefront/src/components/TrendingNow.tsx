@@ -45,7 +45,6 @@ export default function TrendingNow({
             onMouseDown={(event) => event.preventDefault()}
             onClick={togglePause}
             aria-label={msg(manualPause ? "ticker.resume" : "ticker.pause")}
-            aria-pressed={manualPause}
           >
             {manualPause ? <Play size={15} /> : <Pause size={15} />}
           </button>

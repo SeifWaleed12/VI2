@@ -17,6 +17,13 @@ export function removedCategoryPath(path: string) {
   return /^\/(?:en\/|ar\/)?categories(?:\/|$)/.test(path);
 }
 const en = {
+  "nav.preferences": "Language and currency",
+  "nav.mainCategories": "Main categories and shopping links",
+  "nav.shopBy": "Shop by",
+  "announcement.label": "Announcements",
+  "announcement.essentials": "Find your daily essentials",
+  "announcement.range": "Vitamins, minerals & sports nutrition",
+  "announcement.collection": "Explore the collection",
   "hero.statement": "PREMIUM SUPPLEMENTS FOR A STRONGER, HEALTHIER YOU.",
   "nav.switchArabic": "Switch to Arabic",
   "nav.switchEnglish": "Switch to English",
@@ -72,6 +79,13 @@ const en = {
 } as const;
 type MessageKey = keyof typeof en;
 const ar: Record<MessageKey, string> = {
+  "nav.preferences": "اللغة والعملة",
+  "nav.mainCategories": "الأقسام الرئيسية وروابط التسوق",
+  "nav.shopBy": "تسوق حسب",
+  "announcement.label": "إعلانات المتجر",
+  "announcement.essentials": "اكتشف مكملات روتينك اليومي",
+  "announcement.range": "فيتامينات ومعادن وتغذية رياضية",
+  "announcement.collection": "اكتشف المنتجات",
   "hero.statement": "مكملات غذائية عالية الجودة لصحة أفضل وقوة أكبر.",
   "nav.switchArabic": "التبديل إلى العربية",
   "nav.switchEnglish": "التبديل إلى الإنجليزية",
