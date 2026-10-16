@@ -12,6 +12,7 @@ import {
   Truck,
 } from "lucide-react";
 import {
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -35,6 +36,7 @@ import type { ShippingOption } from "@/types/shipping";
 import type { Product } from "@/types/product";
 
 import styles from "./Checkout.module.css";
+import { deliveryStatus, type ShippingLoad } from "./delivery-status";
 
 type CheckoutItem = {
   product: Product;
@@ -136,6 +138,8 @@ export default function CheckoutClient() {
     promotions,
     applyPromotion,
     removePromotion,
+    loading: cartLoading,
+    refreshCart,
   } = useCart();
 
   const [shippingOptions, setShippingOptions] = useState<ShippingOption[]>([]);
@@ -144,17 +148,29 @@ export default function CheckoutClient() {
   const [promoMsg, setPromoMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [promoLoading, setPromoLoading] = useState(false);
 
-  useEffect(() => {
-    if (!cartId) return;
-    getShippingOptions(cartId)
+  const [shippingLoad, setShippingLoad] = useState<ShippingLoad>("loading");
+
+  const loadShippingOptions = useCallback((id: string) => {
+    setShippingLoad("loading");
+    getShippingOptions(id)
       .then((opts) => {
         setShippingOptions(opts);
         if (opts.length > 0) {
           setSelectedShippingOptionId((prev) => prev || opts[0].id);
         }
+        setShippingLoad("loaded");
       })
-      .catch(() => {});
-  }, [cartId]);
+      // An outage leaves no options; the order step then refuses to continue.
+      .catch(() => {
+        setShippingOptions([]);
+        setShippingLoad("failed");
+      });
+  }, []);
+  const deliveryCard = deliveryStatus(cartId, cartLoading, shippingLoad, shippingOptions.length);
+
+  useEffect(() => {
+    if (cartId) loadShippingOptions(cartId);
+  }, [cartId, loadShippingOptions]);
 
   const [recovering, setRecovering] = useState(false);
   const buyNowSlug =
@@ -1305,7 +1321,7 @@ export default function CheckoutClient() {
                         DELIVERY OPTION
                       </span>
 
-                      {shippingOptions.length > 0 ? (
+                      {deliveryCard === "ready" ? (
                         <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginTop: "8px" }}>
                           {shippingOptions.map((opt) => (
                             <label
@@ -1336,20 +1352,22 @@ export default function CheckoutClient() {
                           ))}
                         </div>
                       ) : (
-                        <>
-                          <strong>
-                            Standard
-                            Delivery
-                          </strong>
-
-                          <p>
-                            {delivery === 0
-                              ? "Free delivery"
-                              : `${formatPrice(delivery)} EGP`}
-                            <br />
-                            Across Egypt
-                          </p>
-                        </>
+                        <p role="status">
+                          {deliveryCard === "loading" && "Loading delivery options…"}
+                          {deliveryCard === "empty" && "No delivery options are available for this order right now."}
+                          {(deliveryCard === "failed" || deliveryCard === "no-cart") && (
+                            <>
+                              {deliveryCard === "failed" ? "Delivery options could not be loaded." : "Your cart could not be loaded."}{" "}
+                              <button
+                                type="button"
+                                onClick={() => (deliveryCard === "failed" && cartId ? loadShippingOptions(cartId) : void refreshCart())}
+                                style={{ textDecoration: "underline", fontWeight: 600 }}
+                              >
+                                Try again
+                              </button>
+                            </>
+                          )}
+                        </p>
                       )}
                     </div>
 
