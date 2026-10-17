@@ -269,21 +269,21 @@ const NewProductPage = () => {
         <Text size="small" className="text-ui-fg-subtle">Prices are in EGP, including tax. SKU and price are required.</Text>
         {rows.length === 0 && <Text size="small" className="text-ui-fg-subtle">Add an option with at least one value.</Text>}
         {errors.variants && <Text size="small" className="text-ui-fg-error">{errors.variants}</Text>}
-        {rows.map((combination) => {
+        {rows.map((combination, index) => {
           const key = rowKey(combination)
           const cell = cells[key] ?? emptyCell
           const name = Object.values(combination).join(" / ")
           return (
             <div key={key} className="grid grid-cols-[1fr_1fr_1fr_1fr_auto] items-start gap-4">
               <Text size="small" weight="plus" className="pt-8">{name}</Text>
-              <Field id={`${key}-sku`} label="SKU *" error={errors[`${key}.sku`]}>
-                <Input id={`${key}-sku`} value={cell.sku} onChange={(e) => setCell(key, "sku", e.target.value)} />
+              <Field id={`variant-${index}-sku`} label="SKU *" error={errors[`${key}.sku`]}>
+                <Input id={`variant-${index}-sku`} value={cell.sku} onChange={(e) => setCell(key, "sku", e.target.value)} />
               </Field>
-              <Field id={`${key}-barcode`} label="Barcode" error={errors[`${key}.barcode`]}>
-                <Input id={`${key}-barcode`} value={cell.barcode} onChange={(e) => setCell(key, "barcode", e.target.value)} />
+              <Field id={`variant-${index}-barcode`} label="Barcode" error={errors[`${key}.barcode`]}>
+                <Input id={`variant-${index}-barcode`} value={cell.barcode} onChange={(e) => setCell(key, "barcode", e.target.value)} />
               </Field>
-              <Field id={`${key}-price`} label="Price (EGP) *" error={errors[`${key}.price`]}>
-                <Input id={`${key}-price`} type="number" min="0" step="0.01" value={cell.price} onChange={(e) => setCell(key, "price", e.target.value)} />
+              <Field id={`variant-${index}-price`} label="Price (EGP) *" error={errors[`${key}.price`]}>
+                <Input id={`variant-${index}-price`} type="number" min="0" step="0.01" value={cell.price} onChange={(e) => setCell(key, "price", e.target.value)} />
               </Field>
               <Button size="small" variant="secondary" className="mt-7" aria-label={`Remove ${name}`}
                 onClick={() => setRemoved((current) => [...current, key])}>Remove</Button>
