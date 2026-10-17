@@ -99,6 +99,12 @@ Preparation result: workboard only. No UI/backend implementation changes, no dep
 |---|---|---|---|---|
 | Checkout summary showed 0 EGP subtotal, FREE delivery and a total without delivery | Claude | GPT | approved: `claude/checkout-totals` bcd7dde; GPT review: no findings. Ready to merge. Handoff and review `docs/reviews/checkout-totals.md` | Two causes: `LegacyTranslations` wrote a text node's first value back over React's updates (affects any changing text on wrapped pages), and the total used Medusa's cart total, which has no delivery before a shipping method is on the cart. Fixed in `translateDomText` (shared `LanguageContext.tsx`, GPT-owned; no dictionary change) and `checkout/checkout-total.ts`. Live: 100 + 70 = 170 EGP. 225 storefront and 199 backend tests, typecheck, lint 0 errors. |
 
+## Manager product creation fix (reported by Seif, 2026-10-17)
+
+| Task | Author | Reviewer | Status | Notes |
+|---|---|---|---|---|
+| Managers got 403 creating a product from the dashboard | Claude | GPT | in review: `claude/manager-create-product` df6d909; handoff `docs/reviews/manager-create-product.md` | The dashboard sends `inventory_items: []` per variant; the manager guard treated the key as a stock link. Now only a non-empty list is refused. Unit and HTTP regression (fails with 403 before the fix); 200 backend and 225 storefront tests, typecheck, lint 0 errors. |
+
 ## How we work
 
 Roles:
