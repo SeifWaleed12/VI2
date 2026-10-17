@@ -22,6 +22,41 @@ approval before any change.
 |---|---|---|---|
 | Bring latest reviewed RD-0 and menu fixes into reviewed-baseline | GPT, authorized by Seif | complete locally | full-stack fast-forwarded from a68cbd1 to approved candidate 43a7b97. Includes RD-0, RD-0-NAV, RD-NAV-SIMPLE and RD-REVIEW-FIX; approved RD-1 retained. Backend source is unchanged from a68cbd1. Claude approval 84f3573 is copied into the review artifact. No push, database changes or service restart. Remaining manual checks: signed-in/populated-cart states and native zoom. |
 
+## Redis store caching (requested by Seif, 2026-10-17)
+
+| ID | Task | Author | Reviewer | Status | Notes |
+|---|---|---|---|---|---|
+| REDIS-1 | Cache public catalog reads in Redis; Redis event bus and workflow engine | Claude | GPT | `claude/redis-dev` (from `full-stack`) 4a107a8, 54c407f; GPT round 1 on 4a107a8: no findings. **Round 2 requested for 54c407f** (cache read timeout after the Redis-down hang; review only that diff and `store-cache.unit.spec.ts`). Seif skipped the integration test | `apps/backend/src/lib/store-cache.ts`, wired in `api/middlewares.ts`; table in `docs/ARCHITECTURE.md`. Seif asked for this explicitly, so it counts as the justified requirement for AGENTS.md rule 11. Live check 2026-10-17: repeat reads served from Redis, Arabic kept apart, and with Redis stopped the first version hung forever (the Redis client queues commands), so the cache read now times out after 250 ms; store answered in about 0.3 s with Redis down. Not checked live: an admin write clearing the cache (`integration-tests/http/store-cache.spec.ts` is written but needs the test PostgreSQL password to run). A read already in flight when an admin write finishes can store the old answer for up to its TTL. |
+
+## Cart and region hardening (requested by Seif, 2026-10-16)
+
+Seif asked Claude to audit the cart and fix what the audit found. This includes the "Remove invented fallback delivery options" follow-up that was listed for GPT. Seif reassigned it to Claude in this request. GPT: please don't start it.
+
+| ID | Task | Author | Reviewer | Status | Notes |
+|---|---|---|---|---|---|
+| CART-1 | Shared region lookup | Claude | GPT | approved | `resolveRegionId` (`apps/storefront/src/lib/medusa/services/regions.ts`) now shares one `GET /store/regions` between concurrent product/cart calls and keeps it 60 s. An empty answer (Medusa down) is not kept. `RegionProvider` still calls `getRegions` directly. Test: `services/__tests__/regions.test.ts`. |
+| CART-2 | A Medusa outage no longer replaces the shopper's cart | Claude | GPT | approved | `getCart` returned `null` for every error, so `CartProvider` created a new empty cart and overwrote the saved id on any network blip. Now `null` is returned only for 404 (gone) or 403 (belongs to another account's login); other failures throw and the saved id is kept. `removeCartItem` keeps its existing "failed to retrieve" error. Tests: `services/__tests__/cart-shipping.test.ts`, `providers/__tests__/cart-load.test.ts`. |
+| CART-3 | One cart per browser, not two | Claude | GPT | approved | `CartProvider` loaded or created the cart from both `refreshCart` and `getOrCreateCart` with no guard. React's double effect in dev, or an Add before the first load ended, sent two `POST /store/carts` and orphaned one. Both now share one in-flight promise (`loadOrCreateCart`, `useRef`). Test: `providers/__tests__/cart-load.test.ts`. |
+| CART-4 | Remove invented fallback delivery options | Claude | GPT | approved | `getShippingOptions` no longer invents "Standard 85 / Express 140" options with env or fake IDs. Only Medusa's options are shown, and failures throw. Checkout shows "Loading delivery options…", or "Delivery options could not be loaded. Try again" with a retry button. Ordering still refuses to continue without an option (existing check). `MEDUSA_SHIPPING_STANDARD_ID`/`_EXPRESS_ID` were removed from `apps/storefront/.env.template`. Local `.env.local` still has them; they are now unused. |
+| CART-5 | Rate-limit `POST /store/carts` | — | — | blocked, waiting on Seif | Seif decided 2026-10-16: not built now. Guest cart creation has no account, so the limit must count per visitor IP. Behind Cloudflare/Coolify every visitor shares the proxy's IP unless Medusa trusts the proxy's client-IP header (no trust-proxy setting exists today). Needs the deployment/proxy decision first, then a policy (suggested 30 carts / 15 min per IP, reusing `attemptLimiterFrom`). |
+| CART-6 | Clean up abandoned guest carts | — | — | blocked, waiting on Seif | Seif decided 2026-10-16: open decision, no deletion code. Needs a retention period from Seif (for example 30 days untouched, no account, not completed) before a scheduled job is built. |
+
+Branch: `claude/cart-hardening` (commits 90bca58, 2da69b5), built from `full-stack` 3d4e981 so it can merge without the pending R2 work. It is the same code as 8c490b8 on `claude/work`, copied on 2026-10-16 after the other session committed it there. Checks on `claude/cart-hardening`: `npm run check` passes, with 197 storefront tests (11 new), 199 backend tests, typecheck, and lint 0 errors / 21 warnings. Not checked in a running browser. GPT round 1 (on 8c490b8 and 90bca58): P2, the delivery card could wait forever without a cart and called an empty option list a failure; fixed in 2da69b5, after which `npm run check` passes with 201 storefront tests. Review: `docs/reviews/cart-hardening.md`. GPT round 2: resolved, no open problems; approved. Ready to merge.
+
+Review focus for GPT:
+- `loadOrCreateCart` resets the shared promise in `finally`, so a failed load can be retried.
+- A 403 cart is treated as "start a new cart", the same as the old behavior for that case.
+- Checkout's delivery card when options are empty or loading.
+
+Also added `docs/API-REFERENCE.md`, a documentation-only inventory of every HTTP request in the project.
+
+Known audit findings not fixed (no owner decision yet):
+- A signed-in shopper's cart stays a guest cart until checkout (`assignOrderOwner`, documented shortcut).
+- A guest cart id in localStorage gives read access to that cart's email and address (Medusa default).
+- Rapid quantity clicks are not queued.
+- The optimistic add matches on product, not variant.
+- Missing postal code defaults to `00000`.
+
 ## Storefront redesign delivery (released by Seif, 2026-10-13)
 
 Seif asked to start the redesign plan, divide tasks between GPT and Claude, and record ownership here. This entry authorizes the scoped repair sequence; it does not claim implementation has started in Claude's chat. Initial shared baseline: full-stack f63599e. Existing cart-access work is finished and consolidated.
@@ -141,7 +176,7 @@ The initial update prepared tasks only. Seif authorized SF 1 on 2026-10-09; othe
 | Staff invites go out with the dashboard's "Copy invite link". The SendGrid email code stays but is off; no paid email provider for now. | 2026-10-06 |
 | Customers get "change password" and "forgot password" (by email). The reset email is only delivered once an email provider is configured. | 2026-10-06 |
 | Store is Egypt only: EGP, one Cairo warehouse, one delivery option at a flat 70 EGP until Bosta; Medusa's starter demo data is removed. Prices are entered including tax while the VAT rate is open. | 2026-10-09 |
-| Redis holds the cache and locks whenever `REDIS_URL` is set; production runs PostgreSQL and Redis as Coolify resources. | 2026-10-06 |
+| Redis holds the cache, locks, event bus and workflow engine whenever `REDIS_URL` is set (store-read caching added on `claude/redis-dev`, 2026-10-17); production runs PostgreSQL and Redis as Coolify resources. | 2026-10-06 |
 | Managers may allocate stock to an order line ("Allocate items"), never more than the line still needs; they cannot reserve or release stock by hand. | 2026-10-06 |
 | New variants keep the stock settings the form sends for now; which products track stock is decided with the Odoo sync work. | 2026-10-06 |
 | Manager role redefined (replaces RD v1.1 section 2.2): full orders (incl. fulfil, refund, cancel, edit), products (incl. delete, publish, prices), brands, customers, promotions, price lists; inventory view only; in Settings only product types and tags. Store settings, staff, roles, API keys, regions, tax, shipping setup, workflows and future business pages (revenue) are admin only. Admin-only pages are hidden from managers in the dashboard. | 2026-10-06 |

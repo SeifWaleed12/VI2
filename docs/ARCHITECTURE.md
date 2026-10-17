@@ -101,6 +101,16 @@ Every cache needs:
 
 Correctness must survive an empty/unavailable cache.
 
+Redis in use (`apps/backend/src/lib/redis-config.ts`, on whenever `REDIS_URL` is set, off in tests):
+
+| What | Purpose | TTL | Invalidation | Source of truth | If Redis is down |
+|---|---|---|---|---|---|
+| Sign-in attempt counts and locks | Rate limiting | 15 min | Cleared on successful sign-in | The count itself | Sign-in fails closed (existing behaviour) |
+| Public store reads (`lib/store-cache.ts`): `/store/products` 60 s, `/store/product-categories` and `/store/collections` and `/store/brands` 5 min, `/store/regions` 10 min | Spare PostgreSQL on browse, search and menu requests | as listed | Every successful non-GET `/admin/*` request clears all `store-cache:*` keys; the TTL covers changes made outside the admin API | PostgreSQL | The cache read gives up after 250 ms and the request is answered from PostgreSQL (checked live: about 0.3 s instead of 0.02 s) |
+| Event bus and workflow engine | Events and running workflows survive restarts and reach every server | none | none | Redis queue | Medusa cannot publish events |
+
+Only anonymous GET requests are cached (no `Authorization` header or cookie). The key holds the URL, publishable key and locale. Carts, checkout, payments, orders and customer routes are never cached, and checkout re-validates price and stock itself.
+
 ## Search
 
 ```text

@@ -7,6 +7,7 @@ import { managerLayoutView } from "./manager-layouts"
 import { assignOrderOwner, cartOwnerOnly, noEmailOnNewGuestCart } from "./cart-access"
 import { filterProductsByBrand } from "./catalog-filters"
 import { requireStrongPassword } from "./password-policy"
+import { cacheStoreGet, invalidateStoreCacheAfterWrite } from "../lib/store-cache"
 
 // Staff and customers sign in, reset and set passwords through the same
 // Medusa routes, so both get the same limits and password rule. Medusa signs in
@@ -23,12 +24,23 @@ const emailPassRoutes = (["user", "customer"] as ActorType[]).flatMap((actor) =>
 // 2026-10-09), and category fields Medusa only allows as a whole relation.
 const STORE_PRODUCT_EXTRA_FIELDS = ["brand.id", "brand.name", "brand.status", "eda_registration.registration_number", "eda_registration.is_approved", "categories.id", "categories.name", "categories.handle"]
 
+// Public catalog reads answered from Redis (lib/store-cache.ts). Products stay
+// short because their prices change most; the rest change rarely.
+const cachedCatalogRoutes = ([
+  ["/store/products", 60],
+  ["/store/product-categories", 300],
+  ["/store/collections", 300],
+  ["/store/regions", 600],
+  ["/store/brands", 300],
+] as const).flatMap(([path, ttl]) => [path, `${path}/:id`].map((matcher) => ({ matcher, method: "GET" as const, middlewares: [cacheStoreGet(ttl)] })))
+
 // Store cart routes do not read the customer's login on their own.
 const customerIfSignedIn = authenticate("customer", ["session", "bearer"], { allowUnauthenticated: true })
 
 export default defineMiddlewares({
   routes: [
     ...emailPassRoutes,
+    ...cachedCatalogRoutes,
     { matcher: "/store/products", middlewares: [filterProductsByBrand, allowFields(...STORE_PRODUCT_EXTRA_FIELDS)] },
     { matcher: "/store/products/:id", middlewares: [allowFields(...STORE_PRODUCT_EXTRA_FIELDS)] },
     // Without a method these also cover every path under them (src/api/cart-access.ts).
@@ -41,6 +53,8 @@ export default defineMiddlewares({
         unlessInviteAcceptance(authenticate("user", ["session", "bearer"])),
         unlessInviteAcceptance(adminAccess),
         managerLayoutView,
+        // Last, so a refused request never clears the cache.
+        invalidateStoreCacheAfterWrite,
       ],
     },
     {
