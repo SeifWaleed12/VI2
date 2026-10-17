@@ -1,7 +1,8 @@
 import { Button, Checkbox, Container, Heading, Input, Label, Select, Switch, Text, Textarea, toast } from "@medusajs/ui"
 import { useEffect, useState, type ReactNode } from "react"
 import { useNavigate } from "react-router-dom"
-import { optionCombinations } from "../../lib/variant-combinations"
+import { getJson } from "../../lib/get-json"
+import { combinationCount, MAX_VARIANTS, optionCombinations } from "../../lib/variant-combinations"
 
 type Brand = { id: string, name: string }
 type Category = { id: string, name: string, parent_category_id: string | null }
@@ -13,7 +14,6 @@ const emptyCell: Cell = { sku: "", barcode: "", price: "" }
 const rowKey = (combination: Record<string, string>) => JSON.stringify(combination)
 const splitValues = (text: string) => [...new Set(text.split(",").map((value) => value.trim()).filter(Boolean))]
 
-const getJson = (path: string) => fetch(path, { credentials: "include" }).then((res) => res.json())
 
 const Field = ({ id, label, error, children }: { id: string, label: string, error?: string, children: ReactNode }) => (
   <div className="flex flex-col gap-y-2">
@@ -64,7 +64,11 @@ const NewProductPage = () => {
   const sortedCategories = [...categories].sort((a, b) => categoryLabel(a).localeCompare(categoryLabel(b)))
 
   const parsedOptions = options.map((option) => ({ title: option.title.trim(), values: splitValues(option.values) }))
-  const rows = optionCombinations(parsedOptions.filter((option) => option.title && option.values.length))
+  const completeOptions = parsedOptions.filter((option) => option.title && option.values.length)
+  // Counted before building rows: a few long value lists would otherwise create
+  // thousands of rows and freeze the page.
+  const variantTotal = combinationCount(completeOptions)
+  const rows = variantTotal > MAX_VARIANTS ? [] : optionCombinations(completeOptions)
     .filter((combination) => !removed.includes(rowKey(combination)))
 
   const setCell = (key: string, field: keyof Cell, value: string) =>
@@ -267,7 +271,11 @@ const NewProductPage = () => {
       <Container className="flex flex-col gap-y-4 px-6 py-4">
         <Heading level="h2">Variants</Heading>
         <Text size="small" className="text-ui-fg-subtle">Prices are in EGP, including tax. SKU and price are required.</Text>
-        {rows.length === 0 && <Text size="small" className="text-ui-fg-subtle">Add an option with at least one value.</Text>}
+        {variantTotal > MAX_VARIANTS ? (
+          <Text size="small" className="text-ui-fg-error">
+            These options make {variantTotal} variants; the most is {MAX_VARIANTS}. Remove some values.
+          </Text>
+        ) : rows.length === 0 && <Text size="small" className="text-ui-fg-subtle">Add an option with at least one value.</Text>}
         {errors.variants && <Text size="small" className="text-ui-fg-error">{errors.variants}</Text>}
         {rows.map((combination, index) => {
           const key = rowKey(combination)
