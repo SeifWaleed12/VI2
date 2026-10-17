@@ -22,6 +22,12 @@ approval before any change.
 |---|---|---|---|
 | Bring latest reviewed RD-0 and menu fixes into reviewed-baseline | GPT, authorized by Seif | complete locally | full-stack fast-forwarded from a68cbd1 to approved candidate 43a7b97. Includes RD-0, RD-0-NAV, RD-NAV-SIMPLE and RD-REVIEW-FIX; approved RD-1 retained. Backend source is unchanged from a68cbd1. Claude approval 84f3573 is copied into the review artifact. No push, database changes or service restart. Remaining manual checks: signed-in/populated-cart states and native zoom. |
 
+## Redis store caching (requested by Seif, 2026-10-17)
+
+| ID | Task | Author | Reviewer | Status | Notes |
+|---|---|---|---|---|---|
+| REDIS-1 | Cache public catalog reads in Redis; Redis event bus and workflow engine | Claude | GPT | `claude/redis-dev` (from `full-stack`) 4a107a8, 54c407f; GPT round 1 on 4a107a8: no findings. **Round 2 requested for 54c407f** (cache read timeout after the Redis-down hang; review only that diff and `store-cache.unit.spec.ts`). Seif skipped the integration test | `apps/backend/src/lib/store-cache.ts`, wired in `api/middlewares.ts`; table in `docs/ARCHITECTURE.md`. Seif asked for this explicitly, so it counts as the justified requirement for AGENTS.md rule 11. Live check 2026-10-17: repeat reads served from Redis, Arabic kept apart, and with Redis stopped the first version hung forever (the Redis client queues commands), so the cache read now times out after 250 ms; store answered in about 0.3 s with Redis down. Not checked live: an admin write clearing the cache (`integration-tests/http/store-cache.spec.ts` is written but needs the test PostgreSQL password to run). A read already in flight when an admin write finishes can store the old answer for up to its TTL. |
+
 ## Cart and region hardening (requested by Seif, 2026-10-16)
 
 Seif asked Claude to audit the cart and fix what the audit found. This includes the "Remove invented fallback delivery options" follow-up that was listed for GPT. Seif reassigned it to Claude in this request. GPT: please don't start it.
@@ -182,7 +188,7 @@ The initial update prepared tasks only. Seif authorized SF 1 on 2026-10-09; othe
 | Staff invites go out with the dashboard's "Copy invite link". The SendGrid email code stays but is off; no paid email provider for now. | 2026-10-06 |
 | Customers get "change password" and "forgot password" (by email). The reset email is only delivered once an email provider is configured. | 2026-10-06 |
 | Store is Egypt only: EGP, one Cairo warehouse, one delivery option at a flat 70 EGP until Bosta; Medusa's starter demo data is removed. Prices are entered including tax while the VAT rate is open. | 2026-10-09 |
-| Redis holds the cache and locks whenever `REDIS_URL` is set; production runs PostgreSQL and Redis as Coolify resources. | 2026-10-06 |
+| Redis holds the cache, locks, event bus and workflow engine whenever `REDIS_URL` is set (store-read caching added on `claude/redis-dev`, 2026-10-17); production runs PostgreSQL and Redis as Coolify resources. | 2026-10-06 |
 | Managers may allocate stock to an order line ("Allocate items"), never more than the line still needs; they cannot reserve or release stock by hand. | 2026-10-06 |
 | New variants keep the stock settings the form sends for now; which products track stock is decided with the Odoo sync work. | 2026-10-06 |
 | Manager role redefined (replaces RD v1.1 section 2.2): full orders (incl. fulfil, refund, cancel, edit), products (incl. delete, publish, prices), brands, customers, promotions, price lists; inventory view only; in Settings only product types and tags. Store settings, staff, roles, API keys, regions, tax, shipping setup, workflows and future business pages (revenue) are admin only. Admin-only pages are hidden from managers in the dashboard. | 2026-10-06 |
