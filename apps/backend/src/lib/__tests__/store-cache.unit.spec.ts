@@ -74,6 +74,14 @@ it("still answers when the cache is down", async () => {
   expect(res.json).toHaveBeenCalledWith({ products: [1] })
 })
 
+it("still answers when the cache never replies", async () => {
+  const stuck = { get: jest.fn(() => new Promise(() => {})), set: jest.fn() }
+  const res = response()
+  expect(await run(request(stuck), res)).toHaveBeenCalledTimes(1)
+  expect(res.json).toHaveBeenCalledWith({ products: [1] })
+  expect(stuck.set).not.toHaveBeenCalled()
+})
+
 it("clears the store cache after a successful admin write only", () => {
   const cache = fakeCache()
   cache.store.set("store-cache:abc", { products: [1] })

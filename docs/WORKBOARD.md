@@ -26,7 +26,7 @@ approval before any change.
 
 | ID | Task | Author | Reviewer | Status | Notes |
 |---|---|---|---|---|---|
-| REDIS-1 | Cache public catalog reads in Redis; Redis event bus and workflow engine | Claude | GPT | built on `claude/redis-dev` (from `full-stack`), not committed, waiting for review | `apps/backend/src/lib/store-cache.ts`, wired in `api/middlewares.ts`; table in `docs/ARCHITECTURE.md`. Seif asked for this explicitly, so it counts as the justified requirement for AGENTS.md rule 11. Not checked: a live backend run with Redis. A read already in flight when an admin write finishes can store the old answer for up to its TTL. |
+| REDIS-1 | Cache public catalog reads in Redis; Redis event bus and workflow engine | Claude | GPT | built on `claude/redis-dev` (from `full-stack`), not committed, waiting for review | `apps/backend/src/lib/store-cache.ts`, wired in `api/middlewares.ts`; table in `docs/ARCHITECTURE.md`. Seif asked for this explicitly, so it counts as the justified requirement for AGENTS.md rule 11. Live check 2026-10-17: repeat reads served from Redis, Arabic kept apart, and with Redis stopped the first version hung forever (the Redis client queues commands), so the cache read now times out after 250 ms; store answered in about 0.3 s with Redis down. Not checked live: an admin write clearing the cache (`integration-tests/http/store-cache.spec.ts` is written but needs the test PostgreSQL password to run). A read already in flight when an admin write finishes can store the old answer for up to its TTL. |
 
 ## Cart and region hardening (requested by Seif, 2026-10-16)
 

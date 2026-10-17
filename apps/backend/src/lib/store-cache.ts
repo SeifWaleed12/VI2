@@ -8,6 +8,16 @@ import { Modules } from "@medusajs/framework/utils"
 // Cart, checkout and payment routes are never cached (see api/middlewares.ts).
 const PREFIX = "store-cache:"
 
+// With Redis stopped, the Redis client queues commands and never answers, so the
+// read must give up on its own. Every request pays this wait while Redis is down.
+const READ_TIMEOUT_MS = 250
+
+function withinReadTimeout<T>(read: Promise<T>) {
+  let timer: NodeJS.Timeout
+  const timeout = new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new Error("cache read timed out")), READ_TIMEOUT_MS) })
+  return Promise.race([read, timeout]).finally(() => clearTimeout(timer))
+}
+
 // The answer depends on the publishable key (sales channel), the locale and the
 // region/fields already in the URL. Leaving the locale out would show Arabic
 // names to English visitors.
@@ -30,7 +40,7 @@ export function cacheStoreGet(ttlSeconds: number) {
     const key = storeCacheKey(req)
     try {
       cache = req.scope.resolve<ICacheService>(Modules.CACHE)
-      const hit = await cache.get<unknown>(key)
+      const hit = await withinReadTimeout(cache.get<unknown>(key))
       if (hit) return res.json(hit)
     } catch {
       return next()
