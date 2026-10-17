@@ -34,3 +34,12 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+## Deployment URL
+
+Set the server-side `SITE_URL` environment variable to the storefront's public
+origin (for example `https://your-store.example`, without a path or credentials)
+in each deployed environment. Shop canonical URLs use this configured origin.
+Missing or invalid configuration omits canonical URLs in production; request
+headers are used only during local `next dev` previews. Set
+`SITE_URL=http://localhost:3001` when testing the production build locally.

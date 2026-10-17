@@ -51,10 +51,12 @@ const brand = {
   slug: "actual",
   status: "active",
 };
+afterEach(() => jest.restoreAllMocks());
 const render = async (input: Parameters<typeof ShopView>[0]) =>
   (await ShopView(input)).props as ShopProps;
 beforeEach(() => {
   jest.clearAllMocks();
+  jest.replaceProperty(process, "env", { ...process.env, NODE_ENV: "development", SITE_URL: "" });
   jest
     .mocked(headers)
     .mockResolvedValue(new Headers({ host: "localhost:3001" }) as never);
@@ -250,4 +252,29 @@ it("does not turn malformed request-host metadata into a broken shop", async () 
   const metadata = await getShopMetadata({ locale: "en", query: {} });
   expect(metadata.title).toBe("Shop | Vi2");
   expect(metadata.alternates).toBeUndefined();
+});
+
+it("uses only the configured origin in production despite hostile request headers", async () => {
+  jest.replaceProperty(process, "env", { ...process.env, NODE_ENV: "production", SITE_URL: "https://store.example" });
+  jest.mocked(headers).mockResolvedValue(new Headers({ host: "evil.example", "x-forwarded-proto": "https" }) as never);
+  const metadata = await getShopMetadata({ locale: "en", handle: "vitamins", query: {} });
+  expect(String(metadata.metadataBase)).toBe("https://store.example/");
+  expect(metadata.alternates).toEqual({ canonical: "/en/shop/vitamins" });
+  expect(headers).not.toHaveBeenCalled();
+});
+it.each([undefined, "not a URL", "javascript:alert(1)", "https://user:password@store.example", "https://store.example/path", "https://store.example?host=evil"])(
+  "omits production canonical rather than using request headers when SITE_URL is %s", async (SITE_URL) => {
+    jest.replaceProperty(process, "env", { ...process.env, NODE_ENV: "production", SITE_URL });
+    jest.mocked(headers).mockResolvedValue(new Headers({ host: "evil.example" }) as never);
+    const metadata = await getShopMetadata({ locale: "ar", query: {} });
+    expect(metadata.metadataBase).toBeUndefined();
+    expect(metadata.alternates).toBeUndefined();
+    expect(headers).not.toHaveBeenCalled();
+  },
+);
+it("gives a populated later page its own canonical while removing tracking parameters", async () => {
+  jest.mocked(listProducts).mockResolvedValue({ products: [{ id: "product_121" } as never], count: 137, limit: 24, offset: 120 });
+  const metadata = await getShopMetadata({ locale: "en", handle: "vitamins", query: { page: "6", utm: "tracking" } });
+  expect(metadata.robots).toEqual({ index: true, follow: true });
+  expect(metadata.alternates).toEqual({ canonical: "/en/shop/vitamins?page=6" });
 });

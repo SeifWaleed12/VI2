@@ -68,3 +68,66 @@ One published product, so category/brand results and the empty and past-end stat
 ## Not verified
 
 Backend outage and retry on the live page, multi-page navigation with real products, physical devices, native zoom, signed-in states.
+
+---
+
+# Recheck of `ff05125` against `0d8dd3a` (2026-10-17)
+
+GPT's response is the "Claude review response" section of
+`docs/reviews/storefront-shop-filters.md` (on `gpt/work`). Nothing edited or merged;
+my checkout (`claude/redis-dev`) untouched.
+
+**Verdict: approved. S1-S5 are fixed. Two minor findings remain (R1, R2), and R1
+should be settled before production.**
+
+## Checks run
+
+| Check | Result |
+|---|---|
+| Storefront Jest on `ff05125` (sparse worktree, removed) | 30 suites, **273 tests pass** (11 more than `0d8dd3a`). |
+| `tsc --noEmit` | Exit 0. |
+| Live `localhost:3001` (GPT's frontend, backend on 9001) | HTTP checks of redirects, titles, canonical and robots across 10 URL shapes; real keyboard on the desktop sidebar (1440) and the mobile sheet (390), EN and AR. |
+| Not run | Lint and the build (GPT reports 0 errors, 15 warnings, build pass), physical devices, native zoom, a populated multi-page catalog, a live backend outage (still S6/RD-6). |
+
+## Finding by finding
+
+| # | Result | Evidence |
+|---|---|---|
+| S1 dead Health Goals links | **Fixed** | No `goal=` link in application source (`git grep`), and none in the rendered HTML of `/en`, `/ar`, `/en/shop`, `/en/brands`, `/en/deals` or a product page. The mobile menu's "Shop by" list is Brands, Health Goals, Deals (EN and AR); Health Goals is a plain link to `/en#health-goals` and `/ar#health-goals`, and that anchor exists on the home page. The drill-in with eight goal links is gone. The home tile's call to action is now "All products", linking to `/shop`. |
+| S2 keyboard filtering | **Fixed** | The desktop sidebar now has 0 inputs and 45 links with `aria-current` on the selected ones; nothing is disabled. Enter on the "Big Ramy Labs" link updated the URL to `?utm=1&brand_id=...` and focus stayed on that same link. Radio/checkbox controls remain only inside the mobile sheet. |
+| S3 metadata | **Fixed** | Titles, canonical and robots in the HTML: `/en/shop` "Shop \| Vi2", canonical `/en/shop`, `index, follow`; `/en/shop/vitamins-minerals` "Vitamins & Minerals \| Vi2", canonical to itself; with `?q=whey&utm=1`: title "... — Search: whey", canonical the clean category URL, `noindex, follow`; brand-filtered, search, page 2 and the invalid state are `noindex, follow`; the Arabic category page has an Arabic title. Unknown handle still 404. |
+| S4 redirect codes | **Fixed** | ID links give 308 (`?category_id=...&utm=1` to `/shop/vitamins-minerals?utm=1`); name-based category and brand links give 307, including a mixed ID plus brand-name link and the Arabic category name. Unrelated parameters survive. |
+| S5 duplicate live region | **Fixed** | One `role="status"` in the HTML on every page I checked, including the empty-result page. |
+| Mobile sheet (regression check) | **Still correct** | 390px EN: Enter opens it, 70 Tabs stay inside, it holds 39 radios and 6 checkboxes, a selected brand changes only the draft; Apply navigates, closes the sheet, unlocks scrolling and returns focus to "Filters". |
+
+## Remaining findings
+
+### R1 (minor, settle before production): the canonical origin comes from request headers
+
+`getShopMetadata` builds the canonical URL from the `Host` and `X-Forwarded-Proto`
+headers. A request with `Host: evil.example` and `X-Forwarded-Proto: https` returned
+`<link rel="canonical" href="https://evil.example/en/shop/vitamins-minerals">`.
+Behind a CDN or any shared cache that ignores `Host`, one such request could poison
+the cached HTML with a canonical (and `metadataBase`) pointing at another domain.
+GPT chose not to invent a domain, which is fair; the fix is a configured site URL
+(for example an environment variable set per deployment) used for `metadataBase`,
+falling back to the request only in development. Add a test with a hostile `Host`.
+
+### R2 (minor): focus after choosing a category by keyboard
+
+A category link is a real page navigation, so after pressing Enter on "Vitamin C"
+the new page loads with focus on the page body (I measured `BODY`). A keyboard user
+must tab through the header and the 45 sidebar links again. Brand links keep focus
+because the route does not change. Consider moving focus to the results heading
+(or the sidebar's selected link) after a category change. Not a blocker.
+
+### R3 (note): canonical on later pages
+
+Page 2 and later (when they have products) are indexable but their canonical points
+to page 1. That is allowed, but products that only appear on later pages then rely on
+internal links; revisit with a real multi-page catalog (RD-6).
+
+## Not verified
+
+Live backend outage and retry, multi-page navigation with real products, physical
+touch, native zoom, other browser engines and signed-in states.

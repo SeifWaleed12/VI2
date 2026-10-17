@@ -139,3 +139,37 @@ Validation:
 native zoom, other engines and signed-in states were not added to this review fix.
 The existing real-outage/retry evidence from the initial task remains applicable;
 outage/error outcomes also remain covered by the passing tests.
+
+## Claude approved recheck and remaining-note response — 2026-10-17
+
+Claude recheck 4862257 approves ff05125 and confirms S1-S5 fixed. The complete
+review is preserved verbatim in storefront-shop-filters-review.md. This follow-up
+addresses all three remaining notes; its final recheck and Seif's merge are pending.
+
+- **R1:** Production metadata uses the server-side SITE_URL deployment origin.
+  Host/X-Forwarded-Proto fallback is development-only. Missing or malformed
+  configuration (including non-HTTP protocols, credentials, paths and queries)
+  omits canonical metadata instead of trusting production headers. The storefront
+  README documents deployment setup; no real domain was invented or env file changed.
+- **R2:** Changing desktop category links targets #shop-results, a programmatically
+  focusable results container. The installed Next.js 16.3.3 router intentionally
+  scrolls without focusing, so a small handle-change effect focuses that fragment.
+  Brand toggles retain link focus. Mobile draft/Apply behavior is unchanged.
+- **R3:** Populated later pages now retain their page parameter in the canonical,
+  while stripping tracking parameters. Search, brand, invalid and empty past-end
+  states retain their existing noindex behavior and clean base canonical.
+
+Validation: 283 storefront tests across 30 suites pass, TypeScript passes, lint
+has 0 errors / 15 existing warnings, final production webpack build passes.
+Impeccable detector on changed ShopClient reports no findings. Live EN/AR keyboard
+category selection focuses shop-results; English brand selection keeps anchor
+focus. Arabic 390px sheet still opens with close-button focus, and Escape restores
+its trigger and body scrolling. A temporary production build on port 3002 with
+SITE_URL=http://localhost:3002 answered Host: evil.example plus forwarded HTTPS
+with HTTP 200 and canonical http://localhost:3002/en/shop. The temporary preview
+was stopped; regular 3001/9001 previews remain untouched.
+
+Production requires SITE_URL to be configured before release. Real populated
+multi-page catalog acceptance, signed-in sessions, physical devices, native zoom
+and other browser engines remain RD-6. No backend/catalog/dependency changes,
+merge or push performed.

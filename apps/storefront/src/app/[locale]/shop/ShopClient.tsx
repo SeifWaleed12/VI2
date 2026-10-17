@@ -52,6 +52,12 @@ export default function ShopClient(props: ShopProps) {
     handle,
     brandIds: filters.brandIds,
   });
+  const results = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    // This Next.js router scrolls to fragments but deliberately leaves focus untouched.
+    if (window.location.hash === "#shop-results")
+      results.current?.focus({ preventScroll: true });
+  }, [handle]);
   const dialog = useRef<HTMLDialogElement>(null);
   const close = useCallback(() => setOpen(false), []);
   useDrawerFocus(dialog, open, close);
@@ -156,7 +162,10 @@ export default function ShopClient(props: ShopProps) {
           <ShopFilters
             {...filterProps}
             value={selection}
-            linkTo={selection => shopHref(selection.handle, updateShopQuery(query, { brand_id: selection.brandIds }))}
+            linkTo={selection =>
+              shopHref(selection.handle, updateShopQuery(query, { brand_id: selection.brandIds })) +
+              (selection.handle !== handle ? "#shop-results" : "")
+            }
           />
         </aside>
         <section
@@ -200,7 +209,7 @@ export default function ShopClient(props: ShopProps) {
               {msg("shop.filters")}
             </button>
           </div>
-          <div className={styles.resultsTop} id="shop-results">
+          <div className={styles.resultsTop} id="shop-results" ref={results} tabIndex={-1}>
             <p role="status" aria-live="polite">
               {pending
                 ? msg("shop.loading")

@@ -95,3 +95,11 @@ it("has only one live status region for an empty result", () => {
   const html = render({ page: { products: [], count: 0, limit: 24, offset: 0 } });
   expect(html.match(/role="status"/g)).toHaveLength(1);
 });
+
+it.each(["en", "ar"] as const)("targets focusable results when changing categories in %s, while brand links retain their focus", locale => {
+  const html = render({ locale, categories: [{ id: "pcat_c", handle: "vitamin-c", name: "Vitamin C", parent_category_id: null, children: [] }] });
+  expect(html).toContain('href="/shop/vitamin-c?q=protein&amp;brand_id=brand_real#shop-results"');
+  expect(html).toContain('id="shop-results" tabindex="-1"');
+  expect(html).toContain('href="/shop?q=protein"');
+  expect(html).not.toContain('href="/shop?q=protein#shop-results"');
+});

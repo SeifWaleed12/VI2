@@ -171,20 +171,27 @@ export async function getShopMetadata(input: ShopRequest): Promise<Metadata> {
     data.filters.brandIds.length ||
     (data.filters.page > 1 && data.page.products.length === 0),
   );
-  const request = await headers();
-  let origin: URL | undefined;
-  const host = request.get("host");
-  if (host) {
-    try {
-      origin = new URL(
-        (request.get("x-forwarded-proto") === "https"
-          ? "https://"
-          : "http://") + host,
-      );
-    } catch {
-      /* Omit canonical metadata when the request has no valid host. */
-    }
+  let siteUrl = process.env.SITE_URL;
+  if (!siteUrl && process.env.NODE_ENV === "development") {
+    const request = await headers();
+    const host = request.get("host");
+    if (host)
+      siteUrl = (request.get("x-forwarded-proto") === "https" ? "https://" : "http://") + host;
   }
+  let origin: URL | undefined;
+  try {
+    const configured = new URL(siteUrl ?? "");
+    if (
+      ["https:", "http:"].includes(configured.protocol) &&
+      !configured.username && !configured.password &&
+      configured.pathname === "/" && !configured.search && !configured.hash
+    ) origin = configured;
+  } catch {
+    // Missing or invalid deployment configuration must never trust production headers.
+  }
+  const canonicalQuery = new URLSearchParams();
+  if (!noIndex && data.filters.page > 1)
+    canonicalQuery.set("page", String(data.filters.page));
   return {
     title: title + " | Vi2",
     description: msg("shop.description"),
@@ -193,7 +200,7 @@ export async function getShopMetadata(input: ShopRequest): Promise<Metadata> {
           metadataBase: origin,
           alternates: {
             canonical: localizedHref(
-              shopHref(data.category?.handle ?? ""),
+              shopHref(data.category?.handle ?? "", canonicalQuery),
               data.locale,
             ),
           },
