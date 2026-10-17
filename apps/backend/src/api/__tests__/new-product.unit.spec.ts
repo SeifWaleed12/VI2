@@ -1,0 +1,62 @@
+import { managerAction } from "../../lib/manager-access"
+import { newProductSchema } from "../validators"
+
+const valid = {
+  title: "Whey Protein",
+  status: "draft",
+  discountable: true,
+  options: [{ title: "Flavor", values: ["Chocolate"] }],
+  variants: [{ options: { Flavor: "Chocolate" }, sku: "WH-CH-1", price: 1500 }],
+}
+
+const issues = (body: unknown) => {
+  const result = newProductSchema.safeParse(body)
+  return result.success ? [] : result.error.issues.map((issue) => ({ path: issue.path.join("."), message: issue.message }))
+}
+
+describe("new product schema", () => {
+  it("accepts the smallest valid product and trims text", () => {
+    const result = newProductSchema.parse({ ...valid, title: "  Whey Protein ", variants: [{ ...valid.variants[0], sku: " WH-CH-1 " }] })
+    expect(result.title).toBe("Whey Protein")
+    expect(result.variants[0].sku).toBe("WH-CH-1")
+  })
+
+  it.each([
+    ["title", { ...valid, title: "  " }, "title", "Enter the English name"],
+    ["sku", { ...valid, variants: [{ ...valid.variants[0], sku: "" }] }, "variants.0.sku", "Enter a SKU"],
+    ["price", { ...valid, variants: [{ ...valid.variants[0], price: undefined }] }, "variants.0.price", "Enter a price"],
+    ["zero price", { ...valid, variants: [{ ...valid.variants[0], price: 0 }] }, "variants.0.price", "Price must be more than 0"],
+    ["options", { ...valid, options: [] }, "options", "Add at least one option"],
+    ["variants", { ...valid, variants: [] }, "variants", "Keep at least one variant"],
+  ])("requires %s", (_name, body, path, message) => {
+    expect(issues(body)).toContainEqual({ path, message })
+  })
+
+  it("refuses a SKU used twice in one form, on the second row", () => {
+    const body = { ...valid, options: [{ title: "Flavor", values: ["Chocolate", "Vanilla"] }], variants: [
+      { options: { Flavor: "Chocolate" }, sku: "WH-1", price: 1 },
+      { options: { Flavor: "Vanilla" }, sku: "WH-1", price: 1 },
+    ] }
+    expect(issues(body)).toEqual([{ path: "variants.1.sku", message: "SKU WH-1 is used twice in this form" }])
+  })
+
+  it.each([
+    ["an unknown top-level field", { ...valid, sales_channels: [{ id: "sc_1" }] }],
+    ["inventory items on a variant", { ...valid, variants: [{ ...valid.variants[0], inventory_items: [{ inventory_item_id: "inv_1" }] }] }],
+    ["stock settings on a variant", { ...valid, variants: [{ ...valid.variants[0], manage_inventory: false }] }],
+    ["a stock quantity", { ...valid, variants: [{ ...valid.variants[0], inventory_quantity: 5 }] }],
+    ["a price with its own currency", { ...valid, variants: [{ ...valid.variants[0], prices: [{ amount: 1, currency_code: "usd" }] }] }],
+  ])("refuses %s", (_name, body) => {
+    expect(newProductSchema.safeParse(body).success).toBe(false)
+  })
+})
+
+describe("new product route access", () => {
+  it("is product create for a manager", () => {
+    expect(managerAction("POST", "/admin/vi2-products", valid)).toEqual({ resource: "product", operation: "create" })
+  })
+
+  it("is closed to managers when the body links inventory items", () => {
+    expect(managerAction("POST", "/admin/vi2-products", { ...valid, variants: [{ inventory_items: [{ inventory_item_id: "inv_1" }] }] })).toBeNull()
+  })
+})

@@ -22,6 +22,12 @@ approval before any change.
 |---|---|---|---|
 | Bring latest reviewed RD-0 and menu fixes into reviewed-baseline | GPT, authorized by Seif | complete locally | full-stack fast-forwarded from a68cbd1 to approved candidate 43a7b97. Includes RD-0, RD-0-NAV, RD-NAV-SIMPLE and RD-REVIEW-FIX; approved RD-1 retained. Backend source is unchanged from a68cbd1. Claude approval 84f3573 is copied into the review artifact. No push, database changes or service restart. Remaining manual checks: signed-in/populated-cart states and native zoom. |
 
+## New product page (requested by Seif, 2026-10-17)
+
+| Task | Author | Reviewer | Status | Branch | Notes |
+|---|---|---|---|---|---|
+| One-form "New product (Vi2)" admin page: basics, brand, EDA, images, options, variants with SKU/barcode/EGP price, saved in one workflow | Claude | GPT | in progress | `claude/new-product-page` (from `full-stack`), folder `vi2-new-product` | Isolated and removable; handoff will be `docs/reviews/new-product-page.md`. |
+
 ## Cart and region hardening (requested by Seif, 2026-10-16)
 
 Seif asked Claude to audit the cart and fix what the audit found. This includes the "Remove invented fallback delivery options" follow-up that was listed for GPT. Seif reassigned it to Claude in this request. GPT: please don't start it.

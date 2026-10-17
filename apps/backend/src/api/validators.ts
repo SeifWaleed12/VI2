@@ -51,3 +51,33 @@ export const productEdaSchema = z.object({
   registration_number: text.max(100),
   is_approved: z.boolean(),
 }).strict()
+
+// The "New product (Vi2)" admin page. Stock fields (inventory items, quantities,
+// manage_inventory, allow_backorder) are not accepted: stock comes from Odoo.
+// Messages are shown next to the field the issue's path names.
+const required = (message: string) => z.string({ error: message }).trim().min(1, message)
+export const newProductSchema = z.object({
+  title: required("Enter the English name").max(255),
+  title_ar: text.optional(),
+  description: z.string().trim().max(5000).optional(),
+  category_ids: z.array(z.string().min(1)).max(50).optional(),
+  status: z.enum(["draft", "published"]),
+  weight: z.number().finite().positive("Weight must be more than 0").optional(),
+  discountable: z.boolean(),
+  brand_id: z.string().min(1).optional(),
+  eda: productEdaSchema.optional(),
+  images: z.array(z.url().refine((url) => ["https:", "http:"].includes(new URL(url).protocol))).max(20).optional(),
+  options: z.array(z.object({ title: text, values: z.array(text).min(1).max(50) }).strict()).min(1, "Add at least one option").max(10),
+  variants: z.array(z.object({
+    options: z.record(z.string(), text),
+    sku: required("Enter a SKU").max(100),
+    barcode: text.max(100).optional(),
+    price: z.number({ error: "Enter a price" }).finite().positive("Price must be more than 0"),
+  }).strict()).min(1, "Keep at least one variant").max(100),
+}).strict().superRefine((product, ctx) => {
+  const seen = new Set<string>()
+  product.variants.forEach((variant, index) => {
+    if (seen.has(variant.sku)) ctx.addIssue({ code: "custom", path: ["variants", index, "sku"], message: `SKU ${variant.sku} is used twice in this form` })
+    seen.add(variant.sku)
+  })
+})
