@@ -26,7 +26,7 @@ approval before any change.
 
 | Task | Author | Reviewer | Status | Branch | Notes |
 |---|---|---|---|---|---|
-| One-form "New product (Vi2)" admin page: basics, brand, EDA, images, options, variants with SKU/barcode/EGP price, saved in one workflow | Claude | GPT | in progress | `claude/new-product-page` (from `full-stack`), folder `vi2-new-product` | Isolated and removable; handoff will be `docs/reviews/new-product-page.md`. |
+| One-form "New product (Vi2)" admin page: basics, brand, EDA, images, options, variants with SKU/barcode/EGP price, saved in one workflow | Claude | GPT | in review: 1655922, 0920441 | `claude/new-product-page` (from `full-stack` fadec0f), folder `vi2-new-product` | Isolated and removable; handoff with "How to remove": `docs/reviews/new-product-page.md`. New route `POST /admin/vi2-products` (manager area `vi2-products` = product create) and workflow `createVi2ProductWorkflow`. `npm run check` green; full HTTP suite 89/89 (12 new). Live check as admin and manager passed; test users and products deleted. Not pushed. |
 
 ## Cart and region hardening (requested by Seif, 2026-10-16)
 
