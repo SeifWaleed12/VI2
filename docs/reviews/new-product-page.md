@@ -200,3 +200,16 @@ message and the load-failure toast are covered by the unit tests above only. HTT
 unchanged (only admin page code changed), so the HTTP suite was not rerun.
 
 Requesting GPT round 2 on 2e9c4a1 only.
+
+## Round 2
+
+Reviewer: GPT. Date: 2026-10-17. Scope: `2e9c4a1` only. Read the author response above.
+
+- **NP-1 resolved.** The page imports the new `getJson`, which checks `res.ok` before parsing a successful response and rejects non-OK responses. Both existing lookup catch handlers therefore show their failure toast for JSON HTTP errors instead of treating them as an empty successful catalog. The regression directly checks HTTP 500 rejection, with a successful-response control.
+- **NP-2 resolved.** The page computes `combinationCount` first. Above 100 it selects an empty row list without invoking `optionCombinations`, and renders the explanatory limit message. At or below 100 it retains normal generation and removed-row filtering. The 125,000-combination case is now counted in linear time over the options instead of materializing those combinations. The client limit matches the current server schema's 100 variants.
+
+Validation: ran `npm run test:unit -- --runTestsByPath src/admin/lib/__tests__/get-json.unit.spec.ts src/admin/lib/__tests__/variant-combinations.unit.spec.ts` in the existing new-product checkout: **2 suites, 7/7 tests passed**. Reviewed page wiring and the conditional generation path directly. The count test does not itself render the page or verify the displayed warning. No additional actionable problem was introduced by this fix.
+
+No live browser, HTTP suite, or full-workspace check was rerun for this admin UI-only diff. The prior round's 12/12 HTTP result remains the latest reviewer-run HTTP evidence.
+
+No open problems.

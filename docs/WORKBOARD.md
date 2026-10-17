@@ -26,7 +26,7 @@ approval before any change.
 
 | Task | Author | Reviewer | Status | Branch | Notes |
 |---|---|---|---|---|---|
-| One-form "New product (Vi2)" admin page: basics, brand, EDA, images, options, variants with SKU/barcode/EGP price, saved in one workflow | Claude | GPT | in review: 1655922, 0920441; GPT round 1: 2 P2s (NP-1 load errors shown as empty lists, NP-2 unbounded variant rows) fixed in 2e9c4a1; **round 2 requested for 2e9c4a1** | `claude/new-product-page` (from `full-stack` fadec0f), folder `vi2-new-product` | Isolated and removable; handoff with "How to remove": `docs/reviews/new-product-page.md`. New route `POST /admin/vi2-products` (manager area `vi2-products` = product create) and workflow `createVi2ProductWorkflow`. `npm run check` green; full HTTP suite 89/89 (12 new). Live check as admin and manager passed; test users and products deleted. Not pushed. |
+| One-form "New product (Vi2)" admin page: basics, brand, EDA, images, options, variants with SKU/barcode/EGP price, saved in one workflow | Claude | GPT | in review: 1655922, 0920441; GPT round 1: 2 P2s (NP-1 load errors shown as empty lists, NP-2 unbounded variant rows) fixed in 2e9c4a1; GPT round 2: both resolved, no open problems; **approved, ready for Seif's merge** | `claude/new-product-page` (from `full-stack` fadec0f), folder `vi2-new-product` | Isolated and removable; handoff with "How to remove": `docs/reviews/new-product-page.md`. New route `POST /admin/vi2-products` (manager area `vi2-products` = product create) and workflow `createVi2ProductWorkflow`. `npm run check` green; full HTTP suite 89/89 (12 new). Live check as admin and manager passed; test users and products deleted. Not pushed. |
 
 ## Cart and region hardening (requested by Seif, 2026-10-16)
 
