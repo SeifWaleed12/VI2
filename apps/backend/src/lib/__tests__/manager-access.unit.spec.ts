@@ -79,6 +79,12 @@ it("lets a manager allocate stock only to an order line, never reserve by hand",
 
 it("refuses inventory links in any product payload", () => {
   expect(managerAction("POST", "/admin/products/prod_1/variants", { title: "Kit", inventory_items: [{ inventory_item_id: "inv_1" }] })).toBeNull()
+  expect(managerAction("POST", "/admin/products", { title: "Kit", variants: [{ title: "Kit", inventory_items: [{ inventory_item_id: "inv_1", required_quantity: 2 }] }] })).toBeNull()
+})
+
+it("lets a manager create a product the way the dashboard sends it, with an empty inventory list per variant", () => {
+  expect(managerAction("POST", "/admin/products", { title: "Whey", variants: [{ title: "1kg", manage_inventory: true, inventory_items: [] }] }))
+    .toEqual({ resource: "product", operation: "create" })
 })
 
 it("lets a manager use their own account and dashboard view", () => {

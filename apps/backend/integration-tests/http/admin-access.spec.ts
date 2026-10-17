@@ -93,6 +93,20 @@ medusaIntegrationTestRunner({
         expect(response.data.product.status).toBe("draft")
       })
 
+      it("lets a catalog manager create a product from the dashboard's create form", async () => {
+        // The dashboard sends inventory_items: [] for every variant, even with no stock links.
+        const response = await api.post("/admin/products", {
+          title: "Dashboard product", status: "draft", options: [{ title: "Size", values: ["1kg"] }],
+          variants: [{ title: "1kg", options: { Size: "1kg" }, manage_inventory: true, allow_backorder: false, inventory_items: [], prices: [{ amount: 100, currency_code: "egp" }] }],
+        }, manager)
+        expect(response.status).toBe(200)
+        const linked = await api.post("/admin/products", {
+          title: "Kit", status: "draft", options: [{ title: "Size", values: ["1kg"] }],
+          variants: [{ title: "1kg", options: { Size: "1kg" }, inventory_items: [{ inventory_item_id: "iitem_x", required_quantity: 1 }], prices: [{ amount: 100, currency_code: "egp" }] }],
+        }, manager)
+        expect(linked.status).toBe(403)
+      })
+
       it("lets a catalog manager edit product content", async () => {
         const product = await publishedProduct()
         const response = await api.post(`/admin/products/${product.id}`, { description: "New copy" }, manager)
