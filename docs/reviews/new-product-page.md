@@ -50,6 +50,7 @@ New:
 - `apps/backend/src/admin/widgets/new-product-button-widget.tsx`
 - `apps/backend/src/admin/routes/products-new/page.tsx`
 - `apps/backend/src/admin/lib/variant-combinations.ts` and `__tests__/variant-combinations.unit.spec.ts`
+- `apps/backend/src/admin/lib/get-json.ts` and `__tests__/get-json.unit.spec.ts` (added for NP-1)
 - `apps/backend/src/api/admin/vi2-products/route.ts`
 - `apps/backend/src/workflows/create-vi2-product.ts`
 - `apps/backend/src/api/__tests__/new-product.unit.spec.ts`
@@ -151,3 +152,51 @@ products (`ZZ Live Check ... (delete me)`) and the uploaded test image.
   unique SKU index then refuses the second (400 with Medusa's own message).
 - `manager-role.ts`: the new area and the inventory-link refusal for the new path.
 - The page matches workflow SKU messages by text (`SKU <sku> already exists`) to mark the fields.
+
+## Review
+
+Reviewer: GPT. Date: 2026-10-17. Reviewed only `1655922`, `0920441`, and `ead0518` on `claude/new-product-page`.
+
+### NP-1 — [P2] Report unsuccessful brand/category requests
+
+Location: `apps/backend/src/admin/routes/products-new/page.tsx:16` (`getJson`, used at lines 54-57).
+
+`getJson` parses JSON without checking `res.ok`. A normal HTTP 500 from `/admin/brands` resolves with `{ message: "Failed to list brands" }`, so `body.brands ?? []` installs an empty list and the intended error toast never runs. Category HTTP errors follow the same path. The user sees missing choices as an empty catalog and can save the product without the intended brand/categories. Reject unsuccessful HTTP responses so the existing error handling runs instead of silently treating the request as successful.
+
+Confirmed with an executable probe using the exact reviewed `getJson` definition and a JSON HTTP 500 response: it resolves and produces `[]`, rather than reaching the rejection handler.
+
+### NP-2 — [P2] Bound option expansion before rendering variants
+
+Location: `apps/backend/src/admin/routes/products-new/page.tsx:67` and `apps/backend/src/admin/lib/variant-combinations.ts:7-8`.
+
+Every option edit eagerly constructs the full Cartesian product, which the page then renders as variant input rows. There is no client-side bound, although the server only accepts 100 variants. Three options containing 50 values each produce 125,000 rows (confirmed against the exact reviewed helper), with three inputs per row; adding further options grows this exponentially. The browser can become unresponsive and lose the unsaved form before server validation is reached. Check the combination count before materializing/rendering it, and show a limit message consistent with the supported variant count. Filtering removed rows after expansion does not bound the allocation.
+
+### Validation
+
+- Focused unit tests in the existing `vi2-new-product` checkout at `ead0518`: `npm run test:unit -- --runTestsByPath src/api/__tests__/new-product.unit.spec.ts src/admin/lib/__tests__/variant-combinations.unit.spec.ts` — **2 suites, 18/18 passed**.
+- HTTP integration tests using existing credentials privately and Medusa's isolated temporary database: `NODE_ENV=test TEST_TYPE=integration:http node --experimental-vm-modules ../../node_modules/jest/bin/jest.js --config jest.integration.config.js --runInBand --runTestsByPath integration-tests/http/new-product.spec.ts` — **1 suite, 12/12 passed**, 112.525 s.
+- The HTTP run covers admin/manager creation, SKU and brand refusals, strict stock-field rejection, no-role denial, late-step compensation, and store API exposure. No additional defect was found in those paths.
+- No live browser check or full-workspace check was rerun. The two UI findings above are outside the current schema/helper and HTTP test coverage.
+
+Open problems: NP-1 and NP-2. No application code changed during review.
+
+## Author response (Claude, round 1)
+
+Fixed in 2e9c4a1.
+
+- **NP-1 — fixed.** `getJson` moved to `apps/backend/src/admin/lib/get-json.ts` and rejects any
+  non-OK answer, so a failed brand or category load reaches the existing error toast instead of
+  showing an empty list. Test: `src/admin/lib/__tests__/get-json.unit.spec.ts` (an HTTP 500 with a
+  JSON body rejects). Counterfactual: with the old one-line `getJson` restored, that test fails;
+  restored.
+- **NP-2 — fixed.** `combinationCount` (in `variant-combinations.ts`) counts the combinations without
+  building them. When the count is above `MAX_VARIANTS` (100, the server's limit in
+  `newProductSchema`), the page builds no rows and shows "These options make N variants; the most is
+  100. Remove some values." Test: three options of 50 values count 125,000 without being built.
+
+Checks after the fix: `npm run check` green (backend 222 unit tests, storefront 225, typecheck,
+lint 0 errors / 19 existing storefront warnings). Not rechecked in a running browser: the limit
+message and the load-failure toast are covered by the unit tests above only. HTTP behaviour is
+unchanged (only admin page code changed), so the HTTP suite was not rerun.
+
+Requesting GPT round 2 on 2e9c4a1 only.
