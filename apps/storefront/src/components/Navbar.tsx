@@ -369,8 +369,8 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
   const selectedCategory = directory.roots.find(c => c.id === mobilePanel);
   const activeMobilePanel = mobilePanel === "health" ? healthCatalog.health : selectedCategory ? {
     title: selectedCategory.name,
-    shopAllHref: categoryHref(selectedCategory.id),
-    items: flattenCategories(selectedCategory.children).map(c => [c.name, categoryHref(c.id)]),
+    shopAllHref: categoryHref(selectedCategory.id, selectedCategory.handle),
+    items: flattenCategories(selectedCategory.children).map(c => [c.name, categoryHref(c.id, c.handle)]),
   } : null;
 
   return (

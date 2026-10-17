@@ -1,0 +1,84 @@
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import ShopClient, { type ShopProps } from "../ShopClient";
+import { message } from "@/lib/i18n";
+
+jest.mock("next/navigation", () => ({
+  useRouter: () => ({ push: jest.fn(), refresh: jest.fn() }),
+}));
+jest.mock("@/hooks/use-locale-router", () => ({
+  useLocaleRouter: () => ({ push: jest.fn() }),
+}));
+jest.mock("@/components/LocaleLink", () => ({
+  __esModule: true,
+  default: ({ href, children, ...props }: { href: string; children: never }) =>
+    createElement("a", { ...props, href }, children),
+}));
+jest.mock("@/components/ProductCard", () => ({
+  __esModule: true,
+  default: ({ product }: { product: { id: string } }) =>
+    createElement("article", {}, product.id),
+}));
+jest.mock("../Shop.module.css", () => ({}));
+const props: ShopProps = {
+  locale: "en",
+  page: {
+    products: [{ id: "product_121" } as never],
+    count: 137,
+    limit: 24,
+    offset: 120,
+  },
+  categories: [],
+  brands: [
+    {
+      id: "brand_real",
+      name: "A real directory brand",
+      slug: "real",
+      status: "active",
+    },
+  ],
+  category: null,
+  categoryError: false,
+  brandError: false,
+  handle: "",
+  query: "page=6&q=protein&brand_id=brand_real",
+  filters: { q: "protein", brandIds: ["brand_real"], page: 6 },
+  error: null,
+};
+const render = (overrides: Partial<ShopProps> = {}) =>
+  renderToStaticMarkup(createElement(ShopClient, { ...props, ...overrides }));
+it("renders backend products without a second browser filter, totals and real directory brands", () => {
+  const html = render();
+  expect(html).toContain("product_121");
+  expect(html).toContain("137 products");
+  expect(html).toContain("121");
+  expect(html).toContain("A real directory brand");
+  expect(html).toContain("page=5");
+  expect(html).not.toContain("page=7");
+  expect(html).not.toMatch(
+    /HEALTH GOAL|ALLERGEN-FREE|IN STOCK ONLY|Price: Low|All Diets/,
+  );
+});
+it("renders Arabic interface copy before effects or text replacement", () => {
+  const html = render({ locale: "ar" });
+  expect(html).toContain(message("ar", "shop.title"));
+  expect(html).toContain(message("ar", "shop.search"));
+  expect(html).toContain("١٣٧");
+  expect(html).toContain("data-no-translate");
+  expect(html).toContain('aria-haspopup="dialog"');
+  expect(html).toContain('aria-labelledby="shop-filters-title"');
+});
+it("offers localized recovery for invalid filters, outages, empty results and an expired page", () => {
+  expect(render({ error: "invalid" })).toContain(
+    message("en", "shop.invalidTitle"),
+  );
+  expect(render({ error: "unavailable" })).toContain(
+    message("en", "catalog.retry"),
+  );
+  expect(
+    render({ page: { products: [], count: 0, limit: 24, offset: 0 } }),
+  ).toContain(message("en", "shop.emptyTitle"));
+  expect(
+    render({ page: { products: [], count: 1, limit: 24, offset: 120 } }),
+  ).toContain(message("en", "shop.firstPage"));
+});

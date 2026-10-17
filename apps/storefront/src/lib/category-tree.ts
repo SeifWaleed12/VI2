@@ -46,7 +46,7 @@ export function categoryScope(roots: Category[], id: string) {
   const category = flattenCategories(roots).find((c) => c.id === id);
   return category ? flattenCategories([category]).map((c) => c.id) : null;
 }
-export function categoryHref(id: string) {
-  return `/shop?category_id=${encodeURIComponent(id)}`;
+export function categoryHref(id: string, handle?: string) {
+  return handle ? `/shop/${encodeURIComponent(handle)}` : `/shop?category_id=${encodeURIComponent(id)}`;
 }
 export type CategoryDirectory = { roots: Category[]; error: boolean };

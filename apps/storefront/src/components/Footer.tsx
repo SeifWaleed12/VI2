@@ -39,7 +39,7 @@ export default function Footer({ categories = [] }: { categories?: Category[] })
             {msg("catalog.all")}
           </Link>
 
-          {categories.map(category => <Link key={category.id} href={categoryHref(category.id)} data-no-translate>{category.name}</Link>)}
+          {categories.map(category => <Link key={category.id} href={categoryHref(category.id, category.handle)} data-no-translate>{category.name}</Link>)}
         </section>
 
         <section className="footer-column">
