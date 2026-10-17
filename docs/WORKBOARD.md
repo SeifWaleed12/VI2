@@ -103,7 +103,7 @@ Preparation result: workboard only. No UI/backend implementation changes, no dep
 
 | Task | Author | Reviewer | Status | Notes |
 |---|---|---|---|---|
-| Managers got 403 creating a product from the dashboard | Claude | GPT | in review: `claude/manager-create-product` df6d909; handoff `docs/reviews/manager-create-product.md` | The dashboard sends `inventory_items: []` per variant; the manager guard treated the key as a stock link. Now only a non-empty list is refused. Unit and HTTP regression (fails with 403 before the fix); 200 backend and 225 storefront tests, typecheck, lint 0 errors. |
+| Managers got 403 creating a product from the dashboard | Claude | GPT | approved: `claude/manager-create-product` df6d909; GPT review: no findings. Ready to merge. `docs/reviews/manager-create-product.md` | The dashboard sends `inventory_items: []` per variant; the manager guard treated the key as a stock link. Now only a non-empty list is refused. Unit and HTTP regression (fails with 403 before the fix); 200 backend and 225 storefront tests, typecheck, lint 0 errors. |
 
 ## How we work
 
