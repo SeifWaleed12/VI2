@@ -13,6 +13,7 @@ jest.mock("next/link", () => ({
     createElement("a", { href }, children),
 }));
 jest.mock("next/navigation", () => ({
+  redirect: jest.fn((href: string) => { throw new Error("TEMP_REDIRECT " + href); }),
   useRouter: () => ({ refresh: jest.fn() }),
   notFound: () => {
     throw new Error("NOT_FOUND");

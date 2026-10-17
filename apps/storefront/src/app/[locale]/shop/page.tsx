@@ -1,11 +1,12 @@
-import ShopView from "./ShopView";
+import ShopView, { getShopMetadata } from "./ShopView";
 import type { ShopSearch } from "@/lib/shop-query";
-export default async function ShopPage({
-  params,
-  searchParams,
-}: {
+type Props = {
   params: Promise<{ locale: string }>;
   searchParams: Promise<ShopSearch>;
-}) {
-  return ShopView({ locale: (await params).locale, query: await searchParams });
+};
+export async function generateMetadata({ params, searchParams }: Props) {
+  return getShopMetadata({ ...(await params), query: await searchParams });
+}
+export default async function ShopPage({ params, searchParams }: Props) {
+  return ShopView({ ...(await params), query: await searchParams });
 }

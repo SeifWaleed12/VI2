@@ -82,3 +82,16 @@ it("offers localized recovery for invalid filters, outages, empty results and an
     render({ page: { products: [], count: 1, limit: 24, offset: 120 } }),
   ).toContain(message("en", "shop.firstPage"));
 });
+
+it("uses ordinary navigation links on desktop, without disabled fields or immediate-change radios", () => {
+  const html = render();
+  expect(html).not.toContain('type="radio"');
+  expect(html).not.toContain('type="checkbox"');
+  expect(html).not.toContain('<fieldset disabled');
+  expect(html).toContain('aria-current="true"');
+  expect(html).toContain('href="/shop?q=protein"');
+});
+it("has only one live status region for an empty result", () => {
+  const html = render({ page: { products: [], count: 0, limit: 24, offset: 0 } });
+  expect(html.match(/role="status"/g)).toHaveLength(1);
+});

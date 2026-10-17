@@ -472,3 +472,7 @@
     gap: 4px;
   }
 }
+
+.filterLink { justify-content: space-between; padding-inline: 8px; }
+.filterLink svg { flex: 0 0 auto; margin-block-start: 3px; }
+.filterSelected { background: var(--cream-deep); font-weight: 600; }

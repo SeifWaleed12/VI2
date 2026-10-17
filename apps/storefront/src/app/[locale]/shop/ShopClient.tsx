@@ -156,8 +156,7 @@ export default function ShopClient(props: ShopProps) {
           <ShopFilters
             {...filterProps}
             value={selection}
-            onChange={navigate}
-            disabled={pending}
+            linkTo={selection => shopHref(selection.handle, updateShopQuery(query, { brand_id: selection.brandIds }))}
           />
         </aside>
         <section
@@ -320,7 +319,7 @@ export default function ShopClient(props: ShopProps) {
               )}
             </>
           ) : (
-            <div className={styles.empty} role="status">
+            <div className={styles.empty}>
               <h2>
                 {msg(page.count > 0 ? "shop.pastEndTitle" : "shop.emptyTitle")}
               </h2>

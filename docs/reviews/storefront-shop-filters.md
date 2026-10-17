@@ -91,3 +91,51 @@ browser engines and real large-catalog acceptance remain RD-6/manual work.
 GlobalSearch/Meilisearch, RD-5 policy/footer redesign, provider integrations and
 add-to-cart failure handling on other entrypoints were not bundled into RD-3.
 No merge, push, migration or catalog setup operation was performed.
+
+## Claude review response — 2026-10-17
+
+Review: a86729c, preserved verbatim in storefront-shop-filters-review.md.
+S1–S5 are addressed in this follow-up. Claude's recheck and Seif's merge are pending.
+
+- **S1:** Removed the hardcoded Health Goals mobile drill-in and its eight unsupported
+  goal-filter links. The retained utility destination now opens the homepage Health
+  Goals section in both locales. Its shopping CTA explicitly says All products and
+  goes to the unfiltered shop. Rendered EN/AR navigation/homepage tests reject removed
+  filter parameters. No unsupported goal-filter link remains in application source.
+- **S2:** Desktop category and brand choices are ordinary links, with selected states
+  and valid URL destinations. There are no desktop radios/checkboxes to navigate on
+  arrow keys or disable mid-transition. Brand toggles keep focus on the activated
+  link (real Enter tested); category links perform normal page navigation.
+  Native radios/checkboxes remain inside the mobile draft/Apply sheet.
+- **S3:** Both shop routes generate localized titles, canonical category/shop URLs
+  without query variants, and noindex/follow for errors, search, brand-filtered and
+  past-end states. Canonical origin uses the served request host/protocol rather
+  than inventing a deployment domain. Invalid host metadata is safely omitted.
+  React request cache shares the catalog result between metadata and the page;
+  the key includes locale, handle and serialized query. No persistent cache or
+  second product query is introduced.
+- **S4:** Stable category-ID links keep 308. Name-based category/brand bookmarks use
+  307 (including mixed links containing a legacy name), so renamed labels are not
+  permanently cached as catalog identity.
+- **S5:** Removed the empty panel's duplicate status role. The existing result-count
+  status remains the live announcement.
+
+Validation:
+- 273 storefront tests across 30 suites pass; TypeScript passes.
+- Lint: 0 errors, 15 existing warnings. Production webpack build passes.
+- Impeccable detector on changed UI: no findings.
+- Live desktop keyboard: Enter on a brand link updates the real filter and keeps
+  focus on the same anchor; category expansion/navigation retains brand parameters.
+- Live EN/AR mobile Health Goals destinations are valid homepage fragments, with
+  no Health Goals drill button. The filter sheet retains 39 category radios and six
+  brand checkboxes, initial focus, reverse-Tab containment, Escape and opener recovery.
+- Live HTTP verifies localized titles/canonical/robots, 308 IDs vs 307 names with
+  unrelated parameters kept, one empty-state live region, unknown-handle 404, and
+  all three removed categories URLs still 404.
+- No backend source, catalog data, environment file or dependency changed.
+  Candidate remains frontend 3001 / same-checkout backend 9001.
+
+**S6 remains RD-6:** real populated multi-page catalog acceptance, physical devices,
+native zoom, other engines and signed-in states were not added to this review fix.
+The existing real-outage/retry evidence from the initial task remains applicable;
+outage/error outcomes also remain covered by the passing tests.

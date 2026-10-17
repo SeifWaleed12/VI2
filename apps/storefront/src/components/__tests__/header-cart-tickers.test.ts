@@ -305,3 +305,15 @@ it.each(["en", "ar"] as const)("names the mobile drawer as a dialog and keeps th
   expect(dialog).not.toContain('aria-modal="true"');
   expect(html).toMatch(/aria-hidden="true" inert=""[^>]*><aside/);
 });
+
+it.each(["en", "ar"] as const)("publishes no removed shop filters in %s navigation", locale => {
+  mockLocale = locale;
+  const html = renderToStaticMarkup(createElement(Navbar));
+  const links = Array.from(html.matchAll(/href="([^"]+)"/g), match => match[1].replaceAll("&amp;", "&"));
+  expect(links).toContain("/" + locale + "/#health-goals");
+  for (const href of links) {
+    const query = new URL(href, "https://example.test").searchParams;
+    for (const key of ["goal", "form", "diet", "allergen", "rating", "sort", "availability"]) expect(query.has(key)).toBe(false);
+  }
+  expect(html).not.toContain('setMobilePanel("health")');
+});

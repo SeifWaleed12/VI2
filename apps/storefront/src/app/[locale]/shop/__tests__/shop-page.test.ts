@@ -1,4 +1,7 @@
-import ShopView from "../ShopView";
+import ShopView, { getShopMetadata } from "../ShopView";
+import { headers } from "next/headers";
+import { redirect, permanentRedirect } from "next/navigation";
+jest.mock("next/headers", () => ({ headers: jest.fn() }));
 import {
   listProducts,
   InvalidCatalogFilterError,
@@ -8,12 +11,15 @@ import { loadCategoryDirectory } from "@/lib/medusa/category-directory";
 import type { ShopProps } from "../ShopClient";
 
 jest.mock("next/navigation", () => ({
+  redirect: jest.fn((href: string) => {
+    throw new Error("TEMP_REDIRECT " + href);
+  }),
   notFound: () => {
     throw new Error("NOT_FOUND");
   },
-  permanentRedirect: (href: string) => {
+  permanentRedirect: jest.fn((href: string) => {
     throw new Error("REDIRECT " + href);
-  },
+  }),
 }));
 jest.mock("../ShopClient", () => ({ __esModule: true, default: () => null }));
 jest.mock("@/lib/medusa/services/products", () => ({
@@ -49,6 +55,9 @@ const render = async (input: Parameters<typeof ShopView>[0]) =>
   (await ShopView(input)).props as ShopProps;
 beforeEach(() => {
   jest.clearAllMocks();
+  jest
+    .mocked(headers)
+    .mockResolvedValue(new Headers({ host: "localhost:3001" }) as never);
   jest
     .mocked(loadCategoryDirectory)
     .mockResolvedValue({ roots: [parent], error: false });
@@ -181,4 +190,64 @@ it("keeps an empty backend answer and a page past the end distinct", async () =>
   const pastEnd = await render({ locale: "en", query: { page: "6" } });
   expect(pastEnd.page.count).toBe(137);
   expect(pastEnd.error).toBeNull();
+});
+
+it("uses temporary redirects for mutable category and brand names, and permanent redirects for IDs", async () => {
+  await expect(
+    render({ locale: "en", query: { brand: brand.name } }),
+  ).rejects.toThrow("TEMP_REDIRECT /en/shop?brand_id=brand_real");
+  expect(redirect).toHaveBeenCalledWith("/en/shop?brand_id=brand_real");
+  expect(permanentRedirect).not.toHaveBeenCalled();
+  await expect(
+    render({ locale: "en", query: { category_id: parent.id } }),
+  ).rejects.toThrow("REDIRECT /en/shop/vitamins");
+  expect(permanentRedirect).toHaveBeenCalledWith("/en/shop/vitamins");
+});
+it("gives clean localized categories a title and canonical on the served origin", async () => {
+  const metadata = await getShopMetadata({
+    locale: "ar",
+    handle: "vitamins",
+    query: { utm: "tracking" },
+  });
+  expect(metadata).toMatchObject({
+    title: parent.name + " | Vi2",
+    alternates: { canonical: "/ar/shop/vitamins" },
+    robots: { index: true, follow: true },
+  });
+  expect(String(metadata.metadataBase)).toBe("http://localhost:3001/");
+});
+it("includes search and page in titles and excludes search and brand variants from indexing", async () => {
+  const metadata = await getShopMetadata({
+    locale: "en",
+    handle: "vitamins",
+    query: { q: "protein", page: "6", brand_id: brand.id },
+  });
+  expect(metadata.title).toBe(
+    parent.name + " — Search: protein — Page 6 | Vi2",
+  );
+  expect(metadata.robots).toEqual({ index: false, follow: true });
+  expect(metadata.alternates).toEqual({ canonical: "/en/shop/vitamins" });
+  expect(
+    (await getShopMetadata({ locale: "en", query: { brand_id: brand.id } }))
+      .robots,
+  ).toEqual({ index: false, follow: true });
+});
+it("excludes invalid, past-end and unavailable states from indexing", async () => {
+  expect(
+    (await getShopMetadata({ locale: "en", query: { page: "0" } })).robots,
+  ).toEqual({ index: false, follow: true });
+  expect(
+    (await getShopMetadata({ locale: "en", query: { page: "6" } })).robots,
+  ).toEqual({ index: false, follow: true });
+  jest.mocked(listProducts).mockRejectedValueOnce(new Error("offline"));
+  expect((await getShopMetadata({ locale: "ar", query: {} })).robots).toEqual({
+    index: false,
+    follow: true,
+  });
+});
+it("does not turn malformed request-host metadata into a broken shop", async () => {
+  jest.mocked(headers).mockResolvedValue(new Headers({ host: "[" }) as never);
+  const metadata = await getShopMetadata({ locale: "en", query: {} });
+  expect(metadata.title).toBe("Shop | Vi2");
+  expect(metadata.alternates).toBeUndefined();
 });

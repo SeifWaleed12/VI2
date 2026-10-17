@@ -1,12 +1,17 @@
 "use client";
 import { useId } from "react";
-import type { Category } from "@/lib/category-tree";
-import { flattenCategories } from "@/lib/category-tree";
+import { Check } from "lucide-react";
+import Link from "@/components/LocaleLink";
+import { flattenCategories, type Category } from "@/lib/category-tree";
 import { message, type Locale } from "@/lib/i18n";
 import type { Brand } from "@/types/brand";
 import styles from "./Shop.module.css";
 
 export type FilterSelection = { handle: string; brandIds: string[] };
+type FilterActions =
+  | { linkTo: (value: FilterSelection) => string; onChange?: never }
+  | { linkTo?: never; onChange: (value: FilterSelection) => void };
+
 export default function ShopFilters({
   locale,
   categories,
@@ -15,8 +20,8 @@ export default function ShopFilters({
   brandError,
   value,
   onChange,
+  linkTo,
   retry,
-  disabled,
 }: {
   locale: Locale;
   categories: Category[];
@@ -24,23 +29,49 @@ export default function ShopFilters({
   categoryError: boolean;
   brandError: boolean;
   value: FilterSelection;
-  onChange: (value: FilterSelection) => void;
   retry: () => void;
-  disabled?: boolean;
-}) {
+} & FilterActions) {
   const group = useId();
   const msg = (key: Parameters<typeof message>[1]) => message(locale, key);
-  const option = (category: Category) => (
-    <label className={styles.option} key={category.id}>
-      <input
-        type="radio"
-        name={group}
-        checked={value.handle === category.handle}
-        onChange={() => onChange({ ...value, handle: category.handle })}
-      />
-      <span>{category.name}</span>
-    </label>
-  );
+  function choice(
+    label: string,
+    key: string,
+    checked: boolean,
+    next: FilterSelection,
+    type: "radio" | "checkbox" = "radio",
+    accessibleLabel?: string,
+  ) {
+    if (linkTo)
+      return (
+        <Link
+          key={key}
+          href={linkTo(next)}
+          className={`${styles.option} ${styles.filterLink} ${checked ? styles.filterSelected : ""}`}
+          aria-label={accessibleLabel}
+          aria-current={checked ? "true" : undefined}
+        >
+          <span>{label}</span>
+          {checked && <Check size={18} aria-hidden="true" />}
+        </Link>
+      );
+    return (
+      <label className={styles.option} key={key}>
+        <input
+          type={type}
+          name={type === "radio" ? group : undefined}
+          checked={checked}
+          aria-label={accessibleLabel}
+          onChange={() => onChange?.(next)}
+        />
+        <span>{label}</span>
+      </label>
+    );
+  }
+  const option = (category: Category) =>
+    choice(category.name, category.id, value.handle === category.handle, {
+      ...value,
+      handle: category.handle,
+    });
   const branch = (category: Category) =>
     category.children.length ? (
       <details
@@ -54,16 +85,14 @@ export default function ShopFilters({
       >
         <summary>{category.name}</summary>
         <div className={styles.children}>
-          <label className={styles.option}>
-            <input
-              type="radio"
-              name={group}
-              aria-label={`${msg("shop.allInCategory")}: ${category.name}`}
-              checked={value.handle === category.handle}
-              onChange={() => onChange({ ...value, handle: category.handle })}
-            />
-            <span>{msg("shop.allInCategory")}</span>
-          </label>
+          {choice(
+            msg("shop.allInCategory"),
+            category.id,
+            value.handle === category.handle,
+            { ...value, handle: category.handle },
+            "radio",
+            `${msg("shop.allInCategory")}: ${category.name}`,
+          )}
           {category.children.map(branch)}
         </div>
       </details>
@@ -79,19 +108,14 @@ export default function ShopFilters({
     </div>
   );
   return (
-    <fieldset className={styles.filterFields} disabled={disabled}>
+    <fieldset className={styles.filterFields}>
       <legend className={styles.srOnly}>{msg("shop.filters")}</legend>
       <fieldset className={styles.filterGroup}>
         <legend>{msg("nav.categories")}</legend>
-        <label className={styles.option}>
-          <input
-            type="radio"
-            name={group}
-            checked={!value.handle}
-            onChange={() => onChange({ ...value, handle: "" })}
-          />
-          <span>{msg("catalog.all")}</span>
-        </label>
+        {choice(msg("catalog.all"), "all", !value.handle, {
+          ...value,
+          handle: "",
+        })}
         {categoryError ? (
           unavailable("shop.categoriesError")
         ) : categories.length ? (
@@ -106,23 +130,21 @@ export default function ShopFilters({
           unavailable("shop.brandsError")
         ) : brands.length ? (
           <div className={styles.brandOptions}>
-            {brands.map((brand) => (
-              <label className={styles.option} key={brand.id}>
-                <input
-                  type="checkbox"
-                  checked={value.brandIds.includes(brand.id)}
-                  onChange={(event) =>
-                    onChange({
-                      ...value,
-                      brandIds: event.target.checked
-                        ? [...value.brandIds, brand.id]
-                        : value.brandIds.filter((id) => id !== brand.id),
-                    })
-                  }
-                />
-                <span>{brand.name}</span>
-              </label>
-            ))}
+            {brands.map((brand) => {
+              const checked = value.brandIds.includes(brand.id);
+              return choice(
+                brand.name,
+                brand.id,
+                checked,
+                {
+                  ...value,
+                  brandIds: checked
+                    ? value.brandIds.filter((id) => id !== brand.id)
+                    : [...value.brandIds, brand.id],
+                },
+                "checkbox",
+              );
+            })}
           </div>
         ) : (
           <p className={styles.notice}>{msg("shop.noBrands")}</p>
