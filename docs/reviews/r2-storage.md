@@ -57,3 +57,19 @@ Seif asked for R2 to be merged so that only credentials are missing. Branch `cla
 - **Not verified:** a live upload to a real bucket, which waits for Seif's bucket and keys. The checklist is in the workboard's R2 row.
 
 Review only f48696c.
+
+## Round 3
+
+Reviewer: GPT. Date: 2026-10-18. Scope: `f48696c` only, following the Round 3 scope above.
+
+No actionable findings. The backend provider is unchanged from the previously approved version (verified against `8ad7860`), is wired after `redisModules()`, and retains development/test disk behavior and the approved production fail-fast behavior. The existing `/admin/orders/export` refusal remains present in this branch. Credentials stay in backend-only settings; the storefront receives only the public media address.
+
+The new `imageHost` use adds the configured public bucket host to `next/image` alongside the backend host. With the media setting empty or malformed, its remote-pattern configuration matches the parent commit. The templates document that `NEXT_PUBLIC_MEDIA_URL` must use the same public address as backend `S3_FILE_URL`.
+
+Validation:
+
+- Ran `npm run test:unit -- --runTestsByPath src/lib/__tests__/file-config.unit.spec.ts` in the existing R2 checkout: **4/4 tests passed**. Reviewed source files match `f48696c`.
+- Evaluated the exact reviewed Next.js config and exercised the installed Next.js remote-image matcher: R2 and custom-domain media URLs match, backend images still match, unrelated hosts do not match, an explicit non-default port is respected, and unset/empty/malformed media settings preserve the parent's image patterns.
+- No live bucket upload/delete or image-optimizer request was performed; those still need Seif's actual bucket and keys. Full-workspace checks were not rerun for this review.
+
+No open code findings. Live R2 verification remains the documented prerequisite before treating storage as operational.
