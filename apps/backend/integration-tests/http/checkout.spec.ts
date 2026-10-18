@@ -78,6 +78,20 @@ medusaIntegrationTestRunner({
         expect(await stockLevel()).toEqual(expect.objectContaining({ stocked_quantity: 5, reserved_quantity: 2 }))
       })
 
+      it("emails the shopper that the order was received, once", async () => {
+        const completed = await checkout((await cartWith(1)).cartId)
+        expect(completed.data.type).toBe("order")
+        const notifications = getContainer().resolve(Modules.NOTIFICATION)
+        let sent: Awaited<ReturnType<typeof notifications.listNotifications>> = []
+        // The email is sent by a subscriber after the order is placed.
+        for (let i = 0; i < 50 && !(sent.length && sent.every((n) => n.status !== "pending")); i++) {
+          sent = await notifications.listNotifications({ template: "order-received" })
+          if (!sent.length || sent.some((n) => n.status === "pending")) await new Promise((resolve) => setTimeout(resolve, 100))
+        }
+        expect(sent).toEqual([expect.objectContaining({ to: "sara@test.dev", channel: "email", resource_id: completed.data.order.id, status: "success" })])
+        // Medusa does not store the email body; order-received-email.unit.spec.ts checks it.
+      })
+
       it("does not let a cart hold more than the warehouse has", async () => {
         const { cartId, added } = await cartWith(6)
         expect(added.status).toBe(400)
