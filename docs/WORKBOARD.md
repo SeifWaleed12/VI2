@@ -327,3 +327,9 @@ Cart access, checkout tests, Egypt setup and EDA backend are included in this co
 | Remove invented fallback delivery options | Claude (reassigned by Seif 2026-10-16) | done as CART-4, awaiting review | Preserve real backend prices; show retry on failure. |
 | R2 image hostname in next/image | GPT | blocked on R2 | Use the configured public hostname after Core 3. |
 | Shop, product, footer, Arabic typography and navigation design repairs | GPT / Claude | planning | Preserve agreed core filters; bilingual business/legal drafts require owner review. No redesign in this consolidation. |
+
+## RD-3 / RD-5 reviewed-baseline consolidation - 2026-10-18
+
+| Task | Owner | Status | Notes |
+|---|---|---|---|
+| Combine approved GPT shop/footer work with the merged backend for manual testing | GPT, authorized by Seif | in progress | Seif requested bringing these together in reviewed-baseline. Merge reviewed gpt/work c3e16a3 into full-stack 7351bc5; preserve the existing backend, Claude changes, local environment files and unrelated author drafts. No additional Claude feature branches, catalog/database operations or remote push. Both apps must be tested from the combined checkout. |
