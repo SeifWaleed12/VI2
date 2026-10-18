@@ -41,3 +41,48 @@ Runtime: frontend localhost:3001 from this author checkout, process-local backen
 Remaining: Claude code review; Seif-provided business facts, native Arabic and legal/content approval; actual populated directory/footer acceptance when backend services return; physical devices, native zoom, screen reader and other engines remain RD-6. No push or merge.
 
 Documentation pass: independent impeccable_document_rd5 confirmed the extension follows the incumbent palette, type families, responsive rules and flat surfaces. No system files changed; pre-existing DESIGN.md/sidecar typography drift was reported without repair. Detailed design review: storefront-footer-information-design-review.md.
+
+## Claude review response — 2026-10-18
+
+Review 369b9eb approved 289b92c with F1 to investigate and minor F2/F3. Original
+review preserved verbatim in storefront-footer-information-review.md. This follow-up
+fixes F1-F3; Claude recheck and Seif content approval are pending.
+
+- **F1 reproduced:** on /en/returns, native Enter set #condition and focused the
+  heading while scrollY stayed 0 and its top remained about 1267px after settling.
+  The shared locale template now respects fragments during initial/paint-delayed
+  route resets, hash changes, internal link clicks (including repeated same hashes),
+  and history navigation. It explicitly scrolls the decoded ID into view instantly;
+  ordinary non-fragment route/query resets are retained. Missing or malformed IDs do
+  not throw or unexpectedly reset the page. Modified/external/download/other-target
+  clicks are ignored, and all pending frames/timeouts/listeners are cleaned up.
+  No second fragment handler or dependency was added to the information page.
+- **F2:** Information sidebar label is now a styled paragraph inside its named nav.
+  The page's heading outline starts with its single h1 in both languages.
+- **F3:** Breadcrumb links now have minimum 44px width/height and centered alignment.
+  The live English and Arabic Home links compute to 44px height.
+- **F4 retained:** all six bilingual drafts remain development-only and unapproved.
+  No publication switch, policy wording or business fact was changed.
+- **F5 separate follow-up:** Claude observed homepage /en returning 500 with the
+  backend down. Recorded as open on the workboard, not bundled into this UI fix.
+
+Validation: 329 storefront tests / 32 suites pass (9 shared scroll-effect tests and
+2 heading-outline regressions added); TypeScript passes; lint 0 errors / 15 existing
+warnings; final production webpack build passes. One detector pass on changed UI:
+0 primary findings, 2 pre-existing title-size advisories vs the stale DESIGN.md ramp.
+
+Live Chromium in-app browser: desktop EN Enter reaches heading target
+#condition at about 95.5px with scrollY 1193; direct refresh settles at the same
+position after hydration. AR 390px click and repeated Enter reach about 96.1px with
+scrollY 1435 and native heading focus. First heading is h1 and breadcrumbs are 44px
+in both locales. Frames are instantaneous, so Reduced Motion does not need a new
+animation. Screenshots review-fix-desktop-en.jpg (full document from top) and
+review-fix-mobile-ar.jpg (actual scrolled target) are under the existing local
+.impeccable/review/rd5 directory. Native physical browsers/devices and screen readers
+remain RD-6 checks; no claim of independent Firefox/Safari coverage.
+
+Claude's review additionally verified the five real categories in development and
+his production build with a same-checkout backend; that resolves the initial
+round's empty-directory-only visual evidence for unchanged footer links. This
+follow-up did not restart services, change the backend/catalog/dependencies or
+push/merge anything.

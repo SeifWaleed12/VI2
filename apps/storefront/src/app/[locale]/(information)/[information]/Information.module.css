@@ -7,10 +7,17 @@
 .breadcrumb {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 12px;
   font-size: var(--text-ui);
   line-height: 1.6;
   margin-bottom: 40px;
+}
+.breadcrumb a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  min-width: 44px;
 }
 .page a {
   color: inherit;
@@ -31,7 +38,7 @@
 .navigation {
   align-self: start;
 }
-.navigation h2,
+.navigationTitle,
 .contents h2 {
   font-family: var(--font-ui), sans-serif;
   font-size: var(--text-body);

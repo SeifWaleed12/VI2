@@ -152,3 +152,16 @@ it("rejects an unsupported locale", async () => {
     "NOT_FOUND",
   );
 });
+
+it.each(["en", "ar"] as const)(
+  "starts the %s information page heading outline at h1",
+  async (locale) => {
+    const html = renderToStaticMarkup(
+      await InformationPage(input(locale, "returns")),
+    );
+    expect(html.match(/<h[1-6](?:\s|>)/)?.[0]).toBe("<h1>");
+    expect(html).not.toContain(
+      "<h2>" + informationUi[locale].navigation + "</h2>",
+    );
+  },
+);

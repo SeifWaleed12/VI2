@@ -47,7 +47,7 @@ export default async function InformationPage(props: Props) {
       </nav>
       <div className={styles.layout}>
         <nav className={styles.navigation} aria-label={ui.navigation}>
-          <h2>{ui.navigation}</h2>
+          <p className={styles.navigationTitle}>{ui.navigation}</p>
           <ul>
             {informationSlugs.map((item) => (
               <li key={item}>
