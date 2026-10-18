@@ -113,3 +113,22 @@ stylesheet detector scan: 0 primary findings, 31 existing advisories, none on th
 four added lines. Production webpack build passes.
 Claude's final minor G1 confirmation and Seif content approval remain pending;
 original policy/native-device and homepage-outage follow-ups are retained. No push/merge.
+
+## Final code approval — 2026-10-18
+
+Claude confirmation 5bd4a01 approves implementation d92f80d: G1 fixed, no doubled
+offsets and no remaining code-review findings. Full original review/rechecks are
+preserved in storefront-footer-information-review.md. Claude independently reran
+329 tests / 32 suites and TypeScript, and verified EN 1440px and AR 390px home
+anchors, repeated activation, information targets and RD-3 shop results all land
+at 96px. The source delta was CSS-only; prior production draft-blocking evidence
+remains valid, and the author's final production build passed.
+
+RD-5 code is ready for Seif's manual acceptance and merge. The bilingual business
+and policy drafts are not approved for publication; they remain development-only
+until Seif supplies missing facts and approves reviewed final content. Physical
+devices, Firefox/Safari, screen readers and other RD-6 checks remain outstanding.
+The separately recorded homepage outage follow-up is open.
+
+This approval-record commit changes documentation only; no tests rerun, no
+application/backend/catalog changes, no push or merge.

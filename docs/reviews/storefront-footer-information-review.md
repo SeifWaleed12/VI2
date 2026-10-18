@@ -174,3 +174,25 @@ make every anchor consistent.
 Firefox, Safari, physical devices, screen readers, the animated-scroll case under
 Reduced Motion (the scroll is instant, so not needed), and the Arabic and legal wording
 (F4 of the first review still stands).
+
+---
+
+## G1 confirmation: `d92f80d` against `2aaf3ea` (2026-10-18)
+
+**Approved. G1 is fixed and nothing is doubled.** The change is four lines of CSS in
+`app/globals.css`: `:where(main [id]) { scroll-margin-top: 96px; }`. The `:where` makes it
+zero-specificity, so any component rule overrides it. I did not touch GPT's checkout
+(I started a backend on 9001 for the home page and stopped it again).
+
+| Check | Result |
+|---|---|
+| Jest and types on `d92f80d` (sparse worktree, removed) | 32 suites, **329 tests pass**; `tsc` exit 0. Only `globals.css` changed in source. |
+| No stacked offsets | The repository has only the existing per-component margins (information headings 96px, shop results 96px) and no `scroll-padding-top`; `html` computes `scroll-padding-top: auto`. Scroll margin and scroll padding add up, but there is no padding, and the two components already used 96px, so the default does not change them. |
+| Home, EN 1440px | `#health-goals`, `#best-sellers` and `#brands` now compute 96px (was 0). Direct load of `/en#health-goals` lands at 96px (scrollY 1641) and stays there; repeated anchor clicks to `#best-sellers` (1025 / 96), `#brands` (1605 / 96) and `#health-goals` (1641 / 96) all land at 96px, clear of the 73px pinned bar (it was 0px, under the bar, before). One earlier batch of my synthetic clicks scrolled nowhere, but five repeats of the same loop all landed correctly, so I attribute it to my script's timing, not the page. |
+| Home, AR 390px | `/ar#health-goals` lands at 96px (scrollY 1205); the pinned bar is 75px, so there is a 21px gap and the section heading sits at 156px; no horizontal overflow. |
+| Information pages, EN | `#condition` computes 96px and lands at 96px (not 192); the default rule gives the `#draft-notice-title` element 96px too. |
+| Shop | `#shop-results` computes 96px; Enter on a category link still scrolls the results to 96px and focuses `#shop-results` (432 / 96), as in my RD-3 recheck. |
+| Draft blocking | CSS-only change; I did not rebuild production. My `2aaf3ea` production results stand, and the diff touches no routing, gate or content. |
+
+Not verified: Firefox and Safari, physical devices, a home page backed by a populated
+production backend (I used GPT's dev preview with a local backend).
