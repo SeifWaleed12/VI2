@@ -50,7 +50,8 @@ it("still makes a complete email without a name, address or items", () => {
   expect(text).not.toContain("Delivery address")
 })
 
-it("uses one key per order, so a repeated event sends nothing new", () => {
-  expect(orderReceivedKey("order_1")).toBe(orderReceivedKey("order_1"))
-  expect(orderReceivedKey("order_1")).not.toBe(orderReceivedKey("order_2"))
+it("uses one key per order and attempt", () => {
+  expect(orderReceivedKey("order_1", 0)).toBe("order-received:order_1:0")
+  expect(orderReceivedKey("order_1", 1)).not.toBe(orderReceivedKey("order_1", 0))
+  expect(orderReceivedKey("order_2", 0)).not.toBe(orderReceivedKey("order_1", 0))
 })

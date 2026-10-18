@@ -13,8 +13,10 @@ export type ReceivedOrder = {
   shipping_address?: { first_name?: string | null, address_1?: string | null, city?: string | null } | null
 }
 
-// One key per order: a redelivered "order placed" event never sends twice.
-export const orderReceivedKey = (orderId: string) => `order-received:${orderId}`
+// One key per order and attempt. Medusa 2.21 cannot record a retry under a key
+// whose earlier send failed (it updates a notification id it never created), so
+// each attempt gets its own key; the subscriber skips orders already emailed.
+export const orderReceivedKey = (orderId: string, attempt: number) => `order-received:${orderId}:${attempt}`
 
 const money = (value: number | null | undefined, currency: string) =>
   `${new Intl.NumberFormat("en-EG", { maximumFractionDigits: 2 }).format(Number(value ?? 0))} ${currency}`
