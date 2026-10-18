@@ -175,3 +175,42 @@ ER-3 is fixed in cf37790.
 - `npm run check` passes: 220 backend and 225 storefront tests, typecheck, lint 0 errors.
 
 Not verified: a real Resend send, and a real Redis retry after an outage.
+
+## Round 3
+
+Reviewer: GPT. Date: 2026-10-18. Scope: **cf37790 only** on `claude/resend-email`; read Round 2 and the author response from documentation commit `9694f96` first. Tested a detached temporary checkout of the exact application commit; no author checkout or application source was changed.
+
+**Approved: ER-3 is resolved. No new findings in this commit.** ER-1 and ER-2 remain closed within their previously reviewed scope.
+
+### Failure, retry and replay
+
+- The new checked-in HTTP case, **"sends the order email on a retry after a failed send, and only once"**, passes against the real Medusa notification module. Only the provider's send is injected to fail once. The placed order has a persisted `failure`, the subscriber retry creates a separate `success`, and another run creates nothing. No notification-id "not found" error occurs on this path.
+- Independently repeated the real-module failure/recovery probe: first send rejects with a simulated 503 and persists `order-received:<id>:0` as `failure`; the next subscriber run persists `order-received:<id>:1` as `success` with the provider's external ID. A third run returns without calling the provider. **Three subscriber runs, two provider calls, two records: failure/success.** The order was created through the real Order Module and read using the subscriber's actual graph query; `createNotifications` and `listNotifications` were not mocked.
+- Reran the original Round 2 **same-key control**: the first send stores `failure`; the recovering second provider call still produces Medusa 2.21's **Notification with id ... not found**, with **providerCalls=2, storedStatus=failure**. This expected negative control confirms the native bug remains. The fixed subscriber avoids it by using a fresh notification key; the control's native error is not an unresolved finding against this fix.
+
+### Lost provider response
+
+An independent probe ran the real notification module, real subscriber/content builder and actual Resend provider class with its HTTP fetch fully mocked. The fake Resend endpoint accepted the first request, recorded one simulated delivery, then threw to model a lost response. The retry submitted an identical recipient/body and identical `Idempotency-Key`; the endpoint returned the previously accepted ID. A third subscriber run sent nothing.
+
+Observed: **two outbound request attempts, one distinct external key, one simulated delivery, persisted failure/success**. Medusa's attempt keys differ, while Resend's content key does not. This is a deterministic response-loss simulation, not a real Resend delivery test. Resend documents same-key replay without another send within its [24-hour idempotency window](https://resend.com/docs/dashboard/emails/idempotency-keys).
+
+### Other email paths and validation
+
+- Exact diff is limited to the order-email helper/subscriber and their tests. Password-reset and invite subscribers, Resend provider, notification configuration and Redis retry settings are unchanged by `cf37790`. No missed production caller of the changed helper signature was found.
+- Backend unit suite: **26 suites, 220/220 tests pass**, including order-email, Resend, notification configuration, Redis retry settings, reset and invite coverage.
+- Checked-in HTTP run: **2 suites, 13 tests pass; 10 unrelated sign-in tests filtered out**. Includes **all 10 checkout tests**, customer reset delivery/rate-limit, unknown-email reset without a notification, and staff invite delivery/acceptance. The original successful order-email/totals case remains green.
+- Independent real-module probes: **1 suite, 3/3 pass**, including the expected-failing native Round 2 control, fixed failure/recovery/replay, and response-loss deduplication.
+- Backend TypeScript and lint pass; no lint issues.
+
+Commands, from the isolated `apps/backend` with private test-database credentials in process environment:
+
+```text
+node --experimental-vm-modules ../../node_modules/jest/bin/jest.js --runInBand --modulePathIgnorePatterns "[.]medusa" --config jest.config.js
+node --experimental-vm-modules ../../node_modules/jest/bin/jest.js --runInBand --modulePathIgnorePatterns "[.]medusa" --config jest.integration.config.js --runTestsByPath integration-tests/http/checkout.spec.ts integration-tests/http/sign-in.spec.ts --testNamePattern "cart and checkout in the Egypt store|emails a customer reset link|answers a reset request|emails an invite"
+npm run typecheck
+npm run lint
+```
+
+All runs explicitly used `NODE_ENV=test` with `RESEND_API_KEY`, `RESEND_FROM`, SendGrid settings and `REDIS_URL` empty. The provider-class probe used dummy constructor values and a fully mocked fetch; no actual email or Resend API request was sent. PostgreSQL credentials were read privately; the development catalog/database was not used for test data. All **three isolated databases and their templates were confirmed absent after runner cleanup**. Temporary probes/logs are retained outside the repository at `C:/Users/Seif Waleed/AppData/Local/Temp/vi2-resend-round3-evidence-1cd14224`; the detached test checkout was removed afterward.
+
+Not independently verified: a real Redis queue outage/retry, real Resend delivery, email-client rendering, native Arabic wording or a full storefront/build run. No merge or push performed by this review.
