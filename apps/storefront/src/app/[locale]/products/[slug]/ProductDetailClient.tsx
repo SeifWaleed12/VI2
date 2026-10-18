@@ -1,4 +1,5 @@
 "use client";
+import { categoryHref } from "@/lib/category-tree";
 
 import {
   BadgeCheck,
@@ -100,7 +101,7 @@ const isPlaceholderOption = (option: ProductOption) =>
   option.title === "Default option" || option.values.every((value) => value === "Default option value");
 
 const formatPrice = (value: number) => new Intl.NumberFormat("en-EG", { maximumFractionDigits: 2 }).format(value);
-const shopHref = (categoryId?: string) => (categoryId ? `/shop?category_id=${encodeURIComponent(categoryId)}` : "/shop");
+const shopHref = (category?: { id: string; handle: string }) => category ? categoryHref(category.id, category.handle) : "/shop";
 
 function ProductImage({ src, alt, className }: { src: string; alt: string; className?: string }) {
   const [failed, setFailed] = useState(false);
@@ -186,7 +187,7 @@ export default function ProductDetailClient({
           value: (
             <span className={styles.chips}>
               {product.categories.map((category) => (
-                <Link key={category.id} href={shopHref(category.id)} className={styles.chip}>
+                <Link key={category.id} href={shopHref(category)} className={styles.chip}>
                   {category.name}
                 </Link>
               ))}
@@ -278,7 +279,7 @@ export default function ProductDetailClient({
               <li><Link href="/">{copy.home}</Link></li>
               <li><ChevronRight size={14} strokeWidth={1.6} aria-hidden="true" /><Link href="/shop">{copy.shop}</Link></li>
               {firstCategory && (
-                <li><ChevronRight size={14} strokeWidth={1.6} aria-hidden="true" /><Link href={shopHref(firstCategory.id)}>{firstCategory.name}</Link></li>
+                <li><ChevronRight size={14} strokeWidth={1.6} aria-hidden="true" /><Link href={shopHref(firstCategory)}>{firstCategory.name}</Link></li>
               )}
               <li><ChevronRight size={14} strokeWidth={1.6} aria-hidden="true" /><span aria-current="page">{product.name}</span></li>
             </ol>
@@ -380,7 +381,7 @@ export default function ProductDetailClient({
             <section className={styles.similar} aria-labelledby="similar-products">
               <div className={styles.similarHead}>
                 <h2 id="similar-products">{copy.similar}</h2>
-                <Link href={shopHref(firstCategory?.id)} className={styles.viewAll}>
+                <Link href={shopHref(firstCategory)} className={styles.viewAll}>
                   {copy.viewAll}
                   <ChevronRight size={16} strokeWidth={1.6} aria-hidden="true" />
                 </Link>

@@ -2,6 +2,8 @@ import type { Product } from "@/types/product";
 
 /* UI-only Arabic copy. Catalog identifiers and commerce payloads stay unchanged. */
 export const arabicUi: Record<string, string> = {
+  AVAILABLE: "متاح",
+  "AVAILABILITY UNCONFIRMED": "التوفر غير مؤكد",
   "DAILY FLASH DEALS": "عروض يومية سريعة",
   "24H PICKS": "اختيارات ٢٤ ساعة",
   "FREE SHIPPING ON ORDERS OVER 2,500 EGP": "شحن مجاني للطلبات فوق ٢٬٥٠٠ جنيه",

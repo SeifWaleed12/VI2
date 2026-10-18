@@ -335,42 +335,12 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
           "Cart",
       };
 
-  const healthCatalog = {
-    health: {
-      title: isArabic
-        ? "الأهداف الصحية"
-        : "Health Goals",
-      shopAllHref:
-        "/#health-goals",
-      items: isArabic
-        ? [
-            ["العافية العامة وطول العمر", "/shop?goal=Daily%20Wellness"],
-            ["المناعة والدعم الموسمي", "/shop?goal=Immune%20Support"],
-            ["الهضم والتمثيل الغذائي", "/shop?goal=Gut%20Health"],
-            ["القلب والدماغ والدورة الدموية", "/shop?goal=Heart%20Health"],
-            ["العظام والمفاصل والعضلات", "/shop?goal=Muscle%20%26%20Recovery"],
-            ["النوم والمزاج", "/shop?goal=Stress%20%26%20Sleep"],
-            ["مراحل الحياة", "/shop?goal=Daily%20Wellness"],
-            ["أنظمة الجسم والجمال", "/shop?goal=Daily%20Wellness"],
-          ]
-        : [
-            ["General Wellness & Longevity", "/shop?goal=Daily%20Wellness"],
-            ["Immune & Seasonal Support", "/shop?goal=Immune%20Support"],
-            ["Digestion & Metabolism", "/shop?goal=Gut%20Health"],
-            ["Heart, Brain & Circulation", "/shop?goal=Heart%20Health"],
-            ["Bone, Joint & Pain", "/shop?goal=Muscle%20%26%20Recovery"],
-            ["Mind, Sleep & Mood", "/shop?goal=Stress%20%26%20Sleep"],
-            ["Demographics & Stage of Life", "/shop?goal=Daily%20Wellness"],
-            ["Specific Body Systems & Aesthetics", "/shop?goal=Daily%20Wellness"],
-          ],
-    },
-  };
   const primaryMobileCategories = directory.roots.map(c => ({ key: c.id, label: c.name }));
   const selectedCategory = directory.roots.find(c => c.id === mobilePanel);
-  const activeMobilePanel = mobilePanel === "health" ? healthCatalog.health : selectedCategory ? {
+  const activeMobilePanel = selectedCategory ? {
     title: selectedCategory.name,
-    shopAllHref: categoryHref(selectedCategory.id),
-    items: flattenCategories(selectedCategory.children).map(c => [c.name, categoryHref(c.id)]),
+    shopAllHref: categoryHref(selectedCategory.id, selectedCategory.handle),
+    items: flattenCategories(selectedCategory.children).map(c => [c.name, categoryHref(c.id, c.handle)]),
   } : null;
 
   return (
@@ -811,27 +781,7 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
                     strokeWidth={1.5}
                   />
                 </Link>
-                <button
-                  type="button"
-                  className={styles.simpleMenuButton}
-                  onClick={event => {
-                    mobilePanelOpenerRef.current = event.currentTarget;
-                    setMobilePanel("health");
-                  }}
-                >
-                  <span className={styles.linkWithIcon}>
-                    <Sparkles
-                      size={18}
-                      strokeWidth={1.4}
-                    />
-                    {msg("nav.health")}
-                  </span>
-
-                  <ChevronRight
-                    size={20}
-                    strokeWidth={1.5}
-                  />
-                </button>
+                <Link href="/#health-goals" onClick={closeMenu}><span className={styles.linkWithIcon}><Sparkles size={18} strokeWidth={1.4} />{msg("nav.health")}</span><ChevronRight size={20} strokeWidth={1.5} /></Link>
 
                 <Link
                   href="/deals"

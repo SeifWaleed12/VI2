@@ -40,12 +40,12 @@ export default function DesktopMegaMenu({
       ? brands.map((b) => ({
           id: b.id,
           name: b.name,
-          href: `/shop?brand=${encodeURIComponent(b.name)}`,
+          href: `/shop?brand_id=${encodeURIComponent(b.id)}`,
         }))
       : flattenCategories(category!.children).map((c) => ({
           id: c.id,
           name: c.name,
-          href: categoryHref(c.id),
+          href: categoryHref(c.id, c.handle),
         }));
   const columnCount = Math.min(4, Math.max(1, items.length));
   const columnSize = Math.ceil(items.length / columnCount);
@@ -67,7 +67,7 @@ export default function DesktopMegaMenu({
             <span>{msg("nav.shopVi2")}</span>
             <h3>{category?.name ?? msg("nav.brands")}</h3>
             <Link
-              href={category ? categoryHref(category.id) : "/brands"}
+              href={category ? categoryHref(category.id, category.handle) : "/brands"}
               onClick={onClose}
             >
               {msg("nav.shopAll")}
