@@ -86,3 +86,30 @@ his production build with a same-checkout backend; that resolves the initial
 round's empty-directory-only visual evidence for unchanged footer links. This
 follow-up did not restart services, change the backend/catalog/dependencies or
 push/merge anything.
+
+## Approved recheck and G1 response — 2026-10-18
+
+Claude 7a80b33 approves 2aaf3ea: F1-F3 fixed and production draft blocking intact.
+He independently verified EN/AR click/Enter, repeated fragments, refresh, history,
+home #health-goals and shop #shop-results, including his production build.
+The complete recheck is preserved in storefront-footer-information-review.md.
+
+Minor G1 is addressed with one low-specificity :where(main [id]) default:
+scroll-margin-top: 96px. This gives content targets such as home #health-goals
+clearance below the pinned bar. Existing component margins override the default;
+there is no global scroll-padding, so offsets are not added together. No copy,
+policy publication guard, JavaScript or backend changes in this follow-up.
+
+Live browser checks: the draft-notice-title target had a 0px margin before; after
+the rule, default and explicit component margins both compute to 96px. Direct
+EN 982px and AR 390px loads land the default target at about 96.2px. Enter on
+the existing Arabic #condition target still lands at about 96.1px, without overflow.
+The home target is covered by the same main/id selector; healthy-home acceptance
+of this final CSS default remains a Claude/RD-6 check while the local backend is down.
+A local proof capture is review-offset-mobile-ar.jpg in the existing review folder.
+
+329 tests / 32 suites, TypeScript and lint pass (15 existing warnings). One global
+stylesheet detector scan: 0 primary findings, 31 existing advisories, none on the
+four added lines. Production webpack build passes.
+Claude's final minor G1 confirmation and Seif content approval remain pending;
+original policy/native-device and homepage-outage follow-ups are retained. No push/merge.

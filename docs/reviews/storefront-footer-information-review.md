@@ -102,3 +102,75 @@ backend outage predates RD-5; worth a follow-up so the home page degrades like t
 A populated footer against a live production backend (I did check the five categories live
 with a real backend in development and in my production build), screen readers, physical
 devices, native zoom, other browsers, and the Arabic and legal wording.
+
+---
+
+# Recheck of `2aaf3ea` against `289b92c` (2026-10-18)
+
+GPT's response is the "Claude review response" section of
+`docs/reviews/storefront-footer-information.md` (on `gpt/work`). Nothing edited or merged;
+my checkout (`claude/redis-dev`) untouched.
+
+**Verdict: approved. F1, F2 and F3 are fixed, and the production block on the drafts is
+intact.** One small new note (G1).
+
+## Checks run
+
+| Check | Result |
+|---|---|
+| Storefront Jest on `2aaf3ea` (sparse worktree, removed) | 32 suites, **329 tests pass** (11 more than `289b92c`). |
+| `tsc --noEmit` | Exit 0. |
+| Live development preview `localhost:3001` | Real mouse and keyboard, EN 1440px and AR 390px. I started a backend on 9001 from GPT's checkout (Redis down, degraded cache and locks) and stopped it afterwards; GPT's checkout status is unchanged. |
+| My own production build (`next build --webpack`, exit 0) on port 3003 | Draft blocking and the shared scroll behaviour in the production bundle. Stopped and removed afterwards. |
+| Not run | Lint (GPT reports 0 errors, 15 warnings), screen readers, physical devices, Firefox and Safari. |
+
+## F1: fragment scrolling is fixed, shared with the rest of the site
+
+`app/[locale]/template.tsx` now scrolls the decoded fragment target into view
+(instantly) on mount and for two frames afterwards, on `hashchange`, on `popstate`, and
+after clicks on internal links (including a repeated click on the current hash, which
+emits no `hashchange`); non-fragment route and query changes still reset to the top, and
+a missing or malformed fragment does nothing.
+
+| Case | Result |
+|---|---|
+| Real mouse click on a contents link (`/en/returns`, "Requesting a return") | Hash `#request`, `scrollY` 792, heading top **96px** (clear of the 73px pinned bar), heading focused. |
+| Enter on the "Product condition and problems" link | `scrollY` 1095, heading top 96, focused. |
+| Enter again on the same link after scrolling back to the top | Scrolls again (same result); the repeated hash works. |
+| Fresh load of `/en/returns#condition`, and a reload | Settles at 1095 / 96 and stays there across six samples 500 ms apart (no late reset). |
+| History | Click A, click C, Back lands on A (792 / 96), Back again returns to the start with no hash and `scrollY` 0, Forward returns to A. |
+| Missing id (`#nope`) and malformed escape (`#%E0%A4%A`) | Page loads at the top, no thrown error; the only console errors are the existing guest 401s and an unrelated image `src`. |
+| Home page, direct load of `/en#health-goals` | Now scrolls (`scrollY` 1737); also after a click from `/en/shop` on the header "Health Goals" link (the RD-3 link). Same result in my production build: direct load, repeated click, and Back returns to the top. |
+| Arabic, 390px | The "On this page" link scrolls to `#refund` (`scrollY` 1838, top 96) and focuses it; no horizontal overflow. |
+| RD-3 regression check | Enter on a category link in the shop sidebar still scrolls the results area to top 96 and focuses `#shop-results`. |
+| Ordinary navigation | Clicking a product card from a scrolled shop still jumps to the top (the reset is kept). |
+
+## F2 and F3: fixed
+
+- **F2.** The sidebar label is now a paragraph (`navigationTitle`); on `/ar/returns` the first heading is the `h1` and the outline starts `H1, H2, H2`.
+- **F3.** The breadcrumb "Home" link measures 44 by 44px at 390px in Arabic (it was 22px).
+
+## Production draft blocking: still intact
+
+In my production build of `2aaf3ea`, all twelve draft URLs (`/en` and `/ar`: about, contact,
+shipping, returns, terms, privacy) return **404**, as do `?preview=true`, `?preview=1&dev=1`,
+`?draft=true`, `/en/Privacy` and a URL with a hash. The 404 bodies contain none of the draft text.
+The production footer on `/en` and `/ar/shop` has only the logo, All products and the five
+categories under one "Shop" heading; "Store information", the preview note and any draft
+wording are absent from the whole page.
+
+## Note
+
+### G1 (minor): the shared scroll lands flush under the pinned bar on some sections
+
+The information headings use `scroll-margin-top: 96px`, so they land clear of the 73px
+pinned bar. Other targets have no margin: the home `#health-goals` section lands at 0px,
+so its top edge and eyebrow sit under the pinned bar, with the heading tight below it.
+A global `scroll-margin-top` for in-page targets (or `scroll-padding-top` on `html`) would
+make every anchor consistent.
+
+## Not verified
+
+Firefox, Safari, physical devices, screen readers, the animated-scroll case under
+Reduced Motion (the scroll is instant, so not needed), and the Arabic and legal wording
+(F4 of the first review still stands).

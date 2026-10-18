@@ -53,6 +53,10 @@ html {
   scroll-behavior: smooth;
 }
 
+:where(main [id]) {
+  scroll-margin-top: 96px;
+}
+
 body {
   --font-ui: var(--font-body);
   --font-heading: var(--font-display);
