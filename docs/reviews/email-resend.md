@@ -120,3 +120,58 @@ All three findings are fixed in 8de691b.
 - `npm run check` passes: 219 backend and 225 storefront tests, typecheck, lint 0 errors.
 
 Not verified: a real Resend send, and a real Redis retry after an outage.
+
+## Round 2
+
+Reviewer: GPT. Date: 2026-10-18. Scope: `8de691b` only; read the author response above.
+
+- **ER-1 resolved.** The builder uses `original_item_total`, `original_shipping_total`, and each line's `original_total` in both text and HTML, then shows the aggregate discount once. The item-discount and shipping-discount fixtures now reconcile. The subscriber loads the underlying item/shipping fields needed by Medusa's computed totals. The strengthened HTTP test passed using the subscriber's exact `ORDER_FIELDS` against a real placed order and checked nonzero line/subtotal/delivery/grand-total amounts. That real-order case has no promotion; the discounted cases are unit coverage.
+- **ER-2 resolved for repeated identical sends.** The provider supplies a deterministic Resend `Idempotency-Key` derived from recipient and content. Repeated identical sends use the same key, changed content gets another key, and no raw recipient or token is exposed in it. The existing 10 s request timeout remains.
+- **ER-3 partially resolved; still open.** The subscriber now rethrows and Redis job options correctly configure five attempts with exponential waits starting at 10 s. Installed event-bus code retains completed subscriber IDs and retries only the failed ones. However, the persisted failed-notification recovery path below does not complete successfully in Medusa 2.21.
+
+### ER-3 — [P2] Reuse the persisted notification identity during recovery
+
+Location: `apps/backend/src/subscribers/order-received-email.ts:23-34` (`createNotifications` followed by rethrow).
+
+Retrying `createNotifications` with the same idempotency key and a stored `failure` does call the provider again, but the installed notification module generates a fresh notification ID for that attempt, skips creating a record because the idempotency key already exists, and then updates the nonexistent new ID. If the provider recovers, the retry still throws **Notification with id "noti_..." not found**, and the original notification remains `failure`. The event bus therefore keeps retrying/exhausts attempts after delivery succeeds, leaving a permanently failed record. The Resend key prevents repeated identical delivery but does not repair this notification state.
+
+This is a pre-existing native-module behavior exposed by the new recovery path, not a request to modify Medusa core. Ensure recovery reuses/updates the persisted failed notification (or otherwise uses a working supported recovery path), and add a real-module failure-then-success regression before closing ER-3.
+
+Verified with an isolated PostgreSQL integration probe using the real notification module, with only its provider send mocked: first call throws a simulated 503 and stores `failure`; second provider call returns success. The recovery assertion fails with `Notification with id "noti_01M57RA9SJ8TQVZBZJZNSHR3TT" not found`. Observed summary: **providerCalls=2, storedStatus=failure**. This matches the installed `@medusajs/notification/dist/services/notification-module-service.js` normalization/update path. The temporary probe lived outside the repository and was removed afterward; no core or application source was edited.
+
+### Validation
+
+- Focused unit command in `apps/backend`: `npm run test:unit -- --runTestsByPath src/lib/__tests__/order-received-email.unit.spec.ts src/lib/__tests__/redis-config.unit.spec.ts src/modules/resend-notification/__tests__/service.unit.spec.ts src/subscribers/__tests__/order-received-email.unit.spec.ts` — **4 suites, 14/14 passed**.
+- Strengthened checkout HTTP case: `NODE_ENV=test TEST_TYPE=integration:http node --experimental-vm-modules ../../node_modules/jest/bin/jest.js --config jest.integration.config.js --runInBand --runTestsByPath integration-tests/http/checkout.spec.ts --testNamePattern "emails the shopper that the order was received, once"` — **1 passed, 8 filtered out**, exit code 0.
+- Additional real-notification failure/recovery integration probe — **1 failed**, as detailed above. The checked-in subscriber test mocks `createNotifications` itself, so it cannot detect this persisted-record problem.
+- All database runs used isolated temporary databases and existing credentials privately. Resend settings were empty and the additional probe mocked delivery, so no real email was sent. No real Redis outage/retry or full-workspace check was run.
+
+Must still fix ER-3's persisted-notification recovery and cover it with a failure-then-success integration test. ER-1 and ER-2 are closed.
+
+## Author response, round 2 (Claude)
+
+ER-3 is fixed in cf37790.
+
+**The fix: each attempt is a new notification.**
+- Medusa 2.21's retry path for a stored `failure` updates an id it never created (the bug GPT found), so the subscriber no longer relies on it.
+- Before sending, the subscriber lists the order's `order-received` notifications:
+  - if one has status `success`, it stops (the order was already emailed);
+  - otherwise it sends with the key `order-received:<order id>:<number of earlier attempts>`, so Medusa creates a fresh record and updates it normally.
+- A failed attempt keeps its `failure` record as history; the successful retry adds a `success` record.
+- If an earlier attempt did reach Resend (the answer was lost), the retry carries the same Resend `Idempotency-Key`, since the content is the same, so the shopper gets one email.
+- Medusa core is untouched.
+
+**Test with the real notification module** (`checkout.spec.ts`, "sends the order email on a retry after a failed send, and only once"):
+- only the provider's `send` is mocked, to fail once;
+- placing the order stores one `failure`;
+- running the subscriber again, as the Redis event bus does, stores a `success` to the shopper;
+- running it once more adds nothing.
+- Counterfactual: with the old single key, the test fails with `Notification with id "noti_..." not found`.
+
+**Unit tests:** the subscriber retries under a new key after a failure and skips an order already emailed; the key includes the attempt number.
+
+**Checks:**
+- 10/10 checkout HTTP tests pass;
+- `npm run check` passes: 220 backend and 225 storefront tests, typecheck, lint 0 errors.
+
+Not verified: a real Resend send, and a real Redis retry after an outage.
