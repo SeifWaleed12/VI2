@@ -2055,132 +2055,14 @@ img {
 /* FOOTER */
 /* ------------------------------------------------ */
 
-.footer {
-  padding:
-    82px
-    max(
-      28px,
-      calc(
-        (
-            100vw -
-              var(--page-width)
-          ) / 2
-      )
-    )
-    28px;
 
-  color: var(--cream);
 
-  background: #151613;
-}
 
-.footer-grid {
-  display: grid;
 
-  grid-template-columns:
-    2fr 1fr 1fr 1fr;
 
-  gap: 70px;
-}
 
-.footer-brand {
-  max-width: 520px;
-}
 
-.footer-logo {
-  font-family:
-    var(--font-heading),
-    sans-serif;
 
-  font-size: 47px;
-
-  line-height: var(--leading-display);
-}
-
-.footer-brand h2 {
-  margin:
-    50px 0 18px;
-
-  font-family:
-    var(--font-heading),
-    sans-serif;
-
-  font-size:
-    var(--text-editorial);
-
-  line-height: var(--leading-display);
-
-  font-weight: var(--weight-display);
-}
-
-.footer-brand p {
-  max-width: 350px;
-
-  margin: 0;
-
-  color:
-    rgba(241, 233, 223, 0.78);
-
-  font-size: var(--text-body);
-
-  line-height: 1.75;
-}
-
-.footer-column {
-  display: flex;
-
-  flex-direction: column;
-
-  align-items: flex-start;
-
-  gap: 13px;
-
-  color:
-    rgba(241, 233, 223, 0.78);
-
-  font-size: var(--text-ui);
-}
-
-.footer-heading {
-  margin-bottom: 10px;
-
-  color: var(--cream);
-
-  font-size: var(--text-ui);
-
-  font-weight: 800;
-
-  letter-spacing: var(--tracking-ui);
-}
-
-.footer-bottom {
-  margin-top: 80px;
-
-  padding-top: 20px;
-
-  display: flex;
-
-  align-items: center;
-  justify-content: space-between;
-
-  gap: 20px;
-
-  border-top:
-    1px solid
-    rgba(
-      241,
-      233,
-      223,
-      0.12
-    );
-
-  color:
-    rgba(241, 233, 223, 0.78);
-
-  font-size: var(--text-ui);
-
-  letter-spacing: var(--tracking-ui);
-}
 
 /* ------------------------------------------------ */
 /* RESPONSIVE */
@@ -2249,14 +2131,7 @@ img {
     min-height: 620px;
   }
 
-  .footer-grid {
-    grid-template-columns:
-      2fr 1fr 1fr;
-  }
 
-  .footer-column:last-child {
-    display: none;
-  }
 }
 
 @media (max-width: 700px) {
@@ -2532,34 +2407,10 @@ img {
     letter-spacing: -0.02em;
   }
 
-  .footer {
-    padding:
-      65px 22px 28px;
-  }
 
-  .footer-grid {
-    grid-template-columns: 1fr;
 
-    gap: 43px;
-  }
 
-  .footer-column:last-child {
-    display: flex;
-  }
 
-  .footer-brand h2 {
-    margin-top: 34px;
-
-    font-size: var(--text-editorial);
-  }
-
-  .footer-bottom {
-    margin-top: 55px;
-
-    align-items: flex-start;
-
-    flex-direction: column;
-  }
 }
 
 @media (

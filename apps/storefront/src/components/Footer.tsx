@@ -1,106 +1,88 @@
-"use client";
-import Link from "@/components/LocaleLink";
-
-import { LegacyTranslations, useLanguage } from "@/context/LanguageContext";
+import Image from "next/image";
+import Link from "next/link";
 import { categoryHref, type Category } from "@/lib/category-tree";
-export default function Footer({ categories = [] }: { categories?: Category[] }) {
-  const { msg } = useLanguage();
+import { localizedHref, message, type Locale } from "@/lib/i18n";
+import {
+  informationPages,
+  informationPreviewEnabled,
+  informationSlugs,
+} from "@/lib/information-pages";
+import styles from "./Footer.module.css";
+
+export default function Footer({
+  categories = [],
+  locale = "en",
+}: {
+  categories?: Category[];
+  locale?: Locale;
+}) {
+  const msg = (key: Parameters<typeof message>[1]) => message(locale, key);
+  const href = (value: string) => localizedHref(value, locale);
+  const preview = informationPreviewEnabled();
   return (
-    <LegacyTranslations><footer className="footer">
-      <div className="footer-grid">
-        <section className="footer-brand">
-          <Link
-            href="/"
-            className="footer-logo"
-          >
-            Vi2
-          </Link>
-
-          <h2>
-            LIVE WELL,
-            <br />
-            LIVE FULLY.
-          </h2>
-
-          <p>
-            Dietary, wellness and
-            sports nutrition selected
-            around quality, simplicity
-            and everyday living.
-          </p>
-        </section>
-
-        <section className="footer-column">
-          <span className="footer-heading">
-            SHOP
-          </span>
-
-          <Link href="/shop">
-            {msg("catalog.all")}
-          </Link>
-
-          {categories.map(category => <Link key={category.id} href={categoryHref(category.id, category.handle)} data-no-translate>{category.name}</Link>)}
-        </section>
-
-        <section className="footer-column">
-          <span className="footer-heading">
-            VI2
-          </span>
-
+    <footer className={styles.footer} data-no-translate>
+      <div className={styles.shell}>
+        <div className={styles.grid}>
+          <div className={styles.brand}>
+            <Link
+              href={href("/")}
+              aria-label={msg("footer.home")}
+              className={styles.logo}
+            >
+              <Image
+                src="/brand/vi2-logo-mark-black.png"
+                alt="Vi2"
+                width={48}
+                height={76}
+              />
+            </Link>
+            <h2>{msg("footer.statement")}</h2>
+            <p>{msg("footer.description")}</p>
+          </div>
+          <nav className={styles.column} aria-labelledby="footer-shop-title">
+            <h2 id="footer-shop-title">{msg("footer.shop")}</h2>
+            <ul>
+              <li>
+                <Link href={href("/shop")}>{msg("catalog.all")}</Link>
+              </li>
+              {categories.map((category) => (
+                <li key={category.id}>
+                  <Link href={href(categoryHref(category.id, category.handle))}>
+                    {category.name}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </nav>
+          {preview && (
+            <nav
+              className={styles.column}
+              aria-labelledby="footer-information-title"
+            >
+              <h2 id="footer-information-title">{msg("footer.information")}</h2>
+              <ul>
+                {informationSlugs.map((slug) => (
+                  <li key={slug}>
+                    <Link href={href("/" + slug)}>
+                      {informationPages[locale][slug].title}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+              <p className={styles.preview}>{msg("footer.preview")}</p>
+            </nav>
+          )}
+        </div>
+        <div className={styles.bottom}>
           <span>
-            About us
+            © {new Date().getFullYear()} <bdi>Vi2</bdi>
           </span>
-
           <span>
-            Authenticity
+            {msg("footer.category")} <span aria-hidden="true">/</span>{" "}
+            {msg("footer.country")}
           </span>
-
-          <span>
-            Shipping
-          </span>
-
-          <span>
-            Returns
-          </span>
-
-          <span>
-            Contact
-          </span>
-        </section>
-
-        <section className="footer-column">
-          <span className="footer-heading">
-            FOLLOW
-          </span>
-
-          <span>
-            Instagram
-          </span>
-
-          <span>
-            TikTok
-          </span>
-
-          <span>
-            Facebook
-          </span>
-        </section>
+        </div>
       </div>
-
-      <div className="footer-bottom">
-        <span>
-          © 2026 Vi2
-        </span>
-
-        <span>
-          Dietary & Wellness
-          Supplements
-        </span>
-
-        <span>
-          Egypt
-        </span>
-      </div>
-    </footer></LegacyTranslations>
+    </footer>
   );
 }

@@ -17,6 +17,14 @@ export function removedCategoryPath(path: string) {
   return /^\/(?:en\/|ar\/)?categories(?:\/|$)/.test(path);
 }
 const en = {
+  "footer.home": "Vi2 home",
+  "footer.statement": "Live well, live fully.",
+  "footer.description": "Supplements, wellness and sports nutrition. Explore the collection and choose what fits your everyday routine.",
+  "footer.shop": "Shop", "footer.information": "Store information",
+  "footer.preview": "Information drafts are shown here for owner review only.",
+  "footer.country": "Egypt", "footer.category": "Health & wellness",
+  "footer.top": "Back to top",
+
   "shop.product": "product",
   "product.view": "View product",
   "product.add": "Add to cart",
@@ -116,6 +124,14 @@ const en = {
 } as const;
 type MessageKey = keyof typeof en;
 const ar: Record<MessageKey, string> = {
+  "footer.home": "الصفحة الرئيسية لـVi2",
+  "footer.statement": "عيش بصحة، عيش حياتك.",
+  "footer.description": "مكملات غذائية ومنتجات للعافية والتغذية الرياضية. استكشف المجموعة واختر ما يناسب روتينك اليومي.",
+  "footer.shop": "تسوق", "footer.information": "معلومات المتجر",
+  "footer.preview": "تظهر مسودات المعلومات هنا لمراجعة صاحب المتجر فقط.",
+  "footer.country": "مصر", "footer.category": "الصحة والعافية",
+  "footer.top": "العودة إلى الأعلى",
+
   "shop.product": "منتج",
   "product.view": "عرض المنتج",
   "product.add": "أضف إلى السلة",
