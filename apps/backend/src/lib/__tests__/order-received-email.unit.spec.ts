@@ -4,11 +4,11 @@ const order = {
   id: "order_1",
   display_id: 1042,
   currency_code: "egp",
-  item_total: 3000,
-  shipping_total: 70,
+  original_item_total: 3000,
+  original_shipping_total: 70,
   discount_total: 0,
   total: 3070,
-  items: [{ title: "Whey", variant_title: "Chocolate", quantity: 2, total: 3000 }],
+  items: [{ title: "Whey", variant_title: "Chocolate", quantity: 2, original_total: 3000 }],
   shipping_address: { first_name: "Sara", address_1: "Tahrir Square", city: "Cairo" },
 }
 
@@ -23,8 +23,17 @@ it("names the order, the items, the totals and the address, in Arabic and Englis
   expect(html).toContain('dir="rtl"')
 })
 
-it("shows a discount only when there is one", () => {
-  expect(orderReceivedContent({ ...order, discount_total: 150, total: 2920 }).text).toContain("Discount / الخصم: -150 EGP")
+// Medusa's shapes: item_total and shipping_total are already discounted, so
+// the email uses the original_* amounts and subtracts discount_total once.
+it("adds up: subtotal minus discount plus delivery is the total, for item and delivery discounts", () => {
+  const itemDiscount = orderReceivedContent({ ...order, discount_total: 150, total: 2920 }).text
+  for (const part of ["Subtotal / المجموع: 3,000 EGP", "Discount / الخصم: -150 EGP", "Delivery / التوصيل: 70 EGP", "Total / الإجمالي: 2,920 EGP"]) {
+    expect(itemDiscount).toContain(part)
+  }
+  const freeDelivery = orderReceivedContent({ ...order, discount_total: 70, total: 3000 }).text
+  for (const part of ["Subtotal / المجموع: 3,000 EGP", "Discount / الخصم: -70 EGP", "Delivery / التوصيل: 70 EGP", "Total / الإجمالي: 3,000 EGP"]) {
+    expect(freeDelivery).toContain(part)
+  }
 })
 
 it("escapes what the shopper typed", () => {

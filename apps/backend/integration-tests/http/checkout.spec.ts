@@ -2,6 +2,8 @@ import { medusaIntegrationTestRunner } from "@medusajs/test-utils"
 import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
 import { createProductsWorkflow } from "@medusajs/medusa/core-flows"
 import { setupEgyptStore } from "../../src/scripts/setup-egypt-store"
+import { ORDER_FIELDS } from "../../src/subscribers/order-received-email"
+import { orderReceivedContent, type ReceivedOrder } from "../../src/lib/order-received-email"
 
 jest.setTimeout(240 * 1000)
 
@@ -90,6 +92,13 @@ medusaIntegrationTestRunner({
         }
         expect(sent).toEqual([expect.objectContaining({ to: "sara@test.dev", channel: "email", resource_id: completed.data.order.id, status: "success" })])
         // Medusa does not store the email body; order-received-email.unit.spec.ts checks it.
+        // Build the email from the real order with the subscriber's own fields:
+        // Medusa returns totals only when they can be computed.
+        const { data: [order] } = await getContainer().resolve(ContainerRegistrationKeys.QUERY).graph({ entity: "order", fields: ORDER_FIELDS, filters: { id: completed.data.order.id } })
+        const { text } = orderReceivedContent(order as unknown as ReceivedOrder)
+        for (const part of ["1 × Whey - 1kg: 1,500 EGP", "Subtotal / المجموع: 1,500 EGP", "Delivery / التوصيل: 70 EGP", "Total / الإجمالي: 1,570 EGP", "Tahrir Square, Cairo"]) {
+          expect(text).toContain(part)
+        }
       })
 
       it("does not let a cart hold more than the warehouse has", async () => {

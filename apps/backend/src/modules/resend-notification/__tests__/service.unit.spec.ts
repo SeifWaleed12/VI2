@@ -27,3 +27,14 @@ it("refuses an email without a subject or body instead of sending a blank one", 
   await expect(service.send({ ...email, content: null })).rejects.toThrow("no subject or body")
   expect(fetchMock).not.toHaveBeenCalled()
 })
+
+it("sends the same idempotency key for the same email, so a retry after a lost answer is not delivered twice", async () => {
+  fetchMock.mockResolvedValue(Response.json({ id: "email_1" }))
+  await service.send(email)
+  await service.send(email)
+  await service.send({ ...email, content: { ...email.content, text: "Different" } })
+  const keys = fetchMock.mock.calls.map(([, init]) => init.headers["Idempotency-Key"])
+  expect(keys[0]).toMatch(/^order-received:[0-9a-f]{32}$/)
+  expect(keys[1]).toBe(keys[0])
+  expect(keys[2]).not.toBe(keys[0])
+})

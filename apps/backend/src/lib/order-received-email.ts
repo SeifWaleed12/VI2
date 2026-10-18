@@ -4,11 +4,12 @@ export type ReceivedOrder = {
   id: string
   display_id?: number | string | null
   currency_code?: string | null
-  item_total?: number | null
-  shipping_total?: number | null
+  // Before discounts; discount_total covers item and delivery discounts.
+  original_item_total?: number | null
+  original_shipping_total?: number | null
   discount_total?: number | null
   total?: number | null
-  items?: { title?: string | null, variant_title?: string | null, quantity?: number | null, total?: number | null }[] | null
+  items?: { title?: string | null, variant_title?: string | null, quantity?: number | null, original_total?: number | null }[] | null
   shipping_address?: { first_name?: string | null, address_1?: string | null, city?: string | null } | null
 }
 
@@ -27,7 +28,7 @@ export function orderReceivedContent(order: ReceivedOrder) {
   const items = (order.items ?? []).map((item) => ({
     name: [item.title, item.variant_title].filter(Boolean).join(" - "),
     quantity: item.quantity ?? 1,
-    total: money(item.total, currency),
+    total: money(item.original_total, currency),
   }))
   const discount = Number(order.discount_total ?? 0)
   const address = order.shipping_address
@@ -41,9 +42,9 @@ export function orderReceivedContent(order: ReceivedOrder) {
     "",
     ...items.map((item) => `${item.quantity} × ${item.name}: ${item.total}`),
     "",
-    `Subtotal / المجموع: ${money(order.item_total, currency)}`,
+    `Subtotal / المجموع: ${money(order.original_item_total, currency)}`,
     ...(discount > 0 ? [`Discount / الخصم: -${money(discount, currency)}`] : []),
-    `Delivery / التوصيل: ${money(order.shipping_total, currency)}`,
+    `Delivery / التوصيل: ${money(order.original_shipping_total, currency)}`,
     `Total / الإجمالي: ${money(order.total, currency)}`,
     ...(addressLine ? ["", `Delivery address / عنوان التوصيل: ${addressLine}`] : []),
   ].join("\n")
@@ -56,9 +57,9 @@ export function orderReceivedContent(order: ReceivedOrder) {
     + `<table style="width:100%;border-collapse:collapse;border-top:1px solid #ddd">`
     + items.map((item) => row(`${item.quantity} × ${escapeHtml(item.name)}`, item.total)).join("")
     + `</table><table style="width:100%;border-collapse:collapse;border-top:1px solid #ddd;margin-top:8px">`
-    + row("Subtotal / المجموع", money(order.item_total, currency))
+    + row("Subtotal / المجموع", money(order.original_item_total, currency))
     + (discount > 0 ? row("Discount / الخصم", `-${money(discount, currency)}`) : "")
-    + row("Delivery / التوصيل", money(order.shipping_total, currency))
+    + row("Delivery / التوصيل", money(order.original_shipping_total, currency))
     + row("Total / الإجمالي", money(order.total, currency), true)
     + `</table>`
     + (addressLine ? `<p>Delivery address / عنوان التوصيل:<br>${escapeHtml(addressLine)}</p>` : "")

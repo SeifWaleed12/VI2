@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto"
 import { AbstractNotificationProviderService, MedusaError } from "@medusajs/framework/utils"
 import type { ProviderSendNotificationDTO, ProviderSendNotificationResultsDTO } from "@medusajs/framework/types"
 
@@ -25,7 +26,14 @@ export default class ResendNotificationService extends AbstractNotificationProvi
     }
     const response = await fetch(RESEND_URL, {
       method: "POST",
-      headers: { Authorization: `Bearer ${this.options_.api_key}`, "Content-Type": "application/json" },
+      headers: {
+        Authorization: `Bearer ${this.options_.api_key}`,
+        "Content-Type": "application/json",
+        // The same email (recipient and content) gets the same key, so if
+        // Resend accepted it but the answer was lost, a retry is not delivered
+        // twice (Resend keeps keys for 24 hours). New content means a new key.
+        "Idempotency-Key": `${notification.template}:${createHash("sha256").update([notification.to, content.subject, content.text ?? "", content.html ?? ""].join("\n")).digest("hex").slice(0, 32)}`,
+      },
       body: JSON.stringify({
         from: notification.from?.trim() || this.options_.from,
         to: [notification.to],
