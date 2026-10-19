@@ -55,7 +55,10 @@ export function managerAction(method: string, path: string, body?: unknown): Sta
   // CSV imports cannot be checked field by field.
   if (segments.some((segment) => segment === "import" || segment === "imports")) return null
   // Linking variants to inventory items is stock management, which Odoo owns.
-  if (method !== "GET" && (segments.includes("inventory-items") || bodyHas(body, (key) => key === "inventory_items"))) return null
+  // The dashboard's create form sends an empty list for every variant; only
+  // listed items are links.
+  const linksInventory = (key: string, value: unknown) => key === "inventory_items" && !(Array.isArray(value) && value.length === 0)
+  if (method !== "GET" && (segments.includes("inventory-items") || bodyHas(body, linksInventory))) return null
   const operation = method === "GET" ? "read" : method === "DELETE" ? "delete" : segments.length === 1 ? "create" : "update"
   return { resource: area.resource, operation }
 }
