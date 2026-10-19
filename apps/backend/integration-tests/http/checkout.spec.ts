@@ -5,7 +5,7 @@ import { setupEgyptStore } from "../../src/scripts/setup-egypt-store"
 
 jest.setTimeout(240 * 1000)
 
-const cairo = { first_name: "Sara", last_name: "Ali", address_1: "Tahrir Square", city: "Cairo", country_code: "eg", postal_code: "00000", phone: "01000000000" }
+const cairo = { first_name: "Sara", last_name: "Ali", address_1: "Tahrir Square", city: "Cairo", country_code: "eg", phone: "01000000000" }
 
 // Follows the storefront's calls (apps/storefront/src/lib/medusa/services):
 // create cart, add items, set email and addresses, pick delivery, start the
