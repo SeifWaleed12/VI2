@@ -2,6 +2,7 @@ import { medusaIntegrationTestRunner } from "@medusajs/test-utils"
 import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
 import { createProductsWorkflow } from "@medusajs/medusa/core-flows"
 import { setupEgyptStore } from "../../src/scripts/setup-egypt-store"
+import { removeAbandonedCarts } from "../../src/jobs/remove-abandoned-carts"
 
 jest.setTimeout(240 * 1000)
 
@@ -120,6 +121,35 @@ medusaIntegrationTestRunner({
         expect(placed.data.type).toBe("order")
         expect(await history(token)).toEqual([placed.data.order.id])
         expect((await api.get("/store/orders", store())).status).toBe(401)
+      })
+
+      it("does not let a shopper sign in to a cart while the abandoned-cart job is deleting it", async () => {
+        const { cartId } = await cartWith(1)
+        await prepare(cartId)
+        const token = await register()
+        const owner = async () => (await getContainer().resolve(ContainerRegistrationKeys.QUERY).graph({ entity: "cart", fields: ["customer.has_account"], filters: { id: cartId } })).data[0]?.customer?.has_account
+        // Pause the job after its last check, while it holds the cart's lock.
+        const link = getContainer().resolve(ContainerRegistrationKeys.LINK)
+        const linkDelete = link.delete.bind(link)
+        let atDelete!: () => void, resume!: () => void
+        const reached = new Promise<void>((resolve) => { atDelete = resolve })
+        const gate = new Promise<void>((resolve) => { resume = resolve })
+        const spy = jest.spyOn(link, "delete").mockImplementationOnce(async (...args) => { atDelete(); await gate; return linkDelete(...args) })
+        try {
+          const job = removeAbandonedCarts(getContainer(), new Date(Date.now() + 31 * 24 * 60 * 60 * 1000))
+          await reached
+          const completing = complete(cartId, token)
+          await new Promise((resolve) => setTimeout(resolve, 1000))
+          // Signing in at checkout waits for the job instead of claiming the cart it already checked.
+          expect(await owner()).toBe(false)
+          resume()
+          expect(await job).toBe(1)
+          expect((await completing).status).toBe(404)
+        } finally {
+          resume()
+          spy.mockRestore()
+        }
+        expect(await history(token)).toEqual([])
       })
 
       it("keeps a customer's cart to that customer's login", async () => {
