@@ -9,6 +9,7 @@ import {
 
 import type { Product } from "@/types/product";
 import { getStockLabel } from "@/lib/catalogMeta";
+import { translateArabicUi } from "@/lib/arabicLocalization";
 import { useCart } from "@/context/CartContext";
 import { useLanguage } from "@/context/LanguageContext";
 import styles from "./ProductCard.module.css";
@@ -23,14 +24,14 @@ export default function ProductCard({
   product: Product;
 }) {
   const { addItem } = useCart();
-  const { t } = useLanguage();
+  const { t, msg, language } = useLanguage();
 
   return (
-    <article className={styles.card}>
+    <article className={styles.card} data-no-translate>
       <Link
         href={`/products/${product.slug}`}
         className={styles.imageArea}
-        aria-label={`View ${product.name}`}
+        aria-label={`${msg("product.view")}: ${product.name}`}
       >
         {product.badge && (
           <span className={styles.badge} data-arabic-text={t(product.badge)}>
@@ -59,7 +60,7 @@ export default function ProductCard({
               color: "var(--text-muted)",
             }}
           >
-            NO IMAGE
+            {msg("product.noImage")}
           </div>
         )}
       </Link>
@@ -97,7 +98,7 @@ export default function ProductCard({
         </Link>
 
         <p className={styles.meta}>
-          {[product.flavor, product.size, product.servings ? `${product.servings} Servings` : ""]
+          {[product.flavor, product.size, product.servings ? `${product.servings} ${msg("product.servings")}` : ""]
             .filter(Boolean)
             .join(" · ")}
         </p>
@@ -110,18 +111,18 @@ export default function ProductCard({
                 : ""
             }
           />
-          {getStockLabel(product)}
+          {language === "ar" ? translateArabicUi(getStockLabel(product)) : getStockLabel(product)}
         </div>
 
         <div className={styles.bottom}>
           <div className={styles.price}>
             <strong>
-              {formatPrice(product.price)} EGP
+              {formatPrice(product.price)} {msg("nav.egp")}
             </strong>
 
             {product.compareAtPrice && (
               <span>
-                {formatPrice(product.compareAtPrice)} EGP
+                {formatPrice(product.compareAtPrice)} {msg("nav.egp")}
               </span>
             )}
           </div>
@@ -129,7 +130,7 @@ export default function ProductCard({
           <button
             type="button"
             className={styles.addButton}
-            aria-label={`Add ${product.name} to cart`}
+            aria-label={`${msg("product.add")}: ${product.name}`}
             onClick={() => addItem(product)}
           >
             <Plus

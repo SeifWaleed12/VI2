@@ -16,6 +16,7 @@ import {
   useState,
 } from "react";
 
+import { useLanguage } from "@/context/LanguageContext";
 import styles from "./HomeDiscovery.module.css";
 
 const goals = [
@@ -76,6 +77,7 @@ const goals = [
 ];
 
 export default function HomeDiscovery() {
+  const { msg } = useLanguage();
   const [
     activeIndex,
     setActiveIndex,
@@ -348,14 +350,12 @@ export default function HomeDiscovery() {
             </div>
 
             <Link
-              href={`/shop?goal=${encodeURIComponent(
-                activeGoal.query,
-              )}`}
+              href="/shop"
               className={
                 styles.shopNow
               }
             >
-              SHOP NOW
+              {msg("catalog.all")}
               <ArrowRight
                 size={16}
                 strokeWidth={

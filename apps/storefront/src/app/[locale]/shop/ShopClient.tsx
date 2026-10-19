@@ -1,689 +1,393 @@
 "use client";
-import { LegacyTranslations } from "@/context/LanguageContext";
-
 import {
-  ChevronDown,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  useTransition,
+  type FormEvent,
+} from "react";
+import { useRouter } from "next/navigation";
+import {
   Search,
   SlidersHorizontal,
   X,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
-import { useSearchParams } from "next/navigation";
-import {
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
-
-import { useLocaleRouter } from "@/hooks/use-locale-router";
-import { useLanguage } from "@/context/LanguageContext";
-import { flattenCategories, type Category } from "@/lib/category-tree";
+import Link from "@/components/LocaleLink";
 import ProductCard from "@/components/ProductCard";
-import type { Product } from "@/types/product";
-import {
-  getProductForm,
-  getProductHealthGoals,
-  healthGoals,
-  matchesForm,
-  matchesGoal,
-  productForms,
-} from "@/lib/catalogMeta";
-import { getArabicProductSearchText } from "@/lib/arabicLocalization";
-
+import { useLocaleRouter } from "@/hooks/use-locale-router";
+import { useDrawerFocus } from "@/hooks/use-drawer-focus";
+import { message, type Locale } from "@/lib/i18n";
+import type { Category } from "@/lib/category-tree";
+import type { Brand } from "@/types/brand";
+import type { ProductPage } from "@/lib/medusa/services/products";
+import { shopHref, updateShopQuery } from "@/lib/shop-query";
+import ShopFilters, { type FilterSelection } from "./ShopFilters";
 import styles from "./Shop.module.css";
 
-
-
-
-
-const popularSearches = [
-  "Creatine",
-  "Protein",
-  "Vitamin D3",
-  "Magnesium",
-  "Omega-3",
-  "Ashwagandha",
-];
-
-const arabicCatalogLabels: Record<string, string> = {
-  All: "الكل",
-  Protein: "البروتين",
-  Creatine: "الكرياتين",
-  "Pre-Workout": "قبل التمرين",
-  Vitamins: "الفيتامينات",
-  Wellness: "العافية",
-  "Mass Gainer": "زيادة الكتلة",
-  Magnesium: "المغنيسيوم",
-  "Vitamin D3": "فيتامين D3",
-  "Omega-3": "أوميجا-3",
-  Ashwagandha: "أشواجاندا",
+export type ShopProps = {
+  locale: Locale;
+  page: ProductPage;
+  categories: Category[];
+  brands: Brand[];
+  categoryError: boolean;
+  brandError: boolean;
+  category: Category | null;
+  handle: string;
+  query: string;
+  filters: { q: string; brandIds: string[]; page: number };
+  error: "invalid" | "unavailable" | null;
 };
 
-const dietaryOptions = [
-  "All Diets",
-  "Vegan",
-  "Keto",
-  "Non-GMO",
-];
-
-const allergenOptions = [
-  "All Allergen Filters",
-  "Gluten-Free",
-  "Dairy-Free",
-  "Soy-Free",
-];
-
-type SortValue =
-  | "featured"
-  | "price-low"
-  | "price-high"
-  | "rating";
-
-export default function ShopClient({
-  products,
-  initialCategories = [],
-  selectedCategory = "All",
-  categoryError = false,
-}: {
-  products: Product[];
-  initialCategories?: Category[];
-  selectedCategory?: string;
-  categoryError?: boolean;
-}) {
+export default function ShopClient(props: ShopProps) {
+  const { locale, page, category, handle, query, filters, error } = props;
+  const msg = (key: Parameters<typeof message>[1]) => message(locale, key);
   const router = useLocaleRouter();
-  const { msg } = useLanguage();
-  const categories = useMemo(() => [{id:"All",name:msg("catalog.all")}, ...flattenCategories(initialCategories)], [initialCategories,msg]);
-  function setCategory(id: string) {
-    const query = new URLSearchParams(searchParams.toString());
-    query.delete("category");
-    if (id === "All") query.delete("category_id"); else query.set("category_id",id);
-    router.push(`/shop${query.size ? `?${query}` : ""}`);
-  }
-  const category = selectedCategory;
-  const brands = [
-    "All Brands",
-    ...Array.from(new Set(products.map((p) => p.brand))).sort(),
-  ];
-
-  const searchParams = useSearchParams();
-
-  const requestedGoal =
-    searchParams.get("goal");
-
-  const requestedBrand =
-    searchParams.get("brand");
-
-  const requestedSearch =
-    searchParams.get("q") ?? "";
-
-  const validRequestedGoal =
-    requestedGoal &&
-    healthGoals.includes(
-      requestedGoal as (typeof healthGoals)[number],
-    )
-      ? requestedGoal
-      : "All Goals";
-
-  const validRequestedBrand =
-    requestedBrand &&
-    brands.includes(requestedBrand)
-      ? requestedBrand
-      : "All Brands";
-
-  const [search, setSearch] =
-    useState(requestedSearch);
-
-
-  const [goal, setGoal] =
-    useState(validRequestedGoal);
-
-  const [brand, setBrand] =
-    useState(validRequestedBrand);
-
-  const [form, setForm] =
-    useState("All Forms");
-
-  const [availabilityOnly, setAvailabilityOnly] =
-    useState(false);
-
-  const [diet, setDiet] =
-    useState("All Diets");
-
-  const [allergen, setAllergen] =
-    useState("All Allergen Filters");
-
-  const [sort, setSort] =
-    useState<SortValue>("featured");
-
-  const [mobileFiltersOpen, setMobileFiltersOpen] =
-    useState(false);
-
+  const refreshRouter = useRouter();
+  const [pending, startTransition] = useTransition();
+  const [open, setOpen] = useState(false);
+  const [draft, setDraft] = useState<FilterSelection>({
+    handle,
+    brandIds: filters.brandIds,
+  });
+  const results = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    setSearch(requestedSearch);
-  }, [requestedSearch]);
-
-
-
+    // This Next.js router scrolls to fragments but deliberately leaves focus untouched.
+    if (window.location.hash === "#shop-results")
+      results.current?.focus({ preventScroll: true });
+  }, [handle]);
+  const dialog = useRef<HTMLDialogElement>(null);
+  const close = useCallback(() => setOpen(false), []);
+  useDrawerFocus(dialog, open, close);
   useEffect(() => {
-    setGoal(validRequestedGoal);
-  }, [validRequestedGoal]);
+    const element = dialog.current;
+    if (!open || !element) return;
+    element.showModal();
+    const overflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const media = window.matchMedia("(min-width: 981px)");
+    const onResize = () => {
+      if (media.matches) close();
+    };
+    media.addEventListener("change", onResize);
+    return () => {
+      element.close();
+      document.body.style.overflow = overflow;
+      media.removeEventListener("change", onResize);
+    };
+  }, [open, close]);
 
-  useEffect(() => {
-    setBrand(validRequestedBrand);
-  }, [validRequestedBrand]);
-
-  const filteredProducts = useMemo(() => {
-    const normalizedSearch =
-      search.trim().toLowerCase();
-
-    const result = products.filter(
-      (product) => {
-        const matchesCategory = true; // Products already scoped by Medusa category IDs.
-
-        const matchesBrand =
-          brand === "All Brands" ||
-          product.brand.toLowerCase() === brand.toLowerCase();
-
-        const searchableText = [
-          product.name,
-          product.shortName,
-          product.brand,
-          product.category,
-          product.flavor ?? "",
-          product.size ?? "",
-          getProductForm(product),
-          ...getProductHealthGoals(product),
-          getArabicProductSearchText(product),
-        ]
-          .join(" ")
-          .toLowerCase();
-
-        const matchesSearch =
-          normalizedSearch.length === 0 ||
-          searchableText.includes(
-            normalizedSearch,
-          );
-
-        const matchesAvailability =
-          !availabilityOnly ||
-          product.stock > 0;
-
-        return (
-          matchesCategory &&
-          matchesBrand &&
-          matchesSearch &&
-          matchesGoal(product, goal) &&
-          matchesForm(product, form) &&
-          matchesAvailability
-        );
-      },
+  const retry = () => startTransition(() => refreshRouter.refresh());
+  function navigate(
+    selection: FilterSelection,
+    changes: Record<string, string | string[] | null> = {},
+  ) {
+    close();
+    const next = updateShopQuery(query, {
+      brand_id: selection.brandIds,
+      ...changes,
+    });
+    startTransition(() =>
+      router.push(shopHref(selection.handle, next), { scroll: false }),
     );
-
-    if (sort === "price-low") {
-      return [...result].sort(
-        (a, b) => a.price - b.price,
-      );
-    }
-
-    if (sort === "price-high") {
-      return [...result].sort(
-        (a, b) => b.price - a.price,
-      );
-    }
-
-    if (sort === "rating") {
-      return [...result].sort(
-        (a, b) =>
-          b.rating - a.rating ||
-          b.reviewCount - a.reviewCount,
-      );
-    }
-
-    return result;
-  }, [
-    availabilityOnly,
-    brand,
-    category,
-    form,
-    goal,
-    search,
-    sort,
-  ]);
-
-  function clearFilters() {
-    setSearch("");
-    setCategory("All");
-    setGoal("All Goals");
-    setBrand("All Brands");
-    setForm("All Forms");
-    setAvailabilityOnly(false);
-    setDiet("All Diets");
-    setAllergen("All Allergen Filters");
-    setSort("featured");
   }
-
-  const hasActiveFilters =
-    search.trim().length > 0 ||
-    category !== "All" ||
-    goal !== "All Goals" ||
-    brand !== "All Brands" ||
-    form !== "All Forms" ||
-    diet !== "All Diets" ||
-    allergen !== "All Allergen Filters" ||
-    availabilityOnly ||
-    sort !== "featured";
-
-  const filterContent = (
-    <>
-      <div className={styles.filterGroup}>
-        <div className={styles.filterTitle}>
-          HEALTH GOAL
-        </div>
-
-        <div className={styles.filterOptions}>
-          {healthGoals.map((item) => (
-            <button
-              key={item}
-              type="button"
-              className={
-                goal === item
-                  ? styles.filterActive
-                  : ""
-              }
-              onClick={() => setGoal(item)}
-            >
-              <span data-arabic-text={arabicCatalogLabels[item]}>{item}</span>
-
-              {item !== "All Goals" && (
-                <small>
-                  {
-                    products.filter((product) =>
-                      matchesGoal(product, item),
-                    ).length
-                  }
-                </small>
-              )}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className={styles.filterGroup}>
-        <div className={styles.filterTitle}>
-          CATEGORY
-        </div>
-
-        <div className={styles.filterOptions}>
-          {categoryError && <p role="status">{msg("catalog.error")}</p>}
-          {categories.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              className={
-                category === item.id
-                  ? styles.filterActive
-                  : ""
-              }
-              onClick={() => setCategory(item.id)}
-            >
-              <span data-no-translate>{item.name}</span>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className={styles.filterGroup}>
-        <label className={styles.filterSelect}>
-          <span>BRAND</span>
-
-          <select
-            value={brand}
-            onChange={(event) =>
-              setBrand(event.target.value)
-            }
-          >
-            {brands.map((item) => (
-              <option key={item} value={item}>
-                {item}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
-
-      <div className={styles.filterGroup}>
-        <label className={styles.filterSelect}>
-          <span>FORM</span>
-
-          <select
-            value={form}
-            onChange={(event) =>
-              setForm(event.target.value)
-            }
-          >
-            {productForms.map((item) => (
-              <option key={item} value={item}>
-                {item}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
-
-      <div className={styles.filterGroup}>
-        <label className={styles.filterSelect}>
-          <span>DIET</span>
-
-          <select
-            value={diet}
-            onChange={(event) =>
-              setDiet(event.target.value)
-            }
-          >
-            {dietaryOptions.map((item) => (
-              <option key={item} value={item}>
-                {item}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        {diet !== "All Diets" && (
-          <p className={styles.metadataNotice}>
-            Verified dietary attributes must be
-            supplied per SKU before launch.
-          </p>
-        )}
-      </div>
-
-      <div className={styles.filterGroup}>
-        <label className={styles.filterSelect}>
-          <span>ALLERGEN-FREE</span>
-
-          <select
-            value={allergen}
-            onChange={(event) =>
-              setAllergen(event.target.value)
-            }
-          >
-            {allergenOptions.map((item) => (
-              <option key={item} value={item}>
-                {item}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        {allergen !== "All Allergen Filters" && (
-          <p className={styles.metadataNotice}>
-            Verified manufacturer allergen data
-            is required per SKU before launch.
-          </p>
-        )}
-      </div>
-
-      <label className={styles.checkFilter}>
-        <input
-          type="checkbox"
-          checked={availabilityOnly}
-          onChange={(event) =>
-            setAvailabilityOnly(
-              event.target.checked,
-            )
-          }
-        />
-
-        <span>IN STOCK ONLY</span>
-      </label>
-    </>
+  function search(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const q = String(new FormData(event.currentTarget).get("q") ?? "").trim();
+    navigate({ handle, brandIds: filters.brandIds }, { q });
+  }
+  const allHref = shopHref(
+    "",
+    updateShopQuery(query, {
+      q: null,
+      brand_id: null,
+      goal: null,
+      form: null,
+      diet: null,
+      allergen: null,
+      rating: null,
+      sort: null,
+      availability: null,
+    }),
   );
-
+  const selection = { handle, brandIds: filters.brandIds };
+  const totalPages = Math.ceil(page.count / page.limit);
+  const number = (value: number) =>
+    new Intl.NumberFormat(locale === "ar" ? "ar-EG" : "en-EG").format(value);
+  const filterProps = {
+    locale,
+    categories: props.categories,
+    brands: props.brands,
+    categoryError: props.categoryError,
+    brandError: props.brandError,
+    retry,
+  };
+  const active = Boolean(handle || filters.q || filters.brandIds.length);
+  const brandNames = filters.brandIds.map((id) => ({
+    id,
+    name: props.brands.find((brand) => brand.id === id)?.name ?? id,
+  }));
+  const pageHref = (index: number) =>
+    shopHref(
+      handle,
+      updateShopQuery(query, { page: index === 1 ? null : String(index) }),
+    ) + "#shop-results";
   return (
-    <LegacyTranslations><main className={styles.page}>
-      <section className={styles.intro}>
-        <div className={styles.introCopy}>
-          <span className={styles.eyebrow}>
-            VI2 COLLECTION
-          </span>
-
-          <h1>SHOP</h1>
-
-          <p>
-            Search by product, brand, category or
-            health goal — then narrow the catalog
-            without slowing down the buying flow.
-          </p>
-        </div>
-
-        <div className={styles.introWord}>
-          VI2
-        </div>
-      </section>
-
-      <section className={styles.controlSection}>
-        <div className={styles.searchRow}>
-          <label className={styles.searchBox}>
-            <Search
-              size={19}
-              strokeWidth={1.5}
-            />
-
-            <input
-              type="search"
-              value={search}
-              onChange={(event) =>
-                setSearch(event.target.value)
-              }
-              placeholder={msg("search.placeholder")}
-              aria-label={msg("search.products")}
-            />
-
-            {search && (
-              <button
-                type="button"
-                aria-label={msg("search.clear")}
-                onClick={() => setSearch("")}
-              >
-                <X size={17} strokeWidth={1.5} />
-              </button>
-            )}
-          </label>
-
-          <button
-            type="button"
-            className={styles.mobileFilterButton}
-            onClick={() =>
-              setMobileFiltersOpen(true)
-            }
-          >
-            <SlidersHorizontal
-              size={16}
-              strokeWidth={1.5}
-            />
-
-            {msg("shop.filters")}
-          </button>
-
-          <label className={styles.sortWrap}>
-            <span>{msg("shop.sort")}</span>
-
-            <select
-              value={sort}
-              onChange={(event) =>
-                setSort(
-                  event.target.value as SortValue,
-                )
-              }
-            >
-              <option value="featured">
-                {msg("shop.featured")}
-              </option>
-
-              <option value="price-low">
-                {msg("shop.low")}
-              </option>
-
-              <option value="price-high">
-                {msg("shop.high")}
-              </option>
-            </select>
-
-            <ChevronDown
-              size={14}
-              strokeWidth={1.5}
-            />
-          </label>
-        </div>
-
-        <div className={styles.popularSearches}>
-          <span>POPULAR:</span>
-
-          {popularSearches.map((item) => (
-            <button
-              key={item}
-              type="button"
-              onClick={() => setSearch(item)}
-              data-arabic-text={arabicCatalogLabels[item]}
-            >
-              {item}
-            </button>
-          ))}
-        </div>
-      </section>
-
-      <section className={styles.catalogLayout}>
-        <aside className={styles.sidebar}>
+    <main className={styles.page} data-no-translate>
+      <nav className={styles.breadcrumb} aria-label={msg("shop.breadcrumb")}>
+        <Link href="/">{msg("nav.home")}</Link>
+        <span aria-hidden="true">/</span>
+        {category ? (
+          <>
+            <Link href="/shop">{msg("shop.title")}</Link>
+            <span aria-hidden="true">/</span>
+            <span aria-current="page">{category.name}</span>
+          </>
+        ) : (
+          <span aria-current="page">{msg("shop.title")}</span>
+        )}
+      </nav>
+      <header className={styles.intro}>
+        <h1>{category?.name ?? msg("shop.title")}</h1>
+        <p>{msg("shop.description")}</p>
+      </header>
+      <div className={styles.catalogLayout}>
+        <aside className={styles.sidebar} aria-label={msg("shop.filters")}>
           <div className={styles.sidebarTop}>
-            <strong>FILTER</strong>
-
-            {hasActiveFilters && (
-              <button
-                type="button"
-                onClick={clearFilters}
-              >
-                RESET
+            <h2>{msg("shop.filters")}</h2>
+            {active && <Link href={allHref}>{msg("shop.clearAll")}</Link>}
+          </div>
+          <ShopFilters
+            {...filterProps}
+            value={selection}
+            linkTo={selection =>
+              shopHref(selection.handle, updateShopQuery(query, { brand_id: selection.brandIds })) +
+              (selection.handle !== handle ? "#shop-results" : "")
+            }
+          />
+        </aside>
+        <section
+          className={styles.productsArea}
+          aria-label={msg("catalog.all")}
+          aria-busy={pending}
+        >
+          <div className={styles.toolbar}>
+            <form
+              className={styles.searchBox}
+              onSubmit={search}
+              role="search"
+              aria-label={msg("search.products")}
+            >
+              <Search size={20} strokeWidth={1.5} aria-hidden="true" />
+              <input
+                key={filters.q}
+                type="search"
+                name="q"
+                defaultValue={filters.q}
+                maxLength={200}
+                placeholder={msg("shop.searchPlaceholder")}
+                aria-label={msg("search.products")}
+              />
+              <button type="submit" disabled={pending}>
+                {msg("shop.search")}
               </button>
+            </form>
+            <button
+              className={styles.mobileFilterButton}
+              type="button"
+              aria-haspopup="dialog"
+              aria-controls="shop-filters"
+              aria-expanded={open}
+              onClick={() => {
+                setDraft(selection);
+                setOpen(true);
+              }}
+            >
+              <SlidersHorizontal size={18} aria-hidden="true" />
+              {msg("shop.filters")}
+            </button>
+          </div>
+          <div className={styles.resultsTop} id="shop-results" ref={results} tabIndex={-1}>
+            <p role="status" aria-live="polite">
+              {pending
+                ? msg("shop.loading")
+                : error
+                  ? msg("shop.resultsUnavailable")
+                  : `${number(page.count)} ${msg(page.count === 1 ? "shop.product" : "shop.products")}`}
+            </p>
+            {!error && page.products.length > 0 && (
+              <span>
+                {number(page.offset + 1)}–
+                {number(page.offset + page.products.length)} {msg("shop.of")}{" "}
+                {number(page.count)}
+              </span>
             )}
           </div>
-
-          {filterContent}
-        </aside>
-
-        <div className={styles.productsArea}>
-          <div className={styles.resultsTop}>
-            <div className={styles.resultCount}>
-              <span data-arabic-text={`${filteredProducts.length} منتج`}>
-                {filteredProducts.length}{" "}
-                {filteredProducts.length === 1
-                  ? "PRODUCT"
-                  : "PRODUCTS"}
-              </span>
-            </div>
-
-            <div className={styles.activeSummary}>
-              {goal !== "All Goals" && (
-                <span>{goal}</span>
+          {active && (
+            <div
+              className={styles.activeFilters}
+              aria-label={msg("shop.activeFilters")}
+            >
+              {category && (
+                <Link
+                  href={shopHref("", updateShopQuery(query, {}))}
+                  aria-label={`${msg("shop.removeFilter")}: ${category.name}`}
+                >
+                  {category.name}
+                  <X size={14} aria-hidden="true" />
+                </Link>
               )}
-
-              {category !== "All" && (
-                <span data-no-translate>{categories.find(c => c.id === category)?.name}</span>
+              {filters.q && (
+                <Link
+                  href={shopHref(handle, updateShopQuery(query, { q: null }))}
+                  aria-label={`${msg("search.clear")}: ${filters.q}`}
+                >
+                  “{filters.q}”<X size={14} aria-hidden="true" />
+                </Link>
               )}
-
-              {form !== "All Forms" && (
-                <span>{form}</span>
-              )}
-
-              {diet !== "All Diets" && (
-                <span>{diet}</span>
-              )}
-
-              {allergen !== "All Allergen Filters" && (
-                <span>{allergen}</span>
-              )}
-            </div>
-          </div>
-
-          {filteredProducts.length > 0 ? (
-            <div className={styles.grid}>
-              {filteredProducts.map(
-                (product) => (
-                  <ProductCard
-                    key={product.id}
-                    product={product}
-                  />
-                ),
-              )}
-            </div>
-          ) : (
-            <div className={styles.empty}>
-              <h2 data-no-translate>{category !== "All" && products.length === 0 ? msg("catalog.noProducts") : "Nothing found."}</h2>
-
-              <p>
-                Try another product, health goal,
-                category or brand.
-              </p>
-
-              <button
-                type="button"
-                onClick={clearFilters}
-              >
-                {msg("catalog.all")}
-              </button>
+              {brandNames.map((brand) => (
+                <Link
+                  key={brand.id}
+                  href={shopHref(
+                    handle,
+                    updateShopQuery(query, {
+                      brand_id: filters.brandIds.filter(
+                        (id) => id !== brand.id,
+                      ),
+                    }),
+                  )}
+                  aria-label={`${msg("shop.removeFilter")}: ${brand.name}`}
+                >
+                  {brand.name}
+                  <X size={14} aria-hidden="true" />
+                </Link>
+              ))}
+              <Link href={allHref} className={styles.clearLink}>
+                {msg("shop.clearAll")}
+              </Link>
             </div>
           )}
-        </div>
-      </section>
-
-      {mobileFiltersOpen && (
-        <div
-          className={styles.filterBackdrop}
-          role="presentation"
-          onClick={() =>
-            setMobileFiltersOpen(false)
-          }
-        >
-          <aside
-            className={styles.mobileFilters}
-            role="dialog"
-            aria-modal="true"
-            aria-label={msg("shop.filters")}
-            onClick={(event) =>
-              event.stopPropagation()
-            }
-          >
-            <div className={styles.mobileFiltersHead}>
-              <div>
-                <span>VI2 CATALOG</span>
-                <strong>FILTER PRODUCTS</strong>
+          {error ? (
+            <div className={styles.empty} role="alert">
+              <h2>
+                {msg(
+                  error === "invalid" ? "shop.invalidTitle" : "shop.errorTitle",
+                )}
+              </h2>
+              <p>
+                {msg(
+                  error === "invalid"
+                    ? "shop.invalidDescription"
+                    : "shop.errorDescription",
+                )}
+              </p>
+              <div className={styles.actions}>
+                {error === "unavailable" && (
+                  <button type="button" onClick={retry} disabled={pending}>
+                    {msg("catalog.retry")}
+                  </button>
+                )}
+                <Link href={allHref}>{msg("catalog.all")}</Link>
               </div>
-
-              <button
-                type="button"
-                onClick={() =>
-                  setMobileFiltersOpen(false)
-                }
-                aria-label="Close filters"
-              >
-                <X size={20} />
-              </button>
             </div>
-
-            <div className={styles.mobileFiltersBody}>
-              {filterContent}
+          ) : page.products.length ? (
+            <>
+              <div className={styles.grid}>
+                {page.products.map((product) => (
+                  <ProductCard key={product.id} product={product} />
+                ))}
+              </div>
+              {totalPages > 1 && (
+                <nav
+                  className={styles.pagination}
+                  aria-label={msg("shop.pagination")}
+                >
+                  {filters.page > 1 ? (
+                    <Link href={pageHref(filters.page - 1)} rel="prev">
+                      <ChevronLeft size={18} aria-hidden="true" />
+                      {msg("shop.previous")}
+                    </Link>
+                  ) : (
+                    <span />
+                  )}
+                  <span aria-current="page">
+                    {msg("shop.page")} {number(filters.page)} {msg("shop.of")}{" "}
+                    {number(totalPages)}
+                  </span>
+                  {filters.page < totalPages ? (
+                    <Link href={pageHref(filters.page + 1)} rel="next">
+                      {msg("shop.next")}
+                      <ChevronRight size={18} aria-hidden="true" />
+                    </Link>
+                  ) : (
+                    <span />
+                  )}
+                </nav>
+              )}
+            </>
+          ) : (
+            <div className={styles.empty}>
+              <h2>
+                {msg(page.count > 0 ? "shop.pastEndTitle" : "shop.emptyTitle")}
+              </h2>
+              <p>
+                {msg(
+                  page.count > 0
+                    ? "shop.pastEndDescription"
+                    : "shop.emptyDescription",
+                )}
+              </p>
+              <div className={styles.actions}>
+                {filters.page > 1 && (
+                  <Link href={pageHref(1)}>{msg("shop.firstPage")}</Link>
+                )}
+                <Link href={allHref}>{msg("catalog.all")}</Link>
+              </div>
             </div>
-
+          )}
+        </section>
+      </div>
+      <dialog
+        ref={dialog}
+        id="shop-filters"
+        className={styles.filterDialog}
+        aria-labelledby="shop-filters-title"
+        onCancel={close}
+        onClick={(event) => {
+          if (event.target === event.currentTarget) close();
+        }}
+      >
+        <div className={styles.sheetInner}>
+          <div className={styles.sheetHeader}>
+            <h2 id="shop-filters-title">{msg("shop.filters")}</h2>
             <button
               type="button"
-              className={styles.applyFilters}
-              onClick={() =>
-                setMobileFiltersOpen(false)
-              }
-              data-arabic-text={`عرض ${filteredProducts.length} منتج`}
+              onClick={close}
+              aria-label={msg("shop.closeFilters")}
             >
-              SHOW {filteredProducts.length} PRODUCTS
+              <X size={22} aria-hidden="true" />
             </button>
-          </aside>
+          </div>
+          {open && (
+            <div className={styles.sheetBody}>
+              <ShopFilters {...filterProps} value={draft} onChange={setDraft} />
+            </div>
+          )}
+          <div className={styles.sheetFooter}>
+            <button
+              type="button"
+              onClick={() => setDraft({ handle: "", brandIds: [] })}
+            >
+              {msg("shop.resetFilters")}
+            </button>
+            <button type="button" onClick={() => navigate(draft)}>
+              {msg("shop.applyFilters")}
+            </button>
+          </div>
         </div>
-      )}
-    </main></LegacyTranslations>
+      </dialog>
+    </main>
   );
 }

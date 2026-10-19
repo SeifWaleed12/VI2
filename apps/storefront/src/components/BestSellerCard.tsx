@@ -76,6 +76,7 @@ export default function BestSellerCard({
           </span>
         )}
 
+        {/* eslint-disable-next-line @next/next/no-img-element -- catalog images come from any configured host */}
         <img
           src={product.image}
           alt={product.name}

@@ -117,6 +117,7 @@ export default function GlobalSearch({
         if (
           Array.isArray(parsed)
         ) {
+          // eslint-disable-next-line react-hooks/set-state-in-effect -- browser storage exists only after hydration
           setRecent(
             parsed
               .filter(
