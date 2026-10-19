@@ -3,6 +3,8 @@ import { renderToStaticMarkup } from "react-dom/server"
 import HomeBestSellers from "../HomeBestSellers"
 import TrendingNow from "../TrendingNow"
 import HomeHeroSlider from "../HomeHeroSlider"
+import HomeDiscovery from "../HomeDiscovery"
+jest.mock("../HomeDiscovery.module.css", () => ({}))
 import { message } from "@/lib/i18n"
 import type { Product } from "@/types/product"
 let mockHeroLocale: "en" | "ar" = "en"
@@ -56,3 +58,12 @@ it.each(["en", "ar"] as const)("renders the whole localized hero statement befor
   expect(html).toContain("data-preserve-language")
   expect(html).not.toContain("<br")
 })
+
+it.each(["en", "ar"] as const)("takes health-goal content to explicitly unfiltered browsing in %s", locale => {
+  mockHeroLocale = locale;
+  const html = renderToStaticMarkup(createElement(HomeDiscovery));
+  expect(html).not.toContain("?goal=");
+  expect(html).toContain('href="/' + locale + '/shop"');
+  expect(html).toContain(message(locale, "catalog.all"));
+  expect(html).not.toContain("SHOP NOW");
+});

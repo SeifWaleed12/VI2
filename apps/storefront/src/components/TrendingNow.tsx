@@ -89,6 +89,7 @@ export default function TrendingNow({
                       >
                         <div className={styles.imageFrame}>
                           {product.image ? (
+                            // eslint-disable-next-line @next/next/no-img-element -- catalog images come from any configured host
                             <img
                               src={product.image}
                               alt={product.name}

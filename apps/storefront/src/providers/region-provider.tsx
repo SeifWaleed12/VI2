@@ -61,6 +61,7 @@ export function RegionProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- loads regions on mount
     refreshRegion();
   }, [refreshRegion]);
 

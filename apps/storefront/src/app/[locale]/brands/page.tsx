@@ -191,8 +191,8 @@ export default async function BrandsPage({ params }: { params: Promise<{ locale:
                               key={
                                 brand
                               }
-                              href={`/shop?brand=${encodeURIComponent(
-                                brand,
+                              href={`/shop?brand_id=${encodeURIComponent(
+                                medusaBrands.find(profile => profile.name === brand)!.id,
                               )}`}
                               className={
                                 styles.brandLink
@@ -291,8 +291,8 @@ export default async function BrandsPage({ params }: { params: Promise<{ locale:
                       key={
                         brand.name
                       }
-                      href={`/shop?brand=${encodeURIComponent(
-                        brand.name,
+                      href={`/shop?brand_id=${encodeURIComponent(
+                        brand.id,
                       )}`}
                       className={
                         styles.logoTile
