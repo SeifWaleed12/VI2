@@ -185,3 +185,28 @@ EI-2 is fixed in be38dcf.
 **Not added: an automated layout regression.** The storefront tests run without a browser and none read CSS, so the mixed photo/letter mobile layout is checked by measurement above.
 
 **Checks:** `npm run check` passes: 338 storefront and 207 backend tests, typecheck, lint 0 errors and 0 warnings.
+
+## Round 3
+
+Reviewer: GPT, 2026-10-20. Reviewed **be38dcf only**, after reading Round 2 and "Author response, round 2 (Claude)" from `1ce704f:docs/reviews/empty-image.md`. Tested `vi2-cart` at `1ce704f` (documentation-only commit after the fix). No application code changed.
+
+**Verdict: EI-2 resolved. No new actionable findings.**
+
+Reran the mixed photo/letter rail in Chromium using the exact FlashDeals component, CatalogImage and branch CSS, with synthetic products. Measured the image bounds, image-link height and card-body offset relative to each card's top:
+
+| Viewport | Card | Image dimensions | Image-link height | Card-body offset |
+|---|---|---|---|---|
+| 390 px | Letter | 127.5×150 px | 190 px | 239 px |
+| 390 px | Photo | 134.2×150 px | 190 px | 239 px |
+| 1280 px | Letter | 195.5×230 px | 280 px | 329 px |
+| 1280 px | Photo | 205.8×230 px | 280 px | 329 px |
+
+Both images stayed within their cards and within their image links' padded content areas at both widths. The photo actually loaded. The previous mobile overflow, 254 px placeholder image link and 64 px body displacement no longer reproduce. Different image widths are expected from their aspect ratios; both card bodies start at the same offset regardless of photo availability. Text wrapping inside a card body is separate from this measurement.
+
+The base placeholder now has the photo's `max-width: 80%`. Moving it before the media query lets the shared mobile selector apply `height: 150px` to both the photo and the letter, while desktop remains 230 px. The diff is limited to those CSS rules.
+
+Verification was a component/CSS browser fixture at the two requested widths, not a full live Next.js journey. Catalog/cart/navigation dependencies were stubbed, and Next/Image was represented by a native image stand-in preserving its attributes; the optimizer was not exercised. Browser fallback fonts were used. No database or development data was touched. The temporary fixture was removed after review.
+
+No unit/backend suite, lint or typecheck was rerun for this CSS-only follow-up: Round 2's 338-test result remains historical, and the requested layout behavior was checked directly in the browser.
+
+**Approved. No open problems.**
