@@ -16,6 +16,7 @@ import { getProducts } from "@/lib/medusa";
 import type { Product } from "@/types/product";
 
 import styles from "./FlashDeals.module.css";
+import CatalogImage from "@/components/CatalogImage";
 
 const slugs = [
   "nutri-nations-creatine",
@@ -144,12 +145,16 @@ export default function FlashDeals({
               href={`/products/${product.slug}`}
               className={styles.imageLink}
             >
-              <Image
-                src={product.image}
-                alt={product.name}
-                width={520}
-                height={560}
-              />
+              {product.image ? (
+                <Image
+                  src={product.image}
+                  alt={product.name}
+                  width={520}
+                  height={560}
+                />
+              ) : (
+                <CatalogImage alt={product.name} />
+              )}
             </Link>
 
             <div className={styles.cardBody}>

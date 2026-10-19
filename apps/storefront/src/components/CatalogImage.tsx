@@ -11,11 +11,16 @@ type Props = Omit<ImgHTMLAttributes<HTMLImageElement>, "src" | "alt"> & {
   placeholderClassName?: string;
 };
 
+// The failure belongs to the URL that failed, so a new photo URL on the same
+// image is tried again.
+export const showsPhoto = (src: string | undefined, failedSrc: string | undefined): src is string =>
+  !!src && src !== failedSrc;
+
 // A product photo, or the product's first letter when it has no photo or the
 // photo fails to load. An empty src would make the browser fetch the page again.
 export default function CatalogImage({ src, alt, className, placeholderClassName, ...img }: Props) {
-  const [failed, setFailed] = useState(false);
-  if (!src || failed) {
+  const [failedSrc, setFailedSrc] = useState<string>();
+  if (!showsPhoto(src, failedSrc)) {
     return (
       <div className={[styles.placeholder, className, placeholderClassName].filter(Boolean).join(" ")} role="img" aria-label={alt}>
         {alt.trim().charAt(0) || "V"}
@@ -23,5 +28,5 @@ export default function CatalogImage({ src, alt, className, placeholderClassName
     );
   }
   // eslint-disable-next-line @next/next/no-img-element -- catalog images come from any configured host
-  return <img {...img} src={src} alt={alt} className={className} onError={() => setFailed(true)} />;
+  return <img {...img} src={src} alt={alt} className={className} onError={() => setFailedSrc(src)} />;
 }
