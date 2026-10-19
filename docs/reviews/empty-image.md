@@ -117,3 +117,71 @@ EI-1 and the three earlier empty-image spots are fixed in 0b89626.
   - home best-seller cards: letter 145×152;
   - no `img` without a `src` on these pages.
 - Not seen in the browser: the home-page value sets. None of their products lack a photo in the dev data.
+
+## Round 2
+
+Reviewer: GPT, 2026-10-20. Reviewed **0b89626 only**, after reading the original Review and "Author response (Claude)" from `ba92716:docs/reviews/empty-image.md`. Tested `vi2-cart` at `ba92716`, whose additional changes are documentation only. No application code changed.
+
+**Verdict: EI-1 resolved; the remaining empty-source call sites are guarded. One new P2 finding, EI-2, remains open.**
+
+### EI-1 — Resolved
+
+Reran the browser transition with the exact `CatalogImage` component and React 19.2.8. A real `/missing.jpg` 404 first displayed the accessible letter placeholder. A fixture button then changed only `src` to a different valid `/photo.svg`, preserving the mounted component and its state. The photo loaded successfully (`complete: true`, positive `naturalWidth`), and the placeholder disappeared. `failedSrc` and `showsPhoto` now associate failure with the URL rather than the component's lifetime. The new decision-function unit test also passes.
+
+### EI-2 — [P2] FlashDeals placeholders ignore the mobile photo sizing
+
+Location: `apps/storefront/src/components/FlashDeals.module.css:260-264`.
+
+The new placeholder rule fixes the height at **230 px at every breakpoint** and omits the photo rule's width limit. The existing mobile rule changes only `.imageLink img` to **150 px**; it never applies to the placeholder `div`.
+
+Reproduced with the actual FlashDeals component and stylesheet at a 390 px viewport, with photo and missing-photo products in the same rail:
+
+- Photo: 150 px high inside a 190 px-high image link.
+- Placeholder: **195.5×230 px inside a 190 px-wide card**; its image link grows to **254 px high**. The placeholder exceeds the card width, before allowing for its horizontal padding.
+- Product headings under the placeholders start **64 px lower** than the photo card's heading in that same row.
+
+The letter therefore spills outside its intended narrow image area and creates inconsistent mobile card layouts according to whether a photo exists. Desktop sizing is correct (approximately 196×230 px inside a 280 px-high image link).
+
+Give the placeholder the same responsive height and appropriate width constraints as the photo, including the mobile breakpoint. Add a mixed photo/placeholder mobile layout regression. This issue is introduced by the new fallback CSS, not by Next/Image or the fixture's data.
+
+### Remaining requested checks
+
+- **GlobalSearch, FlashDeals and both ValueSets images:** each `next/image` now sits behind a truthy product-image check. The empty branch renders `CatalogImage` without a `src`. No empty source reached the fixture's guarded Next/Image stand-in, and no missing/empty `src` image appeared in its DOM.
+- **Search layout:** the letter is centered at 24 px in a 68×72 desktop box and a 62×65 mobile box. Accessible snapshots expose the full product name as the image label.
+- **ValueSets:** tested both missing images together, plus each missing-image position paired with a real photo. Both fallbacks remain absolutely positioned through `imageOne` and `imageTwo`, retain the existing ±5-degree rotation, and stay within the image panel. Desktop heights are 210/245 px in a 320 px panel; mobile heights are 160/185 px in a 240 px panel. The 48 px letters fit. The first image keeps `left: 12%; bottom: 32px`, and the second keeps `right: 10%; bottom: 18px`.
+- **Whole storefront audit:** searched all production TSX image call sites. ProductCard, TrendingNow and account reorder cards already guard their product images; drawer, checkout, best-seller and product-page images use CatalogImage. The three previously missed components are now guarded. Other image sources are guarded brand logos or concrete hero/logo/health-goal assets. No remaining unguarded empty-product-image path was found.
+
+### Independent checks and limits
+
+- Storefront `npm test -- --runInBand`: **36 suites, 338/338 passed**.
+- Storefront `npm run lint`: **0 errors, 0 warnings**.
+- Browser checks used the actual changed components and CSS at desktop 1280 px and mobile 390 px widths, with synthetic products, stubbed catalog/auth/navigation dependencies and real loopback image responses. The Next/Image stand-in preserves the native image attributes and rejects empty sources; this does not test Next's optimizer or a full live Next.js page.
+- The mechanical detector reported no findings; direct browser measurement exposed EI-2.
+- No application files, database or catalog data were changed. No fresh backend suite, full live-store browser journey or typecheck was run. Browser fallback fonts were used rather than the full Next/font loading pipeline.
+
+**Approval withheld pending EI-2.**
+
+## Author response, round 2 (Claude)
+
+EI-2 is fixed in be38dcf.
+
+**The fix:**
+- The FlashDeals letter now follows the photo's sizing. The mobile rule sets `.imageLink img, .imageLink [role="img"]` to 150px.
+- The letter also gets the photo's `max-width: 80%`.
+- The placeholder rule now sits before the media query, so the mobile height wins.
+
+**Measured in the browser** on the deals page, with one card without a photo (whey) and one with:
+
+| Width | Card | Image | Image link |
+|---|---|---|---|
+| 390px | without a photo (letter) | 128×150 | 190 |
+| 390px | with a photo | 136×150 | 190 |
+| 1400px | without a photo (letter) | 196×230 | 280 |
+| 1400px | with a photo | 214×230 | 280 |
+
+- Both card bodies start at the same offset (239px) at 390px.
+- The remaining heading offset difference between those two cards comes from the text above the heading in the card body, not from the image.
+
+**Not added: an automated layout regression.** The storefront tests run without a browser and none read CSS, so the mixed photo/letter mobile layout is checked by measurement above.
+
+**Checks:** `npm run check` passes: 338 storefront and 207 backend tests, typecheck, lint 0 errors and 0 warnings.
