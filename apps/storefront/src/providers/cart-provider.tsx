@@ -73,7 +73,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [mutationError, setMutationError] = useState<string | null>(null);
-  const [queue] = useState(cartQueue);
+  const [queue] = useState(cartQueue<Cart>);
 
   // Sync internal state directly from the authoritative Medusa cart
   const syncFromMedusaCart = useCallback((medusaCart: Cart | null) => {
@@ -84,6 +84,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       return;
     }
 
+    queue.confirm(medusaCart);
     setCart(medusaCart);
     setCartIdState(medusaCart.id);
 
@@ -114,7 +115,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         window.localStorage.setItem(CART_ID_KEY, medusaCart.id);
       } catch {}
     }
-  }, []);
+  }, [queue]);
 
   // One load-or-create at a time. React runs effects twice in development, and
   // an add can start before the first load ends; without this each caller
@@ -183,6 +184,21 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   // ─── Optimistic Mutations with Automatic Rollback on Failure ────────────────
 
+  // Sends one change through the queue. A failure shows Medusa's last confirmed
+  // cart (see cart-queue.ts), or the snapshot when there never was one.
+  const sendChange = useCallback(
+    async (task: () => Promise<Cart>, rollback: () => void, failure: string) => {
+      const { show, latest, error } = await queue.run(task);
+      if (show) syncFromMedusaCart(show);
+      else if (error && latest) rollback();
+      if (error === undefined) return true;
+      console.error(failure, error);
+      setMutationError(error instanceof Error ? error.message : failure);
+      return false;
+    },
+    [queue, syncFromMedusaCart],
+  );
+
   const addItem = useCallback(
     async (product: Product, quantity = 1) => {
       openCart();
@@ -209,25 +225,26 @@ export function CartProvider({ children }: { children: ReactNode }) {
         return [...currentItems, { product, quantity }];
       });
 
-      try {
-        const activeCart = await getOrCreateCart();
-        const { result, latest } = await queue(() => addCartItem(activeCart.id, variantOf(product), quantity));
-        if (latest) syncFromMedusaCart(result);
-        return true;
-      } catch (err: unknown) {
-        console.error("Failed to add item to Medusa cart, rolling back:", err);
-        // Rollback to server state
+      const rollback = () => {
         setItems(prevItems);
         setCart(prevCart);
-        setMutationError(
-          err instanceof Error
-            ? err.message
-            : "Failed to add item. Reverting changes.",
-        );
+      };
+      let activeCart: Cart;
+      try {
+        activeCart = await getOrCreateCart();
+      } catch (err: unknown) {
+        console.error("Failed to add item to Medusa cart, rolling back:", err);
+        rollback();
+        setMutationError(err instanceof Error ? err.message : "Failed to add item. Reverting changes.");
         return false;
       }
+      return sendChange(
+        () => addCartItem(activeCart.id, variantOf(product), quantity),
+        rollback,
+        "Failed to add item. Reverting changes.",
+      );
     },
-    [cart, getOrCreateCart, items, openCart, queue, syncFromMedusaCart],
+    [cart, getOrCreateCart, items, openCart, sendChange],
   );
 
   const removeItem = useCallback(
@@ -257,26 +274,14 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
       const lineId = itemToRemove?.id;
       if (cart && lineId) {
-        try {
-          const { result, latest } = await queue(() => removeCartItem(cart.id, lineId));
-          if (latest) syncFromMedusaCart(result);
-        } catch (err: unknown) {
-          console.error(
-            "Failed to remove item from Medusa cart, rolling back:",
-            err,
-          );
-          // Rollback to server state
-          setItems(prevItems);
-          setCart(prevCart);
-          setMutationError(
-            err instanceof Error
-              ? err.message
-              : "Failed to remove item. Reverting changes.",
-          );
-        }
+        await sendChange(
+          () => removeCartItem(cart.id, lineId),
+          () => { setItems(prevItems); setCart(prevCart); },
+          "Failed to remove item. Reverting changes.",
+        );
       }
     },
-    [cart, items, queue, syncFromMedusaCart],
+    [cart, items, sendChange],
   );
 
   const updateQuantity = useCallback(
@@ -315,26 +320,14 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
       const lineId = target?.id;
       if (cart && lineId) {
-        try {
-          const { result, latest } = await queue(() => updateCartItem(cart.id, lineId, quantity));
-          if (latest) syncFromMedusaCart(result);
-        } catch (err: unknown) {
-          console.error(
-            "Failed to update quantity in Medusa cart, rolling back:",
-            err,
-          );
-          // Rollback to server state
-          setItems(prevItems);
-          setCart(prevCart);
-          setMutationError(
-            err instanceof Error
-              ? err.message
-              : "Failed to update quantity. Reverting changes.",
-          );
-        }
+        await sendChange(
+          () => updateCartItem(cart.id, lineId, quantity),
+          () => { setItems(prevItems); setCart(prevCart); },
+          "Failed to update quantity. Reverting changes.",
+        );
       }
     },
-    [cart, items, queue, removeItem, syncFromMedusaCart],
+    [cart, items, removeItem, sendChange],
   );
 
   const applyPromotion = useCallback(
