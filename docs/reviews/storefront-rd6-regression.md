@@ -120,3 +120,9 @@ One existing catalog image was missing from these runtime folders. Only that exa
 Disposable customer/auth identity removed through native services after verifying no orders. Private credential file deleted. Final guest item removed. Existing guest cart retention remains unchanged; no blanket purge.
 
 All RD-6 servers on 3000/3002/9000 stopped and ports confirmed closed. Existing PostgreSQL/Redis left running. Generated Next metadata restored in both checkouts. No deployment, real email/payment, remote push or automatic merge.
+
+## Claude review follow-up — 2026-10-19
+
+Claude `7ec5af8` approved `8cb6f34` with R1 should-fix and minor notes. Author response is in `storefront-rd6-regression-review.md`. Follow-up adds outage noindex/localized title with request-scoped shared loading; preserves products during brand-only failure; shortens the recovery live region; distinguishes category retry; fixes Account repeat-click/outside/Escape focus; and prevents confirmed production search-title loss through shop-only prefetch suppression. The latter avoids a metadata cache symptom without a dependency upgrade and trades away background catalog prefetch.
+
+Latest verification: 346 storefront tests pass; type/lint/final production build pass (15 existing warnings); production route matrix and bilingual recovery/title checks pass. This supersedes the initial 337-test frontend count, not the historical backend test runs. Temporary servers stopped. Claude recheck, Seif manual acceptance and owner merge remain pending; no push or automatic merge.

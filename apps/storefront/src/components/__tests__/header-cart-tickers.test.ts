@@ -334,7 +334,7 @@ it("does not close a hover-opened account on its first pointer click, while keyb
     return [cells[index], (value: unknown) => { cells[index] = typeof value === "function" ? value(cells[index]) : value; }];
   }) as typeof React.useState);
   let tree: React.ReactNode;
-  type Events = { className?: string; children?: React.ReactNode; onMouseEnter?: () => void; onClick?: (event: { detail: number }) => void };
+  type Events = { className?: string; children?: React.ReactNode; onPointerEnter?: (event: { pointerType: string }) => void; onClick?: (event: { detail: number }) => void };
   const find = (node: React.ReactNode, predicate: (props: Events) => boolean): React.ReactElement<Events> | undefined => {
     for (const child of React.Children.toArray(node)) {
       if (!React.isValidElement<Events>(child)) continue;
@@ -346,16 +346,47 @@ it("does not close a hover-opened account on its first pointer click, while keyb
   try {
     renderToStaticMarkup(createElement(() => { tree = Navbar({}); return tree; }));
     const account = find(tree, props => props.className === "account")!;
-    const wrapper = find(tree, props => !!props.onMouseEnter && React.Children.toArray(props.children).some(child => React.isValidElement<Events>(child) && child.props.className === "account"))!;
+    const wrapper = find(tree, props => !!props.onPointerEnter && React.Children.toArray(props.children).some(child => React.isValidElement<Events>(child) && child.props.className === "account"))!;
     const before = [...cells];
-    wrapper.props.onMouseEnter!();
+    wrapper.props.onPointerEnter!({ pointerType: "mouse" });
     const accountIndex = cells.findIndex((value, index) => value === true && before[index] !== true);
     expect(accountIndex).toBeGreaterThanOrEqual(0);
     account.props.onClick!({ detail: 1 });
+    expect(cells[accountIndex]).toBe(true);
+    account.props.onClick!({ detail: 1 });
+    expect(cells[accountIndex]).toBe(false);
+    wrapper.props.onPointerEnter!({ pointerType: "touch" });
+    expect(cells[accountIndex]).toBe(false);
+    account.props.onClick!({ detail: 1 });
+    expect(cells[accountIndex]).toBe(true);
+    account.props.onClick!({ detail: 1 });
+    expect(cells[accountIndex]).toBe(false);
+    account.props.onClick!({ detail: 0 });
     expect(cells[accountIndex]).toBe(true);
     account.props.onClick!({ detail: 0 });
     expect(cells[accountIndex]).toBe(false);
   } finally {
     stateSpy.mockRestore();
   }
+});
+
+it.each(["en", "ar"] as const)("distinguishes category retry from the homepage product retry in %s", locale => {
+  mockLocale = locale;
+  const Status = jest.requireActual("../CategoryStatus").default;
+  const html = renderToStaticMarkup(createElement(Status, { error: true }));
+  expect(html).toContain(message(locale, "catalog.categoryError"));
+  expect(html).toContain(message(locale, "catalog.categoryRetry"));
+  expect(html).not.toContain(message(locale, "catalog.error"));
+});
+
+it.each(["en", "ar"] as const)("avoids stale metadata prefetch for catalog links in %s", locale => {
+  mockLocale = locale;
+  const LocalLink = jest.requireActual("../LocaleLink").default;
+  for (const href of ["/shop", "/shop/vitamin-c?q=whey", "/shop?q=whey", "/shop#results"]) {
+    const link = LocalLink({ href, prefetch: true });
+    expect(link.props.href).toBe("/" + locale + href);
+    expect(link.props.prefetch).toBe(false);
+  }
+  expect(LocalLink({ href: "/account", prefetch: true }).props.prefetch).toBe(true);
+  expect(LocalLink({ href: "/shopping", prefetch: true }).props.prefetch).toBe(true);
 });

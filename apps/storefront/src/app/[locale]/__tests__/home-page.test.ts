@@ -1,6 +1,6 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import Home from "../page";
+import Home, { generateMetadata } from "../page";
 import { getProducts, getBrands } from "@/lib/medusa";
 import { message } from "@/lib/i18n";
 
@@ -36,7 +36,8 @@ it.each(["en", "ar"] as const)("renders a localized recovery page when products 
 it.each(["en", "ar"] as const)("recovers normally after a brand failure in %s", async locale => {
   jest.mocked(getBrands).mockRejectedValueOnce(new Error("brand directory unavailable"));
   const unavailable = await render(locale);
-  expect(unavailable).toContain(message(locale, "catalog.error"));
+  expect(unavailable).not.toContain(message(locale, "catalog.error"));
+  expect(unavailable).toContain("Real product");
   expect(unavailable).not.toContain("Real brand");
   const recovered = await render(locale);
   expect(recovered).not.toContain(message(locale, "catalog.error"));
@@ -49,4 +50,20 @@ it("distinguishes a legitimately empty catalog from a failed request", async () 
   const html = await render("en");
   expect(html).toContain("Healthy home");
   expect(html).not.toContain(message("en", "catalog.error"));
+});
+
+it.each(["en", "ar"] as const)("prevents indexing only on a product outage in %s", async locale => {
+  jest.mocked(getProducts).mockRejectedValueOnce(new Error("unavailable"));
+  expect(await generateMetadata({ params: Promise.resolve({ locale }) })).toEqual({
+    title: `${message(locale, "catalog.error")} | Vi2`,
+    robots: { index: false, follow: true },
+  });
+  expect(await generateMetadata({ params: Promise.resolve({ locale }) })).toEqual({});
+});
+it("limits the recovery live region to the status text", async () => {
+  jest.mocked(getProducts).mockRejectedValueOnce(new Error("unavailable"));
+  const html = await render("en");
+  expect(html).toContain('aria-labelledby="home-recovery-title"');
+  expect(html).toContain('<p role="status">');
+  expect(html).not.toMatch(/<section[^>]*role="status"/);
 });
