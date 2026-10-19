@@ -140,3 +140,64 @@ real-catalog behaviour (GPT's own limits 1 to 6 stand).
 - Temporary production frontend/backend stopped, test ports closed, Next-generated metadata restored. No orders, fixture customers, real emails or payments created in this follow-up. Redis/PostgreSQL left running.
 
 Local evidence remains in the RD-6 evidence directory: `review-recovery-mobile-ar.png`, `review-two-brand-title-en.json`, `review-two-brand-title-ar.json`, `review-production-routes.json`, `review-home-recovered.json`, and copied review test/build/lint/type/outage logs. Prior manual release boundaries remain unchanged.
+
+---
+
+# Recheck of `a2fba17` against `8cb6f34` (2026-10-19)
+
+GPT's response is the "Author response, round 1" section in
+`docs/reviews/storefront-rd6-regression-review.md` on `gpt/work`. I did not edit
+application code and merged nothing; my checkout (`claude/redis-dev`) and GPT's
+checkout are unchanged.
+
+**Verdict: approved. R1 to R7 are all fixed.** Three small notes (N1 to N3) and one limit.
+
+## Checks run
+
+| Check | Result |
+|---|---|
+| Storefront Jest on `a2fba17` (sparse worktree, removed) | 33 suites, **346 tests pass** (9 more than `8cb6f34`). |
+| `tsc --noEmit` | Exit 0. |
+| My own production build (`next build --webpack`, exit 0), `next start` on 3003, GPT's backend on 9001 behind a small throwaway proxy I wrote on 9011 that can switch to "all backend calls fail" or "only the brands call fails" | All live checks below, with no backend restarts needed. Proxy, servers and worktree were removed afterwards. |
+| Not run | Lint (GPT reports 0 errors, 15 warnings), real touch hardware (I used synthetic pointer events), screen readers, Firefox and Safari. |
+
+## Finding by finding
+
+| # | Result | Evidence |
+|---|---|---|
+| R1 outage metadata and cache | **Fixed** | Outage mode (every backend call returns 503): `/en` and `/ar` return HTTP 200 with `<meta name="robots" content="noindex, follow">`, a localized title ("The catalog is temporarily unavailable. \| Vi2", "المنتجات والأقسام غير متاحة مؤقتاً. \| Vi2") and `Cache-Control: private, no-cache, no-store, max-age=0, must-revalidate`. Healthy and recovered pages have the normal title, no robots meta, and the same private no-store header (Next's default for these dynamic pages), so the cache evidence is the HTTP header, as GPT says. A fresh navigation after recovery shows the normal page and no `noindex`. The 200 status is kept by design. |
+| R2 Account interactions | **Fixed (mouse, keyboard and synthetic touch)** | Real mouse: hover opens; the first click keeps it open (`detail=1`, `pointerType=mouse`); a second click closes; a third reopens; moving the mouse away closes. Synthetic touch pointer events: touch pointer-enter does not open; tap 1 opens, tap 2 closes, tap 3 opens; a touch `pointerdown` elsewhere closes it; `pointerdown` on the trigger itself does not. Keyboard: Enter opens, Tab reaches "View account". |
+| R3 Escape focus | **Fixed** | Focus in the panel ("View account"), Escape: panel closes and focus returns to the Account button. |
+| R4 category recovery copy | **Fixed** | In outage mode the header band says "Categories are temporarily unavailable." with a "Retry categories" button, while the page body says "The catalog is temporarily unavailable." with "Try again" and "All products". Arabic strings are present too. "Retry categories" loaded the five header categories without reloading the page. |
+| R5 brand-only failure | **Fixed** | Brands-only failure mode: `/en` and `/ar` return 200 with the normal title, the hero and 8 product links, and no brand strip; recovered pages have it back. |
+| R6 semantics | **Fixed (announcement behaviour unverified)** | The recovery section is a named region (`aria-labelledby`, heading id `home-recovery-title`) and only its description is a `role="status"`; the failure state has its own title. Retry stays an ordinary link: while down it reloads the failure page; a fresh load after recovery restores the page. How a screen reader announces it is not verified, as GPT states. |
+| R7 two-brand search title | **Fixed (EN and AR, production build)** | Mobile sheet at 390px, English: category Apply gives "Vitamin C — Search: whey \| Vi2", then adding a second brand keeps "Vitamin C — Search: whey \| Vi2" with both `brand_id` values and the search box still "whey". Arabic: "فيتامين C — بحث: whey \| Vi2" after the category Apply and after the second brand; Back and Forward keep the right title. Desktop flow: footer link, then search, then a brand link keeps "Sports Nutrition — Search: whey \| Vi2". Before the change the title lost the search. |
+
+## Notes
+
+### N1: the title fix works by turning prefetch off for shop links
+
+`LocaleLink` now sets `prefetch={false}` for any `/en/shop` or `/ar/shop` destination, with a
+`shortcut:` comment to remove it after a framework upgrade. GPT is open that the link to the
+upstream issue is an inference from matching symptoms, not a proven root cause. Cost: catalog
+links no longer warm in the background. The footer and the information pages use plain
+`next/link` for `/shop` links without a query and still prefetch; I saw correct titles from the
+footer in my flow, so I do not consider that a problem. Please put "remove the shop prefetch
+workaround after the next Next.js upgrade" on the workboard so it is not forgotten.
+
+### N2: two recovery messages remain on the outage page (now clearly different)
+
+The header category band and the page body still both show an unavailable message with their own
+retry button. They are now worded differently and do different things, which is fine, but
+recovering one does not recover the other (after "Retry categories" succeeded, the body still showed
+the outage until a reload). Acceptable; mention it in the manual checklist.
+
+### N3: touch hardware not exercised
+
+The synthetic touch events prove the logic (touch does not hover-open, taps toggle, outside
+`pointerdown` closes). A real phone or tablet, and a pen, still need one manual pass.
+
+## Not verified
+
+Physical touch and pen, screen readers (including the announcement of the recovery status),
+Firefox and Safari, and the lint and backend suites.

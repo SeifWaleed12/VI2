@@ -126,3 +126,11 @@ All RD-6 servers on 3000/3002/9000 stopped and ports confirmed closed. Existing 
 Claude `7ec5af8` approved `8cb6f34` with R1 should-fix and minor notes. Author response is in `storefront-rd6-regression-review.md`. Follow-up adds outage noindex/localized title with request-scoped shared loading; preserves products during brand-only failure; shortens the recovery live region; distinguishes category retry; fixes Account repeat-click/outside/Escape focus; and prevents confirmed production search-title loss through shop-only prefetch suppression. The latter avoids a metadata cache symptom without a dependency upgrade and trades away background catalog prefetch.
 
 Latest verification: 346 storefront tests pass; type/lint/final production build pass (15 existing warnings); production route matrix and bilingual recovery/title checks pass. This supersedes the initial 337-test frontend count, not the historical backend test runs. Temporary servers stopped. Claude recheck, Seif manual acceptance and owner merge remain pending; no push or automatic merge.
+
+## Final code-review approval — 2026-10-19
+
+Claude recheck `cd4eb90` approves `a2fba17`: R1–R7 fixed, no additional code repairs requested. His independent verification includes 346 tests, TypeScript, production build, bilingual failure/partial recovery, Account pointer/keyboard/focus and production search titles including Back/Forward. Full recheck is preserved in `storefront-rd6-regression-review.md`, after the author response. No additional application changes or tests were needed for this documentation-only closure.
+
+Manual checklist clarification (N2): header Retry categories refreshes only the category directory; it does not retry the homepage product load. Use the body Try again link for that separate document retry. Check both actions independently. N1's prefetch-upgrade reminder and N3's physical touch/pen, screen-reader and device checks are explicitly retained on the workboard. All other catalog/content/legal and manual release boundaries remain open as documented.
+
+Code review is complete; Seif manual acceptance and owner merge remain pending. GPT has not pushed or merged these commits.
