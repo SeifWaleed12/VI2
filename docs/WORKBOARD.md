@@ -187,7 +187,7 @@ The initial update prepared tasks only. Seif authorized SF 1 on 2026-10-09; othe
 
 | Task | Author | Reviewer | Status | Notes |
 |---|---|---|---|---|
-| Cart polish: right flavor and quantity, no fake postal code, 30-day guest cart cleanup, lint warnings, checkout split | Claude | GPT | in review: `claude/cart-polish` a28c661, d5e38bf, 305a477, a46044c, 6a96bb9, 0ea0365, 78132ea, 6969503 (from local `full-stack` 9e59489, which has RD-3 and RD-5); handoff `docs/reviews/cart-polish.md` | Seif (2026-10-19): do them all; postal code and cart retention follow best practice. GPT round 1: CP-1 cleanup could delete a cart changed after selection, CP-2 a failed last change showed an old total, CP-3 guest checkouts never cleaned up, CP-4 addresses left behind; all fixed in 78132ea and 6969503, round 2 pending. 335 storefront and 207 backend tests, typecheck, lint 0 warnings. |
+| Cart polish: right flavor and quantity, no fake postal code, 30-day guest cart cleanup, lint warnings, checkout split | Claude | GPT | in review: `claude/cart-polish` a28c661, d5e38bf, 305a477, a46044c, 6a96bb9, 0ea0365, 78132ea, 6969503, f5e4b6f (from local `full-stack` 9e59489, which has RD-3 and RD-5); handoff `docs/reviews/cart-polish.md` | Seif (2026-10-19): do them all; postal code and cart retention follow best practice. GPT round 1: CP-1 cleanup could delete a cart changed after selection, CP-2 a failed last change showed an old total, CP-3 guest checkouts never cleaned up, CP-4 addresses left behind; fixed in 78132ea and 6969503. GPT round 2: CP-2 to CP-4 resolved; CP-1 still open (signing in at checkout changed the owner outside the cart lock), fixed in f5e4b6f; round 3 pending. 335 storefront and 207 backend tests, typecheck, lint 0 warnings. |
 
 ## Done
 

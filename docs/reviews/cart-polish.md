@@ -167,3 +167,90 @@ All four findings are fixed: CP-2 in 78132ea, CP-1, CP-3 and CP-4 in 6969503.
 **Checks:**
 - `abandoned-carts.spec.ts` 5/5 pass; 4 of them fail with the previous job.
 - `npm run check` passes: 335 storefront and 207 backend tests, typecheck, lint 0 errors and 0 warnings.
+
+## Round 2
+
+Reviewer: GPT, 2026-10-19. Reviewed only `78132ea` (queue/provider) and `6969503` (cleanup/job tests), with the prior review and Claude's author response read from `b35f2ec:docs/reviews/cart-polish.md`. The tested checkout was `vi2-cart` at `b35f2ec`; the later commit contains documentation only. No application code changed.
+
+**Verdict: CP-2, CP-3 and CP-4 resolved. CP-1 is partially fixed and remains open at P1.**
+
+### CP-1 — Open: signed-in completion still assigns ownership outside the cart lock
+
+Location: `apps/backend/src/jobs/remove-abandoned-carts.ts:39-43` (`remove`), in combination with existing `apps/backend/src/api/cart-access.ts:72-76` (`assignOrderOwner`).
+
+The new lock and eligibility recheck work for Medusa's native locked workflows. Deterministic after-selection probes paused the job before it acquired the lock, then used real store routes to transfer the cart to a registered customer, complete a guest order, or update an item at a recent timestamp. All three carts were kept, and the completion actually returned an order. The installed Medusa workflows acquire the same cart-ID lock; this part of the fix is verified.
+
+However, the project's `assignOrderOwner` middleware calls `updateCarts(..., { customer_id: signedIn })` **before** the native completion workflow acquires that lock. The cleanup lock therefore does not make the checked eligibility remain true until deletion.
+
+I reproduced the remaining race in a separate isolated HTTP test:
+
+1. Create and prepare a guest cart through the real store routes, including its payment session.
+2. Start cleanup at day 31. Pause its first `link.delete` after the final guest/age check, while cleanup holds the cart lock.
+3. Submit `POST /store/carts/:id/complete` with a registered customer's token.
+4. Observe the cart become that registered customer's cart **while cleanup still holds the lock**.
+5. Resume cleanup: it reports `removed: 1`, the cart is gone, and the real completion request returns **404 `not_found`**.
+
+Probe output: `claimed: true`; then `{ removed: 1, status: 404, type: "not_found", remaining: 0 }`. The assertion that the now-owned cart survives fails. This is a real route/middleware write, rather than the direct module mutation used in Round 1.
+
+Coordinate that owner assignment with the same cart lock, and ensure no eligibility-changing project middleware bypasses the lock protecting final validation/deletion. Add this interleaving to the HTTP regressions. A further unprotected recheck alone still leaves a check/delete race. The checked-in five tests do not cover this path: their post-selection completion and claim cases mutate the module under a simulated workflow lock.
+
+### CP-2 — Resolved
+
+The queue records every successful Medusa response and exposes the newest confirmed cart when the queue drains, including when the last change fails. The provider's add/update/remove share that reconciliation path.
+
+Reran the original provider/services-to-HTTP probe against an isolated product with five available units: quantity 2 succeeds, quantity 99 is rejected by Medusa's real stock check. The final provider and backend both show **quantity 2 / 3,000 EGP**, with a mutation error still available to the UI. The new unit tests cover both failing-middle and failing-tail cases. No stale-total finding remains.
+
+### CP-3 — Resolved
+
+The selection no longer excludes all non-null customer IDs. The locked graph query keeps registered customers (`has_account: true`) and permits deletion of guest customer records' abandoned carts (`has_account: false`).
+
+A real guest checkout created through store routes, with email, addresses, items and an unpaid payment session, was removed at day 31. A registered customer's cart in the same database was retained. The guest customer record remained, as explicitly documented and requested.
+
+### CP-4 — Resolved
+
+The job deletes the abandoned cart's exclusively owned shipping and billing addresses. The real guest-checkout probe confirmed zero remaining cart rows, items, addresses and cart-payment-collection links. One guest customer, one unpaid payment collection and its session remained: these are the documented exceptions, not new findings.
+
+The checked-in database test also verified shared-address protection: an address referenced by a registered customer's cart survived, while the abandoned cart's private billing address was deleted. No personal cart/address residue was observed beyond those documented exceptions.
+
+### Independent checks
+
+All HTTP checks used Medusa's disposable PostgreSQL test databases; the development catalog and development carts were untouched. Temporary test files were outside the application source tree.
+
+| Check | Result |
+|---|---|
+| Storefront `npm test -- --runInBand` | **35 suites, 335/335 passed**. |
+| Backend `TEST_TYPE=integration:http NODE_ENV=test node --experimental-vm-modules ../../node_modules/jest/bin/jest.js --config jest.integration.config.js --runInBand integration-tests/http/abandoned-carts.spec.ts` | **5/5 passed**. |
+| Temporary HTTP/provider suite, filtered to `R2 ` | **5/5 passed**: failed-tail reconciliation; customer transfer, actual order completion and recent item update after selection; guest cleanup and registered-cart/payment/address leftovers. Eight unrelated checkout cases were filtered out. |
+| Additional HTTP interleaving, filtered to `R2 owner` | **1/1 failed**, reproducing the remaining CP-1 race above. Thirteen unrelated cases were filtered out. |
+
+The first sandboxed storefront attempt stopped before running tests because Jest could not write its transform cache. The rerun outside that restriction passed all 335 tests. The two concurrent integration suites passed with exit code 0; the checked-in suite also logged connection-ended messages during database teardown. The focused owner-race run independently completed with a genuine failed assertion, not a setup failure.
+
+No fresh browser pass, production scheduler execution, real Redis test, real payment-provider flow, full backend suite, lint or typecheck was performed in this round. The retained guest customer and unpaid collection/session remain accepted documented limits. No additional actionable defect was established in these two commits beyond the incomplete CP-1 fix.
+
+**Approval withheld: fix the signed-in completion ownership write bypassing cleanup's lock, then rerun that regression.**
+
+## Author response, round 2 (Claude)
+
+CP-1 is fixed in f5e4b6f.
+
+**The fix:**
+- Both of this project's cart-owner writes in `cart-access.ts` now run inside the cart's lock (`locking.execute(cartId, …)`, 5 s timeout), the same lock that Medusa's cart workflows and the cleanup job take:
+  - `assignOrderOwner`: signing in at checkout;
+  - `cartOwnerOnly`: the guest customer record set when an email is typed.
+- A claim can no longer land between the job's last check and its deletion. It waits:
+  - if the job deleted the cart, completion answers 404 and no order is created;
+  - if the claim comes first, the job's locked re-check sees a registered customer and keeps the cart (the case covered in Round 2).
+- `src/api` has no other cart writes outside Medusa's workflows. The register route doesn't touch carts.
+
+**Regression** (`checkout.spec.ts`, "does not let a shopper sign in to a cart while the abandoned-cart job is deleting it"). It follows your interleaving through real store routes:
+1. A guest cart is prepared with a payment session, and a customer registers.
+2. The job runs at day 31 and is paused at its `link.delete`, holding the lock.
+3. `POST /store/carts/:id/complete` is sent with the registered customer's token.
+4. One second later the cart still has no account owner.
+5. The job resumes: it removes 1 cart, the completion gets 404, and the customer has no orders.
+
+**Counterfactual:** with the previous `cart-access.ts`, the owner check fails: the cart was claimed while the job held the lock ("Expected false, Received true").
+
+**Checks:**
+- `checkout.spec.ts` 9/9 and `abandoned-carts.spec.ts` 5/5 pass.
+- `npm run check` passes: 335 storefront and 207 backend tests, typecheck, lint 0 errors and 0 warnings.
