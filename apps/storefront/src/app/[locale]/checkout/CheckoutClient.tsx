@@ -170,6 +170,7 @@ export default function CheckoutClient() {
   const deliveryCard = deliveryStatus(cartId, cartLoading, shippingLoad, shippingOptions.length);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- loads delivery options when the cart is known
     if (cartId) loadShippingOptions(cartId);
   }, [cartId, loadShippingOptions]);
 
@@ -285,6 +286,7 @@ export default function CheckoutClient() {
   useEffect(() => {
     try {
       const pendingId = window.sessionStorage.getItem(`vi2-pending-checkout:${buyNowSlug || "cart"}`);
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- browser storage exists only after hydration
       if (pendingId) { setRecovering(true); setStep(2); }
     } catch { /* recovery storage unavailable */ }
     // Sign-out removes the pending checkout; stop offering to resume it.
@@ -681,6 +683,7 @@ export default function CheckoutClient() {
                         styles.mobileImage
                       }
                     >
+                      {/* eslint-disable-next-line @next/next/no-img-element -- catalog images come from any configured host */}
                       <img
                         src={
                           item.product.image
@@ -1522,6 +1525,7 @@ export default function CheckoutClient() {
                             styles.orderImage
                           }
                         >
+                          {/* eslint-disable-next-line @next/next/no-img-element -- catalog images come from any configured host */}
                           <img
                             src={
                               item.product.image

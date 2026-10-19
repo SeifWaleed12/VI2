@@ -62,6 +62,7 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
 
   // Initial load + listen for auth change events across the application
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- loads the signed-in customer on mount
     refreshCustomer();
 
     const handleAuthChange = () => {

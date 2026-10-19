@@ -143,7 +143,7 @@ export default function ProductDetailClient({
   );
   const choices = options.filter((option) => option.values.length > 1);
   const fixedOptions = options.filter((option) => option.values.length === 1);
-  const variants: ProductVariant[] = product.variants ?? [];
+  const variants: ProductVariant[] = useMemo(() => product.variants ?? [], [product.variants]);
 
   const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>(() =>
     Object.fromEntries(options.map((option) => [option.title, option.values[0] ?? ""])),

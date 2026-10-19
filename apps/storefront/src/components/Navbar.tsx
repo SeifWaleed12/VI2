@@ -61,7 +61,11 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
     catch { setDirectory({ roots: [], error: true }); }
     finally { setLoadingCategories(false); }
   }
-  useEffect(() => { setDirectory(initialDirectory); }, [initialDirectory]);
+  const [shownDirectory, setShownDirectory] = useState(initialDirectory);
+  if (shownDirectory !== initialDirectory) {
+    setShownDirectory(initialDirectory);
+    setDirectory(initialDirectory);
+  }
   useEffect(() => {
     const header = headerRef.current;
     if (!header) return;
@@ -151,14 +155,18 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
     return () => { document.body.style.overflow = previous; };
   }, [overlayOpen]);
 
-  useEffect(() => {
-    if (!isCartOpen) return;
-    setMenuOpen(false);
-    setMobilePanel(null);
-    setSearchOpen(false);
-    setMegaOpen(null);
-    setAccountOpen(false);
-  }, [isCartOpen]);
+  // Opening the cart closes every other panel (checked during render, not in an effect).
+  const [cartWasOpen, setCartWasOpen] = useState(isCartOpen);
+  if (isCartOpen !== cartWasOpen) {
+    setCartWasOpen(isCartOpen);
+    if (isCartOpen) {
+      setMenuOpen(false);
+      setMobilePanel(null);
+      setSearchOpen(false);
+      setMegaOpen(null);
+      setAccountOpen(false);
+    }
+  }
 
 
   useEffect(() => {
@@ -1015,7 +1023,6 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
 
       <MobileBottomNav
         hidden={menuOpen}
-        onOpenSearch={openSearch}
       />
     </>
   );

@@ -122,6 +122,7 @@ export default function CartDrawer() {
                     className="cart-item-image"
                     onClick={closeCart}
                   >
+                    {/* eslint-disable-next-line @next/next/no-img-element -- catalog images come from any configured host */}
                     <img
                       src={item.product.image}
                       alt={
