@@ -254,3 +254,48 @@ CP-1 is fixed in f5e4b6f.
 **Checks:**
 - `checkout.spec.ts` 9/9 and `abandoned-carts.spec.ts` 5/5 pass.
 - `npm run check` passes: 335 storefront and 207 backend tests, typecheck, lint 0 errors and 0 warnings.
+
+## Round 3
+
+Reviewer: GPT, 2026-10-19. Reviewed **only `f5e4b6f`**, after reading Round 2 and "Author response, round 2 (Claude)" from `e75cabb:docs/reviews/cart-polish.md`. Tests used `vi2-cart` at `e75cabb` (the latter commit is documentation only). No application code changed.
+
+**Verdict: CP-1 resolved. CP-2 through CP-4 remain resolved. No new actionable findings.**
+
+### Lock interleavings
+
+- **Cleanup first, signed-in completion:** paused the real job at `link.delete`, after its final eligibility check and while it held the cart-ID lock. Sent a signed-in `POST /store/carts/:id/complete` and waited until its middleware reached `locking.execute`. The cart still belonged to its guest customer while deletion was paused. After releasing the job, one cart was deleted, completion returned **404**, and both the customer's order history and the order module contained **zero orders**. The Round 2 ownership-write bypass no longer reproduces.
+- **Cleanup first, email entry:** repeated the same pause with `POST /store/carts/:id` setting a different guest email. The guest-customer write reached the lock but did not change the cart's customer while cleanup held it. After deletion, the update returned **404**, with no cart or order left. Creating the guest customer record before taking the lock is not a cart mutation and remains within the documented guest-record retention exception.
+- **Sign-in first:** allowed `assignOrderOwner` to acquire the cart lock and assign the registered customer, then held that lock while starting cleanup. Cleanup reached the competing lock acquisition. After release, it rechecked eligibility, removed **zero carts**, and retained the cart; signed-in completion returned **200 with an order**, present in that customer's history.
+
+These additional probes synchronize on the actual lock/deletion boundaries rather than relying solely on the checked-in regression's one-second delay. The new checked-in HTTP regression also passed.
+
+### Project cart-write audit
+
+Searched production `apps/backend/src` for cart-module resolution, cart references, direct cart/line-item creation, update and deletion, `customer_id`, and `completed_at` writes. The only project writes affecting these cart eligibility fields are:
+
+- `cartOwnerOnly`'s guest customer assignment, now under `withCartLock` (`cart-access.ts:60`).
+- `assignOrderOwner`'s signed-in customer assignment, now under the same helper (`cart-access.ts:83`).
+- The cleanup job's cart deletion, already under its cart-ID `locking.execute`.
+
+No other production project code directly changes cart ownership, completion or items outside Medusa's locked workflows. Registration creates customers/authentication data and does not mutate carts. Both middleware locks are released before `next()` invokes Medusa's native workflow, so these changes do not hold an outer lock while requesting the native cart lock again.
+
+### Ordinary requests and checks
+
+- `checkout.spec.ts`: **9/9 passed**, including ordinary guest checkout, signed-in order ownership/history, owner access restrictions, and the new cleanup interleaving.
+- `abandoned-carts.spec.ts`: **5/5 passed**.
+- Additional synchronized HTTP/timing probes: **4/4 passed**. Combined run: **3 suites, 18 passed, 9 intentionally filtered/skipped** in 189.483 s, exit code 0. The skipped cases are duplicate original checkout cases in the temporary probe fixture, not omitted cases in the nine-test checkout suite.
+- Focused uncontended lock timing: **1/1 passed**. Lock acquisition waits were 0–1 ms across six calls; three email updates took 341, 297 and 229 ms, and signed-in completion took 640 ms.
+
+The five-second setting is an acquisition timeout, not an unconditional delay. Ordinary email updates and signed-in order completion succeeded; the measured uncontended acquisitions confirm no five-second wait was introduced. These local timings are not a production performance benchmark.
+
+For isolation and explicit cleanup, copied the two checked-in suites into temporary files with absolute imports and unique test database names; their assertions were unchanged. Ran from `apps/backend` with privately loaded `DB_HOST`, `DB_PORT`, `DB_USERNAME` and `DB_PASSWORD`, `TEST_TYPE=integration:http`, `NODE_ENV=test`, and external email disabled:
+
+```text
+node --experimental-vm-modules ../../node_modules/jest/bin/jest.js --config jest.integration.config.js --runInBand --roots <backend> <temporary-root> --runTestsByPath <temporary-checkout.spec.ts> <temporary-abandoned-carts.spec.ts> <temporary-probes.spec.ts>
+```
+
+The focused timing rerun added `--testNamePattern "R3 uncontended"`. Medusa's runner removed the test databases and templates; an independent catalog check confirmed **zero remaining** databases for this review's exact names after each run. Temporary review fixtures were removed. The development database/catalog was not changed. The combined run logged connection-ended messages during disposable-database restores/teardown, but all assertions passed and the process exited successfully.
+
+No fresh browser, real Redis, real payment-provider, full unit-suite, lint or typecheck run was performed: this commit changes only backend cart-owner locking and its HTTP regression. Previously documented guest-customer and unpaid-payment retention exceptions remain unchanged.
+
+**No open problems.**
