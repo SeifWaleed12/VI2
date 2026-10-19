@@ -508,11 +508,9 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
                 className={styles.account}
                 aria-expanded={accountOpen}
                 aria-haspopup="dialog"
-                onClick={() => {
+                onClick={(event) => {
                   setMegaOpen(null);
-                  setAccountOpen(
-                    (current) => !current,
-                  );
+                  setAccountOpen((current) => event.detail === 0 ? !current : true);
                 }}
               >
                 <UserRound

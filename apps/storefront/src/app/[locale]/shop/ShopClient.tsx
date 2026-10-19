@@ -90,7 +90,10 @@ export default function ShopClient(props: ShopProps) {
       ...changes,
     });
     startTransition(() =>
-      router.push(shopHref(selection.handle, next), { scroll: false }),
+      router.push(
+        shopHref(selection.handle, next) + (selection.handle !== handle ? "#shop-results" : ""),
+        { scroll: selection.handle !== handle },
+      ),
     );
   }
   function search(event: FormEvent<HTMLFormElement>) {

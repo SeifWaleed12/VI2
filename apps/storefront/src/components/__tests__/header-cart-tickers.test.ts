@@ -1,3 +1,11 @@
+import * as React from "react";
+jest.mock("react", () => ({
+  ...jest.requireActual("react"),
+  __esModule: true,
+  useState: jest.fn((...args: unknown[]) => jest.requireActual("react").useState(...args)),
+  useTransition: jest.fn(() => jest.requireActual("react").useTransition()),
+}));
+
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import Navbar from "../Navbar";
@@ -316,4 +324,38 @@ it.each(["en", "ar"] as const)("publishes no removed shop filters in %s navigati
     for (const key of ["goal", "form", "diet", "allergen", "rating", "sort", "availability"]) expect(query.has(key)).toBe(false);
   }
   expect(html).not.toContain('setMobilePanel("health")');
+});
+
+it("does not close a hover-opened account on its first pointer click, while keyboard activation still toggles", () => {
+  const cells: unknown[] = [];
+  const stateSpy = jest.spyOn(React, "useState").mockImplementation(((initial?: unknown) => {
+    const index = cells.length;
+    cells.push(typeof initial === "function" ? initial() : initial);
+    return [cells[index], (value: unknown) => { cells[index] = typeof value === "function" ? value(cells[index]) : value; }];
+  }) as typeof React.useState);
+  let tree: React.ReactNode;
+  type Events = { className?: string; children?: React.ReactNode; onMouseEnter?: () => void; onClick?: (event: { detail: number }) => void };
+  const find = (node: React.ReactNode, predicate: (props: Events) => boolean): React.ReactElement<Events> | undefined => {
+    for (const child of React.Children.toArray(node)) {
+      if (!React.isValidElement<Events>(child)) continue;
+      if (predicate(child.props)) return child;
+      const found = find(child.props.children, predicate);
+      if (found) return found;
+    }
+  };
+  try {
+    renderToStaticMarkup(createElement(() => { tree = Navbar({}); return tree; }));
+    const account = find(tree, props => props.className === "account")!;
+    const wrapper = find(tree, props => !!props.onMouseEnter && React.Children.toArray(props.children).some(child => React.isValidElement<Events>(child) && child.props.className === "account"))!;
+    const before = [...cells];
+    wrapper.props.onMouseEnter!();
+    const accountIndex = cells.findIndex((value, index) => value === true && before[index] !== true);
+    expect(accountIndex).toBeGreaterThanOrEqual(0);
+    account.props.onClick!({ detail: 1 });
+    expect(cells[accountIndex]).toBe(true);
+    account.props.onClick!({ detail: 0 });
+    expect(cells[accountIndex]).toBe(false);
+  } finally {
+    stateSpy.mockRestore();
+  }
 });

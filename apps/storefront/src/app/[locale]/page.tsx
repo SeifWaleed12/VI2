@@ -1,5 +1,6 @@
 import { LegacyTranslations } from "@/context/LanguageContext";
-import { isLocale } from "@/lib/i18n";
+import { isLocale, message } from "@/lib/i18n";
+import styles from "./HomeRecovery.module.css";
 import BrandUniverse from "@/components/BrandUniverse";
 import HomeBestSellers from "@/components/HomeBestSellers";
 import HomeDiscovery from "@/components/HomeDiscovery";
@@ -11,7 +12,25 @@ import { getProducts, getBrands } from "@/lib/medusa";
 export default async function Home({ params }: { params: Promise<{ locale: string }> }) {
   const { locale: requested } = await params;
   const locale = isLocale(requested) ? requested : "en";
-  const [products, brands] = await Promise.all([getProducts({locale}), getBrands()]);
+  let products: Awaited<ReturnType<typeof getProducts>>;
+  let brands: Awaited<ReturnType<typeof getBrands>>;
+  try {
+    [products, brands] = await Promise.all([getProducts({ locale }), getBrands()]);
+  } catch {
+    return (
+      <main>
+        <section className={styles.catalogUnavailable} data-no-translate role="status">
+          <h1>{message(locale, "catalog.error")}</h1>
+          <p>{message(locale, "home.catalogErrorDescription")}</p>
+          <div className={styles.catalogRecoveryActions}>
+            {/* A document navigation retries the server request, including on this same URL. */}
+            <a href={`/${locale}`}>{message(locale, "catalog.retry")}</a>
+            <a href={`/${locale}/shop`}>{message(locale, "catalog.all")}</a>
+          </div>
+        </section>
+      </main>
+    );
+  }
 
   return (
     <LegacyTranslations><main>
