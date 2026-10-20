@@ -13,9 +13,10 @@ type Key = Parameters<typeof accountMessage>[1];
 const KIND: Record<Points["history"][number]["kind"], Key> = { earn: "pointsEarn", refund: "pointsRefund", expire: "pointsExpired" };
 const number = (value: number, locale: Locale) => new Intl.NumberFormat(locale === "ar" ? "ar-EG" : "en-EG").format(value);
 
-// The signed-in customer's Vi2 Points; null while loading, false on failure.
+// The signed-in customer's Vi2 Points: null while loading, false on failure,
+// "signed-out" once sign-in has settled without a customer.
 export function usePoints(attempt = 0) {
-  const { customer, isAuthenticated } = useAuth();
+  const { customer, isAuthenticated, isLoading } = useAuth();
   const customerId = isAuthenticated ? customer?.id : undefined;
   const [loaded, setLoaded] = useState<{ owner: string; attempt: number; points: Points | false } | null>(null);
   useEffect(() => {
@@ -28,6 +29,7 @@ export function usePoints(attempt = 0) {
       active = false;
     };
   }, [customerId, attempt]);
+  if (!customerId) return isLoading ? null : "signed-out";
   return loaded && loaded.owner === customerId && loaded.attempt === attempt ? loaded.points : null;
 }
 
@@ -37,6 +39,8 @@ export default function AccountPoints({ locale }: { locale: Locale }) {
   const [attempt, setAttempt] = useState(0);
   const points = usePoints(attempt);
   const msg = (key: Key) => accountMessage(locale, key);
+  // The account shell shows the sign-in notice.
+  if (points === "signed-out") return null;
   if (points === null) return <p className={styles.notice} role="status">{msg("pointsLoading")}</p>;
   if (points === false)
     return (

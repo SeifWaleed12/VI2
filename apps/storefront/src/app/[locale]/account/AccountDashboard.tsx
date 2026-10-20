@@ -63,7 +63,9 @@ export default function AccountDashboard({ locale }: { locale: Locale }) {
           <div>
             <h2 id="account-points-summary">{msg("points")}</h2>
             <p>
-              {points ? (
+              {points === "signed-out" ? (
+                msg("pointsDescription")
+              ) : points ? (
                 <bdi>{formatPoints(points.balance, locale)}</bdi>
               ) : (
                 msg(points === null ? "pointsLoading" : "pointsError")
