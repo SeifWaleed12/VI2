@@ -2,6 +2,8 @@ import { medusaIntegrationTestRunner } from "@medusajs/test-utils"
 import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
 import { createProductsWorkflow } from "@medusajs/medusa/core-flows"
 import { setupEgyptStore } from "../../src/scripts/setup-egypt-store"
+import orderReceivedEmail, { ORDER_FIELDS } from "../../src/subscribers/order-received-email"
+import { orderReceivedContent, type ReceivedOrder } from "../../src/lib/order-received-email"
 import { removeAbandonedCarts } from "../../src/jobs/remove-abandoned-carts"
 
 jest.setTimeout(240 * 1000)
@@ -77,6 +79,49 @@ medusaIntegrationTestRunner({
         expect(order).toEqual(expect.objectContaining({ email: "sara@test.dev", currency_code: "egp", item_total: 3000, shipping_total: 70, tax_total: 0, total: 3070 }))
         expect(order.shipping_address).toEqual(expect.objectContaining({ city: "Cairo", country_code: "eg" }))
         expect(await stockLevel()).toEqual(expect.objectContaining({ stocked_quantity: 5, reserved_quantity: 2 }))
+      })
+
+      // The email is sent by a subscriber after the order is placed.
+      async function orderEmails(orderId: string) {
+        const notifications = getContainer().resolve(Modules.NOTIFICATION)
+        let sent: Awaited<ReturnType<typeof notifications.listNotifications>> = []
+        for (let i = 0; i < 50 && !(sent.length && sent.every((n) => n.status !== "pending")); i++) {
+          sent = await notifications.listNotifications({ template: "order-received", resource_id: orderId }, { order: { created_at: "ASC" } })
+          if (!sent.length || sent.some((n) => n.status === "pending")) await new Promise((resolve) => setTimeout(resolve, 100))
+        }
+        return sent
+      }
+
+      it("emails the shopper that the order was received, once", async () => {
+        const completed = await checkout((await cartWith(1)).cartId)
+        expect(completed.data.type).toBe("order")
+        const sent = await orderEmails(completed.data.order.id)
+        expect(sent).toEqual([expect.objectContaining({ to: "sara@test.dev", channel: "email", resource_id: completed.data.order.id, status: "success" })])
+        // Medusa does not store the email body; order-received-email.unit.spec.ts checks it.
+        // Build the email from the real order with the subscriber's own fields:
+        // Medusa returns totals only when they can be computed.
+        const { data: [order] } = await getContainer().resolve(ContainerRegistrationKeys.QUERY).graph({ entity: "order", fields: ORDER_FIELDS, filters: { id: completed.data.order.id } })
+        const { text } = orderReceivedContent(order as unknown as ReceivedOrder)
+        for (const part of ["1 × Whey - 1kg: 1,500 EGP", "Subtotal / المجموع: 1,500 EGP", "Delivery / التوصيل: 70 EGP", "Total / الإجمالي: 1,570 EGP", "Tahrir Square, Cairo"]) {
+          expect(text).toContain(part)
+        }
+      })
+
+      it("sends the order email on a retry after a failed send, and only once", async () => {
+        // The real notification module and provider; only the first send fails.
+        const providers = (getContainer().resolve(Modules.NOTIFICATION) as unknown as { notificationProviderService_: { send: () => Promise<unknown> } }).notificationProviderService_
+        const send = jest.spyOn(providers, "send").mockRejectedValueOnce(new Error("Resend is down"))
+        try {
+          const orderId = (await checkout((await cartWith(1)).cartId)).data.order.id
+          expect(await orderEmails(orderId)).toEqual([expect.objectContaining({ status: "failure" })])
+          // What the Redis event bus does on a retry: run the subscriber again.
+          const retry = () => orderReceivedEmail({ event: { name: "order.placed", data: { id: orderId } }, container: getContainer() } as never)
+          await retry()
+          await retry()
+          expect(await orderEmails(orderId)).toEqual([expect.objectContaining({ status: "failure" }), expect.objectContaining({ status: "success", to: "sara@test.dev" })])
+        } finally {
+          send.mockRestore()
+        }
       })
 
       it("does not let a cart hold more than the warehouse has", async () => {
