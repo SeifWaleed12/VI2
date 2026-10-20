@@ -17,6 +17,9 @@ export function removedCategoryPath(path: string) {
   return /^\/(?:en\/|ar\/)?categories(?:\/|$)/.test(path);
 }
 const en = {
+  "catalog.categoryError": "Categories are temporarily unavailable.",
+  "catalog.categoryRetry": "Retry categories",
+  "home.catalogErrorDescription": "Product and brand information could not be loaded. Try again, or browse the shop.",
   "footer.home": "Vi2 home",
   "footer.statement": "Live well, live fully.",
   "footer.description": "Supplements, wellness and sports nutrition. Explore the collection and choose what fits your everyday routine.",
@@ -124,6 +127,9 @@ const en = {
 } as const;
 type MessageKey = keyof typeof en;
 const ar: Record<MessageKey, string> = {
+  "catalog.categoryError": "الأقسام غير متاحة مؤقتاً.",
+  "catalog.categoryRetry": "إعادة تحميل الأقسام",
+  "home.catalogErrorDescription": "تعذّر تحميل معلومات المنتجات والعلامات التجارية. حاول مرة أخرى أو تصفح المتجر.",
   "footer.home": "الصفحة الرئيسية لـVi2",
   "footer.statement": "عيش بصحة، عيش حياتك.",
   "footer.description": "مكملات غذائية ومنتجات للعافية والتغذية الرياضية. استكشف المجموعة واختر ما يناسب روتينك اليومي.",

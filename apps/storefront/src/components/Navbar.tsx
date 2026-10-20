@@ -52,6 +52,9 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
   const headerRef = useRef<HTMLDivElement>(null);
   const drawerRef = useRef<HTMLElement>(null);
   const focusMenuOnOpen = useRef(false);
+  const accountWrapRef = useRef<HTMLDivElement>(null);
+  const accountTriggerRef = useRef<HTMLButtonElement>(null);
+  const accountOpenedByHover = useRef(false);
   const searchTriggerRef = useRef<HTMLButtonElement>(null);
   const mobilePanelBackRef = useRef<HTMLButtonElement>(null);
   const mobilePanelOpenerRef = useRef<HTMLButtonElement | null>(null);
@@ -112,6 +115,18 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
 
   const [accountOpen, setAccountOpen] =
     useState(false);
+
+  useEffect(() => {
+    if (!accountOpen) return;
+    function dismissOutside(event: PointerEvent) {
+      if (event.target instanceof Node && !accountWrapRef.current?.contains(event.target)) {
+        accountOpenedByHover.current = false;
+        setAccountOpen(false);
+      }
+    }
+    document.addEventListener("pointerdown", dismissOutside);
+    return () => document.removeEventListener("pointerdown", dismissOutside);
+  }, [accountOpen]);
 
   const { customer, isAuthenticated, isLoading, signOut } = useAuth();
   const displayName = customer
@@ -209,6 +224,10 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
       if (document.getElementById("desktop-category-menu")?.contains(document.activeElement)) {
         headerRef.current?.querySelector<HTMLButtonElement>('[aria-controls="desktop-category-menu"][aria-expanded="true"]')?.focus();
       }
+      if (accountWrapRef.current?.contains(document.activeElement)) {
+        accountTriggerRef.current?.focus({ preventScroll: true });
+      }
+      accountOpenedByHover.current = false;
       setMenuOpen(false);
       setSearchOpen(false);
       setMegaOpen(null);
@@ -503,24 +522,30 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
 
             <div
               className={styles.accountWrap}
-              onMouseEnter={() => {
+              ref={accountWrapRef}
+              onPointerEnter={(event) => {
+                if (event.pointerType !== "mouse" || accountOpen) return;
                 setMegaOpen(null);
+                accountOpenedByHover.current = true;
                 setAccountOpen(true);
               }}
-              onMouseLeave={() =>
-                setAccountOpen(false)
-              }
+              onPointerLeave={(event) => {
+                if (event.pointerType !== "mouse") return;
+                accountOpenedByHover.current = false;
+                setAccountOpen(false);
+              }}
             >
               <button
                 type="button"
                 className={styles.account}
+                ref={accountTriggerRef}
                 aria-expanded={accountOpen}
                 aria-haspopup="dialog"
-                onClick={() => {
+                onClick={(event) => {
                   setMegaOpen(null);
-                  setAccountOpen(
-                    (current) => !current,
-                  );
+                  const pinHover = event.detail > 0 && accountOpenedByHover.current;
+                  accountOpenedByHover.current = false;
+                  setAccountOpen((current) => pinHover || !current);
                 }}
               >
                 <UserRound

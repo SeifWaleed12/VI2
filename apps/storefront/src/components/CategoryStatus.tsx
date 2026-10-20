@@ -20,13 +20,13 @@ export default function CategoryStatus({
           loading
             ? "catalog.loading"
             : error
-              ? "catalog.error"
+              ? "catalog.categoryError"
               : "catalog.empty",
         )}
       </p>
       {error && (
         <button type="button" onClick={retryAction} disabled={loading}>
-          {msg("catalog.retry")}
+          {msg("catalog.categoryRetry")}
         </button>
       )}
     </div>
