@@ -183,11 +183,13 @@ The initial update prepared tasks only. Seif authorized SF 1 on 2026-10-09; othe
 | Incomplete storefront tasks from `mvp-remaining-work.md` are assigned to GPT on `gpt/work`, with Claude reviewing. GPT prepares the board and returns to Seif for approval before implementation. Other task ownership stays as assigned. | 2026-10-09 |
 | Managers keep full shop access, including price and publish (reconfirmed against RD v1.1 2.2). Only the EDA number and approval are product fields; other facts go in the description. Odoo matching uses SKU and barcode until one is chosen. Brands come with the catalog import, so no brand box for now. | 2026-10-17 |
 | Email goes through Resend (free plan first: 3,000 a month, 100 a day; Pro USD 20 a month when needed). The account and sending domain belong to the client. | 2026-10-18 |
+| Account page backend: email change only through a link sent to the new address; saved addresses now (Egypt only); Vi2 Points at 1 point per EGP of products after discounts, earned on delivery, removed on returns, balance expiring 12 months after the last earning, never below zero; spending (free-shipping offers) later. Rules P-1 to P-15 in `docs/reviews/account-page-backend.md`. | 2026-10-20 |
 
 ## In review
 
 | Task | Author | Reviewer | Status | Notes |
 |---|---|---|---|---|
+| Account page backend: saved addresses, email change, Vi2 Points | Claude | GPT | in review: `account-page-backend` 68af466, e141ddc, 039879a; handoff and frontend contract `docs/reviews/account-page-backend.md` | Backend for GPT's `account-page`. One new table (`points_entry`, run `npx medusa db:migrate` after merge). 232 backend unit tests, account HTTP tests 7/7, typecheck, lint 0. |
 | Cart polish: right flavor and quantity, no fake postal code, 30-day guest cart cleanup, lint warnings, checkout split | Claude | GPT | in review: `claude/cart-polish` a28c661, d5e38bf, 305a477, a46044c, 6a96bb9, 0ea0365, 78132ea, 6969503, f5e4b6f (from local `full-stack` 9e59489, which has RD-3 and RD-5); handoff `docs/reviews/cart-polish.md` | Seif (2026-10-19): do them all; postal code and cart retention follow best practice. GPT round 1: CP-1 cleanup could delete a cart changed after selection, CP-2 a failed last change showed an old total, CP-3 guest checkouts never cleaned up, CP-4 addresses left behind; fixed in 78132ea and 6969503. GPT round 2: CP-2 to CP-4 resolved; CP-1 still open (signing in at checkout changed the owner outside the cart lock), fixed in f5e4b6f. GPT round 3 (2026-10-19): approved, no open findings; waiting for Seif to merge. 335 storefront and 207 backend tests, typecheck, lint 0 warnings. |
 
 ## Done
