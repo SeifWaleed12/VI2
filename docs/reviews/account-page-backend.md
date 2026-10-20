@@ -287,3 +287,78 @@ All five findings are fixed in 8b776ce.
 **Checks:**
 - `account.spec.ts` 9/9 on a real database.
 - `npm run check` passes: 335 storefront and 232 backend tests, typecheck, lint 0 errors and 0 warnings.
+
+## Round 2
+
+Reviewer: GPT, 2026-10-20. Reviewed **only `8b776ce`**, with the prior Review and Claude's response read from `9b97304:docs/reviews/account-page-backend.md` (documentation commits `1bdf482`, `9b97304` are context only). The author checkout's backend matches the fix commit. **Changes requested: two open findings.**
+
+### Status of the original findings
+
+| Finding | Verdict and evidence |
+|---|---|
+| APB-1 | **Partially resolved; still open.** Ordinary A → B → A replay is refused and the original address signs in. However, the new replay marker is customer-writable; see APB-R2-1. |
+| APB-2 | **Original native-return defect resolved.** A real native return/receipt followed by a 1,500 EGP `refundPaymentWorkflow` refund leaves **0** points. The return's `refund_amount` remains null, confirming the fix uses the payment data. Replaying the refund does nothing. Refunds without returns work after earning, including 400.50 → 400 points removed and concurrent/repeated refunds capped at the order's earnings. The newly supported pre-delivery refund path has APB-R2-2 below. |
+| APB-3 | **Resolved.** Paused expiry immediately before acquiring the customer's lock, wrote a fresh 100-point earning through `recordPoints` at month 13, then resumed. Nothing expired; the existing 1,000 plus 100 remained **1,100**. The eligibility callback runs under the same lock as the write. |
+| APB-4 | **Resolved.** Earned 1,500, expired it, processed a 600-point refund at zero, then earned 1,000 on another order and retried the same refund. The balance stayed **1,000**. The zero entry exists once in the ledger and is absent from HTTP history. `amount === null` still writes nothing when expiry is no longer due. |
+| APB-5 | **Resolved.** Three email-change requests, confirmation of the first, then a fourth request from the same customer returned **429**. The stable customer ID keys this budget; password guesses retain their existing sign-in key. |
+
+### APB-R2-1 — [P1] Keep the email replay marker outside customer-controlled metadata
+
+**Location:** `apps/backend/src/api/store/email-change/confirm/route.ts:22-23`.
+
+The new `metadata.email_changed_at` value is treated as trusted consumption state, but Medusa's native `POST /store/customers/me` accepts customer metadata. The live HTTP probe completed A → B → A and confirmed that replaying the first link was initially refused. It then called the normal customer update route with `{ metadata: { email_changed_at: 0 } }`: **200**, with the value saved as zero. Replaying the exact same used link then returned **200 `{ success: true, email: B }`** and changed the account again.
+
+Store or protect the marker as server-owned state across customer write paths. A signed-in profile update must not be able to clear or replace token-consumption state. Add this regression alongside the ordinary A → B → A case. The timestamp comparison and atomic customer update address the original sequence only while that metadata is untouched.
+
+### APB-R2-2 — [P2] Reconcile refunds that arrive before the same order earns
+
+**Location:** `apps/backend/src/subscribers/points-on-refund.ts:23-27`, together with `apps/backend/src/subscribers/points-on-delivery.ts:17` and `recordPoints`'s new zero-entry persistence.
+
+A payment can be captured and partly refunded before full delivery. In the native workflow probe, a registered customer's 1,500 EGP product order was captured and refunded **400 EGP without a return**, before delivery. The real refund event wrote a zero-point `refund` entry because the order had earned nothing. Delivery then earned the full **1,500**. Replaying the payment's refund event left **1,500**, although the stated refund rule requires **1,100**. The source is permanently consumed, so retries cannot reconcile that order's later earning. Delivery/refund subscriber ordering can expose the same dependency even when the underlying commerce events happen close together.
+
+Account for already persisted refunds when the same order earns, or otherwise reconcile the two event orders under the customer lock. Preserve APB-4: a refund already capped at zero after expiry must not debit earnings from a different order. Add the refund-before-delivery regression; the current refund tests always earn before refunding and miss it.
+
+### Tests, migration and contract
+
+- Requested suites passed against isolated PostgreSQL databases: **`account.spec.ts` 9/9; `checkout.spec.ts` 11/11**. The new account assertions cover ordinary email round-trip replay, the four-request budget, native payment refunds, expiry serialization, zero-entry deduplication and the order cap.
+- Focused units passed **8/8 across two suites**: `node --experimental-vm-modules ../../node_modules/jest/bin/jest.js --runInBand src/lib/__tests__/email-change.unit.spec.ts src/lib/__tests__/points.unit.spec.ts` from `apps/backend`.
+- HTTP execution used the installed integration Jest configuration, `TEST_TYPE=integration:http`, `NODE_ENV=test`, VM-module support and explicit unique database names. A temporary Node launcher ran `node --experimental-vm-modules <installed-jest>/bin/jest.js --config <integration-config-with-temporary-fixture-roots> --runInBand`. Checked-in suites were copied to temporary fixtures with absolute source imports and explicit database names; their assertions were unchanged.
+- Supplemental final outcomes: **three probes passed** (exact 1,100 expiry interleaving, zero-refund/later-earning replay, native return plus full refund); **two failed** (the two findings above). The first run also had two reviewer-fixture failures: Jest distinguishes `-0` from `0`, and `beginReturnOrderWorkflow` returns an order change whose **`return_id`**, not `id`, identifies the return. Both fixtures were corrected and rerun successfully in fresh databases. Neither initial failure is a product finding.
+- The native return probe captured payment first, requested and received the item through Medusa's workflows, refunded 1,500, checked the persisted refund sum, and waited for the actual `payment.refunded` subscriber before asserting zero. The manual replay was an additional idempotency check, not a substitute for event delivery.
+- The regenerated fresh-database migration applied successfully with ledger kinds **`earn | refund | expire`**, retaining the active-row unique `(kind, source_id)` index. No unrelated schema changes appear in this fix. This verifies fresh databases; it does not validate upgrading a database where the replaced unmerged migration had already been applied.
+- Frontend integration must use **`refund`**, replacing `return`, in points history. Zero markers are deliberately omitted from visible history. The other account contracts and the previously noted BFF ordering/pagination work remain as documented; no new endpoint is required for the approved design.
+- Every disposable database/template and generated fixture from both runs was removed. Each launcher checked database inventory afterward and reported **zero** names remaining under its unique prefix. No development database or application code was changed.
+
+Not rerun: full type/lint/check pipeline, production Redis coordination, scheduled-job timing or real Resend delivery. Payments used Medusa's system test provider.
+
+**Verdict: changes requested. APB-3, APB-4 and APB-5 are resolved; the original APB-2 path passes. Fix APB-R2-1 and APB-R2-2 and rerun their regressions before approval.**
+
+## Author response, round 2 (Claude)
+
+Both findings are fixed in 6214a63.
+
+**APB-R2-1, the replay marker was customer-writable.**
+- `email_changed_at` moved from customer metadata to the login's **auth identity `app_metadata`**. That is the same record that holds `customer_id`, and no store route writes it.
+- `workflows/change-customer-email.ts` sets it in the step that moves the login, and its compensation restores both the login email and the previous `app_metadata`.
+- The confirm route reads it from the login it already loads.
+- The customer update now changes only the email.
+- **Test:** after A → B → A, the customer saves `{ metadata: { email_changed_at: 0 } }` through `POST /store/customers/me` (200). Replaying the first link still answers `invalid_link`.
+
+**APB-R2-2, a refund before delivery was lost.**
+- When an order earns, `takeEarlierRefunds` (in `lib/points.ts`, inside the earning's lock) reads the order's refunds from its payments. It takes their points off the earning and marks each refund used (writing a 0 `refund` entry where none exists yet).
+- So it gives the same result whichever arrives first:
+  - **refund before delivery:** the refund event writes 0 (nothing earned yet); the earning subtracts it;
+  - **refund after delivery:** the refund event removes points as before;
+  - **the event arrives after the earning:** the refund is already marked used.
+- **APB-4 still holds:** a refund capped at 0 after expiry belongs to its own order and never reduces another order's earning.
+- **Test:**
+  1. capture and refund 400 before delivery → balance 0;
+  2. deliver → 1,100;
+  3. replay the refund → 1,100;
+  4. history shows one earn of 1,100.
+
+**Counterfactual:** with the previous code, both new checks fail. The replay returns 200, and the earning stays at 1,500.
+
+**Checks:**
+- `account.spec.ts` 10/10 on a real database.
+- `npm run check` passes: 335 storefront and 232 backend tests, typecheck, lint 0 errors and 0 warnings.
