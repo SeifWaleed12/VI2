@@ -93,7 +93,7 @@ All routes need the publishable key header. "Signed in" means the customer's bea
 | `POST /store/customers/me/addresses` | signed in, Medusa address fields + `country_code: "eg"`, optional `address_name`, `is_default_shipping` | `{ customer }` with `addresses` | 400 (non-Egypt or invalid) |
 | `POST /store/customers/me/addresses/:id` | signed in, fields to change | `{ customer }` | 400, 404 |
 | `DELETE /store/customers/me/addresses/:id` | signed in | `{ id, object, deleted }` | 404 |
-| `GET /store/customers/me/points` | signed in | `{ points: { balance, pending, expires_at (ISO or null), history: [{ id, kind: "earn"\|"return"\|"expire", points, order_id (null for expire), created_at }] } }` | 401 |
+| `GET /store/customers/me/points` | signed in | `{ points: { balance, pending, expires_at (ISO or null), history: [{ id, kind: "earn"\|"refund"\|"expire", points, order_id (null for expire), created_at }] } }` | 401 |
 | `GET /store/orders`, `/store/orders/:id` | signed in | Medusa native, own orders only | 401, 404 |
 
 **The storefront needs a new page `/[locale]/account/confirm-email`:**
