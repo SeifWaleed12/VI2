@@ -53,7 +53,7 @@
           "comment": null,
           "enumItems": [
             "earn",
-            "return",
+            "refund",
             "expire"
           ],
           "mappedType": "enum"

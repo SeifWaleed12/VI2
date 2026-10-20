@@ -6,7 +6,7 @@ const now = Date.UTC(2026, 9, 20, 12)
 
 it("verifies its own link token within an hour", () => {
   const token = signEmailChange(change, secret, now)
-  expect(verifyEmailChange(token, secret, now + 59 * 60 * 1000)).toEqual(change)
+  expect(verifyEmailChange(token, secret, now + 59 * 60 * 1000)).toEqual({ ...change, issued_at: now })
 })
 
 it("refuses an expired, tampered, foreign or malformed token", () => {

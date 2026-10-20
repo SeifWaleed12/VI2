@@ -14,7 +14,7 @@ export default async function pointsOnDelivery({ event, container }: SubscriberA
     if (!orderId) return
     const { data: [order] } = await query.graph({ entity: "order", fields: POINTS_ORDER_FIELDS, filters: { id: orderId } })
     if (!earnsPoints(order as never)) return
-    await recordPoints(container, { customer_id: order.customer_id as string, kind: "earn", points: pointsFor(order.item_total), source_id: order.id })
+    await recordPoints(container, { customer_id: order.customer_id as string, kind: "earn", source_id: order.id }, () => pointsFor(order.item_total))
   } catch (error) {
     container.resolve(ContainerRegistrationKeys.LOGGER).error(`Vi2 Points for delivery ${event.data.id} failed: ${(error as Error).message}`)
     throw error

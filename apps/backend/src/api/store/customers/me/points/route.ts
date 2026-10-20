@@ -1,6 +1,6 @@
 import type { AuthenticatedMedusaRequest, MedusaResponse } from "@medusajs/framework/http"
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
-import { ACTIVITY_KINDS, expiresAt, isFullyDelivered, POINTS_ORDER_FIELDS, pointsFor } from "../../../../../lib/points"
+import { isFullyDelivered, POINTS_ORDER_FIELDS, pointsFor, summarize } from "../../../../../lib/points"
 import { LOYALTY_MODULE } from "../../../../../modules/loyalty"
 import type LoyaltyModuleService from "../../../../../modules/loyalty/service"
 
@@ -12,8 +12,7 @@ export async function GET(req: AuthenticatedMedusaRequest, res: MedusaResponse) 
   const customerId = req.auth_context.actor_id
   const entries = await req.scope.resolve<LoyaltyModuleService>(LOYALTY_MODULE)
     .listPointsEntries({ customer_id: customerId }, { order: { created_at: "DESC" } })
-  const balance = entries.reduce((sum, entry) => sum + entry.points, 0)
-  const lastActivity = entries.find((entry) => ACTIVITY_KINDS.includes(entry.kind))?.created_at
+  const { balance, expiresAt } = summarize(entries)
   // P-6: placed orders that are not delivered (or canceled) yet show as pending.
   const earned = new Set(entries.filter((entry) => entry.kind === "earn").map((entry) => entry.source_id))
   const { data: orders } = await req.scope.resolve(ContainerRegistrationKeys.QUERY)
@@ -25,8 +24,9 @@ export async function GET(req: AuthenticatedMedusaRequest, res: MedusaResponse) 
     points: {
       balance,
       pending,
-      expires_at: balance > 0 && lastActivity ? expiresAt(lastActivity).toISOString() : null,
-      history: entries.slice(0, HISTORY_SIZE).map((entry) => ({
+      expires_at: expiresAt?.toISOString() ?? null,
+      // Entries capped to 0 only mark an event as used; they are not shown.
+      history: entries.filter((entry) => entry.points !== 0).slice(0, HISTORY_SIZE).map((entry) => ({
         id: entry.id,
         kind: entry.kind,
         points: entry.points,

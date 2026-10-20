@@ -2,23 +2,25 @@ import { createHmac, timingSafeEqual } from "node:crypto"
 import { absoluteBase, escapeHtml } from "./email-html"
 
 export type EmailChange = { customer_id: string, from: string, to: string }
+// When the link was made (ms); a link older than the customer's last email
+// change is refused, so a used link never works again (see the confirm route).
+export type VerifiedEmailChange = EmailChange & { issued_at: number }
 
 const PURPOSE = "email-change"
 export const EMAIL_CHANGE_LINK_MINUTES = 60
 
-// The link token is signed with the server's JWT secret and expires; nothing is
-// stored. It works once: after the change the customer's email no longer equals
-// `from`, so the same link is refused.
+// The link token is signed with the server's JWT secret and expires within an
+// hour; the token itself is not stored.
 const signature = (payload: string, secret: string) =>
   createHmac("sha256", `${PURPOSE}:${secret}`).update(payload).digest("base64url")
 
 export function signEmailChange(change: EmailChange, secret: string, now = Date.now()): string {
   const exp = Math.floor(now / 1000) + EMAIL_CHANGE_LINK_MINUTES * 60
-  const payload = Buffer.from(JSON.stringify({ purpose: PURPOSE, exp, ...change })).toString("base64url")
+  const payload = Buffer.from(JSON.stringify({ purpose: PURPOSE, exp, iat: now, ...change })).toString("base64url")
   return `${payload}.${signature(payload, secret)}`
 }
 
-export function verifyEmailChange(token: unknown, secret: string, now = Date.now()): EmailChange | null {
+export function verifyEmailChange(token: unknown, secret: string, now = Date.now()): VerifiedEmailChange | null {
   if (typeof token !== "string") return null
   const [payload, given, extra] = token.split(".")
   if (!payload || !given || extra !== undefined) return null
@@ -27,9 +29,9 @@ export function verifyEmailChange(token: unknown, secret: string, now = Date.now
   if (expected.length !== actual.length || !timingSafeEqual(expected, actual)) return null
   try {
     const data = JSON.parse(Buffer.from(payload, "base64url").toString("utf8"))
-    if (data.purpose !== PURPOSE || typeof data.exp !== "number" || data.exp * 1000 <= now) return null
+    if (data.purpose !== PURPOSE || typeof data.exp !== "number" || typeof data.iat !== "number" || data.exp * 1000 <= now) return null
     if (![data.customer_id, data.from, data.to].every((value) => typeof value === "string" && value)) return null
-    return { customer_id: data.customer_id, from: data.from, to: data.to }
+    return { customer_id: data.customer_id, from: data.from, to: data.to, issued_at: data.iat }
   } catch {
     return null
   }

@@ -8,7 +8,7 @@ import type LoyaltyModuleService from "../modules/loyalty/service"
 export const POINTS_PER_EGP = 1
 export const EXPIRE_AFTER_MONTHS = 12
 
-export type PointsKind = "earn" | "return" | "expire"
+export type PointsKind = "earn" | "refund" | "expire"
 // What restarts the 12-month expiry clock (P-7). Spending joins it later.
 export const ACTIVITY_KINDS: PointsKind[] = ["earn"]
 
@@ -41,37 +41,59 @@ export function expiresAt(lastActivity: Date | string) {
 // P-9: a removal stops at a zero balance (and at any other limit given).
 export const cappedRemoval = (wanted: number, ...limits: number[]) => Math.max(0, Math.min(wanted, ...limits))
 
-const loyalty = (container: MedusaContainer) => container.resolve<LoyaltyModuleService>(LOYALTY_MODULE)
+type Entry = { kind: PointsKind, points: number, created_at: Date | string }
 
-export async function balanceOf(container: MedusaContainer, customerId: string) {
-  const entries = await loyalty(container).listPointsEntries({ customer_id: customerId }, { select: ["points"] })
-  return entries.reduce((sum, entry) => sum + entry.points, 0)
+// P-7, P-13: the balance is the sum of the history; the expiry clock runs from
+// the last earning.
+export function summarize(entries: Entry[]) {
+  let balance = 0
+  let lastActivity: Date | null = null
+  for (const entry of entries) {
+    balance += entry.points
+    const at = new Date(entry.created_at)
+    if (ACTIVITY_KINDS.includes(entry.kind) && (!lastActivity || at > lastActivity)) lastActivity = at
+  }
+  return { balance, lastActivity, expiresAt: balance > 0 && lastActivity ? expiresAt(lastActivity) : null }
 }
 
-// Points the order still holds: earned on delivery minus what its returns removed (P-8).
+const loyalty = (container: MedusaContainer) => container.resolve<LoyaltyModuleService>(LOYALTY_MODULE)
+
+export async function customerPoints(container: MedusaContainer, customerId: string) {
+  return summarize(await loyalty(container).listPointsEntries({ customer_id: customerId }, { select: ["kind", "points", "created_at"] }))
+}
+
+// Points the order still holds: earned on delivery minus what its refunds removed (P-8).
 export async function orderPointsLeft(container: MedusaContainer, orderId: string) {
   const entries = await loyalty(container).listPointsEntries(
-    { $or: [{ kind: "earn", source_id: orderId }, { kind: "return", source_id: { $like: `${orderId}/%` } }] },
+    { $or: [{ kind: "earn", source_id: orderId }, { kind: "refund", source_id: { $like: `${orderId}/%` } }] },
     { select: ["points"] },
   )
   return entries.reduce((sum, entry) => sum + entry.points, 0)
 }
 
-type NewEntry = { customer_id: string, kind: PointsKind, points: number, source_id: string }
+type Source = { customer_id: string, kind: PointsKind, source_id: string }
 
-// Every change goes through here (P-9 to P-11): one change per customer at a
-// time; a repeated (kind, source) is ignored; a removal stops at a zero
-// balance and at `limit`, read under the same lock. Returns the points written.
-export async function recordPoints(container: MedusaContainer, entry: NewEntry, limit?: () => Promise<number>) {
-  return container.resolve(Modules.LOCKING).execute(`points:${entry.customer_id}`, async () => {
+// Every change goes through here (P-9 to P-11). Under the customer's lock:
+// a source already recorded is ignored; `amount` is worked out (null = not due,
+// nothing written); a removal stops at a zero balance and at `limit`. The entry
+// is written even when capped to 0, so a retried event stays used up (P-10).
+// Returns the points written.
+export async function recordPoints(
+  container: MedusaContainer,
+  source: Source,
+  amount: () => Promise<number | null> | number | null,
+  limit?: () => Promise<number>,
+) {
+  return container.resolve(Modules.LOCKING).execute(`points:${source.customer_id}`, async () => {
     const service = loyalty(container)
-    if ((await service.listPointsEntries({ kind: entry.kind, source_id: entry.source_id }, { select: ["id"] })).length) return 0
-    let points = entry.points
+    if ((await service.listPointsEntries({ kind: source.kind, source_id: source.source_id }, { select: ["id"] })).length) return 0
+    let points = await amount()
+    if (points === null) return 0
     if (points < 0) {
-      points = -cappedRemoval(-points, await balanceOf(container, entry.customer_id), limit ? await limit() : Infinity)
+      const { balance } = await customerPoints(container, source.customer_id)
+      points = -cappedRemoval(-points, balance, limit ? await limit() : Infinity)
     }
-    if (points === 0) return 0
-    await service.createPointsEntries({ ...entry, points })
+    await service.createPointsEntries({ ...source, points })
     return points
   }, { timeout: 10 })
 }

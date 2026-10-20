@@ -21,7 +21,8 @@ export async function POST(req: AuthenticatedMedusaRequest, res: MedusaResponse)
   if (next === current) return res.status(400).json({ code: "same_email", message: "This is already your email." })
 
   const requests = attemptLimiterFrom(req.scope, EMAIL_CHANGE_POLICY)
-  if (!await requests.reserve(attemptKey("email-change-requests", "customer", current))) return tooManyAttempts(res, EMAIL_CHANGE_POLICY)
+  // Counted per customer, not per email, so changing the email does not reset it.
+  if (!await requests.reserve(attemptKey("email-change-requests", "customer", customer.id))) return tooManyAttempts(res, EMAIL_CHANGE_POLICY)
   // The password check is a password guess, so it uses the sign-in budget.
   const logins = attemptLimiterFrom(req.scope, LOGIN_POLICY)
   const loginKey = attemptKey("login-attempts", "customer", current)
