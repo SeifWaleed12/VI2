@@ -14,6 +14,8 @@ import { useLanguage } from "@/context/LanguageContext";
 import { accountMessage } from "@/lib/account-copy";
 import { message, type Locale } from "@/lib/i18n";
 import ChangePasswordSection from "./ChangePasswordSection";
+import AccountAddresses from "./AccountAddresses";
+import { EmailChangeForm, ProfileForm } from "./AccountForms";
 import styles from "./Account.module.css";
 
 type Field = "name" | "email" | "phone" | "password";
@@ -85,60 +87,10 @@ export default function AccountInformation({ locale }: { locale: Locale }) {
             <div className={styles.editor} id={"edit-" + field}>
               {field === "password" ? (
                 <ChangePasswordSection locale={locale} />
+              ) : field === "email" ? (
+                <EmailChangeForm locale={locale} />
               ) : (
-                <form
-                  className={styles.form}
-                  key={customer.id + field}
-                  onSubmit={(event) => event.preventDefault()}
-                >
-                  {field === "name" ? (
-                    <>
-                      <label>
-                        {msg("firstName")}
-                        <input
-                          autoFocus
-                          autoComplete="given-name"
-                          defaultValue={customer.firstName}
-                          maxLength={255}
-                        />
-                      </label>
-                      <label>
-                        {msg("lastName")}
-                        <input
-                          autoComplete="family-name"
-                          defaultValue={customer.lastName}
-                          maxLength={255}
-                        />
-                      </label>
-                    </>
-                  ) : (
-                    <label>
-                      {msg(field)}
-                      <input
-                        autoFocus
-                        type={field === "email" ? "email" : "tel"}
-                        autoComplete={field === "email" ? "email" : "tel"}
-                        dir="ltr"
-                        defaultValue={
-                          field === "email"
-                            ? customer.email
-                            : customer.phone || ""
-                        }
-                        maxLength={255}
-                      />
-                    </label>
-                  )}
-                  <p className={styles.notice} id={"unavailable-" + field}>
-                    {msg("updatesUnavailable")}
-                  </p>
-                  <button
-                    className={styles.darkButton}
-                    disabled
-                    aria-describedby={"unavailable-" + field}
-                  >
-                    {msg("save")}
-                  </button>
-                </form>
+                <ProfileForm key={customer.id + field} field={field} locale={locale} />
               )}
               <button
                 type="button"
@@ -151,6 +103,7 @@ export default function AccountInformation({ locale }: { locale: Locale }) {
           )}
         </section>
       ))}
+      <AccountAddresses locale={locale} />
       <section className={styles.informationRow}>
         <div className={styles.rowSummary}>
           <Globe size={22} strokeWidth={1.5} aria-hidden="true" />

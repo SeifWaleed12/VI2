@@ -8,7 +8,8 @@ export async function GET(request: NextRequest) {
   if (!token) return expiredSession();
   const limit = request.nextUrl.searchParams.get("limit") || "20";
   if (!/^\d+$/.test(limit) || Number(limit) < 1 || Number(limit) > 100) return authError("Invalid order limit.", 400);
-  const params = new URLSearchParams({ limit, fields: ORDER_FIELDS });
+  // Newest first; Medusa does not sort store orders by default.
+  const params = new URLSearchParams({ limit, order: "-created_at", fields: ORDER_FIELDS });
   try {
     const backend = await fetch(`${BACKEND_URL}/store/orders?${params}`, {
       headers: { Authorization: `Bearer ${token}`, "x-publishable-api-key": PUBLISHABLE_KEY },

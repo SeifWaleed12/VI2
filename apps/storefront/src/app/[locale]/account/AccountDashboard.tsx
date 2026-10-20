@@ -6,6 +6,7 @@ import { useAuth } from "@/context/AuthContext";
 import { ACCOUNT_ROUTES } from "@/lib/account-navigation";
 import { accountMessage } from "@/lib/account-copy";
 import type { Locale } from "@/lib/i18n";
+import { formatPoints, usePoints } from "./AccountPoints";
 import styles from "./Account.module.css";
 
 const tasks = [
@@ -20,6 +21,7 @@ const tasks = [
 
 export default function AccountDashboard({ locale }: { locale: Locale }) {
   const { customer, isAuthenticated } = useAuth();
+  const points = usePoints();
   const msg = (key: Parameters<typeof accountMessage>[1]) =>
     accountMessage(locale, key);
   const name =
@@ -60,7 +62,13 @@ export default function AccountDashboard({ locale }: { locale: Locale }) {
           <Star size={38} strokeWidth={1.5} aria-hidden="true" />
           <div>
             <h2 id="account-points-summary">{msg("points")}</h2>
-            <p>{msg("pointsUnavailable")}</p>
+            <p>
+              {points ? (
+                <bdi>{formatPoints(points.balance, locale)}</bdi>
+              ) : (
+                msg(points === null ? "pointsLoading" : "pointsError")
+              )}
+            </p>
           </div>
         </section>
       </div>
