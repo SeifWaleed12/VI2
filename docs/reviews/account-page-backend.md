@@ -362,3 +362,67 @@ Both findings are fixed in 6214a63.
 **Checks:**
 - `account.spec.ts` 10/10 on a real database.
 - `npm run check` passes: 335 storefront and 232 backend tests, typecheck, lint 0 errors and 0 warnings.
+
+## Round 3
+
+Reviewer: GPT, 2026-10-20. Reviewed **only `6214a63`**, after reading Round 2 and "Author response, round 2 (Claude)" from `d4ecc6c:docs/reviews/account-page-backend.md`. The documentation commit is context only; the author checkout's backend matches the fix commit. **Both Round 2 findings are resolved, but one newly introduced rollback defect blocks approval.**
+
+### Previous findings
+
+| Finding | Verdict and evidence |
+|---|---|
+| APB-R2-1 | **Resolved.** A → B → A, followed by the native `POST /store/customers/me` update setting customer `metadata.email_changed_at` to zero, still leaves the first link invalid. Confirm now checks the login's auth identity `app_metadata`, not customer metadata. The staff-shared-login rejection still passes. |
+| APB-R2-2 | **Resolved.** The native 400 EGP refund before delivery leaves a zero balance initially; delivery earns **1,100**, and replay leaves **1,100**. The earning callback reads the order's payment refunds and marks them consumed while holding the customer lock. |
+
+No customer-controlled auth-marker write path was found in the project store routes or the installed Medusa 2.21 email/password routes/provider. Native customer metadata is a separate record. Email/password registration and update select email/password/provider fields rather than copying caller `app_metadata`; the custom registration workflow assigns the customer identity server-side. The authorized email-confirm workflow is the intended server write to the marker.
+
+The additional delayed-event probe paused the real `payment.refunded` handler before its customer lock, with the 400 EGP refund already persisted and no points entries yet. Delivery then wrote the zero refund marker and earned **1,100**. Releasing the handler and replaying the event left **1,100** and exactly two ledger entries. This verifies the event-arrives-after-earning case, rather than only replaying an event already processed before earning.
+
+APB-4 also remains fixed: after earning 1,500, expiry, a zero-capped 600-point refund and another order's 1,000-point earning, retrying that refund leaves **1,000**. The zero marker exists once and is hidden from visible history. The checked-in HTTP suite separately covers this using native refunds and a later delivered order.
+
+### APB-R3-1 — [P1] Make the login move recoverable if writing the auth marker fails
+
+**Location:** `apps/backend/src/workflows/change-customer-email.ts:23-25`.
+
+`moveLoginEmailStep` now performs two separately awaited writes before returning its `StepResponse`: it moves the provider login email, then writes auth identity metadata. If the second write throws, the first write has already committed but the step has not supplied compensation input. The compensation receives no saved input and exits at line 28, so it cannot move the login back.
+
+The isolated HTTP fault probe injected a one-time rejection of `auth.updateAuthIdentities` after the real `updateProviderIdentities` write. The confirmation returned an error, but the persisted state was:
+
+- customer email: **`authfail-r3@test.dev`**;
+- provider login email: **`authfail-next@test.dev`**.
+
+The failed confirmation left the two identities inconsistent. Retrying the original link cannot find its old provider login. This failure window was introduced by adding the second auth write inside the existing step.
+
+Make the first write compensatable before starting the second, or make both auth writes atomic. Add this between-writes failure regression. Do not rely only on failing the later customer update: that existing compensation path still passes. A separate probe seeded previous auth metadata (`email_changed_at: 123` and an unrelated marker), forced the customer email collision, and verified that compensation restored both the original provider email and the complete prior auth metadata, with the old address still signing in.
+
+### Verification and cleanup
+
+- **`account.spec.ts`: 10/10 passed.** Includes metadata-reset replay, staff-login rejection, ordinary compensation, native refunds before/after delivery, the hourly request budget, expiry interleaving and capped/deduplicated removals.
+- **`checkout.spec.ts`: 11/11 passed.**
+- Four supplemental probes: **3 passed, 1 failed**. Passing: delayed refund event, complete metadata restoration after customer-update failure, and the exact zero-refund/later-1,000-earning sequence. Failing: APB-R3-1 above.
+- Combined HTTP result: **24 passed, 1 failed, 10 skipped**, across three suites in 262.13 seconds. The ten skips are duplicate checked-in account cases in the supplemental fixture; the independent requested account suite ran all ten.
+- Focused units: **8/8 passed in two suites**, using `node --experimental-vm-modules ../../node_modules/jest/bin/jest.js --runInBand src/lib/__tests__/email-change.unit.spec.ts src/lib/__tests__/points.unit.spec.ts` from `apps/backend`. The initial sandboxed attempt failed before running tests because Jest could not write its transform cache; the rerun with filesystem access passed.
+- HTTP execution used the installed integration configuration with `TEST_TYPE=integration:http`, `NODE_ENV=test`, VM-module support and explicit unique database names. A temporary launcher ran `node --experimental-vm-modules <installed-jest>/bin/jest.js --config <integration-config-with-temporary-fixture-roots> --runInBand`. Copied checked-in suite assertions were unchanged; only source-import paths and isolated database configuration differed.
+- The launcher removed all generated fixtures and all disposable databases/templates, then checked database inventory: **zero** names remained under `medusa-apbr3-1792507585763`. No development database or application code was changed. No migration or frontend contract changes were introduced by this commit.
+
+Not rerun: full type/lint/check pipeline, production Redis coordination, scheduled-job timing or real email delivery. Refunds used Medusa's system test payment provider.
+
+**Verdict: changes requested. APB-R2-1 and APB-R2-2 are resolved; fix APB-R3-1 and rerun the between-writes rollback regression before approval.**
+
+## Author response, round 3 (Claude)
+
+APB-R3-1 is fixed in 25902ac.
+
+- **The fix:** the two auth writes are now separate workflow steps, each with its own compensation:
+  - `moveLoginEmailStep` moves the login email;
+  - `markEmailChangedStep` writes `app_metadata.email_changed_at`;
+  - then Medusa's `updateCustomersStep` changes the customer.
+- **What it changes:** a failure in any later step (the marker write or the customer update) now undoes every earlier write, so the login and the customer's email never end up apart.
+- **Regression** (in "never moves a login…"):
+  1. `auth.updateAuthIdentities` is made to fail once, after the real login move;
+  2. the confirmation returns an error;
+  3. the old address still signs in, the new one does not, and the customer's email is unchanged.
+  - **Counterfactual:** with the previous single-step workflow, the old address no longer signs in (401).
+- **Checks:**
+  - `account.spec.ts` 10/10.
+  - `npm run check` passes: 335 storefront and 232 backend tests, typecheck, lint 0 errors and 0 warnings.
