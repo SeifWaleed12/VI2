@@ -658,3 +658,38 @@
     transition: background-color 0.15s ease-out;
   }
 }
+
+/* Account form fields: rule under the field, then its error (same red as checkout). */
+.field {
+  display: grid;
+  gap: 8px;
+  font-size: 1rem;
+}
+.form select {
+  width: 100%;
+  min-height: 48px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+}
+.form input[aria-invalid="true"],
+.form select[aria-invalid="true"] {
+  border-color: #9d3e2e;
+  outline-color: #9d3e2e;
+}
+.fieldHint {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.875rem;
+}
+.fieldError {
+  margin: 0;
+  color: #9d3e2e;
+  font-size: 0.875rem;
+  line-height: 1.4;
+}
+.optional {
+  color: var(--text-muted);
+}

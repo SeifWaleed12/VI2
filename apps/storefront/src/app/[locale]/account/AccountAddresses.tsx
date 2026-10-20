@@ -3,16 +3,17 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { MapPin } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
-import { accountMessage } from "@/lib/account-copy";
+import { accountMessage, type AccountKey } from "@/lib/account-copy";
+import { addressErrors, type AddressField, type Errors } from "@/lib/account-validation";
 import type { Locale } from "@/lib/i18n";
 import { deleteAddress, listAddresses, saveAddress, type SavedAddress } from "@/lib/medusa";
-import { isValidEgyptPhone, normalizeEgyptPhone } from "@/app/[locale]/checkout/checkout-details";
+import { normalizeEgyptPhone } from "@/app/[locale]/checkout/checkout-details";
+import { AccountField, focusFirstError } from "./AccountField";
 import GovernorateSelect, { governorateLabel } from "./GovernorateSelect";
 import styles from "./Account.module.css";
 
-type Key = Parameters<typeof accountMessage>[1];
-type Notice = { key: Key; ok: boolean } | null;
-const text = (data: FormData, name: string) => String(data.get(name) ?? "").trim();
+type Notice = { key: AccountKey; ok: boolean } | null;
+const FIELDS: readonly AddressField[] = ["address_name", "name", "phone", "governorate", "area", "street"];
 
 // Saved delivery addresses (Egypt only). Fields match checkout: the
 // governorate is the city, the area is address_2, the street address_1.
@@ -24,7 +25,8 @@ export default function AccountAddresses({ locale }: { locale: Locale }) {
   const [editing, setEditing] = useState<SavedAddress | "new" | null>(null);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<Notice>(null);
-  const msg = (key: Key) => accountMessage(locale, key);
+  const [errors, setErrors] = useState<Errors<AddressField>>({});
+  const msg = (key: AccountKey) => accountMessage(locale, key);
 
   useEffect(() => {
     if (!customerId) return;
@@ -40,26 +42,33 @@ export default function AccountAddresses({ locale }: { locale: Locale }) {
   if (!customerId) return null;
   const ready = loaded && loaded.owner === customerId && loaded.attempt === attempt;
 
+  function open(address: SavedAddress | "new") {
+    setNotice(null);
+    setErrors({});
+    setEditing(address);
+  }
+
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (busy || !editing) return;
-    const data = new FormData(event.currentTarget);
-    const [firstName, ...rest] = text(data, "name").split(/\s+/);
-    const phone = normalizeEgyptPhone(text(data, "phone"));
-    const address = {
-      address_name: text(data, "address_name") || null,
+    const form = event.currentTarget;
+    const data = new FormData(form);
+    const values = Object.fromEntries(FIELDS.map((field) => [field, String(data.get(field) ?? "")])) as Record<AddressField, string>;
+    const found = addressErrors(values);
+    setErrors(found);
+    setNotice(null);
+    if (Object.keys(found).length) return focusFirstError(form, found, FIELDS);
+    const [firstName, ...rest] = values.name.trim().split(/\s+/);
+    setBusy(true);
+    const result = await saveAddress({
+      address_name: values.address_name.trim() || null,
       first_name: firstName,
       last_name: rest.join(" "),
-      phone,
-      city: text(data, "governorate"),
-      address_2: text(data, "area"),
-      address_1: text(data, "street"),
-    };
-    if (!firstName || !address.city || !address.address_2 || !address.address_1 || !phone) return setNotice({ key: "addressRequired", ok: false });
-    if (!isValidEgyptPhone(phone)) return setNotice({ key: "invalidPhone", ok: false });
-    setBusy(true);
-    setNotice(null);
-    const result = await saveAddress(address, editing === "new" ? undefined : editing.id);
+      phone: normalizeEgyptPhone(values.phone.trim()),
+      city: values.governorate,
+      address_2: values.area.trim(),
+      address_1: values.street.trim(),
+    }, editing === "new" ? undefined : editing.id);
     setBusy(false);
     if (!result.ok) return setNotice({ key: "saveFailed", ok: false });
     setEditing(null);
@@ -77,6 +86,8 @@ export default function AccountAddresses({ locale }: { locale: Locale }) {
     if (result.ok) setAttempt((value) => value + 1);
   }
 
+  // A field's error clears as soon as it is changed.
+  const clearError = (name: string) => setErrors((current) => (name in current ? { ...current, [name]: undefined } : current));
   const current = editing && editing !== "new" ? editing : null;
   return (
     <section className={styles.informationRow} aria-labelledby="saved-addresses">
@@ -87,7 +98,7 @@ export default function AccountAddresses({ locale }: { locale: Locale }) {
           <p>{msg("addressesDescription")}</p>
         </div>
         {!editing && (
-          <button type="button" className={styles.outlineButton} onClick={() => { setNotice(null); setEditing("new"); }}>
+          <button type="button" className={styles.outlineButton} onClick={() => open("new")}>
             {msg("addAddress")}
           </button>
         )}
@@ -111,7 +122,7 @@ export default function AccountAddresses({ locale }: { locale: Locale }) {
                 <bdi>{[address.address_1, address.address_2, address.city && governorateLabel(address.city, locale)].filter(Boolean).join(locale === "ar" ? "، " : ", ")}</bdi><br />
                 <bdi dir="ltr">{address.phone}</bdi>
               </p>
-              <button type="button" className={styles.textButton} disabled={busy} onClick={() => { setNotice(null); setEditing(address); }}>{msg("editAddress")}</button>
+              <button type="button" className={styles.textButton} disabled={busy} onClick={() => open(address)}>{msg("editAddress")}</button>
               <button type="button" className={styles.textButton} disabled={busy} onClick={() => remove(address)}>{msg("deleteAddress")}</button>
             </li>
           ))}
@@ -119,37 +130,33 @@ export default function AccountAddresses({ locale }: { locale: Locale }) {
       )}
       {editing && (
         <div className={styles.editor}>
-          <form className={styles.form} onSubmit={submit} aria-busy={busy} key={current?.id ?? "new"}>
-            <label>
-              {msg("addressLabel")}
-              <input name="address_name" maxLength={100} defaultValue={current?.address_name ?? ""} disabled={busy} />
-            </label>
-            <label>
-              {msg("name")}
-              <input name="name" autoComplete="name" required maxLength={255} defaultValue={[current?.first_name, current?.last_name].filter(Boolean).join(" ")} disabled={busy} />
-            </label>
-            <label>
-              {msg("phone")}
-              <input name="phone" type="tel" autoComplete="tel" dir="ltr" required maxLength={32} defaultValue={current?.phone ?? ""} disabled={busy} />
-            </label>
-            <label>
-              {msg("governorate")}
-              <GovernorateSelect locale={locale} value={current?.city ?? ""} placeholder={msg("chooseGovernorate")} disabled={busy} />
-            </label>
-            <label>
-              {msg("area")}
-              <input name="area" required maxLength={255} defaultValue={current?.address_2 ?? ""} disabled={busy} />
-            </label>
-            <label>
-              {msg("street")}
-              <input name="street" autoComplete="street-address" required maxLength={255} defaultValue={current?.address_1 ?? ""} disabled={busy} />
-            </label>
+          {/* noValidate: the messages under each field replace the browser's. */}
+          <form className={styles.form} onSubmit={submit} onInput={(event) => clearError((event.target as HTMLInputElement).name)} noValidate aria-busy={busy} key={current?.id ?? "new"}>
+            <AccountField name="address_name" label="addressLabel" locale={locale} optional>
+              {(props) => <input {...props} maxLength={100} defaultValue={current?.address_name ?? ""} disabled={busy} />}
+            </AccountField>
+            <AccountField name="name" label="name" locale={locale} error={errors.name}>
+              {(props) => <input {...props} autoComplete="name" required maxLength={255} defaultValue={[current?.first_name, current?.last_name].filter(Boolean).join(" ")} disabled={busy} />}
+            </AccountField>
+            <AccountField name="phone" label="phone" locale={locale} error={errors.phone} hint="phoneHint">
+              {(props) => <input {...props} type="tel" inputMode="tel" autoComplete="tel" dir="ltr" required maxLength={32} defaultValue={current?.phone ?? ""} disabled={busy} />}
+            </AccountField>
+            <AccountField name="governorate" label="governorate" locale={locale} error={errors.governorate}>
+              {(props) => <GovernorateSelect {...props} locale={locale} value={current?.city ?? ""} placeholder={msg("chooseGovernorate")} disabled={busy} />}
+            </AccountField>
+            <AccountField name="area" label="area" locale={locale} error={errors.area}>
+              {(props) => <input {...props} required maxLength={255} defaultValue={current?.address_2 ?? ""} disabled={busy} />}
+            </AccountField>
+            <AccountField name="street" label="street" locale={locale} error={errors.street}>
+              {(props) => <input {...props} autoComplete="street-address" required maxLength={255} defaultValue={current?.address_1 ?? ""} disabled={busy} />}
+            </AccountField>
+            {notice && !notice.ok && <p role="alert" className={styles.fieldError}>{msg(notice.key)}</p>}
             <button type="submit" className={styles.darkButton} disabled={busy}>{msg(busy ? "saving" : "save")}</button>
           </form>
           <button type="button" className={styles.textButton} onClick={() => setEditing(null)}>{msg("cancel")}</button>
         </div>
       )}
-      {notice && <p role={notice.ok ? "status" : "alert"} className={styles.notice}>{msg(notice.key)}</p>}
+      {notice && (notice.ok || !editing) && <p role={notice.ok ? "status" : "alert"} className={styles.notice}>{msg(notice.key)}</p>}
     </section>
   );
 }
