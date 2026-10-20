@@ -16,6 +16,7 @@ import TrendingNow from "../TrendingNow";
 import { message, type Locale } from "@/lib/i18n";
 import type { Product } from "@/types/product";
 
+jest.mock("@/components/CatalogImage.module.css", () => ({}));
 jest.mock("next/navigation", () => ({
   useRouter: () => ({ refresh: jest.fn() }),
   usePathname: () => "/en",

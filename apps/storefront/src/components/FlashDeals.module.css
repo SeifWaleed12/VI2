@@ -213,6 +213,16 @@
   font-weight: 800;
 }
 
+/* A product without a photo shows its letter (CatalogImage) in the photo's
+   place and size, including the smaller mobile height below. */
+.imageLink [role="img"] {
+  width: auto;
+  max-width: 80%;
+  height: 230px;
+  aspect-ratio: 0.85;
+  font-size: 3rem;
+}
+
 @media (max-width: 700px) {
   .section {
     padding: 56px 0;
@@ -242,7 +252,8 @@
     padding: 12px;
   }
 
-  .imageLink img {
+  .imageLink img,
+  .imageLink [role="img"] {
     height: 150px;
   }
 

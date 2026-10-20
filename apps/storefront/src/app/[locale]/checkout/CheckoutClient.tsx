@@ -39,6 +39,7 @@ import { deliveryStatus, type ShippingLoad } from "./delivery-status";
 import { checkoutTotal, formatPrice } from "./checkout-total";
 import { governorates, initialForm, isValidEgyptPhone, normalizeEgyptPhone, type CheckoutForm } from "./checkout-details";
 import OrderSummary, { type CheckoutItem } from "./OrderSummary";
+import CatalogImage from "@/components/CatalogImage";
 
 type CheckoutStep =
   | 1
@@ -600,15 +601,7 @@ export default function CheckoutClient() {
                         styles.mobileImage
                       }
                     >
-                      {/* eslint-disable-next-line @next/next/no-img-element -- catalog images come from any configured host */}
-                      <img
-                        src={
-                          item.product.image
-                        }
-                        alt={
-                          item.product.name
-                        }
-                      />
+                      <CatalogImage src={item.product.image} alt={item.product.name} />
 
                       <span>
                         {

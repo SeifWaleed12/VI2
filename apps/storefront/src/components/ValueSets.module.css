@@ -272,3 +272,11 @@
     height: 185px;
   }
 }
+
+/* A product without a photo shows its letter (CatalogImage) in the photo's place. */
+.images [role="img"] {
+  position: absolute;
+  width: auto;
+  aspect-ratio: 0.85;
+  font-size: 3rem;
+}

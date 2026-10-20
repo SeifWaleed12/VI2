@@ -4,6 +4,7 @@ import ProductDetailClient from "../ProductDetailClient";
 import type { Product } from "@/types/product";
 
 let language: "en" | "ar" = "en";
+jest.mock("@/components/CatalogImage.module.css", () => ({}));
 jest.mock("../ProductDetail.module.css", () => ({ __esModule: true, default: new Proxy({}, { get: (_, key) => String(key) }) }));
 jest.mock("lucide-react", () => new Proxy({}, { get: () => () => null }));
 jest.mock("@/components/VariantSelector", () => ({ __esModule: true, default: () => null }));

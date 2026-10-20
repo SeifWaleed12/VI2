@@ -12,6 +12,7 @@ import { useLanguage } from "@/context/LanguageContext";
 import type { Product } from "@/types/product";
 
 import styles from "./BestSellerCard.module.css";
+import CatalogImage from "@/components/CatalogImage";
 
 function formatPrice(
   value: number,
@@ -76,8 +77,7 @@ export default function BestSellerCard({
           </span>
         )}
 
-        {/* eslint-disable-next-line @next/next/no-img-element -- catalog images come from any configured host */}
-        <img
+        <CatalogImage
           src={product.image}
           alt={product.name}
           loading="lazy"

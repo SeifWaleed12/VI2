@@ -21,6 +21,7 @@ import { useLocaleRouter } from "@/hooks/use-locale-router";
 import type { Product, ProductOption, ProductVariant } from "@/types/product";
 
 import styles from "./ProductDetail.module.css";
+import CatalogImage from "@/components/CatalogImage";
 
 // Product-page copy lives here so the shared dictionary stays with its owner.
 const COPY = {
@@ -102,19 +103,6 @@ const isPlaceholderOption = (option: ProductOption) =>
 
 const formatPrice = (value: number) => new Intl.NumberFormat("en-EG", { maximumFractionDigits: 2 }).format(value);
 const shopHref = (category?: { id: string; handle: string }) => category ? categoryHref(category.id, category.handle) : "/shop";
-
-function ProductImage({ src, alt, className }: { src: string; alt: string; className?: string }) {
-  const [failed, setFailed] = useState(false);
-  if (!src || failed) {
-    return (
-      <div className={`${styles.imagePlaceholder} ${className ?? ""}`} role="img" aria-label={alt}>
-        <span aria-hidden="true">{alt.trim().charAt(0) || "V"}</span>
-      </div>
-    );
-  }
-  // eslint-disable-next-line @next/next/no-img-element -- catalog images come from any configured host
-  return <img src={src} alt={alt} className={className} onError={() => setFailed(true)} />;
-}
 
 export default function ProductDetailClient({
   product,
@@ -292,7 +280,7 @@ export default function ProductDetailClient({
                 <button type="button" className={styles.shareButton} onClick={share} aria-label={shareCopied ? copy.linkCopied : copy.share}>
                   {shareCopied ? <Check size={18} strokeWidth={1.6} /> : <Share2 size={18} strokeWidth={1.6} />}
                 </button>
-                <ProductImage key={selectedVariant?.image || product.image} src={selectedVariant?.image || product.image} alt={product.name} className={styles.image} />
+                <CatalogImage key={selectedVariant?.image || product.image} src={selectedVariant?.image || product.image} alt={product.name} className={styles.image} placeholderClassName={styles.imagePlaceholder} />
               </div>
               <span className={styles.srOnly} aria-live="polite">{shareCopied ? copy.linkCopied : ""}</span>
             </div>
@@ -391,7 +379,7 @@ export default function ProductDetailClient({
                   <li key={item.id}>
                     <Link href={`/products/${item.slug}`} className={styles.similarCard}>
                       <div className={styles.similarStage}>
-                        <ProductImage src={item.image} alt={item.name} />
+                        <CatalogImage src={item.image} alt={item.name} placeholderClassName={styles.imagePlaceholder} />
                       </div>
                       {item.brand && <span className={styles.similarBrand}>{item.brand}</span>}
                       <span className={styles.similarName}>{item.name}</span>

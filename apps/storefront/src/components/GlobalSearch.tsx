@@ -28,6 +28,7 @@ import {
 import { getArabicProductSearchText } from "@/lib/arabicLocalization";
 
 import styles from "./GlobalSearch.module.css";
+import CatalogImage from "@/components/CatalogImage";
 
 type Props = {
   open: boolean;
@@ -533,16 +534,16 @@ export default function GlobalSearch({
                       styles.image
                     }
                   >
-                    <Image
-                      src={
-                        product.image
-                      }
-                      alt={
-                        product.name
-                      }
-                      width={170}
-                      height={190}
-                    />
+                    {product.image ? (
+                      <Image
+                        src={product.image}
+                        alt={product.name}
+                        width={170}
+                        height={190}
+                      />
+                    ) : (
+                      <CatalogImage alt={product.name} />
+                    )}
                   </div>
 
                   <div
