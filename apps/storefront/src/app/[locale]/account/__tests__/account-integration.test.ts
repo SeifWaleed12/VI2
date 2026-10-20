@@ -39,3 +39,16 @@ it("does not show points loading forever to a signed-out visitor (AI-3)", () => 
   mockAuth = { customer: null, isAuthenticated: false, isLoading: true };
   expect(renderToStaticMarkup(createElement(AccountPoints, { locale: "en" }))).toContain("Loading your points");
 });
+
+it("shows a field's rule and its error under it, and marks the field invalid", async () => {
+  const { AccountField } = await import("../AccountField");
+  // A plain function component (no hooks), so it can be called directly.
+  const html = renderToStaticMarkup(AccountField({
+    name: "phone", label: "phone", locale: "en", error: "invalidPhone", hint: "phoneHint",
+    children: (props) => createElement("input", props),
+  }));
+  expect(html).toContain('aria-invalid="true"');
+  expect(html).toContain('aria-describedby="field-phone-hint field-phone-error"');
+  expect(html).toContain("11 digits starting with 010, 011, 012 or 015");
+  expect(html).toContain("This isn’t an Egyptian mobile number.");
+});

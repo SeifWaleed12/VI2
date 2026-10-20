@@ -1,3 +1,4 @@
+import type { SelectHTMLAttributes } from "react";
 import { governorates } from "@/app/[locale]/checkout/checkout-details";
 import type { Locale } from "@/lib/i18n";
 
@@ -14,10 +15,12 @@ export const governorateLabel = (value: string, locale: Locale) => (locale === "
 
 // A saved city that is not in the list (typed elsewhere, for example in Arabic)
 // is kept as its own option, so editing another field never changes it.
-export default function GovernorateSelect({ locale, value, placeholder, disabled }: { locale: Locale; value: string; placeholder: string; disabled?: boolean }) {
+export default function GovernorateSelect({
+  locale, value, placeholder, ...select
+}: { locale: Locale; value: string; placeholder: string } & Omit<SelectHTMLAttributes<HTMLSelectElement>, "value" | "defaultValue">) {
   const options = value && !governorates.includes(value) ? [value, ...governorates] : governorates;
   return (
-    <select name="governorate" required defaultValue={value} disabled={disabled}>
+    <select name="governorate" required {...select} defaultValue={value}>
       <option value="" disabled>{placeholder}</option>
       {options.map((governorate) => <option key={governorate} value={governorate}>{governorateLabel(governorate, locale)}</option>)}
     </select>
