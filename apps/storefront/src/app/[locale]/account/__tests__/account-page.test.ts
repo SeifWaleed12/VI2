@@ -124,11 +124,8 @@ it.each(["en", "ar"] as const)(
     const html = renderToStaticMarkup(createElement(AccountClient, { locale }));
     for (const section of ["information", "orders", "points"])
       expect(html).toContain('href="/' + locale + "/account/" + section + '"');
-    expect(html).toContain(
-      locale === "ar"
-        ? "المكافآت غير متاحة حالياً."
-        : "Rewards are not available yet.",
-    );
+    // The balance loads after the first render.
+    expect(html).toContain(locale === "ar" ? "جارٍ تحميل نقاطك…" : "Loading your points…");
     expect(html).not.toMatch(/Buy It Again|My Favourites|vi2-last-order|520/);
     expect(html).toContain("data-no-translate");
   },

@@ -64,7 +64,7 @@ export default function AccountDropdown({ open, isArabic, onClose }: Props) {
     ? {
         rewards: "مكافآت Vi2",
         points: "نقطة",
-        rewardBody: accountMessage(isArabic ? "ar" : "en", "pointsUnavailable"),
+        rewardBody: accountMessage(isArabic ? "ar" : "en", "pointsDescription"),
         learn: "عرض حسابك",
         welcome: user ? `مرحباً، ${user.firstName}` : "مرحباً بك في Vi2",
         account: "حسابي",
@@ -76,7 +76,7 @@ export default function AccountDropdown({ open, isArabic, onClose }: Props) {
     : {
         rewards: "VI2 REWARDS",
         points: "POINTS",
-        rewardBody: accountMessage(isArabic ? "ar" : "en", "pointsUnavailable"),
+        rewardBody: accountMessage(isArabic ? "ar" : "en", "pointsDescription"),
         learn: "VIEW ACCOUNT",
         welcome: user
           ? `WELCOME, ${user.firstName.toUpperCase()}`
