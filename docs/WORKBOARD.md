@@ -383,3 +383,30 @@ Claude approved `a2fba17` in `cd4eb90`: R1–R7 fixed, no further code changes r
 | Physical touch/pen and accessibility/device checks (N3) | Seif | manual acceptance pending | Real touch/pen Account toggle and outside dismissal; recovery announcement with a screen reader; native zoom, Firefox/Safari and remaining RD-6 checklist. Synthetic events do not replace hardware testing. |
 
 RD-6 delivery — 2026-10-20: Seif authorized pushing gpt/work and opening a PR into full-stack. Published approved code through 9238365; PR #13: https://github.com/SeifWaleed12/VI2/pull/13 . Claude code approval remains recorded; owner manual acceptance and merge are pending. No deployment or merge performed. Unrelated dirty reviews, drafts and runtime uploads were excluded.
+
+## Account page frontend — approved 2026-10-20
+
+Seif approved the revision-3 iHerb-informed dashboard and requested an isolated branch named account-page. GPT owns storefront UI only; Claude will own backend work in parallel. Before application edits, create a written handoff and copy the approved separate desktop/mobile design images into the new worktree.
+
+Exact frontend scope:
+1. Start account-page from current local full-stack 5c4cbd9 (reviewed combined baseline), preserving the newer integrated backend; do not modify apps/backend, existing auth APIs, catalog or dependencies.
+2. Build the approved dashboard launchpad in the existing Vi2 fonts/colors/header/footer. Desktop sidebar; compact mobile navigation; proper English/Arabic server locale and RTL.
+3. Provide dedicated Account Information, My Orders and Vi2 Points destinations. Account Information uses label/value/edit rows and focused editing states; Orders uses current customer-owned order reads and honest loading/empty/error states; rewards remain explicitly unavailable until Claude's confirmed contract exists.
+4. Editing UI is frontend-only: preserve existing working authentication/password behavior where possible, add no guessed endpoints, fake saved-success, localStorage customer authority, invented point balances or loyalty rules. Any unavailable new write capability is clearly unavailable until integration.
+5. Existing account dropdown: remove Buy It Again and My Favorites; My Account and View Account -> Account Information; My Orders -> Orders; My Rewards -> Vi2 Points. Keep icon/style and guest/sign-in/sign-out behavior. Audit related account navigation for valid locale-preserving destinations.
+6. Prepare backend handoff with exact frontend field/state requirements, current native service boundaries, route map, ownership and unresolved contracts for Claude. No unilateral backend/security/loyalty business rules.
+7. Run relevant regression tests, type/lint/build, and bounded EN/AR desktop/mobile/keyboard checks. Record what is frontend-only and remaining integration checks; Claude reviews frontend before Seif merges. No automatic push/PR/merge.
+
+| ID | Task | Owner | Status | Boundary |
+|---|---|---|---|---|
+| AP-FE | Approved dashboard, account-information/order/points UI, EN/AR and dropdown destinations | GPT | approved by Claude at 81623dd; owner merge pending | Own storefront presentation only; no backend/BFF/security implementation |
+| AP-BE | Native customer updates, secure credential changes, owned-order contracts and loyalty requirements | Claude, when dispatched by Seif | handoff ready; not claimed by GPT | Separate branch/folder; read docs/account-page-handoff.md before changing contracts; loyalty rules need Seif's decisions |
+| AP-INT | Join reviewed frontend/backend contracts and run real account update/order/loyalty checks | GPT/Claude after contracts and owner authorization | pending | No guessing APIs or automatic merge; preserve sessions, native commerce authority and owner review |
+
+AP-FE delivery — 2026-10-20: implemented on account-page from5c4cbd9. Dashboard + Account Information/My Orders/Vi2 Points, EN/AR/RTL, requested dropdown removals/destinations and mobile return paths. Existing native customer/orders/password services preserved; new profile saves and loyalty explicitly unavailable pending AP-BE/AP-INT. 371 storefront tests, typecheck, lint and production webpack build pass. Disposable fixture browser checks cover desktop/mobile/320px/980-981, editing focus, locale continuity, order states/retry/unknown IDs and sign-out. Independent Impeccable manual finish disposition ship; ordinary extension documented. Claude frontend review pending in docs/reviews/account-page.md; no push/PR/merge. No backend, auth API, providers, package or lock changes. Owner controls merge.
+
+AP-FE review follow-up — 2026-10-20: GPT claimed F1-F3 from Claude review 3b73f50. Keep backend/BFF untouched: remove unsupported recency claims until Claude confirms sorting/count/pagination; announce order errors; reuse keyed locale-switch labels. Add regression coverage and rerun storefront checks. F4 is pre-existing session-expiry behavior, no auth changes in this task.
+
+AP-FE review follow-up delivered — 2026-10-20: F1 acknowledged for Claude's backend contract; visible unsupported recency wording removed in EN/AR without changing backend filtering. F2 error announcement and F3 shared keyed language labels fixed. F4 retained as existing auth-session behavior. 377 tests, typecheck, lint and production webpack build pass. Claude recheck pending; no backend/BFF/auth/dependency changes, push or merge.
+
+AP-FE final review — 2026-10-20: Claude recheck df999ca approves application code at81623dd. F1 frontend recency wording, F2 error announcement and F3 keyed locale labels resolved. F4 remains pre-existing behavior; unused recentOrders key remains unrendered as allowed by review. Native order sorting/offset/count remains AP-BE/AP-INT work; profile writes and loyalty remain unintegrated. Imported the exact review into docs/reviews/account-page.md. Documentation-only status update; no new application changes or checks needed. No push or merge performed.
