@@ -1,5 +1,5 @@
 import type { MedusaContainer } from "@medusajs/framework/types"
-import { Modules } from "@medusajs/framework/utils"
+import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
 import { LOYALTY_MODULE } from "../modules/loyalty"
 import type LoyaltyModuleService from "../modules/loyalty/service"
 
@@ -69,6 +69,30 @@ export async function orderPointsLeft(container: MedusaContainer, orderId: strin
     { select: ["points"] },
   )
   return entries.reduce((sum, entry) => sum + entry.points, 0)
+}
+
+// The order's refunds, from its payments (where Medusa records them).
+export async function orderRefunds(container: MedusaContainer, orderId: string) {
+  const { data: [order] } = await container.resolve(ContainerRegistrationKeys.QUERY)
+    .graph({ entity: "order", fields: ["payment_collections.payments.refunds.id", "payment_collections.payments.refunds.amount"], filters: { id: orderId } })
+  type Collections = { payments?: { refunds?: { id: string, amount: unknown }[] | null }[] | null }[] | null
+  return ((order?.payment_collections ?? []) as Collections ?? []).flatMap((collection) => (collection.payments ?? []).flatMap((payment) => payment.refunds ?? []))
+}
+
+// For an order that earns now (call under the customer's lock): refunds made
+// before delivery are taken off what it earns, and marked used, so their
+// events change nothing later (P-8, P-10).
+export async function takeEarlierRefunds(container: MedusaContainer, customerId: string, orderId: string) {
+  const service = loyalty(container)
+  let points = 0
+  for (const refund of await orderRefunds(container, orderId)) {
+    points += pointsFor(refund.amount)
+    const source_id = `${orderId}/${refund.id}`
+    if (!(await service.listPointsEntries({ kind: "refund", source_id }, { select: ["id"] })).length) {
+      await service.createPointsEntries({ customer_id: customerId, kind: "refund", source_id, points: 0 })
+    }
+  }
+  return points
 }
 
 type Source = { customer_id: string, kind: PointsKind, source_id: string }

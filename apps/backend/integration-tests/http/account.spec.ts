@@ -165,6 +165,9 @@ medusaIntegrationTestRunner({
             expect((await api.post("/store/email-change/confirm", { token: backToken }, store())).data.email).toBe("sara@test.dev")
             expect((await api.post("/store/email-change/confirm", { token }, store())).data.code).toBe("invalid_link")
             expect((await signIn("sara@test.dev")).status).toBe(200)
+            // The customer can edit their own metadata, but not the marker that used the link up.
+            expect((await api.post("/store/customers/me", { metadata: { email_changed_at: 0 } }, store(sara))).status).toBe(200)
+            expect((await api.post("/store/email-change/confirm", { token }, store())).data.code).toBe("invalid_link")
           } finally {
             sent.mockRestore()
           }
@@ -259,6 +262,20 @@ medusaIntegrationTestRunner({
           await replayRefund(paymentId)
           expect((await points(sara)).balance).toBe(1500)
           expect((await points(sara)).history.map((entry: { kind: string }) => entry.kind)).toEqual(["earn", "expire", "refund", "earn"])
+        })
+
+        it("takes a refund made before delivery off what the order earns (P-8, P-10)", async () => {
+          const sara = await register("sara@test.dev")
+          const id = await customerId(sara)
+          const order = await placeOrder(sara)
+          const paymentId = await refund(order.id, 400)
+          expect((await points(sara)).balance).toBe(0)
+          await deliver(order)
+          await waitForEntries(id, 2)
+          expect((await points(sara)).balance).toBe(1100)
+          await replayRefund(paymentId)
+          expect((await points(sara)).balance).toBe(1100)
+          expect((await points(sara)).history).toEqual([expect.objectContaining({ kind: "earn", points: 1100, order_id: order.id })])
         })
 
         it("keeps the whole balance when an earning lands while expiry waits (P-7, P-11)", async () => {
