@@ -114,7 +114,7 @@ export default function CartDrawer() {
             <div className="cart-items">
               {items.map((item) => (
                 <article
-                  key={item.product.id}
+                  key={item.id ?? item.product.variantId ?? item.product.id}
                   className="cart-item"
                 >
                   <Link
@@ -122,6 +122,7 @@ export default function CartDrawer() {
                     className="cart-item-image"
                     onClick={closeCart}
                   >
+                    {/* eslint-disable-next-line @next/next/no-img-element -- catalog images come from any configured host */}
                     <img
                       src={item.product.image}
                       alt={
@@ -175,8 +176,8 @@ export default function CartDrawer() {
                         aria-label={`Remove ${item.product.name}`}
                         onClick={() =>
                           removeItem(
-                            item.product
-                              .id,
+                            item.id ??
+                              item.product.id,
                           )
                         }
                       >
@@ -193,9 +194,8 @@ export default function CartDrawer() {
                           aria-label="Decrease quantity"
                           onClick={() =>
                             updateQuantity(
-                              item
-                                .product
-                                .id,
+                              item.id ??
+                                item.product.id,
                               item.quantity -
                                 1,
                             )
@@ -217,9 +217,8 @@ export default function CartDrawer() {
                           aria-label="Increase quantity"
                           onClick={() =>
                             updateQuantity(
-                              item
-                                .product
-                                .id,
+                              item.id ??
+                                item.product.id,
                               item.quantity +
                                 1,
                             )

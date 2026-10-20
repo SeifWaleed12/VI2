@@ -60,7 +60,7 @@ export default async function RootLayout({
 
           {children}
 
-          <Footer categories={directory.roots} />
+          <Footer categories={directory.roots} locale={locale} />
 
           <CartDrawer />
         </Providers>

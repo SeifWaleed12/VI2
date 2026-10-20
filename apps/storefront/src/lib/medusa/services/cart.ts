@@ -177,6 +177,20 @@ export async function removeCartItem(
   return updated;
 }
 
+// Egyptian shoppers rarely know a postal code and Bosta locates by city and
+// district, so an empty one is left out rather than saved as a fake value.
+function toMedusaAddress(address: CartAddress) {
+  return {
+    first_name: address.firstName,
+    last_name: address.lastName,
+    address_1: address.address1,
+    city: address.city,
+    country_code: address.countryCode.toLowerCase(),
+    ...(address.postalCode?.trim() ? { postal_code: address.postalCode.trim() } : {}),
+    phone: address.phone || "",
+  };
+}
+
 export async function setCartAddress(
   cartId: string,
   email: string,
@@ -185,34 +199,8 @@ export async function setCartAddress(
 ): Promise<Cart> {
   const payload = {
     email,
-    shipping_address: {
-      first_name: shippingAddress.firstName,
-      last_name: shippingAddress.lastName,
-      address_1: shippingAddress.address1,
-      city: shippingAddress.city,
-      country_code: shippingAddress.countryCode.toLowerCase(),
-      postal_code: shippingAddress.postalCode || "00000",
-      phone: shippingAddress.phone || "",
-    },
-    billing_address: billingAddress
-      ? {
-          first_name: billingAddress.firstName,
-          last_name: billingAddress.lastName,
-          address_1: billingAddress.address1,
-          city: billingAddress.city,
-          country_code: billingAddress.countryCode.toLowerCase(),
-          postal_code: billingAddress.postalCode || "00000",
-          phone: billingAddress.phone || "",
-        }
-      : {
-          first_name: shippingAddress.firstName,
-          last_name: shippingAddress.lastName,
-          address_1: shippingAddress.address1,
-          city: shippingAddress.city,
-          country_code: shippingAddress.countryCode.toLowerCase(),
-          postal_code: shippingAddress.postalCode || "00000",
-          phone: shippingAddress.phone || "",
-        },
+    shipping_address: toMedusaAddress(shippingAddress),
+    billing_address: toMedusaAddress(billingAddress ?? shippingAddress),
   };
 
   const { cart } = await medusa.store.cart.update(cartId, payload, {

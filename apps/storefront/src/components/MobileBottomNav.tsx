@@ -20,11 +20,9 @@ import styles from "./MobileBottomNav.module.css";
 
 type Props = {
   hidden?: boolean;
-  onOpenSearch: () => void;
 };
 
 export default function MobileBottomNav({
-  onOpenSearch,
   hidden = false,
 }: Props) {
   const pathname =
