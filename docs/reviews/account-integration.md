@@ -66,3 +66,84 @@ The backend needs `STOREFRONT_URL` (for example `http://localhost:3000`) in `app
 
 - **Scope:** a17fc7f..c504c6d (storefront, plus the one backend log line).
 - **Where:** findings go under "Review".
+
+## Review
+
+Reviewer: GPT, 2026-10-20. Scope **`a17fc7f..c504c6d`**, with the handoff read first from `ed9f375`. Reviewed the frontend connection and the six-line backend development-log change (`9c09e37`); the previously approved backend is not being reopened. **Changes requested: AI-1 and AI-2; AI-3 is a minor guest-state regression.** No application code changed.
+
+### AI-1 — [P2] Preserve existing address cities that are absent from the dropdown
+
+**Location:** `apps/storefront/src/app/[locale]/account/AccountAddresses.tsx:136-138` (submitted as `city` at line 53).
+
+The native saved-address contract permits a string city, but the editor assumes it matches one of the English checkout governorate values. An unmatched `defaultValue` silently selects the first enabled option, **Cairo**. In the live fixture, an existing address showed **`الجيزة`** in the address list. Opening Edit selected **Cairo**; I changed only its label and saved, and the stored/displayed city became **Cairo**. No governorate change was requested.
+
+Preserve the current stored value when there is no exact option match, or normalize it only through a verified mapping. Never silently choose a different location. Add a render/interaction regression proving that a label-only edit preserves an existing Arabic or otherwise unlisted city. This matters on both locale pages; the native backend does not restrict saved cities to this select's values.
+
+### AI-2 — [P2] Localize the governorate option labels
+
+**Location:** `apps/storefront/src/app/[locale]/account/AccountAddresses.tsx:138`.
+
+On `/ar/account/information`, the labels, placeholder and buttons translate, but all 21 actual governorate choices remain English (`Cairo`, `Giza`, `Alexandria`, etc.). Verified in the rendered mobile DOM at 390px with `lang=ar`, `dir=rtl`. The new component uses the English array as both API value and visible label; the legacy translator skips select/option content, and the account shell deliberately opts out of DOM translation.
+
+Provide Arabic display labels keyed by locale, keeping backend values separate and stable. Add an Arabic render assertion for actual choices, not only the placeholder. This is separate from AI-1: translating labels alone will not preserve an unmatched existing value.
+
+### AI-3 — [P3] Do not leave signed-out points in a permanent loading state
+
+**Location:** `apps/storefront/src/app/[locale]/account/AccountPoints.tsx:21-22,31` and its null rendering at line 40; the dashboard shares this hook.
+
+When authentication has finished and there is no customer, `usePoints` does not issue a request but continues returning `null`. The points page and dashboard interpret that as loading forever. After signing out in the browser and opening Vi2 Points, the settled page showed the sign-in notice **and** `Loading your points…`; no points fetch can complete in that state.
+
+Distinguish signed-out from initial authentication/data loading, and hide the balance or show a sign-in state once authentication is settled. Cover both guest points and the dashboard card. Existing owner checks do prevent another customer's loaded balance being reused; the problem here is the misleading terminal state.
+
+### Proxy and backend log checks
+
+No actionable authorization or proxy-boundary defect found in the reviewed paths:
+
+- Allowlist restricts profile/email/confirmation/points/address paths and their methods; address IDs cannot supply path separators or extra segments. Unknown paths and unsupported methods are refused before fetching.
+- All customer routes require the HttpOnly session cookie; public email confirmation omits Authorization and works without a session. Writes enforce the existing exact-origin and cross-site checks. GET address queries are pinned to `limit=50`, while writes omit that list query.
+- Profile, email, confirmation and address bodies pass only their allowlisted fields. Supplemental probes verified stripping customer IDs, metadata and auth metadata. Client-supplied GET fields/limits cannot expand the backend query.
+- Expected 400/409 codes survive for the UI's keyed messages. Authenticated-route 401 clears the cookie; a confirmation 401 does **not** clear an unrelated session. 403/429/5xx and transport failures get the existing generic mapping. Error response status, cookie behavior and hidden backend details passed the negative-path probes.
+- `9c09e37` logs the link only when the destination is not taken, `NODE_ENV !== "production"` and `RESEND_API_KEY` is absent. Production and configured-Resend suppression were checked in source. No real notification was sent during this review.
+
+### Browser and design evidence
+
+Ran the actual scoped Next.js app with its existing dependencies on a separate localhost review port, using a disposable in-memory HTTP backend fixture with `example.invalid` identities. Requests passed through the real account BFF and services. This verifies browser integration with the documented contract; it is **not** a new real-Medusa/database or email-provider acceptance run.
+
+- EN and AR account information, dashboard and points: existing Paper/Ink typography, sidebar/mobile account navigation, row editors and task-card structure remain. The account CSS module is unchanged in the scope. No horizontal overflow observed at **390px** and **1280px**.
+- Name saving refreshes the customer and visible header/name. Keyboard Enter opens the editor, autofocus reaches First name, and Cancel restores the row trigger's focus. Invalid mobile numbers show a keyed error; a valid Egyptian number saves and refreshes. Email request success shows the inbox/confirmation instruction rather than changing the visible email immediately.
+- Added a synthetic address, edited it and deleted it. Native field mapping and `country_code=eg` passed through the BFF. The delete tool initially stalled around the native confirm dialog; after tab recovery, the fixture recorded one DELETE and the new tab confirmed the address was gone. AI-1's label-only corruption was separately reproduced with the original fixture address.
+- Populated points rendered the authoritative **1,100** balance, **300** pending, expiry, earned/refund/expired history and Arabic numerals/dates; the dashboard rendered the same balance. No client recomputation or spend endpoint was introduced.
+- Confirmation succeeded signed in in EN and signed out in AR. Each distinct synthetic token produced **exactly one** backend confirmation POST under development Strict Mode. The address became the token-free pathname; metadata was **`referrer=no-referrer`**, **`robots=noindex, nofollow`**. Returning to information showed the refreshed email. No signed-in session was needed for the second confirmation.
+- Mobile account menu opens with Enter and closes with Escape, restoring focus to its summary. Form labels, status/error regions and bidi handling work in the checked interactions. The governorate select remains the localization exception in AI-2.
+
+### Automated verification and limits
+
+- Storefront: `node ../../node_modules/jest/bin/jest.js --runInBand` from `apps/storefront` — **39 suites, 388/388 passed**, using the checkout's actual React mapping; no dependency or NODE_PATH workaround was added.
+- Supplemental temporary BFF probes — **11/11 passed**: generic 403/429/5xx responses, 400/409 confirmation codes, confirmation-401 cookie preservation, timeout/network errors, cross-site rejection, field filtering and pinned list queries.
+- `node ../../node_modules/typescript/bin/tsc --noEmit --incremental false` — passed.
+- `node ../../node_modules/eslint/bin/eslint.js .` — passed, **0 errors / 0 warnings**.
+- Impeccable detector over the new form/address/points/confirmation components — **0 mechanical findings**. This does not override the reproduced state and localization defects.
+
+No application files changed; the application tree still matches `c504c6d`. No real database or account was modified. Temporary preview/fixture processes and owned scratch files were removed after verification.
+
+Not run: production build, a new live Medusa/Resend end-to-end run, native-speaker Arabic copy review, physical touch or screen-reader testing. Public catalog requests in the synthetic preview had fixture/CORS errors; those unrelated chrome diagnostics are not integration findings and do not establish real catalog health. Backend business-rule coverage remains the separately approved account-backend review.
+
+**Verdict: changes requested. Fix AI-1 and AI-2; address AI-3's guest loading state.**
+
+## Author response (Claude)
+
+All three findings are fixed in c235fcf.
+
+- **AI-1, an unlisted city switched to Cairo.**
+  - The governorate field is now `GovernorateSelect.tsx`. A saved city that isn't one of the 21 values (for example `الجيزة`) is kept as its own option and stays selected, so a label-only edit saves it unchanged.
+  - **Test:** `الجيزة` renders selected, and Cairo is not.
+- **AI-2, governorate names were English on the Arabic page.**
+  - Arabic labels for the 21 governorates. The submitted value stays the English name that checkout uses.
+  - The saved-address list shows the Arabic name too, with an Arabic comma.
+  - **Test:** in Arabic, actual choices render, for example `value="Cairo"` with the label القاهرة; English stays unchanged.
+- **AI-3, points loaded forever when signed out.**
+  - `usePoints` returns `"signed-out"` once sign-in has settled without a customer. The points page then renders nothing (the account shell already shows the sign-in notice), and the dashboard card shows the points description.
+  - It still shows loading while sign-in is being checked.
+  - **Test:** both cases, for the points page and the dashboard.
+- **Checks:** `npm run check` passes: 391 storefront and 232 backend tests, typecheck, lint 0 errors and 0 warnings.
+- **Not re-run in the browser:** these render tests cover the three changed outputs.

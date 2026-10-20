@@ -6,7 +6,8 @@ import { useAuth } from "@/context/AuthContext";
 import { accountMessage } from "@/lib/account-copy";
 import type { Locale } from "@/lib/i18n";
 import { deleteAddress, listAddresses, saveAddress, type SavedAddress } from "@/lib/medusa";
-import { governorates, isValidEgyptPhone, normalizeEgyptPhone } from "@/app/[locale]/checkout/checkout-details";
+import { isValidEgyptPhone, normalizeEgyptPhone } from "@/app/[locale]/checkout/checkout-details";
+import GovernorateSelect, { governorateLabel } from "./GovernorateSelect";
 import styles from "./Account.module.css";
 
 type Key = Parameters<typeof accountMessage>[1];
@@ -107,7 +108,7 @@ export default function AccountAddresses({ locale }: { locale: Locale }) {
               <p>
                 {address.address_name && <strong><bdi>{address.address_name}</bdi><br /></strong>}
                 <bdi>{[address.first_name, address.last_name].filter(Boolean).join(" ")}</bdi><br />
-                <bdi>{[address.address_1, address.address_2, address.city].filter(Boolean).join(", ")}</bdi><br />
+                <bdi>{[address.address_1, address.address_2, address.city && governorateLabel(address.city, locale)].filter(Boolean).join(locale === "ar" ? "، " : ", ")}</bdi><br />
                 <bdi dir="ltr">{address.phone}</bdi>
               </p>
               <button type="button" className={styles.textButton} disabled={busy} onClick={() => { setNotice(null); setEditing(address); }}>{msg("editAddress")}</button>
@@ -133,10 +134,7 @@ export default function AccountAddresses({ locale }: { locale: Locale }) {
             </label>
             <label>
               {msg("governorate")}
-              <select name="governorate" required defaultValue={current?.city ?? ""} disabled={busy}>
-                <option value="" disabled>{msg("chooseGovernorate")}</option>
-                {governorates.map((governorate) => <option key={governorate} value={governorate}>{governorate}</option>)}
-              </select>
+              <GovernorateSelect locale={locale} value={current?.city ?? ""} placeholder={msg("chooseGovernorate")} disabled={busy} />
             </label>
             <label>
               {msg("area")}
