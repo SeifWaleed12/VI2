@@ -1,4 +1,4 @@
-import { allowFields, authenticate, defineMiddlewares } from "@medusajs/framework/http"
+import { allowFields, authenticate, defineMiddlewares, type MedusaNextFunction, type MedusaRequest, type MedusaResponse } from "@medusajs/framework/http"
 import { MedusaError } from "@medusajs/framework/utils"
 import type { ActorType } from "../lib/login-attempts"
 import { adminAccess, unlessInviteAcceptance } from "./admin-access"
@@ -34,6 +34,16 @@ const cachedCatalogRoutes = ([
   ["/store/brands", 300],
 ] as const).flatMap(([path, ttl]) => [path, `${path}/:id`].map((matcher) => ({ matcher, method: "GET" as const, middlewares: [cacheStoreGet(ttl)] })))
 
+// The store only delivers in Egypt, so saved addresses are Egyptian too. A new
+// address must say so; an update may leave the country out.
+const egyptOnly = (required: boolean) => (req: MedusaRequest, _res: MedusaResponse, next: MedusaNextFunction) => {
+  const country = (req.body as { country_code?: unknown } | undefined)?.country_code
+  if ((required || country !== undefined) && (typeof country !== "string" || country.trim().toLowerCase() !== "eg")) {
+    throw new MedusaError(MedusaError.Types.INVALID_DATA, "We only deliver in Egypt. Set country_code to \"eg\".")
+  }
+  return next()
+}
+
 // Store cart routes do not read the customer's login on their own.
 const customerIfSignedIn = authenticate("customer", ["session", "bearer"], { allowUnauthenticated: true })
 
@@ -47,6 +57,8 @@ export default defineMiddlewares({
     { matcher: "/store/carts/:id", middlewares: [customerIfSignedIn, cartOwnerOnly] },
     { matcher: "/store/payment-collections", middlewares: [customerIfSignedIn, cartOwnerOnly] },
     { matcher: "/store/carts", method: "POST", middlewares: [customerIfSignedIn, noEmailOnNewGuestCart] },
+    { matcher: "/store/customers/me/addresses", method: "POST", middlewares: [egyptOnly(true)] },
+    { matcher: "/store/customers/me/addresses/:address_id", method: "POST", middlewares: [egyptOnly(false)] },
     {
       matcher: "/admin/*",
       middlewares: [
