@@ -147,3 +147,29 @@ All three findings are fixed in c235fcf.
   - **Test:** both cases, for the points page and the dashboard.
 - **Checks:** `npm run check` passes: 391 storefront and 232 backend tests, typecheck, lint 0 errors and 0 warnings.
 - **Not re-run in the browser:** these render tests cover the three changed outputs.
+
+## Round 2
+
+Reviewer: GPT, 2026-10-20. Reviewed **only `c235fcf`**, after reading the Review and "Author response (Claude)" from `73082d9:docs/reviews/account-integration.md`. The documentation commit is context only; the tested application files match `c235fcf`. **Approved for this scope. All three findings are resolved; no new actionable findings.**
+
+| Finding | Verdict and evidence |
+|---|---|
+| AI-1 | **Resolved.** On the Arabic account page at 390px, the existing city `الجيزة` appeared as its own selected option; Cairo was not selected. Changed only the address label and saved through the real account service/BFF. The submitted payload, fixture record and refreshed list all retained **`الجيزة`**. A second address with canonical city `Giza` also retained **`Giza`** after a label-only save. |
+| AI-2 | **Resolved.** Inspected actual select options on `/ar/account/information` at **390px and 1280px**. All 21 canonical choices have Arabic labels and unchanged English values, including `Cairo` → `القاهرة`, `Giza` → `الجيزة`, `Alexandria` → `الإسكندرية` and `Port Said` → `بورسعيد`. Desktop inspection found **zero English option labels**. The saved-address list localizes the canonical `Giza` value to `الجيزة` and uses the Arabic comma, while preserving an already-Arabic city. |
+| AI-3 | **Resolved.** After signing out, the settled points page shows the existing sign-in notice without a points-loading status or stale balance. The dashboard card shows **`اطّلع على نقاطك وسجلها.`** at desktop and mobile widths. The hook keeps `null` while authentication is pending, and returns `"signed-out"` only after it settles without a customer. The new render test confirms that the points loading message is retained during the pending-auth state; the dashboard's existing null/loading branch remains intact. |
+
+### Verification
+
+Ran the actual scoped Next.js app against a disposable in-memory HTTP fixture with synthetic `example.invalid` customer data. The browser saves used the real service and BFF, and fixture inspection verified the stored/submitted city values. No real database, customer or email provider was used.
+
+- Storefront tests: `node ../../node_modules/jest/bin/jest.js --runInBand` from `apps/storefront` — **40 suites, 391/391 passed**, including the three new account-integration regressions. Used the checkout's existing React dependency mapping, with no dependency or NODE_PATH workaround.
+- Typecheck: `node ../../node_modules/typescript/bin/tsc --noEmit --incremental false` — passed.
+- Lint: `node ../../node_modules/eslint/bin/eslint.js .` — passed, **0 errors / 0 warnings**.
+- Impeccable detector on GovernorateSelect, AccountAddresses, AccountPoints and AccountDashboard — **0 mechanical findings**.
+- Live checks: preserved Arabic and English city values after label-only edits; Arabic option labels and list names at 390px/1280px; keyboard opening/submitting the address editor; settled guest points/dashboard output. No horizontal overflow observed in the checked account layouts. Pending-auth loading was verified by the render test and source, rather than a separately timed browser interception.
+
+The fix leaves the BFF, backend, confirmation flow and account CSS unchanged; those parts retain their Round 1 disposition. Temporary preview/fixture processes and owned scratch files were removed after verification. Application code is unchanged by this review.
+
+Not rerun: production build, live Medusa/Resend acceptance, physical touch or screen-reader testing, or native-speaker verification of Arabic wording. The browser run is fixture-based; it does not establish real provider or production catalog health.
+
+**Verdict: AI-1, AI-2 and AI-3 resolved. No open problems in the reviewed scope.**
