@@ -214,6 +214,18 @@ medusaIntegrationTestRunner({
           expect((await signIn("held@test.dev")).status).toBe(401)
 
           const auth = getContainer().resolve(Modules.AUTH)
+          // A failure between the login move and the marker write also moves the login back.
+          const markerFails = jest.spyOn(auth, "updateAuthIdentities").mockRejectedValueOnce(new Error("auth store down"))
+          try {
+            const between = signEmailChange({ customer_id: id, from: "sara@test.dev", to: "sara.between@test.dev" }, jwtSecret())
+            expect((await api.post("/store/email-change/confirm", { token: between }, store())).status).toBeGreaterThanOrEqual(400)
+          } finally {
+            markerFails.mockRestore()
+          }
+          expect((await signIn("sara@test.dev")).status).toBe(200)
+          expect((await signIn("sara.between@test.dev")).status).toBe(401)
+          expect((await api.get("/store/customers/me", store(sara))).data.customer.email).toBe("sara@test.dev")
+
           const [login] = await auth.listProviderIdentities({ provider: "emailpass", entity_id: "sara@test.dev" }, { relations: ["auth_identity"] })
           await auth.updateAuthIdentities([{ id: login.auth_identity_id as string, app_metadata: { ...login.auth_identity!.app_metadata, user_id: "user_staff" } }])
           const staff = signEmailChange({ customer_id: id, from: "sara@test.dev", to: "sara.free@test.dev" }, jwtSecret())
