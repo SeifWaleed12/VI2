@@ -426,3 +426,37 @@ APB-R3-1 is fixed in 25902ac.
 - **Checks:**
   - `account.spec.ts` 10/10.
   - `npm run check` passes: 335 storefront and 232 backend tests, typecheck, lint 0 errors and 0 warnings.
+
+## Round 4
+
+Reviewer: GPT, 2026-10-20. Reviewed **only `25902ac`**, after reading Round 3 and "Author response, round 3 (Claude)" from `476fecc:docs/reviews/account-page-backend.md`. The documentation commit is context only; the tested backend matches `25902ac`. **Approved for this review scope. No new actionable findings.**
+
+### APB-R3-1 — Resolved
+
+The login email and auth marker are now separate workflow steps, each returning its own compensation input. A marker-write failure can therefore compensate the already-completed login move. A later customer-update failure compensates both auth steps.
+
+Both independent rollback probes passed against real isolated PostgreSQL:
+
+1. **Between-writes failure:** injected a one-time rejection of `auth.updateAuthIdentities`. Inside the injected failure, read the real provider identity and confirmed its email had already moved to the new address. After the failed confirmation, the provider email and customer email were back at the original address, and the prior auth metadata was unchanged. Old-address sign-in returned **200**; new-address sign-in returned **401**. Retrying the same confirmation link after removing the transient fault succeeded, confirming the failed attempt had not consumed it.
+2. **Customer-update collision:** seeded prior auth metadata containing `customer_id`, `email_changed_at: 123`, unrelated nested values and a separate boolean, then attempted a change to an email held by an existing customer. The marker was written and then compensated (two auth metadata calls). After the failed confirmation, the login email and customer email were unchanged, and the **complete prior `app_metadata` matched exactly**. Old-address sign-in returned **200**; the collision address did not sign in with that password.
+
+The checked-in regression also passes for the between-writes failure, in addition to the independent probe above. No application files were changed to induce either failure.
+
+### Preserved checks
+
+- **APB-R2-1 replay protection:** A → B → A, then customer `POST /store/customers/me` setting `metadata.email_changed_at` to zero, still returns **`invalid_link`** when the first link is replayed. Successful changes retain the server-owned auth identity marker.
+- **Staff-login refusal:** the staff-shared auth identity is still refused with **`staff_login`**.
+- The account suite also passes saved-address isolation, request limits, native refund handling before/after delivery, expiry serialization and zero-capped event deduplication. The fix changes only the email workflow and its regression test; it introduces no migration or API contract change.
+
+### Verification and cleanup
+
+- **`account.spec.ts`: 10/10 passed.**
+- **`checkout.spec.ts`: 11/11 passed.**
+- **Independent rollback probes: 2/2 passed.**
+- Combined HTTP execution: **3 suites passed, 23 tests passed, 10 skipped**, in **245.764 seconds**. The skips are duplicate account cases in the supplemental fixture; the separate requested account suite ran all ten.
+- Used the installed integration Jest configuration, `TEST_TYPE=integration:http`, `NODE_ENV=test`, VM-module support and explicit unique database names. The temporary launcher ran `node --experimental-vm-modules <installed-jest>/bin/jest.js --config <integration-config-with-temporary-fixture-roots> --runInBand`. Checked-in suite assertions were unchanged; only source-import paths and isolated database configuration differed.
+- All disposable databases/templates and generated fixtures were removed. The final database inventory check returned **zero** names under `medusa-apbr4-1792508912135`. No development database or application code was changed.
+
+Not rerun: the full unit/type/lint/check pipeline, production Redis coordination or real email delivery. Payments in the HTTP suites used Medusa's system test provider.
+
+**Verdict: APB-R3-1 resolved. No open problems in the reviewed scope.**
