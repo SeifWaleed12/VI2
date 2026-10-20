@@ -30,6 +30,11 @@ export const quickVariantSchema = z.object({
 }).strict()
 
 // The new password's rule is checked by changePassword, which reports the reason.
+export const emailChangeSchema = z.object({
+  email: z.string().trim().pipe(z.email().max(254)).transform((value) => value.toLowerCase()),
+  password: z.string().min(1).max(1024),
+})
+
 export const changePasswordSchema = z.object({
   current_password: z.string().min(1).max(1024),
   new_password: z.string().max(1024),
