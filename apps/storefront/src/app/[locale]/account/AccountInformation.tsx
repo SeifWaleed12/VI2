@@ -12,7 +12,7 @@ import {
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { accountMessage } from "@/lib/account-copy";
-import type { Locale } from "@/lib/i18n";
+import { message, type Locale } from "@/lib/i18n";
 import ChangePasswordSection from "./ChangePasswordSection";
 import styles from "./Account.module.css";
 
@@ -162,9 +162,10 @@ export default function AccountInformation({ locale }: { locale: Locale }) {
             type="button"
             className={styles.outlineButton}
             onClick={() => setLanguage(locale === "ar" ? "en" : "ar")}
-            aria-label={
-              locale === "ar" ? "Switch to English" : "التبديل إلى العربية"
-            }
+            aria-label={message(
+              locale,
+              locale === "ar" ? "nav.switchEnglish" : "nav.switchArabic",
+            )}
           >
             {locale === "ar" ? "ENG" : "AR"}
           </button>

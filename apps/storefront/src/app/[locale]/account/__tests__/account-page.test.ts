@@ -303,3 +303,60 @@ it("drops an in-flight result when the customer changes or the view unmounts", a
   await Promise.resolve();
   expect(writeResult).not.toHaveBeenCalled();
 });
+
+it.each(["en", "ar"] as const)(
+  "does not promise order recency without a backend sorting contract (%s)",
+  (locale) => {
+    mockLocale = locale;
+    const html = renderToStaticMarkup(
+      createElement(OrderList, { orders: [order], locale }),
+    );
+    expect(html).toContain(
+      locale === "ar" ? "نعرض حتى ٢٠ طلباً." : "Showing up to 20 orders.",
+    );
+    expect(html).not.toMatch(/most recent|أحدث/);
+  },
+);
+it.each(["en", "ar"] as const)(
+  "announces an order error with a localized retry action (%s)",
+  (locale) => {
+    mockLocale = locale;
+    let call = 0;
+    const result = {
+      owner: mockCustomer.id,
+      attempt: 0,
+      orders: [],
+      error: true,
+    };
+    jest
+      .mocked(React.useState)
+      .mockImplementation(
+        () => [call++ === 0 ? 0 : result, jest.fn()] as never,
+      );
+    const html = renderToStaticMarkup(
+      createElement(AccountOrders, { locale, selectedOrder: "" }),
+    );
+    expect(html).toContain(
+      '<h2 role="alert">' +
+        (locale === "ar"
+          ? "طلباتك غير متاحة مؤقتاً."
+          : "Your orders are temporarily unavailable.") +
+        "</h2>",
+    );
+    expect(html).toContain(locale === "ar" ? "حاول مرة أخرى" : "Try again");
+  },
+);
+it.each(["en", "ar"] as const)(
+  "uses the current language dictionary for the language action (%s)",
+  (locale) => {
+    mockLocale = locale;
+    const html = renderToStaticMarkup(
+      createElement(AccountClient, { locale, section: "information" }),
+    );
+    expect(html).toContain(
+      'aria-label="' +
+        (locale === "ar" ? "التبديل إلى الإنجليزية" : "Switch to Arabic") +
+        '"',
+    );
+  },
+);

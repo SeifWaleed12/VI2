@@ -29,4 +29,42 @@ Detector:0 primary findings,28 advisories (old DESIGN ramp/color context versus 
 Review the implementation diff from5c4cbd9 to account-page; do not change application code. Read docs/account-page-handoff.md first. Check routes/dropdown/EN-AR/mobile, privacy across customer switches/logout, native order amounts/detail scope, and disabled uncontracted writes. Backend authoring remains separate. Append findings and approval below.
 
 ## Claude findings
-Pending.
+Reviewer: Claude. Range: 5c4cbd9..e40179e (branch account-page). Review only; no application code touched, GPT's branch not edited. Backend work stays on account-page-backend.
+
+**Verdict: approve with findings.** One cross-branch contract item (F1) must be settled before the orders list can be called "most recent"; none of the findings block the frontend merge.
+
+### Independently verified
+- 38 suites / 371 tests pass, tsc clean, production webpack build OK (run in a sparse worktree at e40179e).
+- Live browser, production build, real backend plus a throwaway fixture in front of it (fake customers with disjoint orders; example.invalid data only). Customers: normal (3 orders), empty, orders-500, no-name, and a 25-order customer with a very long mixed Arabic/Latin name.
+- Dashboard, information, orders, points render per handoff; dropdown/drawer destinations are information, orders, points; Buy It Again and Favourites are gone.
+- Customer scoping: orders appear only for the signed-in customer; detail selection only looks in the returned list, so a foreign order id shows nothing; in-place customer switch and logout drop the previous customer's rows.
+- Writes: name/email/phone edit forms keep Save disabled with explanatory copy; Cancel returns focus to the row trigger; no request is sent. Points show as unavailable, no invented balance.
+- EN and AR (dir=rtl, lang=ar): Arabic-Indic numerals and dates, currency formatting, and status labels localize. No horizontal overflow at 390 on dashboard, information or orders, with the long name. Name wraps in 4 lines without clipping. Touch targets are at least 44px; mobile account menu rows are 48px.
+- Mobile account `<details>` menu: opens, marks the current page, Escape closes it and returns focus to the summary.
+- Unknown order status falls back to "Status unavailable" / "الحالة غير متاحة" instead of leaking the raw value. Orders error state shows "temporarily unavailable" with a working Try again.
+
+### Findings
+**F1 (medium, backend contract, route to account-page-backend): "most recent" is not guaranteed.** `app/api/orders/route.ts` forwards only `limit` and `fields`; Medusa's `StoreGetOrdersParams` has no default `order`, so the 20 returned are whatever the database yields. The copy says "Showing up to 20 of your most recent orders." My fixture returned ascending order and the UI rendered oldest first. A customer with more than 20 orders can get an arbitrary 20 and no sign others exist. Fix on the backend/BFF branch: forward `order=-created_at`, offset and read `count`; the UI can then add a "showing N of M" line. Until then, soften the copy or accept the limitation explicitly.
+
+**F2 (low): orders error state is not announced.** The "temporarily unavailable" message has no `role="alert"` or live region, so a screen-reader user who lands on the page hears nothing about the failure. Add `role="alert"` (or `role="status"`) to the message.
+
+**F3 (low): language row aria-label.** The Language row button uses a hard-coded label rather than the keyed account copy; check it reads correctly in Arabic.
+
+**F4 (info, existing behavior): password change with an invalid session clears the session.** A 401 from the password route makes the BFF clear the cookie and log the user out. This predates the branch and is reasonable, but the form shows no message before the redirect. Not a blocker.
+
+### Not checked by me
+Slow-loading skeleton timing, 320px width, the 980/981 breakpoint, the mobile drawer account links, real customer data and a real password change, physical touch and screen-reader passes. GPT's own notes list the same device checks as manual acceptance.
+
+### Approval
+Approve for the owner to merge once F1 is acknowledged for account-page-backend. F2 and F3 can ride along with that follow-up or a later polish pass.
+
+## Author response to Claude findings — 2026-10-20
+
+- F1 acknowledged for account-page-backend. Frontend mitigation now removes all visible claims that the returned subset is the most recent: EN/AR list copy states only "up to20 orders", dashboard description is neutral, and missing-order copy refers to the displayed list. Ordering, offset/count and complete-history UI remain dependent on Claude's confirmed backend/BFF contract; no backend/BFF edits or client sorting of a truncated subset were added.
+- F2 fixed: the asynchronous orders error message has role="alert"; retry behavior retained.
+- F3 fixed: language-switch accessible labels reuse the existing keyed nav.switchEnglish/nav.switchArabic messages in the current page language. Visible AR/ENG and the language-switch operation are unchanged.
+- F4 acknowledged as pre-existing authenticated-session expiry behavior. No cookie/authentication/password-route changes.
+
+Verification:38 storefront suites /377 tests pass, typecheck and lint pass, production webpack build passes. Six new EN/AR assertions cover bounded neutral order wording, error announcements and language-action labels. No new live backend, real password change or physical screen-reader pass was run for these copy/ARIA changes. Existing screenshots document e40179e before this wording follow-up; layout/theme remain unchanged.
+
+Claude recheck requested for this follow-up. Owner controls merge; nothing pushed or merged.

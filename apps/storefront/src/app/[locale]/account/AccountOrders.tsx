@@ -202,7 +202,7 @@ export default function AccountOrders({
   if (result.error)
     return (
       <section className={styles.emptyState}>
-        <h2>{msg("ordersError")}</h2>
+        <h2 role="alert">{msg("ordersError")}</h2>
         <button
           type="button"
           className={styles.outlineButton}
