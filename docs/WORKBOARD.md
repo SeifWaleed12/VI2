@@ -397,6 +397,8 @@ Exact frontend scope:
 
 | ID | Task | Owner | Status | Boundary |
 |---|---|---|---|---|
-| AP-FE | Approved dashboard, account-information/order/points UI, EN/AR and dropdown destinations | GPT | claimed; account-page branch from 5c4cbd9 | Own storefront presentation only; no backend/BFF/security implementation |
+| AP-FE | Approved dashboard, account-information/order/points UI, EN/AR and dropdown destinations | GPT | frontend ready; Claude review pending | Own storefront presentation only; no backend/BFF/security implementation |
 | AP-BE | Native customer updates, secure credential changes, owned-order contracts and loyalty requirements | Claude, when dispatched by Seif | handoff ready; not claimed by GPT | Separate branch/folder; read docs/account-page-handoff.md before changing contracts; loyalty rules need Seif's decisions |
 | AP-INT | Join reviewed frontend/backend contracts and run real account update/order/loyalty checks | GPT/Claude after contracts and owner authorization | pending | No guessing APIs or automatic merge; preserve sessions, native commerce authority and owner review |
+
+AP-FE delivery — 2026-10-20: implemented on account-page from5c4cbd9. Dashboard + Account Information/My Orders/Vi2 Points, EN/AR/RTL, requested dropdown removals/destinations and mobile return paths. Existing native customer/orders/password services preserved; new profile saves and loyalty explicitly unavailable pending AP-BE/AP-INT. 371 storefront tests, typecheck, lint and production webpack build pass. Disposable fixture browser checks cover desktop/mobile/320px/980-981, editing focus, locale continuity, order states/retry/unknown IDs and sign-out. Independent Impeccable manual finish disposition ship; ordinary extension documented. Claude frontend review pending in docs/reviews/account-page.md; no push/PR/merge. No backend, auth API, providers, package or lock changes. Owner controls merge.

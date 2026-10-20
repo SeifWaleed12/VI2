@@ -1,13 +1,13 @@
 "use client";
 
 import Link from "@/components/LocaleLink";
+import { ACCOUNT_ROUTES } from "@/lib/account-navigation";
+import { accountMessage } from "@/lib/account-copy";
 import { localizedHref } from "@/lib/i18n";
 import {
   ArrowRight,
-  Heart,
   LogOut,
   PackageCheck,
-  RotateCcw,
   Sparkles,
   Star,
   UserRound,
@@ -24,11 +24,7 @@ type Props = {
   onClose: () => void;
 };
 
-export default function AccountDropdown({
-  open,
-  isArabic,
-  onClose,
-}: Props) {
+export default function AccountDropdown({ open, isArabic, onClose }: Props) {
   const { customer, isAuthenticated, signOut: authSignOut } = useAuth();
   const [logoutError, setLogoutError] = useState("");
   // Loyalty is not implemented; show a placeholder rather than an invented balance.
@@ -37,7 +33,11 @@ export default function AccountDropdown({
   useEffect(() => {
     if (!open) return;
 
-    try { window.localStorage.removeItem("vi2-last-order"); } catch { /* Storage may be disabled. */ }
+    try {
+      window.localStorage.removeItem("vi2-last-order");
+    } catch {
+      /* Storage may be disabled. */
+    }
   }, [open]);
 
   if (!open) return null;
@@ -49,7 +49,10 @@ export default function AccountDropdown({
   const user = customer
     ? {
         fullName:
-          `${customer.firstName} ${customer.lastName}`.trim() ||
+          [customer.firstName, customer.lastName]
+            .filter(Boolean)
+            .join(" ")
+            .trim() ||
           customer.firstName ||
           customer.email.split("@")[0],
         email: customer.email,
@@ -61,30 +64,26 @@ export default function AccountDropdown({
     ? {
         rewards: "مكافآت Vi2",
         points: "نقطة",
-        rewardBody:
-          "اجمع النقاط مع المشتريات المؤهلة واحصل على مزايا للأعضاء.",
+        rewardBody: accountMessage(isArabic ? "ar" : "en", "pointsUnavailable"),
         learn: "عرض حسابك",
         welcome: user ? `مرحباً، ${user.firstName}` : "مرحباً بك في Vi2",
         account: "حسابي",
         orders: "طلباتي",
         rewardsMenu: "مكافآتي",
-        buyAgain: "اشترِ مرة أخرى",
-        favourites: "المفضلة",
         signIn: "تسجيل الدخول / إنشاء حساب",
         signOut: "تسجيل الخروج",
       }
     : {
         rewards: "VI2 REWARDS",
         points: "POINTS",
-        rewardBody:
-          "Earn points on eligible purchases and unlock member benefits over time.",
+        rewardBody: accountMessage(isArabic ? "ar" : "en", "pointsUnavailable"),
         learn: "VIEW ACCOUNT",
-        welcome: user ? `WELCOME, ${user.firstName.toUpperCase()}` : "WELCOME TO VI2",
+        welcome: user
+          ? `WELCOME, ${user.firstName.toUpperCase()}`
+          : "WELCOME TO VI2",
         account: "My Account",
         orders: "My Orders",
         rewardsMenu: "My Rewards",
-        buyAgain: "Buy It Again",
-        favourites: "My Favourites",
         signIn: "SIGN IN / CREATE ACCOUNT",
         signOut: "SIGN OUT",
       };
@@ -96,12 +95,13 @@ export default function AccountDropdown({
       onClose();
       window.location.href = localizedHref("/", isArabic ? "ar" : "en");
     } catch {
-      setLogoutError("Unable to sign out. Please try again.");
+      setLogoutError(accountMessage(isArabic ? "ar" : "en", "signOutError"));
     }
   }
 
   return (
     <div
+      data-no-translate
       className={styles.dropdown}
       role="dialog"
       aria-label={copy.welcome}
@@ -120,7 +120,7 @@ export default function AccountDropdown({
 
         <p>{copy.rewardBody}</p>
 
-        <Link href="/account" onClick={onClose}>
+        <Link href={ACCOUNT_ROUTES.information} onClick={onClose}>
           {copy.learn}
           <ArrowRight size={14} strokeWidth={1.5} />
         </Link>
@@ -137,29 +137,19 @@ export default function AccountDropdown({
         )}
 
         <div className={styles.menuLinks}>
-          <Link href="/account" onClick={onClose}>
+          <Link href={ACCOUNT_ROUTES.information} onClick={onClose}>
             <UserRound size={17} strokeWidth={1.35} />
             {copy.account}
           </Link>
 
-          <Link href="/account#orders" onClick={onClose}>
+          <Link href={ACCOUNT_ROUTES.orders} onClick={onClose}>
             <PackageCheck size={17} strokeWidth={1.35} />
             {copy.orders}
           </Link>
 
-          <Link href="/account#rewards" onClick={onClose}>
+          <Link href={ACCOUNT_ROUTES.points} onClick={onClose}>
             <Star size={17} strokeWidth={1.35} />
             {copy.rewardsMenu}
-          </Link>
-
-          <Link href="/account#reorder" onClick={onClose}>
-            <RotateCcw size={17} strokeWidth={1.35} />
-            {copy.buyAgain}
-          </Link>
-
-          <Link href="/account#saved" onClick={onClose}>
-            <Heart size={17} strokeWidth={1.35} />
-            {copy.favourites}
           </Link>
         </div>
 

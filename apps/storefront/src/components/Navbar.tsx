@@ -841,8 +841,8 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
               <Link
                 href={
                   isAuthenticated
-                    ? "/account"
-                    : "/account/sign-in?next=/account"
+                    ? "/account/information"
+                    : "/account/sign-in?next=/account/information"
                 }
                 onClick={closeMenu}
               >
@@ -856,8 +856,8 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
               <Link
                 href={
                   isAuthenticated
-                    ? "/account#orders"
-                    : "/account/sign-in?next=/account"
+                    ? "/account/orders"
+                    : "/account/sign-in?next=/account/orders"
                 }
                 onClick={closeMenu}
               >
@@ -871,8 +871,8 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
               <Link
                 href={
                   isAuthenticated
-                    ? "/account#rewards"
-                    : "/account/sign-in?next=/account%23rewards"
+                    ? "/account/points"
+                    : "/account/sign-in?next=/account/points"
                 }
                 onClick={closeMenu}
               >
