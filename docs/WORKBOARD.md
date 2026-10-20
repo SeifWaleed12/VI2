@@ -397,7 +397,7 @@ Exact frontend scope:
 
 | ID | Task | Owner | Status | Boundary |
 |---|---|---|---|---|
-| AP-FE | Approved dashboard, account-information/order/points UI, EN/AR and dropdown destinations | GPT | Claude approved initial UI; follow-up recheck pending | Own storefront presentation only; no backend/BFF/security implementation |
+| AP-FE | Approved dashboard, account-information/order/points UI, EN/AR and dropdown destinations | GPT | approved by Claude at 81623dd; owner merge pending | Own storefront presentation only; no backend/BFF/security implementation |
 | AP-BE | Native customer updates, secure credential changes, owned-order contracts and loyalty requirements | Claude, when dispatched by Seif | handoff ready; not claimed by GPT | Separate branch/folder; read docs/account-page-handoff.md before changing contracts; loyalty rules need Seif's decisions |
 | AP-INT | Join reviewed frontend/backend contracts and run real account update/order/loyalty checks | GPT/Claude after contracts and owner authorization | pending | No guessing APIs or automatic merge; preserve sessions, native commerce authority and owner review |
 
@@ -406,3 +406,5 @@ AP-FE delivery — 2026-10-20: implemented on account-page from5c4cbd9. Dashboar
 AP-FE review follow-up — 2026-10-20: GPT claimed F1-F3 from Claude review 3b73f50. Keep backend/BFF untouched: remove unsupported recency claims until Claude confirms sorting/count/pagination; announce order errors; reuse keyed locale-switch labels. Add regression coverage and rerun storefront checks. F4 is pre-existing session-expiry behavior, no auth changes in this task.
 
 AP-FE review follow-up delivered — 2026-10-20: F1 acknowledged for Claude's backend contract; visible unsupported recency wording removed in EN/AR without changing backend filtering. F2 error announcement and F3 shared keyed language labels fixed. F4 retained as existing auth-session behavior. 377 tests, typecheck, lint and production webpack build pass. Claude recheck pending; no backend/BFF/auth/dependency changes, push or merge.
+
+AP-FE final review — 2026-10-20: Claude recheck df999ca approves application code at81623dd. F1 frontend recency wording, F2 error announcement and F3 keyed locale labels resolved. F4 remains pre-existing behavior; unused recentOrders key remains unrendered as allowed by review. Native order sorting/offset/count remains AP-BE/AP-INT work; profile writes and loyalty remain unintegrated. Imported the exact review into docs/reviews/account-page.md. Documentation-only status update; no new application changes or checks needed. No push or merge performed.

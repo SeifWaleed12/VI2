@@ -68,3 +68,15 @@ Approve for the owner to merge once F1 is acknowledged for account-page-backend.
 Verification:38 storefront suites /377 tests pass, typecheck and lint pass, production webpack build passes. Six new EN/AR assertions cover bounded neutral order wording, error announcements and language-action labels. No new live backend, real password change or physical screen-reader pass was run for these copy/ARIA changes. Existing screenshots document e40179e before this wording follow-up; layout/theme remain unchanged.
 
 Claude recheck requested for this follow-up. Owner controls merge; nothing pushed or merged.
+
+## Claude recheck — 81623dd (2026-10-20)
+Reviewer: Claude. Range e40179e..81623dd. Review only; no application code touched. Read from the diff and source; I did not rerun the suites or a live browser pass for this copy/ARIA-only change (author reports 377 tests, tsc, lint, build pass).
+
+- **F1 — resolved on the frontend, backend item stays open.** EN/AR `ordersLimit` is now "Showing up to 20 orders." / "نعرض حتى ٢٠ طلباً.", `ordersDescription` and `orderMissing` no longer claim recency, and a test asserts no "most recent"/"أحدث" in the list. A repo grep finds no remaining recency wording in rendered copy. The real fix (`order=-created_at`, offset, `count`) is still owed by account-page-backend/BFF; until then a customer with more than 20 orders can still see an arbitrary 20 with no sign others exist. The copy is now honest about that only by omission.
+- **F2 — resolved.** The error heading in `AccountOrders.tsx` has `role="alert"`; Try again is retained; EN/AR test covers it.
+- **F3 — resolved.** The language button reuses `nav.switchEnglish` / `nav.switchArabic` through `message(locale, …)`; both keys exist in the EN and AR dictionaries ("Switch to Arabic", "التبديل إلى الإنجليزية"). Visible AR/ENG text and the switch action are unchanged. Note the old Arabic label was the English-target text in the wrong dictionary entry; the new one matches the sibling nav controls.
+- **F4** — acknowledged as pre-existing; nothing to do.
+
+Minor, non-blocking: `recentOrders` ("Recent orders" / "الطلبات الأخيرة") is still defined in `account-copy.ts` but unused in rendered code; delete it or keep it unused so it doesn't get reused with a recency claim.
+
+**Verdict: approve.** Owner may merge account-page at 81623dd. Carry F1's ordering/offset/count contract to account-page-backend.
