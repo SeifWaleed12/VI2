@@ -42,13 +42,20 @@ it("does not show points loading forever to a signed-out visitor (AI-3)", () => 
 
 it("shows a field's rule and its error under it, and marks the field invalid", async () => {
   const { AccountField } = await import("../AccountField");
-  // A plain function component (no hooks), so it can be called directly.
-  const html = renderToStaticMarkup(AccountField({
-    name: "phone", label: "phone", locale: "en", error: "invalidPhone", hint: "phoneHint",
+  const phone = (error?: "invalidPhone" | "phoneRequired") => AccountField({
+    name: "phone", label: "phone", locale: "en", error, hint: "phoneHint",
     children: (props) => createElement("input", props),
-  }));
+  });
+  // Two phone fields on one page, as with the profile and address editors open.
+  const html = renderToStaticMarkup(createElement(function Page() { return createElement("div", null, phone("invalidPhone"), phone("phoneRequired")); }));
+  const ids = [...html.matchAll(/<input id="([^"]+)"[^>]*aria-describedby="([^"]+)"/g)].map(([, id, describedBy]) => ({ id, describedBy }));
+  expect(ids).toHaveLength(2);
+  expect(ids[0].id).not.toBe(ids[1].id);
+  for (const { id, describedBy } of ids) {
+    expect(html).toContain(`<label for="${id}">`);
+    expect(describedBy).toBe(`${id}-hint ${id}-error`);
+  }
   expect(html).toContain('aria-invalid="true"');
-  expect(html).toContain('aria-describedby="field-phone-hint field-phone-error"');
   expect(html).toContain("11 digits starting with 010, 011, 012 or 015");
   expect(html).toContain("This isn’t an Egyptian mobile number.");
 });

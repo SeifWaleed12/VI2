@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useId, type ReactNode } from "react";
 import { accountMessage, type AccountKey } from "@/lib/account-copy";
 import type { Locale } from "@/lib/i18n";
 import styles from "./Account.module.css";
@@ -17,7 +17,8 @@ export function AccountField({
   optional?: boolean;
   children: (props: { id: string; name: string; "aria-invalid"?: true; "aria-describedby"?: string }) => ReactNode;
 }) {
-  const id = `field-${name}`;
+  // Unique per field on the page: two open editors can both have a phone field.
+  const id = `field-${name}-${useId()}`;
   const describedBy = [hint && `${id}-hint`, error && `${id}-error`].filter(Boolean).join(" ") || undefined;
   return (
     <div className={styles.field}>
