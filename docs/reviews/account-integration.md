@@ -240,3 +240,41 @@ Both findings are fixed in 6b2202a.
   - **Not covered by the checked-in tests:** the storefront Jest setup has no DOM, so a browser check of the delayed-response focus is left to your re-run.
 - **Rules table:** these are the rules in `lib/account-validation.ts` and the input limits, as you listed them in your matrix.
 - **Checks:** `npm run check` passes: 406 storefront and 232 backend tests, typecheck, lint 0 errors and 0 warnings.
+
+## Round 4
+
+Reviewer: GPT, 2026-10-21. Reviewed **only `6b2202a`** on `claude/account-integration`, after reading Round 3 and **"Author response, round 3 (Claude)"** from `0bbe569:docs/reviews/account-integration.md`. The documentation commit is context only. **Approved for this scope: AI-R3-1 and AI-R3-2 are resolved, with no new actionable findings.**
+
+### AI-R3-1 — Resolved
+
+Opened the profile phone and new-address editors together in the actual browser. Submitted profile phone `123` and an empty address so both phone fields had different errors. The inputs had separate IDs (`field-phone-_r_0_` and `field-phone-_r_3_`), each with its own hint/error IDs. No duplicate IDs existed in the rendered main content.
+
+Clicking the profile label focused the profile input; clicking the address phone label focused the address input. The accessibility snapshot exposed separate names **"Mobile number (optional)"** and **"Mobile number"**. Resolving each input's `aria-describedby` returned its own hint and respectively the invalid-Egyptian-number or required-phone error. Both inputs were independently marked invalid. `name="phone"` and the form-scoped focus lookup remain intact.
+
+The revised checked-in render test verifies two distinct input IDs and matching label/description references. The former deterministic `field-phone` ID would fail its distinct-ID assertion. The live label-click and description checks additionally verify the actual mounted-editor behavior.
+
+### AI-R3-2 — Resolved
+
+Used a disposable HTTP fixture that delays each email-change rejection **600 ms**, through the real storefront account service and BFF. Observed the busy form with disabled inputs before each response. After the response, all four cases focused an enabled input with `aria-invalid="true"` and the corresponding rendered error description:
+
+| Locale | Backend code | Focus and description after response |
+|---|---|---|
+| EN | `wrong_password` | `password`; "Your current password is not correct." |
+| EN | `same_email` | `email`; "This is already your email." |
+| AR | `wrong_password` | `password`; "كلمة المرور الحالية غير صحيحة." |
+| AR | `same_email` | `email`; "هذا هو بريدك الحالي بالفعل." |
+
+Password-error requests were submitted using keyboard Enter. `flushSync` commits both the error and the re-enabled state before `focusFirstError` runs, fixing the Round 3 BODY-focus failure. The error exists in the input's description when focus arrives. Form-level errors retain `role="alert"`; the success branch preserves its previous reset/notice behavior.
+
+### Verification, scope and limits
+
+- Storefront: `node ../../node_modules/jest/bin/jest.js --runInBand` from `apps/storefront` — **41 suites, 406/406 passed**, using the actual installed React mapping, without a NODE_PATH workaround.
+- `node ../../node_modules/typescript/bin/tsc --noEmit --incremental false` — passed.
+- `node ../../node_modules/eslint/bin/eslint.js .` — passed, **0 errors / 0 warnings**.
+- The fix changes only AccountField, EmailChangeForm and their render test. Password-change code, account CSS, validation rules, services, BFF and backend are unchanged. The author's response confirms the rules are the Round 3 matrix, resolving the earlier missing-summary clarification.
+- Tested with synthetic `example.invalid` data on a separate localhost preview; no real account, database or email provider was used. Temporary servers, owned browser tab and fixture scripts were removed. Application files still match `6b2202a`.
+- Not rerun: production build, full responsive acceptance, physical screen-reader speech, touch or native-speaker copy review. Browser focus, accessible names and description associations were verified; spoken output is not certified. The author correctly notes that the Jest setup does not cover delayed client focus, so the browser checks above supply that evidence.
+
+Separately, at Seif's explicit request, committed the pre-existing **account-design notes only** in `docs/WORKBOARD.md` on `gpt/work` as **`c2d7527`** (`docs: record approved account design scope`, 21 added lines). No other pending review, application file or design artifact was included. No push or merge performed.
+
+**Verdict: AI-R3-1 and AI-R3-2 resolved. No open problems in the reviewed scope.**
