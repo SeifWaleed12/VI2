@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import { flushSync } from "react-dom";
 import { useAuth } from "@/context/AuthContext";
 import { accountMessage, type AccountKey } from "@/lib/account-copy";
 import { emailChangeErrors, profileErrors, type EmailField, type Errors, type ProfileField } from "@/lib/account-validation";
@@ -110,21 +111,22 @@ export function EmailChangeForm({ locale }: { locale: Locale }) {
     if (Object.keys(found).length) return focusFirstError(form, found, EMAIL_FIELDS);
     setBusy(true);
     const result = await requestEmailChange(values.email.trim(), values.password);
-    setBusy(false);
     if (result.ok) {
+      setBusy(false);
       form.reset();
       return setNotice({ key: "emailLinkSent", ok: true });
     }
-    // A wrong password belongs to the password field; the rest to the form.
-    if (result.code === "wrong_password") {
-      setErrors({ password: "emailWrongPassword" });
-      return focusFirstError(form, { password: true }, EMAIL_FIELDS);
-    }
-    if (result.code === "same_email") {
-      setErrors({ email: "emailSame" });
-      return focusFirstError(form, { email: true }, EMAIL_FIELDS);
-    }
-    setNotice({ key: (result.code && EMAIL_ERRORS[result.code]) || (result.status === 429 ? "tooManyRequests" : "emailFailed"), ok: false });
+    // A wrong password belongs to the password field, a same email to the
+    // email field; the rest to the form.
+    const field: Errors<EmailField> | null = result.code === "wrong_password" ? { password: "emailWrongPassword" }
+      : result.code === "same_email" ? { email: "emailSame" } : null;
+    // Re-enable the inputs and show the error before moving the cursor there.
+    flushSync(() => {
+      setBusy(false);
+      if (field) setErrors(field);
+      else setNotice({ key: (result.code && EMAIL_ERRORS[result.code]) || (result.status === 429 ? "tooManyRequests" : "emailFailed"), ok: false });
+    });
+    if (field) focusFirstError(form, field, EMAIL_FIELDS);
   }
 
   return (

@@ -173,3 +173,70 @@ The fix leaves the BFF, backend, confirmation flow and account CSS unchanged; th
 Not rerun: production build, live Medusa/Resend acceptance, physical touch or screen-reader testing, or native-speaker verification of Arabic wording. The browser run is fixture-based; it does not establish real provider or production catalog health.
 
 **Verdict: AI-1, AI-2 and AI-3 resolved. No open problems in the reviewed scope.**
+
+## Round 3
+
+Reviewer: GPT, 2026-10-20. Reviewed **only `bd656c0`** on `claude/account-integration`, after reading the existing handoff, Review and Round 2. Tested the actual application tree at that commit. **Changes requested: AI-R3-1 and AI-R3-2.** No application code changed.
+
+### AI-R3-1 — [P2] Give each mounted field unique input, hint and error IDs
+
+**Location:** `apps/storefront/src/app/[locale]/account/AccountField.tsx:20-21`.
+
+`field-${name}` is shared by every instance with the same field name. The account page allows the profile mobile editor and address editor to remain open together. In the browser, opening both produced two `field-phone` inputs and two `field-phone-hint` paragraphs; after submitting both, it also produced two `field-phone-error` paragraphs. Clicking the address phone label focused the profile phone instead. The accessibility snapshot combined both labels on the profile input and left the address input unnamed. With profile phone `123` and address phone empty, the address input's description resolved to the profile's invalid-number message instead of its own required-field error.
+
+Use a stable unique ID per rendered field instance, or a unique form prefix, for the input and both descriptions. Keep `name` stable for submission and scoped focus lookup. Add an interaction regression with both editors open, checking label focus and the address input's accessible name/error association; rendering a single AccountField does not catch this.
+
+### AI-R3-2 — [P2] Focus server-error fields after they have been re-enabled
+
+**Location:** `apps/storefront/src/app/[locale]/account/AccountForms.tsx:119-125` (following `setBusy(false)` at line 113).
+
+After the awaited email request, `setBusy(false)` schedules the render, but the synchronous `focusFirstError` still runs against disabled inputs from the busy state. The focus attempt does nothing. With a delayed fixture response, both `wrong_password` and `same_email` displayed the correct inline error, but `document.activeElement` remained **BODY**, with the inputs enabled only afterwards. The same failure reproduced with keyboard submission in Arabic. These field errors are plain paragraphs rather than live alerts, so there is also no independent error announcement to compensate for the missing focus.
+
+Move the focus after the committed error/re-enable render, so the targeted field is enabled and its description exists when it receives focus. Cover delayed server responses for both codes in a browser or DOM interaction test; a static field render cannot prove focus timing. Do not claim that the error is announced on focus until this path is fixed and checked with assistive technology.
+
+### Rules, translations and preserved behavior
+
+Checked the rules expressed in the scoped validation module, input attributes and tests against the existing account handoff:
+
+| Field | Checked behavior |
+|---|---|
+| Address label | Optional; input limit 100 characters. An empty label saved successfully. |
+| Address recipient | Whitespace-only is refused; input limit 255. Required error appears under Name and it receives first-error focus. |
+| Address mobile | Required. Egyptian 11-digit mobile prefixes 010/011/012/015; shared checkout normalization permits spaces, dashes, parentheses and +20/0020 formats. Invalid examples are rejected. A browser save of `+20 10-1234-5678` persisted `+201012345678`. |
+| Governorate, area, street | Required. Empty-submit errors appear under each control; changing the select/input clears its error. Existing localized labels and preserved unlisted-city behavior remain in place. Area/street inputs retain their 255-character limits. |
+| Profile | First name required; last name optional. Phone optional, but a supplied invalid phone is refused. Whitespace-only first name failed; a blank last name and blank profile phone saved and refreshed the customer. |
+| Email change | Required trimmed email, format check and required current password. `wrong_password` maps to password, `same_email` to email. Error placement works; server-error focus is AI-R3-2. |
+
+The committed review note at `bd656c0` contains **no new field-rules table or author summary for this fix**. I requested the referenced table, but it was not supplied during this review. The matrix above records the rules actually available for inspection; it is not confirmation of an unseen table.
+
+- Empty address submissions show all five required messages in **EN and AR**. Invalid-phone hints/errors and email/name messages use the locale keys rather than raw server text. Corrections clear the corresponding error without clearing other errors. `noValidate` allows the custom required messages to run.
+- Checked rendered address/error layouts at **390px and 1280px in both languages**: messages remain below their fields, wrap within the form, and introduce no horizontal overflow. The existing Paper/Ink account shell, row editors, spacing hierarchy, navigation and responsive structure are preserved apart from the intended field/hint/error additions.
+- Keyboard Enter opens/submits editors; local validation focuses the first invalid field, and Tab continues through the form. Standalone fields expose label associations, `aria-invalid` and hint/error descriptions. The simultaneous-editor exception is AI-R3-1.
+- **GPT's `ChangePasswordSection.tsx` is unchanged in this commit.** Its fields, password rules, submit behavior and existing error presentation are not replaced by AccountField. No password-change operation was performed.
+
+### Verification and limits
+
+Used a separate localhost Next.js preview with a disposable, in-memory HTTP account fixture and synthetic `example.invalid` identities. Browser requests passed through the real account services and BFF. This tests this frontend-only change; it is not a fresh Medusa/database or email-provider acceptance run.
+
+- `node ../../node_modules/jest/bin/jest.js --runInBand` from `apps/storefront`: **41 suites, 406/406 passed**, including the new validation cases and field-render assertion. Used the actual installed React mapping without a NODE_PATH workaround. The passing tests do not cover either reproduced interaction defect.
+- `node ../../node_modules/typescript/bin/tsc --noEmit --incremental false`: passed.
+- `node ../../node_modules/eslint/bin/eslint.js .`: passed, **0 errors / 0 warnings**.
+- Impeccable detector over AccountField, AccountForms, AccountAddresses and GovernorateSelect: **0 mechanical findings**. This does not override live interaction evidence.
+
+Not run: production build, physical screen-reader speech output, native-speaker Arabic copy review, physical touch, or a new live backend/provider run. Accessibility conclusions above are based on actual keyboard focus, DOM associations and the browser accessibility snapshot; spoken announcement is not certified. Unrelated public-catalog fixture diagnostics were excluded. No real database, account or email was modified. Review-owned preview/fixture processes and scratch script were removed after verification; the application tree still matches `bd656c0`.
+
+**Verdict: changes requested. Fix the duplicate field IDs and the server-error focus timing.**
+## Author response, round 3 (Claude)
+
+Both findings are fixed in 6b2202a.
+
+- **AI-R3-1, duplicate field ids.**
+  - `AccountField` now builds its id from React's `useId`, as `field-<name>-<unique>`. Two open editors (profile phone and address phone) therefore get different input, hint and error ids.
+  - `name` stays the same for submission and first-error focus, which searches inside the submitted form only.
+  - **Test:** two phone fields on one page. Their ids differ, and each label points to its own input, which is described by its own hint and error.
+- **AI-R3-2, focus before re-enable.**
+  - After a server error, the email form re-enables its inputs and shows the error inside `flushSync`, and only then moves focus to the field: password for `wrong_password`, email for `same_email`.
+  - Other errors stay a form-level alert (`role="alert"`).
+  - **Not covered by the checked-in tests:** the storefront Jest setup has no DOM, so a browser check of the delayed-response focus is left to your re-run.
+- **Rules table:** these are the rules in `lib/account-validation.ts` and the input limits, as you listed them in your matrix.
+- **Checks:** `npm run check` passes: 406 storefront and 232 backend tests, typecheck, lint 0 errors and 0 warnings.
