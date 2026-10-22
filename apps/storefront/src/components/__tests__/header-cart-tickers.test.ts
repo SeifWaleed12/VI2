@@ -192,7 +192,8 @@ it("keeps real localized product destinations with only one keyboard stop per pr
   expect(html.match(/tabindex="-1"/g)).toHaveLength(3);
   expect(html).toContain('aria-hidden="true"');
   expect(html).toContain(">Protein</span>");
-  expect(html).toContain(message("ar", "ticker.pause"));
+  expect(html).not.toContain("<button");
+  expect(html).toContain("منتجات رائجة");
 });
 it("keeps the decorative brand names unchanged and provides a separate pause control", () => {
   const html = renderToStaticMarkup(
@@ -289,11 +290,12 @@ it.each(["en", "ar"] as const)("names only language/currency preferences, exclud
   expect(preferences).not.toContain("/deals");
   expect(preferences).not.toContain(message(locale, "announcement.essentials"));
 });
-it("uses changing action labels without redundant toggle state on product and brand tickers", () => {
+it("keeps brand pause controls while products use hover and focus", () => {
   mockManualPause = true;
   const brand = renderToStaticMarkup(createElement(BrandUniverse, { brands: ["Brand"] }));
   const product = renderToStaticMarkup(createElement(() => TrendingNow({ products: [{ id: "p", slug: "p", name: "P" } as Product] })));
-  for (const html of [brand, product]) {
+  expect(product).not.toContain("<button");
+  for (const html of [brand]) {
     expect(html).toContain('aria-label="Resume animation"');
     expect(html).not.toContain("aria-pressed");
   }
@@ -331,6 +333,22 @@ it.each(["en", "ar"] as const)("gives the utility strip to announcements without
   expect(strip).not.toContain('24H PICKS');
   // Deals remains a normal navigation destination.
   expect(html).toContain(`href="/${locale}/deals"`);
+});
+
+it("renders the trending heading and one real cycle for two products without invented selections", () => {
+  const products = [{ id: "one", slug: "one", name: "First product", image: "" }, { id: "two", slug: "two", name: "Second product", image: "/two.png" }] as Product[];
+  const html = renderToStaticMarkup(createElement(() => TrendingNow({ products })));
+  expect(html).toContain("TRENDING PRODUCTS");
+  expect(html).not.toContain("VI2 PICKS");
+  expect(html).not.toContain("EXPLORE PRODUCTS");
+  expect(html).not.toContain('src=""');
+  expect(html).toContain('role="img" aria-label="First product"');
+  expect(html).not.toContain("<button");
+  for (const slug of ["one", "two"]) {
+    const links = [...html.matchAll(new RegExp(`<a[^>]*href="/en/products/${slug}"[^>]*>`, "g"))].map(match => match[0]);
+    expect(links).toHaveLength(4);
+    expect(links.filter(link => !link.includes('tabindex="-1"'))).toHaveLength(1);
+  }
 });
 
 it("does not close a hover-opened account on its first pointer click, while keyboard activation still toggles", () => {
