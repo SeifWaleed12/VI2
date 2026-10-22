@@ -95,7 +95,7 @@ Managers already have these pages (`manager-role.ts`).
 
 **Not checked yet:**
 - the live browser run, which comes after Seif's OK in the reviewed baseline;
-- whether the store shows an inventory kit's stock computed from its parts.
+- a live bundle in the browser. Its stock was checked in Medusa's code instead: the store API's `inventory_quantity` for a kit is the smallest of (available stock of each part ÷ quantity needed), from `getVariantAvailability` in `@medusajs/utils`, and `mapMedusaProduct` already turns that into in or out of stock.
 
 ## Please look closely at
 
