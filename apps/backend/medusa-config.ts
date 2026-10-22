@@ -1,6 +1,7 @@
 import { configuredSecret } from "./src/lib/secrets"
 import { notificationModule } from "./src/lib/notification-config"
 import { redisModules } from "./src/lib/redis-config"
+import { fileModules } from "./src/lib/file-config"
 import { loadEnv, defineConfig } from '@medusajs/framework/utils'
 
 loadEnv(process.env.NODE_ENV || 'development', process.cwd())
@@ -29,6 +30,9 @@ module.exports = defineConfig({
     {
       resolve: "./src/modules/eda",
     },
+    {
+      resolve: "./src/modules/loyalty",
+    },
     // The rbac flag above turns on role checks, but Medusa builds its default
     // module list before core flags are registered, so the default RBAC entry is
     // always disabled. Listing it here overrides that entry and loads the module.
@@ -37,5 +41,6 @@ module.exports = defineConfig({
     },
     notificationModule(),
     ...redisModules(),
+    ...fileModules(),
   ],
 })

@@ -15,7 +15,11 @@ export const LOGIN_POLICY: LoginAttemptPolicy = { maxAttempts: 5, windowSeconds:
 // flood an inbox, and so they never count as wrong passwords.
 export const RESET_REQUEST_POLICY: LoginAttemptPolicy = { maxAttempts: 5, windowSeconds: 15 * 60 }
 
-export type AttemptPurpose = "login-attempts" | "reset-requests"
+// Email-change links go to the old and new inbox; three requests an hour per
+// account keeps that from being used to flood either.
+export const EMAIL_CHANGE_POLICY: LoginAttemptPolicy = { maxAttempts: 3, windowSeconds: 60 * 60 }
+
+export type AttemptPurpose = "login-attempts" | "reset-requests" | "email-change-requests"
 
 // The key is hashed so the cache never holds email addresses, and so characters
 // the cache treats specially ("*" is a wildcard) are harmless.
