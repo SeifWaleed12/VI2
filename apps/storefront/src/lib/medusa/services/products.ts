@@ -4,8 +4,6 @@ import type { Product, ProductCategoryRef, ProductOption, ProductVariant } from 
 
 import type { HttpTypes } from "@medusajs/types";
 import { resolveRegionId } from "./regions";
-import { getTagIds } from "./tags";
-import { BUNDLE_TAG } from "@/lib/health-goals";
 type CatalogProduct = HttpTypes.StoreProduct & {
   brand?: { id?: string; name: string; status?: string } | null;
   eda_registration?: { registration_number?: string | null; is_approved?: boolean | null } | null;
@@ -159,7 +157,7 @@ export type ListProductsParams = {
   category_id?: string[];
   // Active brands only; unknown or inactive brands give an empty page.
   brand_id?: string[];
-  // Health goals and bundles are product tags (lib/health-goals.ts).
+  // Health goals are product tags (lib/health-goals.ts).
   tag_id?: string[];
   id?: string[];
   q?: string;
@@ -217,14 +215,32 @@ export async function getDeals(locale: Locale): Promise<Product[]> {
     throw new Error("Deals temporarily unavailable.");
   }
   if (!ids.length) return [];
-  return (await listProducts({ locale, id: ids, limit: MAX_PAGE_SIZE })).products;
+  const { products } = await listProducts({ locale, id: ids, limit: MAX_PAGE_SIZE });
+  return products.map(asDeal).filter((product): product is Product => product !== null);
 }
 
-// Up to three bundle products (tagged "bundle") for the homepage.
-export async function getBundles(locale: Locale): Promise<Product[]> {
-  const tagId = (await getTagIds([BUNDLE_TAG]))[BUNDLE_TAG];
-  if (!tagId) return [];
-  return (await listProducts({ locale, tag_id: [tagId], limit: 3 })).products;
+// The backend lists every product named in a sale price list; only Medusa's
+// price for one unit says whether it is cheaper now (a sale price can need a
+// minimum quantity, or be higher than the normal price). The card then shows
+// and adds the variant with the biggest saving, named when there are several.
+export function asDeal(product: Product): Product | null {
+  const [best] = (product.variants ?? [])
+    .filter((v) => v.compareAtPrice !== undefined && v.compareAtPrice > v.price)
+    .sort((a, b) => b.compareAtPrice! - b.price - (a.compareAtPrice! - a.price));
+  if (!best) return null;
+  const named = (name: string) => ((product.variants?.length ?? 0) > 1 && best.title ? `${name} — ${best.title}` : name);
+  return {
+    ...product,
+    variantId: best.id,
+    name: named(product.name),
+    shortName: named(product.shortName),
+    price: best.price,
+    compareAtPrice: best.compareAtPrice,
+    stock: best.stock,
+    inventoryKnown: best.inventoryKnown,
+    inStock: best.inStock === true,
+    image: best.image || product.image,
+  };
 }
 
 export type GetProductsParams = Omit<ListProductsParams, "locale" | "brand_id"> & { locale?: Locale };

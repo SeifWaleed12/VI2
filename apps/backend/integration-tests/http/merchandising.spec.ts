@@ -2,16 +2,16 @@ import { medusaIntegrationTestRunner } from "@medusajs/test-utils"
 import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
 import { createPriceListsWorkflow, createProductsWorkflow, updatePriceListsWorkflow } from "@medusajs/medusa/core-flows"
 import { setupEgyptStore } from "../../src/scripts/setup-egypt-store"
-import setupMerchandisingTags, { MERCHANDISING_TAGS } from "../../src/scripts/setup-merchandising-tags"
+import setupHealthGoalTags, { HEALTH_GOAL_TAGS } from "../../src/scripts/setup-health-goal-tags"
 import { dealProductIds } from "../../src/lib/deals"
 
 jest.setTimeout(240 * 1000)
 
-// Deals come from sale Price Lists, health goals and bundles from product tags,
+// Deals come from sale Price Lists and health goals from product tags,
 // all through Medusa's own store API.
 medusaIntegrationTestRunner({
   testSuite: ({ api, getContainer }) => {
-    describe("deals and merchandising tags", () => {
+    describe("deals and health goal tags", () => {
       let storeApi: { headers: Record<string, string>, validateStatus: () => boolean }
       let regionId: string
       const ids: Record<string, string> = {}
@@ -21,15 +21,15 @@ medusaIntegrationTestRunner({
         const container = getContainer()
         await setupEgyptStore(container)
         // Run twice: the second run must not fail or duplicate.
-        await setupMerchandisingTags({ container, args: [] } as never)
-        await setupMerchandisingTags({ container, args: [] } as never)
+        await setupHealthGoalTags({ container, args: [] } as never)
+        await setupHealthGoalTags({ container, args: [] } as never)
         const query = container.resolve(ContainerRegistrationKeys.QUERY)
         const { data: [store] } = await query.graph({ entity: "store", fields: ["default_sales_channel_id"] })
         const { data: [key] } = await query.graph({ entity: "api_key", fields: ["token"], filters: { type: "publishable" } })
         const { data: [region] } = await query.graph({ entity: "region", fields: ["id"] })
         storeApi = { headers: { "x-publishable-api-key": key.token as string }, validateStatus: () => true }
         regionId = region.id as string
-        const tags = await container.resolve(Modules.PRODUCT).listProductTags({ value: ["immune-support", "bundle"] })
+        const tags = await container.resolve(Modules.PRODUCT).listProductTags({ value: ["immune-support", "gut-health"] })
         const tag = (value: string) => ({ id: tags.find((t) => t.value === value)!.id })
 
         const product = (title: string, extra: object = {}) => ({
@@ -40,7 +40,7 @@ medusaIntegrationTestRunner({
         })
         const { result } = await createProductsWorkflow(container).run({ input: { products: [
           product("On sale", { tags: [tag("immune-support")] }), product("Later"), product("Ended"), product("VIP"), product("Override"),
-          product("Draft sale"), product("Strength set", { tags: [tag("bundle")] }),
+          product("Draft sale"), product("Probiotic", { tags: [tag("gut-health")] }),
         ] } })
         for (const p of result) {
           ids[p.title] = p.id
@@ -77,16 +77,16 @@ medusaIntegrationTestRunner({
         expect(await dealProductIds(container)).toEqual([])
       })
 
-      it("creates every merchandising tag once and filters products by tag", async () => {
-        const tags = await getContainer().resolve(Modules.PRODUCT).listProductTags({ value: MERCHANDISING_TAGS })
-        expect(tags.map((t) => t.value).sort()).toEqual([...MERCHANDISING_TAGS].sort())
+      it("creates every health goal tag once and filters products by tag", async () => {
+        const tags = await getContainer().resolve(Modules.PRODUCT).listProductTags({ value: HEALTH_GOAL_TAGS })
+        expect(tags.map((t) => t.value).sort()).toEqual([...HEALTH_GOAL_TAGS].sort())
 
-        const found = await api.get("/store/product-tags?value[]=immune-support&value[]=bundle&fields=id,value", storeApi)
+        const found = await api.get("/store/product-tags?value[]=immune-support&value[]=gut-health&fields=id,value", storeApi)
         expect(found.status).toBe(200)
         const byValue = Object.fromEntries(found.data.product_tags.map((t: { id: string, value: string }) => [t.value, t.id]))
         const tagged = async (value: string) => (await api.get(`/store/products?tag_id=${byValue[value]}&fields=id`, storeApi)).data.products.map((p: { id: string }) => p.id)
         expect(await tagged("immune-support")).toEqual([ids["On sale"]])
-        expect(await tagged("bundle")).toEqual([ids["Strength set"]])
+        expect(await tagged("gut-health")).toEqual([ids["Probiotic"]])
       })
     })
   },

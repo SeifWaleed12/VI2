@@ -14,7 +14,7 @@ Request (`ListProductsParams`):
 | `locale` | Required, `"en"` or `"ar"`. Sent as `x-medusa-locale` (`en-US`, `ar-EG`), so names come translated. |
 | `category_id` | Category IDs. Medusa matches only the IDs given: to show a category with its subcategories, send the category and all its descendants (`categoryScope` in `lib/category-tree.ts`). |
 | `brand_id` | Brand IDs, 1 to 50. Active brands only. |
-| `tag_id` | Product tag IDs (Medusa native). Health goals and bundles are tags; values in `lib/health-goals.ts`, looked up with `getTagIds`. |
+| `tag_id` | Product tag IDs (Medusa native). Health goals are tags; values in `lib/health-goals.ts`, looked up with `getTagIds`. |
 | `id` | Product IDs (Medusa native). Used by `getDeals`; not combined with `brand_id`, which also filters by product ID. |
 | `q` | Search text; trimmed, left out when empty. |
 | `limit` | 1 to 100 (`MAX_PAGE_SIZE`); default 50. Out-of-range or non-numbers are brought within bounds. |
