@@ -32,6 +32,8 @@ const cachedCatalogRoutes = ([
   ["/store/collections", 300],
   ["/store/regions", 600],
   ["/store/brands", 300],
+  ["/store/product-tags", 300],
+  ["/store/deals", 60],
 ] as const).flatMap(([path, ttl]) => [path, `${path}/:id`].map((matcher) => ({ matcher, method: "GET" as const, middlewares: [cacheStoreGet(ttl)] })))
 
 // The store only delivers in Egypt, so saved addresses are Egyptian too. A new

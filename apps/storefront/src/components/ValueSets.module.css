@@ -121,22 +121,10 @@
     );
 }
 
-.imageOne {
-  left: 12%;
-  bottom: 32px;
-
-  height: 210px;
-
-  transform: rotate(-5deg);
-}
-
-.imageTwo {
-  right: 10%;
-  bottom: 18px;
+.images .image {
+  position: static;
 
   height: 245px;
-
-  transform: rotate(5deg);
 }
 
 .content {
@@ -169,25 +157,6 @@
   line-height: 1.55;
 }
 
-.includes {
-  margin-top: 18px;
-
-  display: flex;
-  flex-direction: column;
-
-  gap: 7px;
-}
-
-.includes span {
-  display: flex;
-  align-items: center;
-
-  gap: 7px;
-
-  font-size: var(--text-ui);
-  font-weight: 700;
-}
-
 .actionRow {
   margin-top: 22px;
 
@@ -200,6 +169,15 @@
 
 .actionRow strong {
   font-size: var(--text-price);
+}
+
+.was {
+  display: block;
+
+  opacity: 0.55;
+
+  font-size: var(--text-ui);
+  font-weight: 600;
 }
 
 .actionRow button {
@@ -264,11 +242,7 @@
     min-height: 240px;
   }
 
-  .imageOne {
-    height: 160px;
-  }
-
-  .imageTwo {
+  .images .image {
     height: 185px;
   }
 }

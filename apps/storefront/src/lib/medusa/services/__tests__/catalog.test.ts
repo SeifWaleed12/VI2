@@ -1,9 +1,9 @@
-import { mapMedusaProduct, getProducts, listProducts, InvalidCatalogFilterError } from "../products";
+import { mapMedusaProduct, getProducts, listProducts, getDeals, getBundles, InvalidCatalogFilterError } from "../products";
 import { mapMedusaCart } from "../cart";
 import { selectRegion } from "../regions";
 import { medusa } from "../../client";
 
-jest.mock("../../client", () => ({ medusa: { store: { product: { list: jest.fn() }, region: { list: jest.fn() } } } }));
+jest.mock("../../client", () => ({ medusa: { client: { fetch: jest.fn() }, store: { product: { list: jest.fn() }, region: { list: jest.fn() } } } }));
 const egypt = { id: "reg_eg", name: "Egypt", currency_code: "egp", countries: [{ iso_2: "eg" }] };
 beforeEach(() => { jest.resetAllMocks(); jest.mocked(medusa.store.region.list).mockResolvedValue({ regions: [egypt] } as never); });
 
@@ -114,4 +114,26 @@ describe("catalog contract (docs/CATALOG-CONTRACT.md)", () => {
     expect(sentQuery()).toMatchObject({ limit: 100, offset: 0 });
     expect(list().mock.calls[0][1]).toEqual({ "x-medusa-locale": "en-US" });
   });
+});
+
+it("lists deals by the ids the backend gives, and asks nothing more when there are none", async () => {
+  jest.mocked(medusa.client.fetch).mockResolvedValueOnce({ product_ids: ["prod_a", "prod_b"] } as never);
+  jest.mocked(medusa.store.product.list).mockResolvedValueOnce({ products: [{ id: "prod_a", variants: [] }], count: 1 } as never);
+  expect((await getDeals("ar")).map((p) => p.id)).toEqual(["prod_a"]);
+  expect(medusa.store.product.list).toHaveBeenCalledWith(expect.objectContaining({ id: ["prod_a", "prod_b"], limit: 100 }), { "x-medusa-locale": "ar-EG" });
+  jest.mocked(medusa.client.fetch).mockResolvedValueOnce({ product_ids: [] } as never);
+  expect(await getDeals("en")).toEqual([]);
+  expect(medusa.store.product.list).toHaveBeenCalledTimes(1);
+  jest.mocked(medusa.client.fetch).mockRejectedValueOnce(new Error("offline"));
+  await expect(getDeals("en")).rejects.toThrow("Deals temporarily unavailable.");
+});
+it("lists bundles by the bundle tag, and none before the tag exists", async () => {
+  jest.mocked(medusa.client.fetch).mockResolvedValueOnce({ product_tags: [{ id: "ptag_bundle", value: "bundle" }] } as never);
+  jest.mocked(medusa.store.product.list).mockResolvedValueOnce({ products: [], count: 0 } as never);
+  await getBundles("en");
+  expect(medusa.client.fetch).toHaveBeenCalledWith("/store/product-tags", expect.objectContaining({ query: expect.objectContaining({ value: ["bundle"] }) }));
+  expect(medusa.store.product.list).toHaveBeenCalledWith(expect.objectContaining({ tag_id: ["ptag_bundle"], limit: 3 }), expect.anything());
+  jest.mocked(medusa.client.fetch).mockResolvedValueOnce({ product_tags: [] } as never);
+  expect(await getBundles("en")).toEqual([]);
+  expect(medusa.store.product.list).toHaveBeenCalledTimes(1);
 });

@@ -263,7 +263,7 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
   const copy = isArabic
     ? {
         flash:
-          "العروض اليومية",
+          "العروض",
         search:
           "ابحث في Vi2",
         account:
@@ -313,7 +313,7 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
       }
     : {
         flash:
-          "DAILY FLASH DEALS",
+          "DEALS",
         search:
           "Search all of Vi2",
         account:
@@ -406,7 +406,6 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
                   {t(copy.flash)}
                 </span>
 
-                <strong>{t("24H PICKS")}</strong>
 
                 <ChevronRight
                   size={14}

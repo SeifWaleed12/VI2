@@ -4,7 +4,7 @@ import Home, { generateMetadata } from "../page";
 import { getProducts, getBrands } from "@/lib/medusa";
 import { message } from "@/lib/i18n";
 
-jest.mock("@/lib/medusa", () => ({ getProducts: jest.fn(), getBrands: jest.fn() }));
+jest.mock("@/lib/medusa", () => ({ getProducts: jest.fn(), getBrands: jest.fn(), getBundles: jest.fn(async () => []) }));
 jest.mock("../HomeRecovery.module.css", () => ({}));
 jest.mock("@/context/LanguageContext", () => ({ LegacyTranslations: ({ children }: { children: never }) => children }));
 jest.mock("@/components/HomeHeroSlider", () => ({ __esModule: true, default: () => createElement("h1", {}, "Healthy home") }));

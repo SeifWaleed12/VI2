@@ -4,6 +4,8 @@ import type { Product, ProductCategoryRef, ProductOption, ProductVariant } from 
 
 import type { HttpTypes } from "@medusajs/types";
 import { resolveRegionId } from "./regions";
+import { getTagIds } from "./tags";
+import { BUNDLE_TAG } from "@/lib/health-goals";
 type CatalogProduct = HttpTypes.StoreProduct & {
   brand?: { id?: string; name: string; status?: string } | null;
   eda_registration?: { registration_number?: string | null; is_approved?: boolean | null } | null;
@@ -157,6 +159,9 @@ export type ListProductsParams = {
   category_id?: string[];
   // Active brands only; unknown or inactive brands give an empty page.
   brand_id?: string[];
+  // Health goals and bundles are product tags (lib/health-goals.ts).
+  tag_id?: string[];
+  id?: string[];
   q?: string;
   order?: string;
 };
@@ -190,6 +195,8 @@ export async function listProducts(params: ListProductsParams): Promise<ProductP
     const query: Record<string, unknown> = { limit, offset, fields: PRODUCT_FIELDS, region_id: regionId };
     if (params.category_id?.length) query.category_id = params.category_id;
     if (params.brand_id?.length) query.brand_id = params.brand_id;
+    if (params.tag_id?.length) query.tag_id = params.tag_id;
+    if (params.id?.length) query.id = params.id;
     if (params.q?.trim()) query.q = params.q.trim();
     if (params.order) query.order = params.order;
 
@@ -199,6 +206,25 @@ export async function listProducts(params: ListProductsParams): Promise<ProductP
     if ((error as { status?: unknown } | null)?.status === 400) throw new InvalidCatalogFilterError();
     throw new Error("Catalog temporarily unavailable.");
   }
+}
+
+// Products with a sale price running now (Admin → Price Lists, type Sale).
+export async function getDeals(locale: Locale): Promise<Product[]> {
+  let ids: string[];
+  try {
+    ids = (await medusa.client.fetch<{ product_ids: string[] }>("/store/deals", { method: "GET" }))?.product_ids ?? [];
+  } catch {
+    throw new Error("Deals temporarily unavailable.");
+  }
+  if (!ids.length) return [];
+  return (await listProducts({ locale, id: ids, limit: MAX_PAGE_SIZE })).products;
+}
+
+// Up to three bundle products (tagged "bundle") for the homepage.
+export async function getBundles(locale: Locale): Promise<Product[]> {
+  const tagId = (await getTagIds([BUNDLE_TAG]))[BUNDLE_TAG];
+  if (!tagId) return [];
+  return (await listProducts({ locale, tag_id: [tagId], limit: 3 })).products;
 }
 
 export type GetProductsParams = Omit<ListProductsParams, "locale" | "brand_id"> & { locale?: Locale };

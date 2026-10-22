@@ -9,14 +9,16 @@ import HomeDiscovery from "@/components/HomeDiscovery";
 import HomeHeroSlider from "@/components/HomeHeroSlider";
 import TrendingNow from "@/components/TrendingNow";
 import ValueSets from "@/components/ValueSets";
-import { getProducts, getBrands } from "@/lib/medusa";
+import { getProducts, getBrands, getBundles } from "@/lib/medusa";
 
 type HomeProps = { params: Promise<{ locale: string }> };
 const loadHome = cache(async (locale: Locale) => {
-  const [products, brands] = await Promise.allSettled([getProducts({ locale }), getBrands()]);
+  const [products, brands, bundles] = await Promise.allSettled([getProducts({ locale }), getBrands(), getBundles(locale)]);
   return {
     products: products.status === "fulfilled" ? products.value : null,
     brands: brands.status === "fulfilled" ? brands.value : [],
+    // Bundles are optional: the section is hidden when they cannot be loaded.
+    bundles: bundles.status === "fulfilled" ? bundles.value : [],
   };
 });
 
@@ -32,7 +34,7 @@ export async function generateMetadata({ params }: HomeProps): Promise<Metadata>
 export default async function Home({ params }: HomeProps) {
   const { locale: requested } = await params;
   const locale = isLocale(requested) ? requested : "en";
-  const { products, brands } = await loadHome(locale);
+  const { products, brands, bundles } = await loadHome(locale);
   if (products === null) {
     return (
       <main>
@@ -79,7 +81,7 @@ export default async function Home({ params }: HomeProps) {
       {/* ======================================================
           5. VALUE SETS / BUNDLES
           ====================================================== */}
-      <ValueSets products={products} />
+      <ValueSets bundles={bundles} />
 
       <section className="brand-statement">
         <span>

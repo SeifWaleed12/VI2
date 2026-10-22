@@ -1,72 +1,20 @@
 "use client";
-import { useLocaleRouter } from "@/hooks/use-locale-router";
 
 import Image from "next/image";
 import Link from "@/components/LocaleLink";
-import {
-  ArrowRight,
-  Check,
-  PackagePlus,
-} from "lucide-react";
+import { ArrowRight, PackagePlus } from "lucide-react";
 
-import { useMemo } from "react";
-
-import { useCart } from "@/context/CartContext";
 import { useLanguage } from "@/context/LanguageContext";
+import { useCartAdd } from "@/hooks/use-cart-add";
 import type { Product } from "@/types/product";
 
 import styles from "./ValueSets.module.css";
 
+// Bundles are Medusa products tagged "bundle" (an inventory kit in Admin), so
+// one cart line takes stock from every part. Hidden when there are none.
 type ValueSetsProps = {
-  products?: Product[];
+  bundles?: Product[];
 };
-
-type SetDefinition = {
-  eyebrow: string;
-  title: string;
-  description: string;
-  slugs: [string, string];
-};
-
-const SETS: SetDefinition[] = [
-  {
-    eyebrow: "TRAIN + BUILD",
-    title: "STRENGTH ROUTINE",
-    description:
-      "Creatine and whey together for a simple training routine.",
-    slugs: [
-      "nutri-nations-creatine",
-      "whey-x",
-    ],
-  },
-  {
-    eyebrow: "EVERYDAY WELLNESS",
-    title: "DAILY ESSENTIALS",
-    description:
-      "A simple daily pairing for general wellness support.",
-    slugs: [
-      "for-him-multivitamin",
-      "omega-x",
-    ],
-  },
-  {
-    eyebrow: "REST + RECOVERY",
-    title: "CALM + RECOVER",
-    description:
-      "Magnesium and ashwagandha in one recovery-focused set.",
-    slugs: [
-      "doctors-best-high-absorption-magnesium",
-      "now-foods-ashwagandha-450",
-    ],
-  },
-];
-
-function resolveProduct(
-  slug: string,
-  liveProducts: Product[],
-) {
-  return liveProducts.find((product) => product.slug === slug);
-}
 
 function formatPrice(value: number) {
   return new Intl.NumberFormat("en-US", {
@@ -75,55 +23,55 @@ function formatPrice(value: number) {
   }).format(value);
 }
 
-export default function ValueSets({
-  products = [],
-}: ValueSetsProps) {
-  const router = useLocaleRouter();
-  const { t } = useLanguage();
-  const { addItem } = useCart();
+function BundleCard({ bundle, index }: { bundle: Product; index: number }) {
+  const { t, msg } = useLanguage();
+  const { pending, added, failed, handleAdd } = useCartAdd(bundle);
+  return (
+    <article className={styles.card}>
+      <div className={styles.cardHead}>
+        <span>0{index + 1}</span>
+        <strong>{bundle.brand}</strong>
+      </div>
 
-  const sets = useMemo(
-    () =>
-      SETS.map((definition) => {
-        const items = definition.slugs
-          .map((slug) =>
-            resolveProduct(slug, products),
-          )
-          .filter(
-            (product): product is Product =>
-              Boolean(product),
-          );
+      <Link href={`/products/${bundle.slug}`} className={styles.images}>
+        {bundle.image && (
+          <Image
+            src={bundle.image}
+            alt={bundle.name}
+            width={360}
+            height={360}
+            sizes="(max-width: 900px) 42vw, 24vw"
+            className={styles.image}
+          />
+        )}
+      </Link>
 
-        return {
-          ...definition,
-          items,
-          total: items.reduce(
-            (sum, product) =>
-              sum + product.price,
-            0,
-          ),
-        };
-      }).filter((set) => set.items.length === set.slugs.length),
-    [products],
+      <div className={styles.content}>
+        <h3>{bundle.name}</h3>
+
+        <div className={styles.actionRow}>
+          <strong>
+            {formatPrice(bundle.price)} {msg("nav.egp")}
+            {bundle.compareAtPrice && (
+              <s className={styles.was}>
+                {formatPrice(bundle.compareAtPrice)} {msg("nav.egp")}
+              </s>
+            )}
+          </strong>
+
+          <button type="button" onClick={handleAdd} disabled={pending || !bundle.variantId}>
+            <PackagePlus size={16} strokeWidth={1.5} />
+            {failed ? msg("catalog.retry") : t(added ? "ADDED" : "ADD SET")}
+          </button>
+        </div>
+      </div>
+    </article>
   );
+}
 
-  async function addSet(items: Product[]) {
-    const liveItems = items.filter(
-      (product) =>
-        Boolean(product.variantId),
-    );
-
-    if (
-      liveItems.length !== items.length
-    ) {
-      router.push("/shop");
-      return;
-    }
-
-    for (const product of liveItems) {
-      await addItem(product, 1);
-    }
-  }
+export default function ValueSets({ bundles = [] }: ValueSetsProps) {
+  const { t } = useLanguage();
+  if (!bundles.length) return null;
 
   return (
     <section
@@ -150,142 +98,9 @@ export default function ValueSets({
       </div>
 
       <div className={styles.grid}>
-        {sets.map(
-          (
-            set,
-            index,
-          ) => {
-            const [
-              first,
-              second,
-            ] = set.items;
-
-            return (
-              <article
-                key={set.title}
-                className={styles.card}
-              >
-                <div
-                  className={
-                    styles.cardHead
-                  }
-                >
-                  <span>
-                    0{index + 1}
-                  </span>
-
-                  <strong>
-                    {t(set.eyebrow)}
-                  </strong>
-                </div>
-
-                <div
-                  className={
-                    styles.images
-                  }
-                >
-                  {first && (
-                    <Image
-                      src={first.image}
-                      alt={first.name}
-                      width={360}
-                      height={360}
-                      sizes="(max-width: 900px) 42vw, 24vw"
-                      className={
-                        styles.imageOne
-                      }
-                    />
-                  )}
-
-                  {second && (
-                    <Image
-                      src={second.image}
-                      alt={second.name}
-                      width={360}
-                      height={360}
-                      sizes="(max-width: 900px) 42vw, 24vw"
-                      className={
-                        styles.imageTwo
-                      }
-                    />
-                  )}
-                </div>
-
-                <div
-                  className={
-                    styles.content
-                  }
-                >
-                  <h3>
-                    {t(set.title)}
-                  </h3>
-
-                  <p>
-                    {t(
-                      set.description,
-                    )}
-                  </p>
-
-                  <div
-                    className={
-                      styles.includes
-                    }
-                  >
-                    {set.items.map(
-                      (product) => (
-                        <span
-                          key={
-                            product.id
-                          }
-                        >
-                          <Check
-                            size={11}
-                            strokeWidth={
-                              1.5
-                            }
-                          />
-                          {t(
-                            product.shortName,
-                          )}
-                        </span>
-                      ),
-                    )}
-                  </div>
-
-                  <div
-                    className={
-                      styles.actionRow
-                    }
-                  >
-                    <strong>
-                      {formatPrice(
-                        set.total,
-                      )}{" "}
-                      EGP
-                    </strong>
-
-                    <button
-                      type="button"
-                      onClick={() =>
-                        addSet(
-                          set.items,
-                        )
-                      }
-                    >
-                      <PackagePlus
-                        size={16}
-                        strokeWidth={
-                          1.5
-                        }
-                      />
-                      {t("ADD SET")}
-                    </button>
-                  </div>
-                </div>
-              </article>
-            );
-          },
-        )}
+        {bundles.map((bundle, index) => (
+          <BundleCard key={bundle.id} bundle={bundle} index={index} />
+        ))}
       </div>
     </section>
   );

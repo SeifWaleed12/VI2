@@ -51,7 +51,7 @@ const props: ShopProps = {
   brandError: false,
   handle: "",
   query: "page=6&q=protein&brand_id=brand_real",
-  filters: { q: "protein", brandIds: ["brand_real"], page: 6 },
+  filters: { q: "protein", brandIds: ["brand_real"], goal: "", page: 6 },
   error: null,
 };
 const render = (overrides: Partial<ShopProps> = {}) =>
@@ -77,6 +77,17 @@ it("renders Arabic interface copy before effects or text replacement", () => {
   expect(html).toContain('aria-haspopup="dialog"');
   expect(html).toContain('aria-labelledby="shop-filters-title"');
 });
+it("offers the six health goals as one choice, keeps other filters on its links, and shows the chosen goal as a removable chip", () => {
+  const html = render({ query: "goal=heart-health&brand_id=brand_real", filters: { ...props.filters, q: "", goal: "heart-health", page: 1 } });
+  expect(html).toContain("Health goal");
+  for (const goal of ["Immune support", "Gut health", "Energy &amp; fitness", "Muscle &amp; recovery", "Heart health", "Stress &amp; sleep"])
+    expect(html).toContain(goal);
+  expect(html).toContain('href="/shop?brand_id=brand_real&amp;goal=gut-health"');
+  expect(html).toContain('aria-label="Remove filter: Heart health"');
+  expect(html).toContain('href="/shop?brand_id=brand_real"');
+  expect(render({ locale: "ar" })).toContain(message("ar", "shop.goal"));
+});
+
 it("offers localized recovery for invalid filters, outages, empty results and an expired page", () => {
   expect(render({ error: "invalid" })).toContain(
     message("en", "shop.invalidTitle"),
