@@ -55,5 +55,11 @@ export async function POST(req: AuthenticatedMedusaRequest, res: MedusaResponse)
     logger.error(`An email change email failed: ${(error as Error).message}`)
     return res.status(503).json({ code: "email_not_sent", message: "We could not send the confirmation email. Try again later." })
   }
+  // Without a real email provider, development emails only reach the log
+  // (notification-local), which shows no content; print the link there so the
+  // change can be tested. Never in production.
+  if (!taken.length && process.env.NODE_ENV !== "production" && !process.env.RESEND_API_KEY) {
+    logger.info(`Email change link (development only): ${url}`)
+  }
   return res.status(200).json({ success: true })
 }

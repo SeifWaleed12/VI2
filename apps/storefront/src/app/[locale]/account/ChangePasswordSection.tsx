@@ -1,124 +1,122 @@
 "use client";
 
-import {
-  CheckCircle2,
-  LockKeyhole,
-} from "lucide-react";
-import {
-  FormEvent,
-  useState,
-} from "react";
-
+import { useState, type FormEvent } from "react";
 import { changePassword } from "@/lib/medusa";
-
-import authStyles from "./AccountAuth.module.css";
+import { accountMessage } from "@/lib/account-copy";
+import type { Locale } from "@/lib/i18n";
 import styles from "./Account.module.css";
 
-// The server checks the current password and the 8-character rule; this form
-// only checks that the new password was typed the same twice.
-export default function ChangePasswordSection() {
+export default function ChangePasswordSection({
+  locale = "en",
+}: {
+  locale?: Locale;
+}) {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [repeatPassword, setRepeatPassword] = useState("");
+  const [visible, setVisible] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
-
+  const [notice, setNotice] = useState<
+    | "passwordRequired"
+    | "passwordMismatch"
+    | "passwordChanged"
+    | "passwordFailed"
+    | null
+  >(null);
+  const msg = (key: Parameters<typeof accountMessage>[1]) =>
+    accountMessage(locale, key);
   async function submit(event: FormEvent) {
     event.preventDefault();
-    setError("");
-    setSuccess("");
-
+    if (loading) return;
+    setNotice(null);
     if (!currentPassword || !newPassword) {
-      setError("Enter your current and new password.");
+      setNotice("passwordRequired");
       return;
     }
     if (newPassword !== repeatPassword) {
-      setError("The new passwords do not match.");
+      setNotice("passwordMismatch");
       return;
     }
-
     setLoading(true);
-    const result = await changePassword(currentPassword, newPassword);
-    setLoading(false);
-
-    if (!result.ok) {
-      setError(result.message);
-      return;
+    try {
+      const result = await changePassword(currentPassword, newPassword);
+      if (!result.ok) {
+        setNotice("passwordFailed");
+        return;
+      }
+      setCurrentPassword("");
+      setNewPassword("");
+      setRepeatPassword("");
+      setNotice("passwordChanged");
+    } catch {
+      setNotice("passwordFailed");
+    } finally {
+      setLoading(false);
     }
-
-    setCurrentPassword("");
-    setNewPassword("");
-    setRepeatPassword("");
-    setSuccess("Your password has been changed.");
   }
-
   return (
-    <section className={styles.reorder}>
-      <div className={styles.sectionHeading}>
-        <div>
-          <span>SECURITY</span>
-          <h2>CHANGE PASSWORD</h2>
-        </div>
-      </div>
-
-      <form
-        className={authStyles.form}
-        style={{ maxWidth: "28rem" }}
-        onSubmit={submit}
-      >
-        <label className={authStyles.field}>
-          <span>CURRENT PASSWORD</span>
-          <input
-            type="password"
-            value={currentPassword}
-            autoComplete="current-password"
-            onChange={(event) => setCurrentPassword(event.target.value)}
-          />
-        </label>
-
-        <label className={authStyles.field}>
-          <span>NEW PASSWORD (8+ CHARACTERS)</span>
-          <input
-            type="password"
-            value={newPassword}
-            autoComplete="new-password"
-            onChange={(event) => setNewPassword(event.target.value)}
-          />
-        </label>
-
-        <label className={authStyles.field}>
-          <span>CONFIRM NEW PASSWORD</span>
-          <input
-            type="password"
-            value={repeatPassword}
-            autoComplete="new-password"
-            onChange={(event) => setRepeatPassword(event.target.value)}
-          />
-        </label>
-
-        {error && (
-          <div className={authStyles.noticeError}>
-            <LockKeyhole size={15} strokeWidth={1.5} />
-            <span>{error}</span>
-          </div>
-        )}
-
-        {success && (
-          <div className={authStyles.noticeSuccess}>
-            <CheckCircle2 size={15} strokeWidth={1.5} />
-            <span>{success}</span>
-          </div>
-        )}
-
-        <button
-          type="submit"
-          className={authStyles.submit}
+    <form className={styles.form} onSubmit={submit} aria-busy={loading}>
+      <label>
+        {msg("currentPassword")}
+        <input
+          autoFocus
+          type={visible ? "text" : "password"}
+          autoComplete="current-password"
+          value={currentPassword}
+          required
+          maxLength={1024}
           disabled={loading}
+          onChange={(event) => setCurrentPassword(event.target.value)}
+        />
+      </label>
+      <label>
+        {msg("newPassword")}
+        <input
+          type={visible ? "text" : "password"}
+          autoComplete="new-password"
+          value={newPassword}
+          required
+          minLength={8}
+          maxLength={1024}
+          disabled={loading}
+          aria-describedby="password-hint"
+          onChange={(event) => setNewPassword(event.target.value)}
+        />
+      </label>
+      <p id="password-hint" className={styles.hint}>
+        {msg("passwordHint")}
+      </p>
+      <label>
+        {msg("confirmPassword")}
+        <input
+          type={visible ? "text" : "password"}
+          autoComplete="new-password"
+          value={repeatPassword}
+          required
+          maxLength={1024}
+          disabled={loading}
+          onChange={(event) => setRepeatPassword(event.target.value)}
+        />
+      </label>
+      <label className={styles.checkbox}>
+        <input
+          type="checkbox"
+          checked={visible}
+          onChange={(event) => setVisible(event.target.checked)}
+        />
+        {msg("showPasswords")}
+      </label>
+      {notice && (
+        <p
+          role={notice === "passwordChanged" ? "status" : "alert"}
+          className={styles.notice}
         >
-          {loading ? "SAVING..." : "CHANGE PASSWORD"}
-        </button>
-      </form>
-    </section>
+          {msg(notice)}
+        </p>
+      )}
+      <button type="submit" className={styles.darkButton} disabled={loading}>
+        {msg(loading ? "saving" : "changePassword")}
+      </button>
+    </form>
   );
 }

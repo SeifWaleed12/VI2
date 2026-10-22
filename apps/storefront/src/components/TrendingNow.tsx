@@ -1,6 +1,8 @@
 "use client";
 import Link from "@/components/LocaleLink";
-import { ArrowRight, Pause, Play } from "lucide-react";
+import { ArrowRight } from "lucide-react";
+import CatalogImage from "@/components/CatalogImage";
+import { useProductRailScroll } from "@/hooks/use-product-rail-scroll";
 import { useLanguage } from "@/context/LanguageContext";
 import { useTickerMotion } from "@/hooks/use-ticker-motion";
 import type { Product } from "@/types/product";
@@ -9,56 +11,45 @@ import styles from "./TrendingNow.module.css";
 export default function TrendingNow({
   products = [],
 }: { products?: Product[] } = {}) {
-  const { isArabic, msg } = useLanguage();
+  const { isArabic } = useLanguage();
   const {
     ref,
     repetitions,
-    reducedMotion,
-    manualPause,
     paused,
-    browsing,
-    togglePause,
     interactions,
-  } = useTickerMotion(products.length);
+  } = useTickerMotion(products.length, false);
+  const { ref: viewportRef, touchInteractions } = useProductRailScroll(paused, products.map(product => product.id).join(","));
   if (!products.length) return null;
   return (
     <section
       className={styles.section}
       ref={ref}
-      {...interactions}
       data-no-translate
-      data-browsing={browsing}
+      aria-label={isArabic ? "منتجات رائجة" : "Trending Products"}
     >
       <div className={styles.heading}>
-        <div>
-          <span>{isArabic ? "اختيارات Vi2" : "VI2 PICKS"}</span>
-          <h2>{isArabic ? "اكتشف المنتجات" : "EXPLORE PRODUCTS"}</h2>
-        </div>
+        <h2>{isArabic ? "منتجات رائجة" : "TRENDING PRODUCTS"}</h2>
         <Link href="/shop">
           {isArabic ? "عرض الكل" : "VIEW ALL"}
           <ArrowRight size={16} strokeWidth={1.6} />
         </Link>
-        {!reducedMotion && (
-          <button
-            type="button"
-            className={styles.motionControl}
-            onMouseDown={(event) => event.preventDefault()}
-            onClick={togglePause}
-            aria-label={msg(manualPause ? "ticker.resume" : "ticker.pause")}
-          >
-            {manualPause ? <Play size={15} /> : <Pause size={15} />}
-          </button>
-        )}
       </div>
-      <div className={styles.viewport} dir="ltr">
+      <div className={styles.viewport} dir="ltr" ref={viewportRef}
+        {...touchInteractions}
+        onFocus={interactions.onFocus} onBlur={interactions.onBlur}
+        onPointerEnter={event => { if (event.pointerType === "mouse") interactions.onMouseEnter(); }}
+        onPointerLeave={event => {
+          if (event.pointerType === "mouse") interactions.onMouseLeave();
+          touchInteractions.onPointerLeave(event);
+        }}>
         <div
           className={styles.track}
-          style={{ animationPlayState: paused ? "paused" : "running" }}
         >
           {[0, 1].map((group) => (
             <div
               className={styles.group}
               key={group}
+              data-scroll-cycle={group === 0 || undefined}
               data-ticker-copy={group === 1 || undefined}
               aria-hidden={group === 1 || undefined}
             >
@@ -88,19 +79,8 @@ export default function TrendingNow({
                         dir="auto"
                       >
                         <div className={styles.imageFrame}>
-                          {product.image ? (
-                            // eslint-disable-next-line @next/next/no-img-element -- catalog images come from any configured host
-                            <img
-                              src={product.image}
-                              alt={product.name}
-                              loading="lazy"
-                              decoding="async"
-                            />
-                          ) : (
-                            <span className={styles.productName}>
-                              {product.name}
-                            </span>
-                          )}
+                          <CatalogImage src={product.image} alt={product.name}
+                            className={styles.image} loading="lazy" decoding="async" />
                         </div>
                         <span className={styles.productName}>
                           {product.shortName || product.name}

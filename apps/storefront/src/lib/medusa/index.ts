@@ -66,3 +66,4 @@ export const services = {
     getOrder: orderService.getOrder,
   },
 };
+export * from "./services/account";

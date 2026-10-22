@@ -117,3 +117,19 @@ it("fills a short catalog and stops for offscreen, hidden, hover, focus, manual 
   expect(disconnect).toHaveBeenCalledTimes(2);
   expect(preference.removeEventListener).toHaveBeenCalled();
 });
+
+
+it("allows the owner-requested announcement autoplay while preserving manual pause", () => {
+  preference.matches = true;
+  useTickerMotion(2, false);
+  const cleanup = jest.mocked(useEffect).mock.calls[0][0]();
+  intersection([{ isIntersecting: true }]);
+  const motion = useTickerMotion(2, false);
+  expect(motion.reducedMotion).toBe(false);
+  expect(motion.paused).toBe(false);
+  motion.togglePause();
+  expect(useTickerMotion(2, false).paused).toBe(true);
+  // Other consumers continue respecting the same system preference.
+  expect(useTickerMotion(2).paused).toBe(true);
+  if (typeof cleanup === "function") cleanup();
+});

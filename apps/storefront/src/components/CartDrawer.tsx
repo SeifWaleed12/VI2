@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 
 import { useCart } from "@/context/CartContext";
+import CatalogImage from "@/components/CatalogImage";
 
 function formatPrice(
   value: number,
@@ -122,8 +123,7 @@ export default function CartDrawer() {
                     className="cart-item-image"
                     onClick={closeCart}
                   >
-                    {/* eslint-disable-next-line @next/next/no-img-element -- catalog images come from any configured host */}
-                    <img
+                    <CatalogImage
                       src={item.product.image}
                       alt={
                         item.product.name

@@ -9,6 +9,7 @@ import type { Product } from "@/types/product";
 
 import styles from "./Checkout.module.css";
 import { formatPrice } from "./checkout-total";
+import CatalogImage from "@/components/CatalogImage";
 
 export type CheckoutItem = {
   product: Product;
@@ -101,15 +102,7 @@ export default function OrderSummary({ items, subtotal, discountTotal, delivery,
                       styles.orderImage
                     }
                   >
-                    {/* eslint-disable-next-line @next/next/no-img-element -- catalog images come from any configured host */}
-                    <img
-                      src={
-                        item.product.image
-                      }
-                      alt={
-                        item.product.name
-                      }
-                    />
+                    <CatalogImage src={item.product.image} alt={item.product.name} />
 
                     <span>
                       {

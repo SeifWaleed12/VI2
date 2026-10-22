@@ -396,30 +396,6 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
         <div className={styles.utilityStrip}>
           <div className={styles.utilityInner}>
             <div className={styles.utilityLeft}>
-              <Link href="/deals">
-                <BadgePercent
-                  size={14}
-                  strokeWidth={1.45}
-                />
-
-                <span>
-                  {t(copy.flash)}
-                </span>
-
-                <strong>{t("24H PICKS")}</strong>
-
-                <ChevronRight
-                  size={14}
-                  strokeWidth={1.5}
-                />
-              </Link>
-
-              <span
-                className={
-                  styles.utilityDivider
-                }
-              />
-
               <AnnouncementTicker />
             </div>
 
@@ -841,8 +817,8 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
               <Link
                 href={
                   isAuthenticated
-                    ? "/account"
-                    : "/account/sign-in?next=/account"
+                    ? "/account/information"
+                    : "/account/sign-in?next=/account/information"
                 }
                 onClick={closeMenu}
               >
@@ -856,8 +832,8 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
               <Link
                 href={
                   isAuthenticated
-                    ? "/account#orders"
-                    : "/account/sign-in?next=/account"
+                    ? "/account/orders"
+                    : "/account/sign-in?next=/account/orders"
                 }
                 onClick={closeMenu}
               >
@@ -871,8 +847,8 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
               <Link
                 href={
                   isAuthenticated
-                    ? "/account#rewards"
-                    : "/account/sign-in?next=/account%23rewards"
+                    ? "/account/points"
+                    : "/account/sign-in?next=/account/points"
                 }
                 onClick={closeMenu}
               >
