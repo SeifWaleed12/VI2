@@ -7,6 +7,7 @@ import {
   InvalidCatalogFilterError,
 } from "@/lib/medusa/services/products";
 import { getBrands } from "@/lib/medusa/services/brands";
+import { getTagIds } from "@/lib/medusa/services/tags";
 import { loadCategoryDirectory } from "@/lib/medusa/category-directory";
 import { categoryScope, flattenCategories } from "@/lib/category-tree";
 import { isLocale, localizedHref, message } from "@/lib/i18n";
@@ -114,7 +115,16 @@ const loadShop = cache(
       limit: SHOP_PAGE_SIZE,
       offset: (filters.page - 1) * SHOP_PAGE_SIZE,
     };
-    if (!error) {
+    // A goal no product has been tagged with yet (tag not set up) is an empty page.
+    let goalTagId: string | undefined;
+    if (!error && filters.goal) {
+      try {
+        goalTagId = (await getTagIds([filters.goal]))[filters.goal];
+      } catch {
+        error = "unavailable";
+      }
+    }
+    if (!error && (!filters.goal || goalTagId)) {
       try {
         products = await listProducts({
           locale,
@@ -124,6 +134,7 @@ const loadShop = cache(
             ? { category_id: categoryScope(directory.roots, selected.id)! }
             : {}),
           ...(brandIds.length ? { brand_id: brandIds } : {}),
+          ...(goalTagId ? { tag_id: [goalTagId] } : {}),
           ...(filters.q ? { q: filters.q } : {}),
         });
       } catch (cause) {
@@ -143,7 +154,7 @@ const loadShop = cache(
       category: selected ?? null,
       handle: handle || selected?.handle || "",
       query: searchQuery(query).toString(),
-      filters: { q: filters.q, brandIds, page: filters.page },
+      filters: { q: filters.q, brandIds, goal: filters.goal, page: filters.page },
       error,
     };
   },
@@ -169,6 +180,7 @@ export async function getShopMetadata(input: ShopRequest): Promise<Metadata> {
     data.error ||
     data.filters.q ||
     data.filters.brandIds.length ||
+    data.filters.goal ||
     (data.filters.page > 1 && data.page.products.length === 0),
   );
   let siteUrl = process.env.SITE_URL;

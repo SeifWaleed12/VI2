@@ -1,9 +1,9 @@
-import { mapMedusaProduct, getProducts, listProducts, InvalidCatalogFilterError } from "../products";
+import { mapMedusaProduct, getProducts, listProducts, getDeals, asDeal, InvalidCatalogFilterError } from "../products";
 import { mapMedusaCart } from "../cart";
 import { selectRegion } from "../regions";
 import { medusa } from "../../client";
 
-jest.mock("../../client", () => ({ medusa: { store: { product: { list: jest.fn() }, region: { list: jest.fn() } } } }));
+jest.mock("../../client", () => ({ medusa: { client: { fetch: jest.fn() }, store: { product: { list: jest.fn() }, region: { list: jest.fn() } } } }));
 const egypt = { id: "reg_eg", name: "Egypt", currency_code: "egp", countries: [{ iso_2: "eg" }] };
 beforeEach(() => { jest.resetAllMocks(); jest.mocked(medusa.store.region.list).mockResolvedValue({ regions: [egypt] } as never); });
 
@@ -114,4 +114,32 @@ describe("catalog contract (docs/CATALOG-CONTRACT.md)", () => {
     expect(sentQuery()).toMatchObject({ limit: 100, offset: 0 });
     expect(list().mock.calls[0][1]).toEqual({ "x-medusa-locale": "en-US" });
   });
+});
+
+it("lists deals by the ids the backend gives, and asks nothing more when there are none", async () => {
+  jest.mocked(medusa.client.fetch).mockResolvedValueOnce({ product_ids: ["prod_a", "prod_b"] } as never);
+  jest.mocked(medusa.store.product.list).mockResolvedValueOnce({ products: [{ id: "prod_a", variants: [{ id: "v_a", calculated_price: { calculated_amount: 800, original_amount: 1000 } }] }], count: 1 } as never);
+  expect((await getDeals("ar")).map((p) => p.id)).toEqual(["prod_a"]);
+  expect(medusa.store.product.list).toHaveBeenCalledWith(expect.objectContaining({ id: ["prod_a", "prod_b"], limit: 100 }), { "x-medusa-locale": "ar-EG" });
+  jest.mocked(medusa.client.fetch).mockResolvedValueOnce({ product_ids: [] } as never);
+  expect(await getDeals("en")).toEqual([]);
+  expect(medusa.store.product.list).toHaveBeenCalledTimes(1);
+  jest.mocked(medusa.client.fetch).mockRejectedValueOnce(new Error("offline"));
+  await expect(getDeals("en")).rejects.toThrow("Deals temporarily unavailable.");
+});
+
+// MERCH-1: Medusa's one-unit price decides, not the price list row.
+const priced = (...prices: [number, number][]) => mapMedusaProduct({
+  id: "prod_whey", title: "Whey", options: [{ id: "opt", title: "Size", values: [] }],
+  variants: prices.map(([calculated, original], i) => ({ id: `v${i + 1}`, title: `${i + 1}kg`, manage_inventory: false, calculated_price: { calculated_amount: calculated, original_amount: original } })),
+} as never);
+it("drops a listed sale that is not cheaper for one unit: a minimum quantity, or a higher price", () => {
+  // Medusa answers 1000/1000 for both, so no compare-at price exists.
+  expect(asDeal(priced([1000, 1000]))).toBeNull();
+  expect(asDeal(priced([1000, 1000], [1500, 1500]))).toBeNull();
+});
+it("offers the discounted variant itself, named, when it is not the first one", () => {
+  const deal = asDeal(priced([1000, 1000], [1200, 1500], [1900, 2000]))!;
+  expect(deal).toMatchObject({ variantId: "v2", name: "Whey — 2kg", price: 1200, compareAtPrice: 1500, inStock: true });
+  expect(asDeal(priced([800, 1000]))).toMatchObject({ variantId: "v1", name: "Whey", price: 800, compareAtPrice: 1000 });
 });
