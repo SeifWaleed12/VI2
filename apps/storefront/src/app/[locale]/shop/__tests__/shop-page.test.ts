@@ -278,3 +278,12 @@ it("gives a populated later page its own canonical while removing tracking param
   expect(metadata.robots).toEqual({ index: true, follow: true });
   expect(metadata.alternates).toEqual({ canonical: "/en/shop/vitamins?page=6" });
 });
+
+it.each(["en", "ar"] as const)("retains search metadata with two selected brands in %s", async locale => {
+  const second = { ...brand, id: "brand_second", slug: "second" };
+  jest.mocked(getBrands).mockResolvedValue([brand, second]);
+  const metadata = await getShopMetadata({ locale, handle: "vitamins", query: {
+    q: "whey", brand_id: [brand.id, second.id], utm: "1",
+  } });
+  expect(metadata.title).toBe(parent.name + (locale === "ar" ? " — بحث: whey | Vi2" : " — Search: whey | Vi2"));
+});

@@ -1,3 +1,11 @@
+import * as React from "react";
+jest.mock("react", () => ({
+  ...jest.requireActual("react"),
+  __esModule: true,
+  useState: jest.fn((...args: unknown[]) => jest.requireActual("react").useState(...args)),
+  useTransition: jest.fn(() => jest.requireActual("react").useTransition()),
+}));
+
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import ShopClient, { type ShopProps } from "../ShopClient";
@@ -6,8 +14,9 @@ import { message } from "@/lib/i18n";
 jest.mock("next/navigation", () => ({
   useRouter: () => ({ push: jest.fn(), refresh: jest.fn() }),
 }));
+const mockNavigationPush = jest.fn();
 jest.mock("@/hooks/use-locale-router", () => ({
-  useLocaleRouter: () => ({ push: jest.fn() }),
+  useLocaleRouter: () => ({ push: mockNavigationPush }),
 }));
 jest.mock("@/components/LocaleLink", () => ({
   __esModule: true,
@@ -102,4 +111,36 @@ it.each(["en", "ar"] as const)("targets focusable results when changing categori
   expect(html).toContain('id="shop-results" tabindex="-1"');
   expect(html).toContain('href="/shop?q=protein"');
   expect(html).not.toContain('href="/shop?q=protein#shop-results"');
+});
+
+it.each(["", "vitamin-c"])("moves mobile category selection to results only when the category changes from %s", initialHandle => {
+  const selection = { handle: "vitamin-c", brandIds: ["brand_real"] };
+  const stateSpy = jest.spyOn(React, "useState").mockImplementation(((initial?: unknown) => {
+    const value = initial && typeof initial === "object" && "brandIds" in initial ? selection : initial;
+    return [value, jest.fn()];
+  }) as typeof React.useState);
+  const transitionSpy = jest.spyOn(React, "useTransition").mockReturnValue([false, action => { void action(); }]);
+  let tree: React.ReactNode;
+  const findApply = (node: React.ReactNode): React.ReactElement<{ children?: React.ReactNode; onClick?: () => void }> | undefined => {
+    for (const child of React.Children.toArray(node)) {
+      if (!React.isValidElement<{ children?: React.ReactNode; onClick?: () => void }>(child)) continue;
+      if (child.type === "button" && child.props.children === message("en", "shop.applyFilters")) return child;
+      const found = findApply(child.props.children);
+      if (found) return found;
+    }
+  };
+  try {
+    mockNavigationPush.mockClear();
+    renderToStaticMarkup(createElement(() => { tree = ShopClient({ ...props, handle: initialHandle }); return tree; }));
+    findApply(tree)!.props.onClick!();
+    const [destination, options] = mockNavigationPush.mock.calls[0];
+    expect(destination).toContain("/shop/vitamin-c?");
+    expect(destination).toContain("q=protein");
+    expect(destination).toContain("brand_id=brand_real");
+    expect(destination.endsWith("#shop-results")).toBe(initialHandle !== "vitamin-c");
+    expect(options).toEqual({ scroll: initialHandle !== "vitamin-c" });
+  } finally {
+    stateSpy.mockRestore();
+    transitionSpy.mockRestore();
+  }
 });
