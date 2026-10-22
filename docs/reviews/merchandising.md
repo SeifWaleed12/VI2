@@ -169,3 +169,4 @@ Open problems: **MERCH-1 and MERCH-2**. No application fixes, commit, push or me
   - The tag script is now `setup-health-goal-tags.ts` (the six goal tags only).
   - The "Daily flash deals" top-bar wording change is dropped: the merged navigation removed that pill.
   - The branch is updated with `full-stack` 157fe26 (RD-6 and the UI work merged).
+- **Checks after updating with `full-stack`:** `npm run check` passes (424 storefront and 235 backend tests, typecheck, lint 0), and `merchandising.spec.ts` passes 3/3 on a real database. Compared with `full-stack`, the branch changes only this task's files.
