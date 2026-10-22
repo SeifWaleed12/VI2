@@ -8,7 +8,6 @@ import HomeBestSellers from "@/components/HomeBestSellers";
 import HomeDiscovery from "@/components/HomeDiscovery";
 import HomeHeroSlider from "@/components/HomeHeroSlider";
 import TrendingNow from "@/components/TrendingNow";
-import ValueSets from "@/components/ValueSets";
 import { getProducts, getBrands } from "@/lib/medusa";
 
 type HomeProps = { params: Promise<{ locale: string }> };
@@ -75,21 +74,6 @@ export default async function Home({ params }: HomeProps) {
           4. HEALTH GOALS / DAILY DISCOVERY
           ====================================================== */}
       <HomeDiscovery />
-
-      {/* ======================================================
-          5. VALUE SETS / BUNDLES
-          ====================================================== */}
-      <ValueSets products={products} />
-
-      <section className="brand-statement">
-        <span>
-          LIVE WELL, LIVE FULLY.
-        </span>
-
-        <p>
-          VI2 · DIETARY & WELLNESS SUPPLEMENTS
-        </p>
-      </section>
     </main></LegacyTranslations>
   );
 }

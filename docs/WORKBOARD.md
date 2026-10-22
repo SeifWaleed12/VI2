@@ -428,3 +428,7 @@ Trending Products UI verification: 42 storefront suites / 413 tests pass; typech
 ## Brand strip motion — 2026-10-22
 
 GPT owns Seif's follow-up on codex/brand-strip-motion: make the existing black brand strip move automatically like the announcement/product strips, with hover/focus pause and resume, no buttons or scrollbar, preserving real brand names and the current styling. Implemented: continuous motion, hover/focus pause with same-position resume, no controls or scrollbar. Desktop and 390px mobile checked, including Arabic; actual transforms advance and remain stable while paused. 42 suites / 413 storefront tests pass; typecheck and lint pass with 0 errors/0 warnings; Impeccable scan clear. Scoped reduced-motion override matches Seif's requested automatic strips. Live on localhost:3000. Production build and physical touch/screen-reader acceptance not run; no push or merge.
+
+## Homepage section removal — 2026-10-22
+
+GPT owns Seif's requested removal of the homepage Value Sets / Build a Routine section and the large closing Live Well, Live Fully statement. Removed only those homepage sections. Live EN/AR inspection confirms Health Goals is the last main section and the footer follows it; no empty section containers remain. Existing homepage tests 8/8 pass; storefront typecheck and scoped lint pass. Live on localhost:3000. No push or merge.
