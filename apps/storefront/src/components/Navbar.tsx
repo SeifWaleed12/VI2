@@ -25,6 +25,7 @@ import {
   useCallback,
   useState,
   useRef,
+  type MouseEvent,
 } from "react";
 
 import GlobalSearch from "@/components/GlobalSearch";
@@ -39,6 +40,9 @@ import { useDrawerFocus } from "@/hooks/use-drawer-focus";
 import { type CategoryDirectory, categoryHref, flattenCategories } from "@/lib/category-tree";
 import { getCategoryTree } from "@/lib/medusa/services/categories";
 import CategoryStatus from "@/components/CategoryStatus";
+import { getBrands } from "@/lib/medusa/services/brands";
+import { HEALTH_GOALS, goalLabelKey } from "@/lib/health-goals";
+import type { Brand } from "@/types/brand";
 
 import styles from "./Navbar.module.css";
 
@@ -135,6 +139,12 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
 
   const [mobilePanel, setMobilePanel] =
     useState<MobileCatalogKey | null>(null);
+  // Loaded when the Brands panel is first opened.
+  const [brands, setBrands] = useState<Brand[] | "loading" | "error" | null>(null);
+  const loadBrands = () => {
+    setBrands("loading");
+    getBrands().then(setBrands, () => setBrands("error"));
+  };
 
   const closeMenu = useCallback(() => {
     setMenuOpen(false);
@@ -368,7 +378,19 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
     title: selectedCategory.name,
     shopAllHref: categoryHref(selectedCategory.id, selectedCategory.handle),
     items: flattenCategories(selectedCategory.children).map(c => [c.name, categoryHref(c.id, c.handle)]),
+  } : mobilePanel === "health" ? {
+    title: msg("nav.health"),
+    shopAllHref: "/shop",
+    items: HEALTH_GOALS.map(goal => [msg(goalLabelKey(goal)), `/shop?goal=${goal}`]),
+  } : mobilePanel === "brands" ? {
+    title: msg("nav.brands"),
+    shopAllHref: "/brands",
+    items: Array.isArray(brands) ? brands.map(brand => [brand.name, `/shop?brand_id=${brand.id}`]) : [],
   } : null;
+  const openPanel = (key: MobileCatalogKey) => (event: MouseEvent<HTMLButtonElement>) => {
+    mobilePanelOpenerRef.current = event.currentTarget;
+    setMobilePanel(key);
+  };
 
   return (
     <>
@@ -773,9 +795,13 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
 
               <nav className={styles.simpleLinks} aria-label={msg("nav.shopBy")}>
 
-                <Link
-                  href="/brands"
-                  onClick={closeMenu}
+                <button
+                  type="button"
+                  className={styles.simpleMenuButton}
+                  onClick={event => {
+                    if (brands === null || brands === "error") loadBrands();
+                    openPanel("brands")(event);
+                  }}
                 >
                   <span className={styles.linkWithIcon}>
                     <Package
@@ -789,8 +815,8 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
                     size={20}
                     strokeWidth={1.5}
                   />
-                </Link>
-                <Link href="/#health-goals" onClick={closeMenu}><span className={styles.linkWithIcon}><Sparkles size={18} strokeWidth={1.4} />{msg("nav.health")}</span><ChevronRight size={20} strokeWidth={1.5} /></Link>
+                </button>
+                <button type="button" className={styles.simpleMenuButton} onClick={openPanel("health")}><span className={styles.linkWithIcon}><Sparkles size={18} strokeWidth={1.4} />{msg("nav.health")}</span><ChevronRight size={20} strokeWidth={1.5} /></button>
 
                 <Link
                   href="/deals"
@@ -804,11 +830,6 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
                     />
                     {msg("nav.deals")}
                   </span>
-
-                  <ChevronRight
-                    size={20}
-                    strokeWidth={1.5}
-                  />
                 </Link>
               </nav>
             </section>
@@ -994,6 +1015,15 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
                     </Link>
                   </div>
 
+                  {mobilePanel === "brands" && !Array.isArray(brands) && (
+                    <div className={styles.subMenuStatus} role="status">
+                      <p>{msg(brands === "error" ? "nav.brandsError" : "nav.brandsLoading")}</p>
+                      {brands === "error" && <button type="button" onClick={loadBrands}>{msg("catalog.retry")}</button>}
+                    </div>
+                  )}
+                  {mobilePanel === "brands" && Array.isArray(brands) && !brands.length && (
+                    <p className={styles.subMenuStatus} role="status">{msg("shop.noBrands")}</p>
+                  )}
                   <nav className={styles.subMenuList} aria-label={activeMobilePanel.title}>
                     {t(activeMobilePanel.items.map(
                       ([label, href]) => (
