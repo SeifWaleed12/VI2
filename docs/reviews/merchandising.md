@@ -170,3 +170,33 @@ Open problems: **MERCH-1 and MERCH-2**. No application fixes, commit, push or me
   - The "Daily flash deals" top-bar wording change is dropped: the merged navigation removed that pill.
   - The branch is updated with `full-stack` 157fe26 (RD-6 and the UI work merged).
 - **Checks after updating with `full-stack`:** `npm run check` passes (424 storefront and 235 backend tests, typecheck, lint 0), and `merchandising.spec.ts` passes 3/3 on a real database. Compared with `full-stack`, the branch changes only this task's files.
+
+## Round 2
+
+Reviewer: GPT, 2026-10-22. Re-reviewed fix 8e1ebfc and the task-specific merge resolutions in d64e58e, using handoff/author response at 9e35438 on `claude/merchandising`. Earlier account, RD-6 and UI commits are baseline context, not new review scope. No application edits.
+
+**Verdict: approved. MERCH-1 and MERCH-2 are resolved. No open problems in this review.**
+
+### MERCH-1 — resolved
+
+`getDeals` now passes the native Store Products response through `mapMedusaProduct` and `asDeal`. A candidate remains only when a variant has a genuine one-unit reduction (`compareAtPrice > price`). The backend endpoint is a candidate list, not an independent price authority. This storefront filtering is display selection over Medusa's authoritative calculated prices, not a replacement pricing rule.
+
+Re-ran both round-1 cases using an isolated Medusa database, the actual storefront SDK service/mapping/filtering, and native HTTP responses. A 700 EGP sale requiring three units on a 1,000 EGP product is excluded; a 1,200 EGP sale on another 1,000 EGP product is excluded. The unrestricted 800/1,000 offer remains. For a two-variant product, a discounted second variant is returned as `Two sizes — 2kg`, with that variant's ID and **1,200 current / 1,500 original**, rather than the first variant's 1,000 EGP. The existing ProductCard Add action passes this selected `variantId` to the cart, and the provider uses it for the native cart request.
+
+The added catalog tests assert exclusion of undiscounted products and the discounted second variant's identity, name and price. Retaining the previous unfiltered products/first variant would violate those assertions. No change to Medusa's price or stock authority.
+
+### MERCH-2 — resolved by removing the affected feature
+
+Seif's shop-only bundle decision removes the homepage bundle fetch/render and its new unnamed-link path. On the final branch, the homepage still ends with Health Goals: Value Sets and the closing statement remain absent, and the removed top promotional pill stays absent. `getBundles`, the bundle-tag setup and the new Value Sets test were removed. The legacy unused ValueSets source remains as in full-stack; it has no storefront render call site. Native inventory-kit products remain available through the ordinary catalog, search and genuine deals. The original unnamed-link finding therefore no longer applies to a reachable feature.
+
+### Verification and limits
+
+- Storefront: **424/424 tests**, 43 suites; typecheck and lint pass with no reported errors/warnings.
+- Backend: **235/235 unit tests**, 30 suites; backend and Admin typechecks pass.
+- Isolated native HTTP run: **4/4** — the three committed merchandising test bodies (sale/date/list exclusions, inactive-list removal, six health-goal tags/idempotency/filtering) plus one additional end-to-end pricing probe covering both false-deal cases and the second-variant offer.
+- The probe routed the real storefront SDK calls, including region and product-price resolution, to the test runner's server. Its deals request used a fixture-specific cache key to avoid retaining IDs across test database restores. No development catalog requests or mutations.
+- The test runner removed its database and template; a final database-name check confirmed **0 remaining**. Temporary probe files removed afterwards.
+- `git diff --check b044f20 HEAD`: pass. Author worktree retains only its pre-existing untracked `.claude/` directory.
+- Not rerun: other HTTP suites, production builds, real Redis, live browser/device/screen-reader acceptance, or an inventory-kit purchase. These limits do not leave either reviewed finding open.
+
+Review recorded only. No commit, push, PR or merge performed; Seif controls integration and approval.
