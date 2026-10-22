@@ -1,6 +1,5 @@
 "use client";
 
-import { Pause, Play } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 import { useTickerMotion } from "@/hooks/use-ticker-motion";
 import styles from "./Navbar.module.css";
@@ -12,16 +11,13 @@ export default function AnnouncementTicker() {
     msg("announcement.range"),
     msg("announcement.collection"),
   ];
+  // Seif requested autoplay; hover or keyboard focus pauses this strip.
   const {
     ref,
     repetitions,
-    reducedMotion,
-    manualPause,
     paused,
-    browsing,
     interactions,
-    togglePause,
-  } = useTickerMotion(messages.length);
+  } = useTickerMotion(messages.length, false);
 
   return (
     <section
@@ -29,14 +25,14 @@ export default function AnnouncementTicker() {
       className={styles.announcementTicker}
       aria-label={msg("announcement.label")}
       data-no-translate
-      data-browsing={browsing}
+      data-autoplay="true"
       {...interactions}
     >
       <div
         className={styles.topMarquee}
         role="group"
         aria-label={msg("announcement.label")}
-        tabIndex={reducedMotion ? 0 : undefined}
+        tabIndex={0}
       >
         <div
           className={styles.topMarqueeTrack}
@@ -69,17 +65,6 @@ export default function AnnouncementTicker() {
           ))}
         </div>
       </div>
-      {!reducedMotion && (
-        <button
-          type="button"
-          className={styles.announcementControl}
-          onMouseDown={(event) => event.preventDefault()}
-          onClick={togglePause}
-          aria-label={msg(manualPause ? "ticker.resume" : "ticker.pause")}
-        >
-          {manualPause ? <Play size={14} /> : <Pause size={14} />}
-        </button>
-      )}
     </section>
   );
 }

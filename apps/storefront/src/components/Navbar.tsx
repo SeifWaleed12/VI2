@@ -396,30 +396,6 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
         <div className={styles.utilityStrip}>
           <div className={styles.utilityInner}>
             <div className={styles.utilityLeft}>
-              <Link href="/deals">
-                <BadgePercent
-                  size={14}
-                  strokeWidth={1.45}
-                />
-
-                <span>
-                  {t(copy.flash)}
-                </span>
-
-                <strong>{t("24H PICKS")}</strong>
-
-                <ChevronRight
-                  size={14}
-                  strokeWidth={1.5}
-                />
-              </Link>
-
-              <span
-                className={
-                  styles.utilityDivider
-                }
-              />
-
               <AnnouncementTicker />
             </div>
 

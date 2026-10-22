@@ -90,12 +90,12 @@ jest.mock("../MobileBottomNav.module.css", () => ({}));
 jest.mock("../TrendingNow.module.css", () => ({}));
 jest.mock("../BrandUniverse.module.css", () => ({}));
 jest.mock("@/hooks/use-ticker-motion", () => ({
-  useTickerMotion: () => ({
+  useTickerMotion: (_count: number, respectReducedMotion = true) => ({
     ref: { current: null },
     repetitions: 2,
-    reducedMotion: mockReducedMotion,
+    reducedMotion: mockReducedMotion && respectReducedMotion,
     manualPause: mockManualPause,
-    paused: mockReducedMotion || mockManualPause,
+    paused: (mockReducedMotion && respectReducedMotion) || mockManualPause,
     browsing: mockReducedMotion,
     interactions: {},
     togglePause: jest.fn(),
@@ -262,26 +262,21 @@ it.each(["en", "ar"] as const)("renders truthful localized announcements and nam
   }
   expect(html).toContain('role="region" aria-label="' + message(locale, "nav.preferences") + '"');
 });
-it("announces only one message cycle, preserves duplicates visually and offers pause/resume", () => {
+it("announces one message cycle and exposes a keyboard pause target without buttons", () => {
   const html = renderToStaticMarkup(createElement(AnnouncementTicker));
   const primary = html.match(/data-ticker-base="true"[^>]*>([\s\S]*?)<\/div>/)![1];
   expect(primary.match(/Find your daily essentials/g)).toHaveLength(1);
   expect(html.match(/Find your daily essentials/g)).toHaveLength(4);
   expect(html.match(/aria-hidden="true"/g)!.length).toBeGreaterThan(3);
-  expect(html).toContain('aria-label="Pause animation"');
-  expect(html).not.toContain("aria-pressed");
-  mockManualPause = true;
-  const paused = renderToStaticMarkup(createElement(AnnouncementTicker));
-  expect(paused).toContain('aria-label="Resume animation"');
-  expect(paused).not.toContain("aria-pressed");
-  expect(paused).toContain("animation-play-state:paused");
+  expect(html).toContain('role="group" aria-label="Announcements" tabindex="0"');
+  expect(html).not.toContain("<button");
 });
-it("keeps reduced-motion announcements static and keyboard browsable", () => {
+it("autoplays announcements under reduced motion as requested, without a pause button", () => {
   mockReducedMotion = true;
   const html = renderToStaticMarkup(createElement(AnnouncementTicker));
-  expect(html).toContain('data-browsing="true"');
+  expect(html).toContain('data-autoplay="true"');
   expect(html).toContain('role="group" aria-label="Announcements" tabindex="0"');
-  expect(html).toContain("animation-play-state:paused");
+  expect(html).toContain("animation-play-state:running");
   expect(html).not.toContain("<button");
 });
 
@@ -325,6 +320,17 @@ it.each(["en", "ar"] as const)("publishes no removed shop filters in %s navigati
     for (const key of ["goal", "form", "diet", "allergen", "rating", "sort", "availability"]) expect(query.has(key)).toBe(false);
   }
   expect(html).not.toContain('setMobilePanel("health")');
+});
+
+it.each(["en", "ar"] as const)("gives the utility strip to announcements without a flash-deals promotion in %s", locale => {
+  mockLocale = locale;
+  const html = renderToStaticMarkup(createElement(Navbar));
+  const strip = html.slice(html.indexOf('class="utilityStrip"'), html.indexOf("<header"));
+  expect(strip).toContain(message(locale, "announcement.label"));
+  expect(strip).not.toContain('/deals');
+  expect(strip).not.toContain('24H PICKS');
+  // Deals remains a normal navigation destination.
+  expect(html).toContain(`href="/${locale}/deals"`);
 });
 
 it("does not close a hover-opened account on its first pointer click, while keyboard activation still toggles", () => {

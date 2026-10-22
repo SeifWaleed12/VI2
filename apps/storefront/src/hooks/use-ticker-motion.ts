@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState, type FocusEvent } from "react";
 
 // Shared lifecycle for the two continuous homepage strips.
-export function useTickerMotion(itemCount: number) {
+export function useTickerMotion(itemCount: number, respectReducedMotion = true) {
   const ref = useRef<HTMLElement>(null);
   const [repetitions, setRepetitions] = useState(1);
   const [reducedMotion, setReducedMotion] = useState(true);
@@ -46,14 +46,16 @@ export function useTickerMotion(itemCount: number) {
     };
   }, [itemCount]);
 
+  const motionReduced = reducedMotion && respectReducedMotion;
+
   return {
     ref,
     repetitions,
-    reducedMotion,
+    reducedMotion: motionReduced,
     manualPause,
-    browsing: reducedMotion || focused,
+    browsing: motionReduced || focused,
     paused:
-      reducedMotion ||
+      motionReduced ||
       !visible ||
       !pageVisible ||
       hovered ||
