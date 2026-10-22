@@ -195,13 +195,14 @@ it("keeps real localized product destinations with only one keyboard stop per pr
   expect(html).not.toContain("<button");
   expect(html).toContain("منتجات رائجة");
 });
-it("keeps the decorative brand names unchanged and provides a separate pause control", () => {
+it("keeps real decorative brand names and a keyboard pause target without controls", () => {
   const html = renderToStaticMarkup(
     createElement(BrandUniverse, { brands: ["Real Brand"] }),
   );
   expect(html).toContain("Real Brand");
   expect(html).toContain('aria-hidden="true"');
-  expect(html).toContain('aria-label="Pause animation"');
+  expect(html).toContain('tabindex="0"');
+  expect(html).not.toContain("<button");
   expect(
     renderToStaticMarkup(createElement(() => TrendingNow({ products: [] }))),
   ).toBe("");
@@ -290,15 +291,14 @@ it.each(["en", "ar"] as const)("names only language/currency preferences, exclud
   expect(preferences).not.toContain("/deals");
   expect(preferences).not.toContain(message(locale, "announcement.essentials"));
 });
-it("keeps brand pause controls while products use hover and focus", () => {
-  mockManualPause = true;
-  const brand = renderToStaticMarkup(createElement(BrandUniverse, { brands: ["Brand"] }));
-  const product = renderToStaticMarkup(createElement(() => TrendingNow({ products: [{ id: "p", slug: "p", name: "P" } as Product] })));
-  expect(product).not.toContain("<button");
-  for (const html of [brand]) {
-    expect(html).toContain('aria-label="Resume animation"');
-    expect(html).not.toContain("aria-pressed");
-  }
+it("autoplays brand names with reduced motion enabled and no pause button", () => {
+  mockReducedMotion = true;
+  const html = renderToStaticMarkup(createElement(BrandUniverse, { brands: ["Real Brand"] }));
+  expect(html).toContain("Real Brand");
+  expect(html).toContain("animation-play-state:running");
+  expect(html).toContain('tabindex="0"');
+  expect(html).not.toContain("<button");
+  expect(html).not.toContain("data-browsing");
 });
 
 it.each(["en", "ar"] as const)("names the mobile drawer as a dialog and keeps the closed layer inert in %s", locale => {

@@ -1,5 +1,4 @@
 "use client";
-import { Pause, Play } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 import { useTickerMotion } from "@/hooks/use-ticker-motion";
 import styles from "./BrandUniverse.module.css";
@@ -9,13 +8,9 @@ export default function BrandUniverse({ brands }: { brands: string[] }) {
   const {
     ref,
     repetitions,
-    reducedMotion,
-    manualPause,
     paused,
-    browsing,
-    togglePause,
     interactions,
-  } = useTickerMotion(brands.length);
+  } = useTickerMotion(brands.length, false);
   if (!brands.length) return null;
   return (
     <section
@@ -25,7 +20,7 @@ export default function BrandUniverse({ brands }: { brands: string[] }) {
       ref={ref}
       {...interactions}
       data-no-translate
-      data-browsing={browsing}
+      tabIndex={0}
     >
       <div className={styles.marquee} aria-hidden="true" dir="ltr">
         <div
@@ -57,17 +52,6 @@ export default function BrandUniverse({ brands }: { brands: string[] }) {
           ))}
         </div>
       </div>
-      {!reducedMotion && (
-        <button
-          type="button"
-          className={styles.motionControl}
-          onMouseDown={(event) => event.preventDefault()}
-          onClick={togglePause}
-          aria-label={msg(manualPause ? "ticker.resume" : "ticker.pause")}
-        >
-          {manualPause ? <Play size={13} /> : <Pause size={13} />}
-        </button>
-      )}
     </section>
   );
 }
