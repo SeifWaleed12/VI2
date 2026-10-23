@@ -89,3 +89,23 @@ it("guards repeated cart activation while the native cart request is pending", a
   await pending;
   expect(byClass(render(), "addButton").props.disabled).toBe(false);
 });
+
+it("uses Add to cart in the mobile bar with the selected quantity and reports failure there", async () => {
+  let tree = render();
+  select(tree, "Size", "M");
+  select(render(), "Flavor", "Chocolate");
+  tree = render();
+  tree.find((element) => element.props["aria-label"] === "Increase quantity")!.props.onClick!();
+  tree = render();
+  const mobile = byClass(tree, "mobileBar");
+  const button = elements(mobile).find((element) => element.type === "button")!;
+  expect(button.props.children).toBe("Add to cart");
+  addItem.mockResolvedValueOnce(false);
+  await button.props.onClick!();
+  expect(addItem).toHaveBeenCalledWith(expect.objectContaining({ variantId: "medium", price: 150 }), 2);
+  expect(push).not.toHaveBeenCalled();
+  const summary = byClass(render(), "mobileSummary");
+  expect(JSON.stringify(summary.props.children)).toContain("M · Chocolate · Quantity: 2");
+  expect(JSON.stringify(summary.props.children)).toContain("300 EGP");
+  expect(byClass(render(), "mobileError").props.children).toContain("Could not add to cart");
+});

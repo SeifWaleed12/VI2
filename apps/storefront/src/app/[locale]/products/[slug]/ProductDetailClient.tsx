@@ -269,6 +269,11 @@ export default function ProductDetailClient({
           </nav>
 
           <section className={styles.product}>
+            <div className={styles.head}>
+              {product.brand && <p className={styles.brand}>{copy.by} <strong>{product.brand}</strong></p>}
+              <h1 className={styles.title}>{product.name}</h1>
+            </div>
+
             <div className={styles.gallery}>
               <div className={styles.stage}>
                 {product.badge && <span className={styles.badge}>{product.badge}</span>}
@@ -280,9 +285,7 @@ export default function ProductDetailClient({
               <span className={styles.srOnly} aria-live="polite">{shareCopied ? copy.linkCopied : ""}</span>
             </div>
 
-            <div className={styles.head}>
-              {product.brand && <p className={styles.brand}>{copy.by} <strong>{product.brand}</strong></p>}
-              <h1 className={styles.title}>{product.name}</h1>
+            <div className={styles.options}>
               {choices.length > 0 && (
                 <VariantSelector
                   options={choices}
@@ -294,35 +297,10 @@ export default function ProductDetailClient({
               )}
             </div>
 
-            <div className={styles.info}>
-              {facts.length > 0 && (
-                <section className={styles.block} aria-labelledby="product-details">
-                  <h2 id="product-details" className={styles.blockTitle}>{copy.details}</h2>
-                  <dl className={styles.facts}>
-                    {facts.map((fact) => (
-                      <div key={fact.label}>
-                        <dt>{fact.label}</dt>
-                        <dd>{fact.value}</dd>
-                      </div>
-                    ))}
-                  </dl>
-                </section>
-              )}
-
-              <section className={styles.block} aria-labelledby="product-description">
-                <h2 id="product-description" className={styles.blockTitle}>{copy.description}</h2>
-                {!product.description ? (
-                  <p className={styles.muted}>{copy.noDescription}</p>
-
-                ) : (
-                  <p className={styles.prose}>{product.description}</p>
-                )}
-              </section>
-            </div>
-
             <aside className={styles.buy} aria-label={product.name}>
               <div className={styles.priceRow} role="status" aria-atomic="true">
                 <strong className={priced ? styles.price : styles.priceMissing}>{priceText}</strong>
+                <span className={styles.srOnly}>{availability}</span>
                 {priced && compareAtPrice !== undefined && compareAtPrice > price && (
                   <s className={styles.comparePrice}>{formatPrice(compareAtPrice)} {copy.currency}</s>
                 )}
@@ -357,6 +335,32 @@ export default function ProductDetailClient({
                 <span><strong>{copy.delivery}</strong>{copy.deliveryFee}</span>
               </p>
             </aside>
+
+            <div className={styles.info}>
+              {facts.length > 0 && (
+                <section className={styles.block} aria-labelledby="product-details">
+                  <h2 id="product-details" className={styles.blockTitle}>{copy.details}</h2>
+                  <dl className={styles.facts}>
+                    {facts.map((fact) => (
+                      <div key={fact.label}>
+                        <dt>{fact.label}</dt>
+                        <dd>{fact.value}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                </section>
+              )}
+
+              <section className={styles.block} aria-labelledby="product-description">
+                <h2 id="product-description" className={styles.blockTitle}>{copy.description}</h2>
+                {!product.description ? (
+                  <p className={styles.muted}>{copy.noDescription}</p>
+                ) : (
+                  <p className={styles.prose}>{product.description}</p>
+                )}
+              </section>
+            </div>
+
           </section>
 
           {similar.length > 0 && (
@@ -389,14 +393,16 @@ export default function ProductDetailClient({
         </div>
       </main>
 
-      <div className={styles.mobileBar}>
-        <div>
-          <span>{product.name}</span>
+      <div className={styles.mobileBar} data-no-translate>
+        <div className={styles.mobileSummary}>
+          <span>{[...Object.values(selectedOptions), `${copy.quantity}: ${quantity}`].join(" · ")}</span>
           <strong>{priced ? `${formatPrice(price * quantity)} ${copy.currency}` : copy.priceUnavailable}</strong>
+          {invalidSelection && <span>{copy.unavailable}</span>}
         </div>
-        <button type="button" disabled={!canBuy} onClick={buyNow}>
-          {canBuy ? copy.buyNow : unavailableLabel}
+        <button type="button" disabled={!canBuy || cartState === "pending"} onClick={addToCart}>
+          {!canBuy ? unavailableLabel : cartState === "pending" ? copy.adding : cartState === "added" ? copy.added : copy.addToCart}
         </button>
+        {cartState === "failed" && <p className={styles.mobileError}>{copy.addFailed}</p>}
       </div>
     </>
   );

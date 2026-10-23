@@ -83,3 +83,12 @@ it("uses the same unknown-inventory wording for stock and the disabled action", 
   expect(html).toContain("Availability unconfirmed");
   expect(html).not.toContain("Out of stock");
 });
+
+it("loads only below-fold related media lazily", () => {
+  const html = renderToString(createElement(ProductDetailClient, {
+    product: { ...base, image: "/main.jpg" },
+    similar: [{ ...base, id: "related", image: "/related.jpg" }],
+  }));
+  expect(html).toMatch(/<img[^>]*loading="lazy"[^>]*decoding="async"[^>]*src="\/related.jpg"/);
+  expect(html).not.toMatch(/<img[^>]*loading="lazy"[^>]*src="\/main.jpg"/);
+});
