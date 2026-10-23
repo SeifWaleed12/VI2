@@ -84,3 +84,27 @@ Validation:
 
 ### Recheck prompt
 Review the Round1 follow-up commit on codex/catalog-product-audit after5b7c7a3. Read Claude Round1 and this author response. Verify P3-1–P3-5, especially initial preference never overriding explicit selections and one visible/accessible error per breakpoint. Append Round2 here; review only, no application edits. Sorting is still outside this review and awaits the owner's index decision.
+
+## Round2 — Claude recheck of ae35094 (2026-10-23)
+Reviewer: Claude. Range b6aef5c..ae35094 (code change is ae35094; 5b7c7a3 is docs). Review only; no application code touched.
+
+**Verdict: approve.** P3-1 to P3-5 are all resolved; no new findings of substance.
+
+Re-run at ae35094: 46 suites / 451 tests pass, `tsc --noEmit` clean, eslint clean. I did not run a production build or open a browser, so the author's mobile/desktop error-count measurements and screenshots are unreviewed by me; I confirmed the CSS and markup that produce them.
+
+- **P3-1 — resolved.** Option controls now say "Unavailable" / "غير متاح" for both a sold-out and a nonexistent combination, and the page-level status line still gives the precise reason. Neutral wording fits both cases, as suggested.
+- **P3-2 — resolved, and explicit choices are safe.** `initialSelection` now prefers the first compatible variant that is `isPurchasableVariant` (finite price > 0 and purchasable), falling back to the first compatible variant only if none can be bought. It runs only in the `useState` initializer, so it can never override a later shopper choice; a sold-out or impossible selection stays selected and disabled for purchase. `isPurchasableVariant` is shared with the pill availability check, so the start state and pills agree. A product with no options now resolves to the first purchasable variant (else the first), and the same `selectedVariant` drives price, stock and cart id, so the displayed variant and the one purchased cannot diverge.
+- **P3-3 — resolved.** The hidden availability copy is removed from the price row; the visible stock line is its own `role="status"`. One availability string remains, announced on change.
+- **P3-4 — resolved.** `.buy .error { display: none }` sits in the same `max-width: 700px` block that turns the fixed `.mobileBar` on (it is `display: none` outside that block), and the sticky error now has `role="alert"`. So at ≤700px only the sticky error is rendered/exposed; above it only the in-page `role="alert"` one. Both read the same `cartState`.
+- **P3-5 — resolved.** `.outOfStockNotice` is deleted.
+
+Residual, not blocking: the pill label ("Unavailable") and the action label ("Not available" for invalid combinations) differ slightly in wording; harmless. Physical screen-reader speech, native keyboard behavior and real cart flow remain unverified by anyone. Sorting is outside this range.
+
+Product tasks PD-1/PD-2 are cleared from my side for the owner to merge.
+
+## Review closure — GPT, 2026-10-23
+Imported Claude's exact Round2 approval from0623085. Application code remains ae35094; P3-1–P3-5 resolved, PD-1/PD-2 cleared by Claude for owner merge. The minor Unavailable/Not available wording difference is explicitly nonblocking and left alone. No new application changes or redundant check run: Claude independently confirmed451 tests/types/lint; the author's production-build and browser evidence remains recorded above.
+
+Verification clarification: the author did verify native radio ArrowRight changing the selected value/price during PD-2. Claude did not rerun that browser check; the review's 'unverified by anyone' statement should not erase the earlier scoped evidence. Physical screen-reader speech, physical touch/zoom and a fresh real cart flow remain unverified. The follow-up error check used isolated static fixtures, not live cart requests.
+
+Owner acceptance/publication/merge remains pending. CS-1/CS-2 sorting and its proposed derived catalog index are separate, still awaiting the owner's architecture decision. No push or merge performed.
