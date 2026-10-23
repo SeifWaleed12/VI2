@@ -1,5 +1,5 @@
 # Proposed native catalog ranking read model
-Status: proposed, requires owner approval under approved plan CS-1 before persistence/index implementation. Scope requested: global EGP price/availability ordering, correct deal counts and24-item pagination. Existing Medusa2.21.0 API cannot sort its computed price/stock fields.
+Status: standalone-table proposal superseded as the default recommendation after checking newer integrated full-stack cbc3be8. No owner approval or implementation of this table. Evaluate extension of the existing native Medusa product search index first; native price/availability context and refresh correctness still require proof. Scope requested: global EGP price/availability ordering, correct deal counts and24-item pagination. Existing Medusa2.21.0 API cannot sort its computed price/stock fields.
 
 ## Why
 Native prices depend on rule/quantity/region/sale context; inventory depends on locations/reservations. Copying those business rules into custom SQL would compete with Medusa. Scanning every product for every uncached page would undermine the approved performance goal. A derived, indexed read model lets native Medusa compute values, then PostgreSQL order/filter/page efficiently. Redis accelerates repeated public answers; it does not own the ranking source.
@@ -39,3 +39,11 @@ Prove global >24 and >100-deal results; native price equivalence for sale/overri
 
 ## Explicit decision
 Approve this derived read-model architecture, or keep schema unchanged and revisit the performance/sorting implementation approach before shipping calculated sorts. Independent approved product-page fixes can proceed while this decision is pending.
+
+
+## Native-index reuse correction — 2026-10-23
+The author branch predates the newly integrated product-search work. Current full-stack cbc3be8 already defines the native Medusa product index in apps/backend/src/search/product.ts, with published/channel visibility and category/brand/tag memberships, exposed by /store/product-search. Installed2.21.0 search types support sortable fields and pagination order. A separate custom table was therefore premature as the default recommendation.
+
+Preferred next step: prove a scoped extension of that existing index for native public EGP display price/variant, availability, deal eligibility and newest ordering. Existing search currently indexes text/memberships only; it does not already solve calculated price or inventory freshness. Its product events plus nightly reindex are insufficient for stock and price-window correctness, so extend refresh/invalidation for those cases and verify region/channel context, pagination and outage behavior before calling this path complete. Do not add InstantSearch or another dependency merely because current web documentation uses it. No new custom module/table, no search upgrade and no live migration are approved or performed by this note. Native managed index schema/reindex changes may still be necessary; do not promise zero database work.
+
+The detailed authority/cache/failure/acceptance requirements above remain relevant to the implementation, while the separate-table approval choice is held pending evidence that native reuse cannot meet them. Medusa computes commerce values; Redis caches results; product-page review approval is unaffected.
