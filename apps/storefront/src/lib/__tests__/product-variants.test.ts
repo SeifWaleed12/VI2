@@ -24,3 +24,26 @@ it("permits the native default variant when there are no displayed choices", () 
   expect(initialSelection([], variants)).toEqual({});
   expect(matchesSelection(variants[0], {})).toBe(true);
 });
+
+it.each([
+  { inStock: false, stock: 0, price: 100 },
+  { inStock: true, stock: 3, price: 0 },
+  { inStock: true, stock: 3, price: Number.NaN },
+])("opens on a purchasable real combination when the first is unavailable: %j", (unavailable) => {
+  expect(initialSelection([
+    { id: "size", title: "Size", values: ["S", "M"] },
+    { id: "flavor", title: "Flavor", values: ["Vanilla", "Chocolate"] },
+  ], [{ ...variants[0], ...unavailable }, variants[1]])).toEqual({ Size: "M", Flavor: "Chocolate" });
+});
+
+it("keeps the first real choice when none are purchasable", () => {
+  expect(initialSelection([{ id: "size", title: "Size", values: ["M", "S"] }], variants.map((variant) => ({ ...variant, inStock: false })))).toEqual({ Size: "S" });
+});
+
+it("honors explicit native purchasability with zero stock and ignores malformed combinations", () => {
+  const options = [{ id: "size", title: "Size", values: ["S", "M"] }];
+  expect(initialSelection(options, [
+    { ...variants[0], options: {}, inStock: true },
+    { ...variants[1], stock: 0, inStock: true },
+  ])).toEqual({ Size: "M" });
+});

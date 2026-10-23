@@ -1,7 +1,7 @@
 "use client";
 
 import { useId } from "react";
-import { matchesSelection, optionValue } from "@/lib/product-variants";
+import { isPurchasableVariant, matchesSelection, optionValue } from "@/lib/product-variants";
 import type { ProductOption, ProductVariant } from "@/types/product";
 import styles from "./VariantSelector.module.css";
 
@@ -16,7 +16,7 @@ export type VariantSelectorProps = {
 
 export default function VariantSelector({
   options, variants = [], selectedOptions, onSelectOption,
-  outOfStockLabel = "Not available with this selection", className = "",
+  outOfStockLabel = "Unavailable", className = "",
 }: VariantSelectorProps) {
   const groupId = useId();
   return (
@@ -34,7 +34,7 @@ export default function VariantSelector({
                 const selected = selectedValue.trim().toLowerCase() === value.trim().toLowerCase();
                 const available = variants.some((variant) =>
                   matchesSelection(variant, { ...selectedOptions, [option.title]: value })
-                  && variant.price > 0 && (variant.inStock ?? variant.stock > 0),
+                  && isPurchasableVariant(variant),
                 );
                 return (
                   <label key={value} className={styles.choice}>

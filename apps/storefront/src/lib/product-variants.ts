@@ -14,11 +14,16 @@ export function matchesSelection(variant: ProductVariant, selection: Record<stri
   });
 }
 
+export function isPurchasableVariant(variant: ProductVariant): boolean {
+  return Number.isFinite(variant.price) && variant.price > 0 && (variant.inStock ?? variant.stock > 0);
+}
+
 export function initialSelection(options: ProductOption[], variants: ProductVariant[]): Record<string, string> {
-  const first = variants.find((variant) => options.every((option) => {
+  const compatible = variants.filter((variant) => options.every((option) => {
     const value = optionValue(variant.options ?? {}, option.title);
     return value !== undefined && option.values.some((candidate) => normalized(candidate) === normalized(value));
   }));
+  const first = compatible.find(isPurchasableVariant) ?? compatible[0];
   return Object.fromEntries(options.map((option) => {
     const actual = first && optionValue(first.options ?? {}, option.title);
     return [option.title, option.values.find((value) => actual !== undefined && normalized(value) === normalized(actual)) ?? option.values[0] ?? ""];

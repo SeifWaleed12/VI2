@@ -29,7 +29,7 @@ jest.mock("@/context/CartContext", () => ({ useCart: () => ({ addItem }) }));
 jest.mock("@/context/LanguageContext", () => ({ useLanguage: () => ({ language: "en" }) }));
 jest.mock("@/hooks/use-locale-router", () => ({ useLocaleRouter: () => ({ push }) }));
 
-type Props = { children?: ReactNode; className?: string; disabled?: boolean; onClick?: () => unknown; onSelectOption?: (title: string, value: string) => void; "aria-label"?: string };
+type Props = { children?: ReactNode; className?: string; disabled?: boolean; onClick?: () => unknown; onSelectOption?: (title: string, value: string) => void; "aria-label"?: string; role?: string };
 function elements(node: ReactNode): ReactElement<Props>[] {
   if (!isValidElement<Props>(node)) return [];
   const children = node.props.children;
@@ -108,4 +108,24 @@ it("uses Add to cart in the mobile bar with the selected quantity and reports fa
   expect(JSON.stringify(summary.props.children)).toContain("M · Chocolate · Quantity: 2");
   expect(JSON.stringify(summary.props.children)).toContain("300 EGP");
   expect(byClass(render(), "mobileError").props.children).toContain("Could not add to cart");
+  expect(byClass(render(), "mobileError").props.role).toBe("alert");
+});
+
+it("never overrides an explicit sold-out selection with the preferred purchasable variant", async () => {
+  const first = product.variants![0];
+  const wasInStock = first.inStock;
+  first.inStock = false;
+  try {
+    let tree = render();
+    select(tree, "Size", "S");
+    select(render(), "Flavor", "Vanilla");
+    tree = render();
+    expect(byClass(tree, "addButton").props.disabled).toBe(true);
+    expect(byClass(tree, "buyNow").props.disabled).toBe(true);
+    await byClass(tree, "addButton").props.onClick!();
+    expect(addItem).not.toHaveBeenCalled();
+    expect(JSON.stringify(byClass(tree, "priceRow").props.children)).toContain("100 EGP");
+  } finally {
+    first.inStock = wasInStock;
+  }
 });

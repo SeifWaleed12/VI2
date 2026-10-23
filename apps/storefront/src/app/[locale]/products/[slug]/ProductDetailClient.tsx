@@ -15,7 +15,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 import Link from "@/components/LocaleLink";
 import VariantSelector from "@/components/VariantSelector";
-import { initialSelection, matchesSelection } from "@/lib/product-variants";
+import { initialSelection, isPurchasableVariant, matchesSelection } from "@/lib/product-variants";
 import { useCart } from "@/context/CartContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { useLocaleRouter } from "@/hooks/use-locale-router";
@@ -54,7 +54,7 @@ const COPY = {
     brand: "Brand",
     categories: "Categories",
     invalidSelection: "This combination is not available. Choose another option.",
-    optionUnavailable: "Not available with this selection",
+    optionUnavailable: "Unavailable",
     eda: "EDA registration",
     edaApproved: "EDA approved",
     description: "Description",
@@ -90,7 +90,7 @@ const COPY = {
     brand: "البراند",
     categories: "الأقسام",
     invalidSelection: "هذه التركيبة غير متاحة. اختر خيارات أخرى.",
-    optionUnavailable: "غير متاح مع هذه الخيارات",
+    optionUnavailable: "غير متاح",
     eda: "تسجيل هيئة الدواء المصرية",
     edaApproved: "معتمد من هيئة الدواء",
     description: "الوصف",
@@ -141,8 +141,10 @@ export default function ProductDetailClient({
   );
 
   const selectedVariant = useMemo(
-    () => variants.find((variant) => matchesSelection(variant, selectedOptions)),
-    [variants, selectedOptions],
+    () => options.length === 0
+      ? variants.find(isPurchasableVariant) ?? variants[0]
+      : variants.find((variant) => matchesSelection(variant, selectedOptions)),
+    [options.length, variants, selectedOptions],
   );
   const invalidSelection = variants.length > 0 && !selectedVariant;
   const price = variants.length ? selectedVariant?.price ?? 0 : product.price;
@@ -300,12 +302,11 @@ export default function ProductDetailClient({
             <aside className={styles.buy} aria-label={product.name}>
               <div className={styles.priceRow} role="status" aria-atomic="true">
                 <strong className={priced ? styles.price : styles.priceMissing}>{priceText}</strong>
-                <span className={styles.srOnly}>{availability}</span>
                 {priced && compareAtPrice !== undefined && compareAtPrice > price && (
                   <s className={styles.comparePrice}>{formatPrice(compareAtPrice)} {copy.currency}</s>
                 )}
               </div>
-              <p className={inStock ? styles.stock : styles.stockOut}>
+              <p className={inStock ? styles.stock : styles.stockOut} role="status" aria-atomic="true">
                 <span className={styles.stockDot} aria-hidden="true" />
                 {availability}
               </p>
@@ -402,7 +403,7 @@ export default function ProductDetailClient({
         <button type="button" disabled={!canBuy || cartState === "pending"} onClick={addToCart}>
           {!canBuy ? unavailableLabel : cartState === "pending" ? copy.adding : cartState === "added" ? copy.added : copy.addToCart}
         </button>
-        {cartState === "failed" && <p className={styles.mobileError}>{copy.addFailed}</p>}
+        {cartState === "failed" && <p className={styles.mobileError} role="alert">{copy.addFailed}</p>}
       </div>
     </>
   );

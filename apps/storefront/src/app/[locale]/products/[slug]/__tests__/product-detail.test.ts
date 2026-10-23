@@ -92,3 +92,19 @@ it("loads only below-fold related media lazily", () => {
   expect(html).toMatch(/<img[^>]*loading="lazy"[^>]*decoding="async"[^>]*src="\/related.jpg"/);
   expect(html).not.toMatch(/<img[^>]*loading="lazy"[^>]*src="\/main.jpg"/);
 });
+
+it("renders availability only once, in the visible live region", () => {
+  const html = render({ stock: 20 });
+  expect(html.match(/In stock/g)).toHaveLength(1);
+  expect(html).toMatch(/<p class="stock" role="status" aria-atomic="true">/);
+});
+
+it("opens on a purchasable native default variant when no real options are shown", () => {
+  const html = render({ variants: [
+    { id: "soldout", title: "Default", price: 300, stock: 0, inStock: false },
+    { id: "available", title: "Default", price: 450, stock: 4, inStock: true },
+  ] });
+  expect(html).toContain("450 EGP");
+  expect(html).not.toContain("300 EGP");
+  expect(html).not.toContain("Out of stock");
+});

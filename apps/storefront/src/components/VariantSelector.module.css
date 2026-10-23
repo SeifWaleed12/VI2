@@ -35,11 +35,6 @@
   font-weight: 700;
 }
 
-.outOfStockNotice {
-  color: #8a2c1f;
-  font-weight: 600;
-}
-
 .pillGrid {
   display: flex;
   flex-wrap: wrap;
