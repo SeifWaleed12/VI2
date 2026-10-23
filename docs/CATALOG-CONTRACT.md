@@ -63,6 +63,14 @@ Native `GET /store/products` supplies `category_id`, `q`, `id`, `limit`, `offset
    - `eda_registration.registration_number`, `eda_registration.is_approved`;
    - `categories.id`, `categories.name`, `categories.handle`. Medusa otherwise drops these silently.
 
+`GET /store/product-search?q=…` returns `{ ids, count }`: product ids best match first, from the `product` index on Medusa's Search module (Postgres engine, `src/search/product.ts`).
+- **Searched:** English and Arabic names, brand, categories, variant names (flavor and size) and health-goal words. Not SKU, barcode or description.
+- **Matching:** typo tolerant (`pg_trgm`, words of 4+ letters) and as-you-type (the last word is a prefix). A leading Arabic "ال" is dropped from the search words.
+- **Parameters:** `q` 1–100 characters, `limit` 1–24 (default 6), `offset`, `category_id[]`, `brand_id[]`, `tag_id[]`.
+- **Scope:** only published products in the publishable key's sales channels.
+- **Storefront:** `searchProducts` reads the matched products through `GET /store/products?id=…` for prices and translations, keeping the order. The shop uses it when `q` is set; the header pop-up uses it as you type.
+- **Freshness:** product events update the index at once. Renamed categories or brands, Arabic name edits and variant edits are picked up by the nightly rebuild (`jobs/reindex-product-search.ts`, 04:00) or by a rebuild from Admin → Settings → Search indexes. Cached 60 s, cleared by any Admin write.
+
 `GET /store/deals` returns `{ product_ids }`: products with a sale Price List that is active, applies to everyone (no customer-group rules) and is running now, in EGP, at most 100 (`src/lib/deals.ts`). The storefront lists them through `GET /store/products?id=…`, so unpublished products stay hidden. Cached 60 s, cleared by any Admin write.
 
 `GET /store/brands` lists every active brand, sorted by name and not capped. Each brand has `id`, `name`, `slug`, `logo`, `country`, `description`.

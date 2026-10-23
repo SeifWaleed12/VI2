@@ -8,6 +8,7 @@ import {
 } from "@/lib/medusa/services/products";
 import { getBrands } from "@/lib/medusa/services/brands";
 import { getTagIds } from "@/lib/medusa/services/tags";
+import { searchProducts } from "@/lib/medusa/services/search";
 import { loadCategoryDirectory } from "@/lib/medusa/category-directory";
 import { categoryScope, flattenCategories } from "@/lib/category-tree";
 import { isLocale, localizedHref, message } from "@/lib/i18n";
@@ -126,7 +127,7 @@ const loadShop = cache(
     }
     if (!error && (!filters.goal || goalTagId)) {
       try {
-        products = await listProducts({
+        const params = {
           locale,
           limit: SHOP_PAGE_SIZE,
           offset: (filters.page - 1) * SHOP_PAGE_SIZE,
@@ -135,8 +136,11 @@ const loadShop = cache(
             : {}),
           ...(brandIds.length ? { brand_id: brandIds } : {}),
           ...(goalTagId ? { tag_id: [goalTagId] } : {}),
-          ...(filters.q ? { q: filters.q } : {}),
-        });
+        };
+        // Text search goes through the ranked product search; browsing does not.
+        products = filters.q
+          ? await searchProducts({ ...params, q: filters.q })
+          : await listProducts(params);
       } catch (cause) {
         error =
           cause instanceof InvalidCatalogFilterError

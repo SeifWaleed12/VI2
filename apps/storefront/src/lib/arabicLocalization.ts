@@ -1,4 +1,3 @@
-import type { Product } from "@/types/product";
 
 /* UI-only Arabic copy. Catalog identifiers and commerce payloads stay unchanged. */
 export const arabicUi: Record<string, string> = {
@@ -257,32 +256,6 @@ export const arabicUi: Record<string, string> = {
   "Optimum Nutrition Gold Standard 100% Whey Protein, Chocolate Malt, 2 lb (907 g).": "Gold Standard واي بروتين ١٠٠٪ من Optimum Nutrition بنكهة شوكولاتة مالت، ٢ رطل (٩٠٧ جم).",
   "Unflavored creatine monohydrate delivering 5,000 mg (5 g) per serving for strength, power and high-intensity training performance.": "كرياتين مونوهيدرات دون نكهة يوفر ٥٬٠٠٠ ملجم (٥ جم) لكل حصة لدعم القوة والأداء في التدريب عالي الكثافة.",
 };
-
-const arabicBySlug: Record<string, string> = {
-  "for-him-multivitamin": "ملتي فيتامين متعدد الفيتامينات للرجال صحة يومية",
-  "nutri-nations-creatine": "كرياتين كرياتين مونوهيدرات قوة عضلات",
-  "nutri-nations-glutamine": "جلوتامين استشفاء عضلات هضم",
-  "omega-x": "أوميجا اوميغا زيت سمك قلب", "whey-x": "واي بروتين مصل اللبن شوكولاتة عضلات",
-  "doctors-best-high-absorption-magnesium": "مغنيسيوم امتصاص عالي نوم استرخاء",
-  "now-foods-omega-3-200-softgels": "أوميجا 3 اوميغا زيت السمك قلب",
-  "california-gold-vitamin-d3-5000": "فيتامين د د3 مناعة عظام",
-  "now-foods-ultra-omega-3": "أوميجا اوميغا زيت سمك قلب",
-  "california-gold-collagenup-206g": "كولاجين بشرة شعر أظافر",
-  "california-gold-gold-c-vitamin-c-1000": "فيتامين سي ج مناعة", "now-foods-zinc-picolinate-50": "زنك مناعة",
-  "now-foods-creatine-capsules": "كرياتين كبسولات عضلات", "now-foods-ashwagandha-450": "أشواجاندا اشواغاندا توتر نوم",
-  "california-gold-lactobif-30": "بروبيوتك بكتيريا نافعة هضم أمعاء", "california-gold-coq10-100": "كيو 10 كوإنزيم قلب طاقة",
-  "optimum-nutrition-gold-standard-whey-chocolate-malt": "واي بروتين مصل اللبن شوكولاتة عضلات",
-  "big-ramy-labs-red-rex-creatine-5000mg": "كرياتين ريد ريكس عضلات قوة",
-};
-
-export function getArabicProductSearchText(product: Product) {
-  const categoryAliases: Record<string, string> = {
-    Protein: "بروتين واي مصل اللبن عضلات", Creatine: "كرياتين قوة عضلات",
-    Vitamins: "فيتامين فيتامينات معادن مناعة", Wellness: "عافية صحة يومية",
-    "Pre-Workout": "قبل التمرين طاقة أداء", "Mass Gainer": "زيادة الوزن الكتلة ماس جينر",
-  };
-  return ["مكمل مكملات صحة عافية تغذية رياضية منتجات", arabicBySlug[product.slug] ?? "", categoryAliases[product.category] ?? ""].join(" ");
-}
 
 export function translateArabicUi(value: string) {
   const normalized = value.replace(/\s+/g, " ").trim();
