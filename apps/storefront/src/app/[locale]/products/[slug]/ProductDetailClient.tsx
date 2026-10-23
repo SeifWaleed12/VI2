@@ -15,6 +15,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 import Link from "@/components/LocaleLink";
 import VariantSelector from "@/components/VariantSelector";
+import { initialSelection, matchesSelection } from "@/lib/product-variants";
 import { useCart } from "@/context/CartContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { useLocaleRouter } from "@/hooks/use-locale-router";
@@ -52,7 +53,8 @@ const COPY = {
     details: "Product details",
     brand: "Brand",
     categories: "Categories",
-    sku: "SKU",
+    invalidSelection: "This combination is not available. Choose another option.",
+    optionUnavailable: "Not available with this selection",
     eda: "EDA registration",
     edaApproved: "EDA approved",
     description: "Description",
@@ -87,7 +89,8 @@ const COPY = {
     details: "تفاصيل المنتج",
     brand: "البراند",
     categories: "الأقسام",
-    sku: "رمز المنتج",
+    invalidSelection: "هذه التركيبة غير متاحة. اختر خيارات أخرى.",
+    optionUnavailable: "غير متاح مع هذه الخيارات",
     eda: "تسجيل هيئة الدواء المصرية",
     edaApproved: "معتمد من هيئة الدواء",
     description: "الوصف",
@@ -134,39 +137,31 @@ export default function ProductDetailClient({
   const variants: ProductVariant[] = useMemo(() => product.variants ?? [], [product.variants]);
 
   const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>(() =>
-    Object.fromEntries(options.map((option) => [option.title, option.values[0] ?? ""])),
+    initialSelection(options, variants),
   );
 
-  const selectedVariant = useMemo(() => {
-    if (variants.length === 0) return null;
-    const same = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
-    return (
-      variants.find((variant) =>
-        Object.entries(variant.options ?? {}).every(([title, value]) => {
-          const chosen = Object.entries(selectedOptions).find(([key]) => same(key, title))?.[1];
-          return !chosen || same(chosen, value);
-        }),
-      ) ?? variants[0]
-    );
-  }, [variants, selectedOptions]);
-
-  const price = selectedVariant?.price ?? product.price;
-  const compareAtPrice = selectedVariant?.compareAtPrice ?? product.compareAtPrice;
-  const stock = selectedVariant?.stock ?? product.stock;
-  const inventoryKnown = selectedVariant?.inventoryKnown ?? product.inventoryKnown;
-  const priced = price > 0;
-  const inStock = selectedVariant ? (selectedVariant.inStock ?? stock > 0) : product.inStock === true;
+  const selectedVariant = useMemo(
+    () => variants.find((variant) => matchesSelection(variant, selectedOptions)),
+    [variants, selectedOptions],
+  );
+  const invalidSelection = variants.length > 0 && !selectedVariant;
+  const price = variants.length ? selectedVariant?.price ?? 0 : product.price;
+  const compareAtPrice = variants.length ? selectedVariant?.compareAtPrice : product.compareAtPrice;
+  const stock = variants.length ? selectedVariant?.stock ?? 0 : product.stock;
+  const inventoryKnown = variants.length ? selectedVariant?.inventoryKnown : product.inventoryKnown;
+  const priced = Number.isFinite(price) && price > 0;
+  const inStock = !invalidSelection && (selectedVariant ? (selectedVariant.inStock ?? stock > 0) : product.inStock === true);
   const canBuy = priced && inStock;
   const maxQuantity = Math.max(1, Math.min(stock > 0 ? stock : 10, 10));
 
-  const availability = !inStock
+  const availability = invalidSelection ? copy.invalidSelection : !inStock
     ? (inventoryKnown === false ? copy.unconfirmed : copy.outOfStock)
     : stock > 0 && stock <= 8
       ? copy.lowStock(stock)
       : copy.inStock;
 
   const firstCategory = product.categories?.[0];
-  const sku = selectedVariant?.sku;
+
   const facts: { label: string; value: ReactNode }[] = [
     ...(product.brand ? [{ label: copy.brand, value: product.brand }] : []),
     ...(product.categories?.length
@@ -184,7 +179,7 @@ export default function ProductDetailClient({
         }]
       : []),
     ...fixedOptions.map((option) => ({ label: option.title, value: option.values[0] })),
-    ...(sku ? [{ label: copy.sku, value: <span dir="ltr">{sku}</span> }] : []),
+
     ...(product.eda
       ? [{
           label: copy.eda,
@@ -256,11 +251,11 @@ export default function ProductDetailClient({
   }
 
   const priceText = priced ? `${formatPrice(price)} ${copy.currency}` : copy.priceUnavailable;
-  const descriptionIsHtml = /<[a-z][\s\S]*>/i.test(product.description);
+  const unavailableLabel = invalidSelection ? copy.unavailable : !priced ? copy.priceUnavailable : availability;
 
   return (
     <>
-      <main className={styles.page}>
+      <main className={styles.page} data-no-translate>
         <div className={styles.shell}>
           <nav className={styles.breadcrumbs} aria-label={copy.breadcrumb}>
             <ol>
@@ -294,7 +289,7 @@ export default function ProductDetailClient({
                   variants={variants}
                   selectedOptions={selectedOptions}
                   onSelectOption={selectOption}
-                  outOfStockLabel={copy.outOfStock}
+                  outOfStockLabel={copy.optionUnavailable}
                 />
               )}
             </div>
@@ -318,8 +313,7 @@ export default function ProductDetailClient({
                 <h2 id="product-description" className={styles.blockTitle}>{copy.description}</h2>
                 {!product.description ? (
                   <p className={styles.muted}>{copy.noDescription}</p>
-                ) : descriptionIsHtml ? (
-                  <div className={styles.prose} dangerouslySetInnerHTML={{ __html: product.description }} />
+
                 ) : (
                   <p className={styles.prose}>{product.description}</p>
                 )}
@@ -327,7 +321,7 @@ export default function ProductDetailClient({
             </div>
 
             <aside className={styles.buy} aria-label={product.name}>
-              <div className={styles.priceRow}>
+              <div className={styles.priceRow} role="status" aria-atomic="true">
                 <strong className={priced ? styles.price : styles.priceMissing}>{priceText}</strong>
                 {priced && compareAtPrice !== undefined && compareAtPrice > price && (
                   <s className={styles.comparePrice}>{formatPrice(compareAtPrice)} {copy.currency}</s>
@@ -350,7 +344,7 @@ export default function ProductDetailClient({
                 </div>
                 <button type="button" className={styles.addButton} disabled={!canBuy || cartState === "pending"} onClick={addToCart}>
                   {canBuy && (cartState === "added" ? <Check size={18} /> : <ShoppingBag size={18} />)}
-                  {!canBuy ? (priced ? copy.outOfStock : copy.unavailable) : cartState === "pending" ? copy.adding : cartState === "added" ? copy.added : copy.addToCart}
+                  {!canBuy ? unavailableLabel : cartState === "pending" ? copy.adding : cartState === "added" ? copy.added : copy.addToCart}
                 </button>
               </div>
               {cartState === "failed" && <p className={styles.error} role="alert">{copy.addFailed}</p>}
@@ -379,7 +373,7 @@ export default function ProductDetailClient({
                   <li key={item.id}>
                     <Link href={`/products/${item.slug}`} className={styles.similarCard}>
                       <div className={styles.similarStage}>
-                        <CatalogImage src={item.image} alt={item.name} placeholderClassName={styles.imagePlaceholder} />
+                        <CatalogImage src={item.image} alt={item.name} loading="lazy" decoding="async" placeholderClassName={styles.imagePlaceholder} />
                       </div>
                       {item.brand && <span className={styles.similarBrand}>{item.brand}</span>}
                       <span className={styles.similarName}>{item.name}</span>
@@ -401,7 +395,7 @@ export default function ProductDetailClient({
           <strong>{priced ? `${formatPrice(price * quantity)} ${copy.currency}` : copy.priceUnavailable}</strong>
         </div>
         <button type="button" disabled={!canBuy} onClick={buyNow}>
-          {canBuy ? copy.buyNow : priced ? copy.outOfStock : copy.unavailable}
+          {canBuy ? copy.buyNow : unavailableLabel}
         </button>
       </div>
     </>

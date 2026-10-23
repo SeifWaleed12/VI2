@@ -53,3 +53,33 @@ it("speaks Arabic on the Arabic store", () => {
   expect(html).toContain("معتمد من هيئة الدواء");
   expect(html).toContain("300 ج.م");
 });
+
+it.each(["en", "ar"] as const)("never displays a SKU in %s", (locale) => {
+  language = locale;
+  expect(render({ variants: [{ id: "v1", title: "Default", sku: "PRIVATE-SKU-123", price: 300, stock: 2, inStock: true }] })).not.toContain("PRIVATE-SKU-123");
+});
+
+it("does not inherit a different variant's comparison price", () => {
+  const html = render({ compareAtPrice: 500, variants: [{ id: "v1", title: "Default", price: 300, stock: 2, inStock: true }] });
+  expect(html).not.toContain("<s ");
+  expect(html).not.toContain("500 EGP");
+});
+
+it("renders catalog HTML as escaped text, never executable elements", () => {
+  const html = render({ description: '<img src=x onerror=alert(1)><script>alert(1)</script>' });
+  expect(html).toContain("&lt;script&gt;");
+  expect(html).not.toContain("<script>");
+  expect(html).not.toContain("<img src=x");
+});
+
+it("keeps the selected variant unpriced even when the product has a price", () => {
+  const html = render({ variants: [{ id: "v1", title: "Default", price: 0, stock: 3, inStock: true }] });
+  expect(html).toContain("Price unavailable");
+  expect(html).not.toContain("300 EGP");
+});
+
+it("uses the same unknown-inventory wording for stock and the disabled action", () => {
+  const html = render({ inStock: false, inventoryKnown: false });
+  expect(html).toContain("Availability unconfirmed");
+  expect(html).not.toContain("Out of stock");
+});

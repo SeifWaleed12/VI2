@@ -25,7 +25,7 @@ export function mapMedusaProduct(p: CatalogProduct): Product {
 
   const compareRaw = calcPrice?.original_amount ?? null;
   const compareAtPrice =
-    compareRaw !== null && compareRaw !== priceRaw
+    priceRaw !== null && compareRaw !== null && compareRaw > priceRaw
       ? Number(compareRaw)
       : undefined;
 
@@ -61,11 +61,11 @@ export function mapMedusaProduct(p: CatalogProduct): Product {
         const vCalcPrice = v.calculated_price;
         const vPriceRaw =
           vCalcPrice?.calculated_amount ?? null;
-        const vPrice = vPriceRaw !== null ? Number(vPriceRaw) : price;
+        const vPrice = vPriceRaw !== null ? Number(vPriceRaw) : 0;
 
         const vCompareRaw = vCalcPrice?.original_amount ?? null;
         const vCompareAt =
-          vCompareRaw !== null && vCompareRaw !== vPriceRaw
+          vPriceRaw !== null && vCompareRaw !== null && vCompareRaw > vPriceRaw
             ? Number(vCompareRaw)
             : undefined;
 

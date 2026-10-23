@@ -1,5 +1,5 @@
 # Catalog sorting and product-page audit / proposed plan
-Date: 2026-10-23. Status: planning only; awaiting Seif's scope/action approval.
+Date: 2026-10-23. Status: full scope approved by Seif; pagination/cache approach discussed before implementation.
 Method: dual-agent (A: product_design_a; B: product_audit_b). Both independently inspected source and native EN/AR product pages. A finished before parent consumed B detector results.
 Source: local reviewed full-stack88383ca. Author/report branch: codex/catalog-product-audit. No application/backend/configuration/dependency edits, catalog mutations, push or merge.
 
@@ -67,13 +67,13 @@ Detector: one successful scan over product JSX directory and VariantSelector, ra
 ## Proposed implementation order for owner approval
 | Task | Proposed owner | Deliverable/dependency |
 |---|---|---|
-| CS-1 Native backend sorting contract | Claude | Define global price/availability/newest order with existing category/brand/search/goal/deals scopes before pagination |
+| CS-1 Native backend sorting contract | GPT; Claude reviews only | Define global price/availability/newest order with existing category/brand/search/goal/deals scopes before pagination |
 | CS-2 Shared catalog sort UI | GPT | Shop and Deals toolbar, keyed EN/AR labels, mobile/keyboard/URL behavior; integrates confirmed CS-1 |
 | PD-1 Product correctness/accessibility | GPT, Claude reviewer | Exact variant/price/availability matching, description trust boundary, radio keyboard behavior, visible SKU removal |
 | PD-2 Product layout refinement | GPT, Claude reviewer | Clearer desktop/mobile information/purchase hierarchy, readable token roles, contextual sticky action, compact no-image state |
-| QA-1 Cross-surface acceptance | GPT + Claude, Seif manual acceptance | Focused unit/native integration/browser regressions; owner review and merge |
+| QA-1 Cross-surface acceptance | GPT executes; Claude reviews; Seif accepts | Focused unit/native integration/browser regressions; owner review and merge |
 
-Claude assignment is proposed only; no message sent or other agent task claimed. Backend contract work and independent product frontend work may run in parallel after Seif approves. Sorting UI cannot ship as working until the backend contract is verified.
+Seif approved the full plan and mobile Add to cart primary. GPT owns backend and frontend implementation; Claude reviews only. No cross-task authoring message sent. Sorting UI cannot ship as working until the backend contract is verified.
 
 ### CS-1 details
 - Sort allowlist: default, price_asc, price_desc, in_stock, newest. Labels: Default; Price low–high; Price high–low; In-stock first; Newest. No fake relevance/recommendation/bestseller/rating sort.
