@@ -8,7 +8,7 @@ The current index is not sufficient unchanged: the probe reproduced stale availa
 ## Scope and reproducibility
 Source baseline: owner-integrated local full-stack cbc3be8; proof author checkout854c3e4 includes product-page work. Installed Medusa2.21.0 and native Postgres Search provider, real query.graph/QueryContext/getVariantAvailability/query.search and native workflows/modules. No provider/pricing/inventory mocks, no direct SQL for commerce, no external email/payment calls. Resend settings empty; NODE_ENV=test.
 
-The only database used for the probe was vi2-native-sort-proof-20261023 and its runner-owned template. Live catalog/database unchanged. Native managed index migrations happened only in that disposable database. The test runner cleans up those databases; verify cleanup separately.
+The only database used for the probe was vi2-native-sort-proof-20261023 and its runner-owned template. Live catalog/database unchanged. Native managed index migrations happened only in that disposable database. The test runner cleaned up both databases; a separate read-only pg_database check confirmed neither remained.
 
 Archived diagnostic source (NOT production code):
 - probes/native-sort-proof/index.ts.txt — temporary extension of the existing src/search/product.ts definition, including native public EGP price/availability projection and sortable fields.
@@ -19,9 +19,9 @@ Command after preparing that isolated checkout:
     node --experimental-vm-modules ../../node_modules/jest/bin/jest.js --config jest.integration.config.js --runInBand --runTestsByPath integration-tests/http/catalog-sort-proof.spec.ts
 
 ## Proven by the passing real-database test
--113 published products visible in the selected sales channel; draft and other-channel fixtures excluded.
+- 113 published products visible in the selected sales channel; draft and other-channel fixtures excluded.
 - Global EGP low/high price ordering before24-item pages, exact113 count, unique IDs across all pages, stable ID tie breaker and unpriced product last.
--107 genuine public one-unit deals; the page starting at96 returns11 results with exact107 count.
+- 107 genuine public one-unit deals; the page starting at96 returns11 results with exact107 count.
 - Category filter returns54 products.
 - Quantity-only and customer-group prices do not leak into public one-unit amounts. A lower override price is not called a sale deal.
 - Indexed native price equals /store/products calculated price; native channel inventory matches the one-unit stock fixture.
