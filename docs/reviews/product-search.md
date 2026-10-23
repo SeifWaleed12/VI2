@@ -104,3 +104,17 @@ Medusa 2.21.0 already ships a Search module with a Postgres engine. It is regist
 - **Test notes:**
   - The HTTP test is one scenario, because the test runner empties the database between tests while the Search module keeps its active index version in memory.
   - It clears the store cache while polling, because workflow calls skip the Admin middleware that clears it.
+
+## Review
+
+**Scope:** commit `cdb88e6` only, compared with its parent `a385bf4`. The surrounding merchandising work was not included.
+
+**Verdict: No open problems.** The index keeps published products only, limits searches to the publishable key's sales channels, maps the requested brand/category/goal filters, and returns ranked ids with an exact count. The storefront then fetches product display data through the existing Medusa product service and restores the backend's match order, so this search endpoint does not become a second source for price or product details. Arabic enrichment, unpublished-product deletion, and the nightly reindex behaved as intended in the live HTTP test. Pop-up requests are debounced and stale responses are ignored by the active-request guard and term/language key.
+
+Validation on `claude/product-search`:
+
+- Backend `product-search.unit.spec.ts`: **5/5 passed**.
+- Backend `integration-tests/http/product-search.spec.ts`: **1/1 passed** against the integration runner's isolated database. It exercised typo and prefix matches, Arabic, brand/category/tag filters, result count, unpublished and cross-channel visibility, invalid input, product updates, and unpublishing.
+- Storefront `search.test.ts` and `shop-page.test.ts`: **36/36 passed**.
+
+I did not repeat the browser-only pop-up interaction check; the hook has no DOM test coverage in this repository. That leaves a manual UX check for the normal browser acceptance pass, not a code finding from this commit review. Deployment should follow the workboard's step 16 so the search index is migrated and seeded before relying on the route.
