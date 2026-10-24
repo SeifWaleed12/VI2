@@ -32,3 +32,14 @@ it.each(["unpriced", "sold-out"])("indexes the first purchasable option when the
   const [document] = await catalogDocuments({ graph } as never, [{ id: "prod_1", status: "published", title: "Multi", variants: [], sales_channels: [{ id: "sc_eg" }] }] as never)
   expect(document).toMatchObject({ display_variant_id: "second", catalog_price: 50, catalog_priced: 1, catalog_available: 1 })
 })
+
+it("ranks purchasable variants by native order before created_at and id", async () => {
+  const native = { id: "prod_ranked", created_at: "2026-10-24", variants: [
+    { id: "first", variant_rank: 9, created_at: "2026-01-01", manage_inventory: false, calculated_price: { calculated_amount: 10 } },
+    { id: "second", variant_rank: 2, created_at: "2026-02-01", manage_inventory: false, calculated_price: { calculated_amount: 50 } },
+  ] }
+  const graph = jest.fn(async ({ entity, fields }) => ({ data: entity === "store" ? [{ default_region_id: "reg_eg", default_sales_channel_id: "sc_eg" }]
+    : entity === "region" ? [{ currency_code: "egp" }] : fields.includes("variants.variant_rank") ? [native] : [] }))
+  const [document] = await catalogDocuments({ graph } as never, [{ id: native.id, status: "published", title: "Ranked", variants: [], sales_channels: [{ id: "sc_eg" }] }] as never)
+  expect(document).toMatchObject({ display_variant_id: "second", catalog_price: 50, catalog_available: 1 })
+})

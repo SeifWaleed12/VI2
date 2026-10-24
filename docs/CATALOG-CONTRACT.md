@@ -59,7 +59,8 @@ Native `GET /store/products` supplies `category_id`, `q`, `id`, `limit`, `offset
 2. **Extra product fields the store API accepts** (`STORE_PRODUCT_EXTRA_FIELDS`):
    - `brand.id`, `brand.name`, `brand.status`;
    - `eda_registration.registration_number`, `eda_registration.is_approved`;
-   - `categories.id`, `categories.name`, `categories.handle`. Medusa otherwise drops these silently.
+   - `categories.id`, `categories.name`, `categories.handle`. Medusa otherwise drops these silently;
+   - `variants.variant_rank`, so native default browsing and uncached page hydration expose the same ordering used by the ranking projection.
 
 `GET /store/brands` lists every active brand, sorted by name and not capped. Each brand has `id`, `name`, `slug`, `logo`, `country`, `description`.
 
@@ -87,3 +88,5 @@ Normal listings select the first priced, purchasable native variant in variant_r
 Successful ID-scoped refreshes preserve readiness, the previous full-build revision, price-list watermark and expiry (shortened if an earlier sale boundary is discovered). Full rebuilds change revision and mark readiness false before rewriting. A failed incremental write marks health false while it still owns the lock; an aborted/lost lease never performs a health write and expiry bounds recovery. A partial retry cannot bless an interrupted full rebuild. An ordinary incremental update may become visible during a request; pagination is an eventual discovery view, not a transaction-time stock snapshot. The route still rejects a full-build revision change, known price-list version changes and expired sale boundaries.
 
 Expired/unhealthy HTTP reads signal refresh at most once per five seconds per process. Failed event emission permits a retry; persistent health and the minute reconciliation job provide recovery independently of this best-effort guard. In-stock groups break ties by ascending product ID, without a newest-first promise inside each group. No additional context cache was introduced.
+
+Hydration deliberately remains a public, uncached read bounded to24 explicit IDs. Set an edge rate-limit policy before launch; no new application limiter or guessed proxy/IP policy is introduced here. The native route/middleware imports must be revalidated on a Medusa upgrade. A reproducible native projection error keeps sorted/Deals reads unavailable until repaired; default browsing remains available. Full reconciliation does not silently omit products, which would change the promised complete-set filtering/count semantics.

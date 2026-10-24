@@ -23,6 +23,17 @@ medusaIntegrationTestRunner({
     it("sorts globally before pagination and automatically follows native reservations, prices, visibility and sale boundaries", async () => {
       const container = getContainer()
       const bus = container.resolve(Modules.EVENT_BUS)
+      const locking = container.resolve(Modules.LOCKING)
+      const originalExecute = locking.execute.bind(locking)
+      const pendingRefreshes = new Set<Promise<unknown>>()
+      const lockSpy = jest.spyOn(locking, "execute").mockImplementation((...args) => {
+        const pending = originalExecute(...args)
+        if (args[0] === "search:seed:product") {
+          pendingRefreshes.add(pending)
+          void pending.finally(() => pendingRefreshes.delete(pending)).catch(() => {})
+        }
+        return pending
+      })
       const originalEmit = bus.emit.bind(bus)
       const emittedNames: string[] = []
       jest.spyOn(bus, "emit").mockImplementation(async (events, options) => {
@@ -177,18 +188,44 @@ medusaIntegrationTestRunner({
         id: byTitle.get("Bulk")!.variants[0].id, prices: [{ currency_code: "egp", amount: 900 }],
       }] } })
       await waitFor("&sort=price_desc", async result => result.ids[0] === byTitle.get("Bulk")!.id && (await docs()).find(p => p.id === byTitle.get("Bulk")!.id)!.catalog_price === 900)
-      const { result: multi } = await createProductsWorkflow(container).run({ input: { products: ["Unpriced first", "Sold-out first"].map((title, index) => product(title, 0, {
+      const { result: multi } = await createProductsWorkflow(container).run({ input: { products: ["Unpriced first", "Sold-out first", "Reordered variants"].map((title, index) => product(title, 0, {
         options: [{ title: "Size", values: ["first", "second"] }],
         variants: [
           { title: "first", variant_rank: 0, options: { Size: "first" }, manage_inventory: index === 1, prices: index === 0 ? [] : [{ amount: 10, currency_code: "egp" }] },
           { title: "second", variant_rank: 1, options: { Size: "second" }, manage_inventory: false, prices: [{ amount: 50, currency_code: "egp" }] },
         ],
       })) } })
-      await waitFor("&sort=in_stock", async result => result.count === 114 && (await docs()).filter(row => multi.some(p => p.id === row.id) && row.catalog_available === 1).length === 2)
-      for (const p of multi) {
+      await waitFor("&sort=in_stock", async result => result.count === 115 && (await docs()).filter(row => multi.some(p => p.id === row.id) && row.catalog_available === 1).length === 3)
+      for (const p of multi.slice(0, 2)) {
         const document = (await docs()).find(row => row.id === p.id)
         expect(document).toMatchObject({ catalog_price: 50, catalog_priced: 1, catalog_available: 1, display_variant_id: p.variants.find(v => v.title === "second")!.id })
       }
+      const reordered = multi[2]
+      const firstOption = reordered.variants.find(v => v.title === "first")!
+      const secondOption = reordered.variants.find(v => v.title === "second")!
+      const initialRankOrder = [{ id: firstOption.id, variant_rank: 0 }, { id: secondOption.id, variant_rank: 1 }]
+      await updateProductVariantsWorkflow(container).run({ input: { product_variants: initialRankOrder } })
+      await waitFor("&sort=price_asc", async () => (await docs()).find(row => row.id === reordered.id)?.display_variant_id === firstOption.id)
+      const reorderedVariants = [
+        { id: firstOption.id, variant_rank: 9, prices: [{ amount: 10, currency_code: "egp" }] },
+        { id: secondOption.id, variant_rank: 2 },
+      ]
+      await updateProductVariantsWorkflow(container).run({ input: { product_variants: reorderedVariants } })
+      await waitFor("&sort=price_asc", async () => (await docs()).find(row => row.id === reordered.id)?.display_variant_id === secondOption.id)
+      const fields = "id,variants.id,variants.variant_rank,variants.created_at,variants.manage_inventory,variants.allow_backorder,variants.inventory_quantity,variants.calculated_price"
+      for (const path of ["/store/products", "/store/catalog-products"]) for (const locale of ["en-US", "ar-EG"]) {
+        const response = await api.get(path + "?region_id=" + region + "&id=" + reordered.id + "&fields=" + fields, { ...options, headers: { ...options.headers, "x-medusa-locale": locale } })
+        expect(response.status).toBe(200)
+        const variants = response.data.products[0].variants
+        expect(variants.find((v: any) => v.id === firstOption.id).variant_rank).toBe(9)
+        expect(variants.find((v: any) => v.id === secondOption.id).variant_rank).toBe(2)
+        variants.sort((a: any, b: any) => a.variant_rank - b.variant_rank || String(a.created_at).localeCompare(String(b.created_at)) || a.id.localeCompare(b.id))
+        expect(variants[0].id).toBe(secondOption.id)
+        expect(variants[0].calculated_price.calculated_amount).toBe(50)
+      }
+      // Local event emission does not await its subscribers; drain before the runner closes the DB.
+      while (pendingRefreshes.size) await Promise.all([...pendingRefreshes])
+      lockSpy.mockRestore()
       console.log("CATALOG_QUERY_MS", { first: reads[0], last: reads.at(-1), max: Math.max(...reads), samples: reads.length })
       console.log("CATALOG_SORTING: 113 visible products, 107 deals, 24/page, native mutation refresh, unhealthy recovery")
     })

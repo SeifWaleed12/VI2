@@ -140,3 +140,12 @@ it("keeps an entirely unpriced product unavailable even with unmanaged inventory
   expect(mapMedusaProduct({ id: "prod_1", variants: [{ id: "first", manage_inventory: false }] } as never))
     .toMatchObject({ variantId: "first", price: 0, inStock: false });
 });
+
+it("uses exposed native rank before creation order when both options are purchasable", () => {
+  const product = mapMedusaProduct({ id: "prod_ranked", variants: [
+    { id: "first", variant_rank: 9, created_at: "2026-01-01", manage_inventory: false, calculated_price: { calculated_amount: 10 } },
+    { id: "second", variant_rank: 2, created_at: "2026-02-01", manage_inventory: false, calculated_price: { calculated_amount: 50 } },
+  ] } as never);
+  expect(product).toMatchObject({ variantId: "second", price: 50, inStock: true });
+  expect(product.variants?.map(v => v.id)).toEqual(["second", "first"]);
+});

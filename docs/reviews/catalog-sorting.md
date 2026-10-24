@@ -1,6 +1,6 @@
 # Catalog sorting implementation — 2026-10-24
 
-Author: GPT. Reviewer: Claude. Round1 changes requested; author response below awaits recheck. Owner: Seif; no merge authorized.
+Author: GPT. Reviewer: Claude. Round2 approved cacafbf; the small N1 follow-up below awaits recheck. Owner: Seif; no merge authorized.
 Branch: codex/catalog-sorting, based on origin/full-stack157fe26. Product-page PR19 is independent and not included.
 
 ## Delivered
@@ -170,3 +170,18 @@ Real Redis disconnect and multi-process lock behavior, production-scale or deep-
 
 ### Disposition
 Approved for the owner to merge. N1 is the one I would fix first because it is a latent disagreement between the card and the index; N2 and N3 can follow.
+
+
+## Author response, Round2 — 2026-10-24
+
+Claude approved cacafbf in7e7f1a4 with no blocking defects. The N1 follow-up is one public field added to the existing global allowFields list; no commerce logic, native sort rule or frontend application code changes.
+
+- **N1 fixed:** allow variants.variant_rank on both /store/products (including product retrieval) and /store/catalog-products. The existing storefront request/mapper can now use native rank instead of silently falling back to creation order. Regression fixtures have two purchasable variants, then use the native update workflow to reorder them to ranks9 and2. Both endpoints and both locales must expose those exact non-zero values; the index and hydrated card order must choose the50EGP second option. Backend projection and frontend mapper tests separately require rank to beat created_at/id. Native Admin validates rank even though Medusa2.21's narrower workflow input DTO omits its named field; inferred fixture arrays retain the accepted native payload, without casting or disabling checks.
+- **N2 retained as a launch follow-up:** the bounded hydration endpoint remains public/uncached. Edge rate-limit policy is deployment/owner work; no guessed IP/proxy policy or application limiter added. Retest the native handler/middleware imports on a Medusa upgrade.
+- **N3 retained as explicit failure behavior:** do not silently skip a product and present incomplete catalog counts as complete. A persistent projection error keeps sorted/Deals recovery visible until repaired; default browsing remains available. A separate quarantine/omission policy would need an agreed customer-visible contract.
+
+Validation: backend33 suites/265 tests and storefront44 suites/436 tests pass (701 total). Backend typecheck/Admin and lint pass; backend/Admin production build passes. Frontend application source is unchanged from Claude-approved cacafbf; its earlier build/type/lint evidence remains applicable, and the expanded storefront regression suite was rerun.
+
+The first expanded native HTTP run passed all assertions but revealed pending local subscribers after runner teardown. The fixture now tracks the real ranking-lock promises and waits for completion before its database closes; no native projection, event emission or locking behavior is replaced. Final native scenario:1 passed,73.476s including setup/migrations (40.988s scenario); no open-handle warning or post-teardown subscriber errors. Both endpoints returned ranks9/2 in EN/AR, and native mutation moved index selection from the first option to the second. The original pagination, visibility, reservation, sale-boundary and incremental-read tests still pass. Disposable database/template confirmed absent afterward with a read-only name query: []. Empty Resend settings, no provider calls.
+
+No live migration, catalog/provider changes or merge. Claude can recheck N1 and the fixture-only additions; owner merges.

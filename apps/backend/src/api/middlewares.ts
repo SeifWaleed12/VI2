@@ -23,8 +23,8 @@ const emailPassRoutes = (["user", "customer"] as ActorType[]).flatMap((actor) =>
 
 // Product data the storefront may request beyond Medusa's defaults: the brand,
 // the EDA number with its approval (shown to customers by owner decision,
-// 2026-10-09), and category fields Medusa only allows as a whole relation.
-const STORE_PRODUCT_EXTRA_FIELDS = ["brand.id", "brand.name", "brand.status", "eda_registration.registration_number", "eda_registration.is_approved", "categories.id", "categories.name", "categories.handle"]
+// 2026-10-09), category fields Medusa only allows as a whole relation, and native variant order.
+const STORE_PRODUCT_EXTRA_FIELDS = ["brand.id", "brand.name", "brand.status", "eda_registration.registration_number", "eda_registration.is_approved", "categories.id", "categories.name", "categories.handle", "variants.variant_rank"]
 
 const nativeProductListMiddlewares = storeProductRoutesMiddlewares.find(route => route.matcher === "/store/products")?.middlewares
 if (!nativeProductListMiddlewares) throw new MedusaError(MedusaError.Types.UNEXPECTED_STATE, "Native product list middleware is unavailable")
