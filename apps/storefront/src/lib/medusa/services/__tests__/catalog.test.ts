@@ -116,6 +116,16 @@ describe("catalog contract (docs/CATALOG-CONTRACT.md)", () => {
   });
 });
 
+it("never borrows a price or comparison from another variant", () => {
+  const product = mapMedusaProduct({
+    id: "prod", variants: [
+      { id: "priced", calculated_price: { calculated_amount: 100, original_amount: 200 } },
+      { id: "unpriced", calculated_price: { calculated_amount: null, original_amount: 300 } },
+      { id: "higher", calculated_price: { calculated_amount: 400, original_amount: 300 } },
+    ],
+  } as never);
+  expect(product.variants?.[1]).toMatchObject({ price: 0, compareAtPrice: undefined });
+  expect(product.variants?.[2].compareAtPrice).toBeUndefined();
 it("lists deals by the ids the backend gives, and asks nothing more when there are none", async () => {
   jest.mocked(medusa.client.fetch).mockResolvedValueOnce({ product_ids: ["prod_a", "prod_b"] } as never);
   jest.mocked(medusa.store.product.list).mockResolvedValueOnce({ products: [{ id: "prod_a", variants: [{ id: "v_a", calculated_price: { calculated_amount: 800, original_amount: 1000 } }] }], count: 1 } as never);
