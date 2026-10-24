@@ -209,19 +209,16 @@ export default function ProductDetailClient({
     if (resetTimer.current) clearTimeout(resetTimer.current);
     setCartState("pending");
     try {
-      const success = await addItem(
-        {
-          ...product,
-          variantId: selectedVariant?.id ?? product.variantId,
-          price,
-          compareAtPrice,
-          size: selectedOptions.Size ?? product.size,
-          flavor: selectedOptions.Flavor ?? product.flavor,
-          stock,
-        },
-        quantity,
-        { quiet: buyNow },
-      );
+      const selected = {
+        ...product,
+        variantId: selectedVariant?.id ?? product.variantId,
+        price,
+        compareAtPrice,
+        size: selectedOptions.Size ?? product.size,
+        flavor: selectedOptions.Flavor ?? product.flavor,
+        stock,
+      };
+      const success = buyNow ? await addItem(selected, quantity, { quiet: true }) : await addItem(selected, quantity);
       if (success && buyNow) return router.push("/checkout");
       setCartState(success ? "added" : "failed");
       if (success) resetTimer.current = setTimeout(() => setCartState("idle"), 1400);
