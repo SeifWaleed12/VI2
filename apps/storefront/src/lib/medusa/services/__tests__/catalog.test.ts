@@ -143,3 +143,14 @@ it("offers the discounted variant itself, named, when it is not the first one", 
   expect(deal).toMatchObject({ variantId: "v2", name: "Whey — 2kg", price: 1200, compareAtPrice: 1500, inStock: true });
   expect(asDeal(priced([800, 1000]))).toMatchObject({ variantId: "v1", name: "Whey", price: 800, compareAtPrice: 1000 });
 });
+it("never borrows a price or comparison from another variant", () => {
+  const product = mapMedusaProduct({
+    id: "prod", variants: [
+      { id: "priced", calculated_price: { calculated_amount: 100, original_amount: 200 } },
+      { id: "unpriced", calculated_price: { calculated_amount: null, original_amount: 300 } },
+      { id: "higher", calculated_price: { calculated_amount: 400, original_amount: 300 } },
+    ],
+  } as never);
+  expect(product.variants?.[1]).toMatchObject({ price: 0, compareAtPrice: undefined });
+  expect(product.variants?.[2].compareAtPrice).toBeUndefined();
+});
