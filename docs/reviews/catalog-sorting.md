@@ -136,3 +136,37 @@ F1–F4 are fixed; F5 implements Seif's explicit first-purchasable choice; F6 is
 - Isolated test DB vi2-catalog-sorting-test-20261024 and runner template verified absent afterward with a read-only database-name query: []. Resend settings empty; no real emails/providers, live migration/catalog changes, new dependencies or merge.
 
 Not rerun: full live-browser visual/keyboard flow (the only markup change deletes a duplicated chip; both locale render checks pass), real Redis multi-process/disconnect behavior, production-scale load, or live authenticated checkout. Original responsive fixture evidence above remains scoped to the earlier layout, which this response does not restyle.
+
+## Round2 — Claude recheck of PR 20 at cacafbf (2026-10-24)
+Reviewer: Claude. Range dc98ca2..cacafbf. Review only; no application code touched, nothing pushed or merged.
+
+**Verdict: approve.** F1–F8 are resolved or accepted as stated; I found no blocking defects. Three low/informational notes remain (N1–N3).
+
+### What I ran
+- Backend source-only unit tests with the author's documented command: **33 suites / 264 tests pass**. Storefront **44 suites / 435 tests pass**. `tsc --noEmit` clean for both apps. This reproduces the author's counts, so F6 is closed.
+- The PR's real Medusa/Postgres scenario (`catalog-sorting.spec.ts`): **passes**. Isolated databases created and dropped by the Medusa test runner, in-memory event bus and cache (no `REDIS_URL`), `RESEND_API_KEY`/`RESEND_FROM` unset; a read-only database-name query afterward found none left behind.
+- A throwaway probe spec of mine (not committed) on a second isolated database, against real native routes, to check the fixes directly.
+- Not run: production builds, a browser pass, real Redis.
+
+### Verification by finding
+- **F1 — fixed.** With a one-product refresh running, three catalog reads returned 200 and none returned 503; the persisted `revision` was unchanged and `ready` stayed 1. A forced failure while upserting product documents made the refresh throw and left `ready: 0` (reads then return 503); a full refresh recovered it to 200. Full rebuilds still invalidate first; the catch writes health only when the lease signal is not aborted, so a worker that lost its lock cannot clobber a newer owner.
+- **F2 — fixed.** The duplicate goal-chip block is deleted; EN/AR render tests require exactly one chip and one removal link.
+- **F3 — fixed, with the new route behaving as described.** The `no-cache` bypass is gone from `cacheStoreGet`. Fresh hydration now uses `/store/catalog-products`, which re-exports Medusa's native product GET with the native product-list middlewares. Probe, with the storefront's real `PRODUCT_FIELDS` string: 200, `Cache-Control: no-store`, the hidden-channel and draft products were excluded (2 of 4 requested ids returned), and it returned the same products as `/store/products`. The 400s: no ids, `offset=1`, an extra `q`, an extra `brand_id`, 25 ids, and a request with no publishable key.
+- **F4 — fixed.** `requestCatalogRefresh` limits signals to one per five seconds per process and releases the guard on a failed emit; recovery still rests on the persisted state and the minute job.
+- **F5 — implemented as decided.** Probe: a product whose first variant is unpriced indexes at 50 EGP on its second variant with `catalog_available: 1`; a product whose first variant is sold out (managed, no stock) indexes at 120 EGP on its unmanaged second variant, available. The storefront mapper now picks the same first-purchasable rule, so cards and the product page agree for these cases. Deal listings keep the best-reduction sale variant.
+- **F6 — closed** (counts reproduced above).
+- **F7 — fixed.** A region/channel mismatch now returns **409** (probe: `region_id=reg_other` gives 409); the storefront treats any non-400 as a retryable outage rather than an invalid filter. Malformed input stays 400.
+- **F8 — documented**; no speculative caching added.
+
+### Notes
+**N1 (low) — `variant_rank` is requested but never returned.** The storefront now asks for `variants.variant_rank` and re-sorts by it, but Medusa's store API does not return that field (probe: absent from both `/store/products` and `/store/catalog-products` responses; the database has rank 0 for every variant here). The index orders by rank, then `created_at`, then id; the storefront therefore effectively orders by `created_at`, then id. They agree today because ranks are all 0, but if an admin ever reorders variants (non-zero rank) the card could pick a different "first purchasable" variant than the index. Either expose the rank through an allowed field, or drop `variant_rank` from the index ordering and use `created_at`/id on both sides, and add a test that fails if the two orderings diverge.
+
+**N2 (low) — hydration is a public, uncached, bounded read.** The dedicated route is capped at 24 explicit ids with no filters, which is far narrower than the old header bypass, but it is still an uncached pricing/inventory computation that any holder of the public key can call repeatedly. Worth an edge rate limit before launch. It also imports Medusa internals (`@medusajs/medusa/api/store/products/route` and `.../middlewares`); the startup guard fails loudly if the path moves, so a Medusa upgrade should re-test it.
+
+**N3 (info) — one failing product can hold sorting unhealthy.** An incremental refresh that throws marks the whole index unhealthy. If a single product reproducibly makes `catalogDocuments` throw (bad data, an availability lookup error), each retry and each minute-job full rebuild would fail the same way, so sorted and Deals pages would stay on 503 until the data is fixed. The default shop browse still works. Consider catching per-product failures in a full rebuild (skip and log the product) instead of failing the whole index.
+
+### Not verified
+Real Redis disconnect and multi-process lock behavior, production-scale or deep-page performance, response-time numbers, real-browser rendering, and the production build. The integration runs used the in-memory event bus.
+
+### Disposition
+Approved for the owner to merge. N1 is the one I would fix first because it is a latent disagreement between the card and the index; N2 and N3 can follow.
