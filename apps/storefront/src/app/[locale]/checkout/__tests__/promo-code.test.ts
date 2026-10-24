@@ -1,11 +1,15 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import PromoCode, { PROMO_MESSAGES } from "../PromoCode";
+import { message } from "@/lib/i18n";
 
 jest.mock("../Checkout.module.css", () => new Proxy({}, { get: (_, key) => key }));
 let mockCart: Record<string, unknown>;
 jest.mock("@/context/CartContext", () => ({ useCart: () => mockCart }));
+let mockLocale: "en" | "ar" = "en";
+jest.mock("@/context/LanguageContext", () => ({ useLanguage: () => ({ msg: (key: Parameters<typeof message>[1]) => message(mockLocale, key) }) }));
 beforeEach(() => {
+  mockLocale = "en";
   mockCart = { cart: { id: "cart_1" }, loading: false, promotions: [], applyPromotion: jest.fn(), removePromotion: jest.fn() };
 });
 const render = (collapsible = false) => renderToStaticMarkup(createElement(PromoCode, { collapsible }));
@@ -39,8 +43,21 @@ it("starts as a quiet Add promo code button on mobile", () => {
   expect(html).not.toContain("<input");
 });
 
-it("words every failure as the problem and what to do", () => {
-  expect(PROMO_MESSAGES.not_applicable).toBe("This code doesn't apply to the items in your cart.");
-  expect(PROMO_MESSAGES.invalid).toBe("This code isn't valid or has expired.");
-  expect(PROMO_MESSAGES.network).toMatch(/Try again/);
+it("words every failure as the problem and what to do, in both languages", () => {
+  expect(message("en", PROMO_MESSAGES.not_applicable)).toBe("This code doesn't apply to the items in your cart.");
+  expect(message("en", PROMO_MESSAGES.not_eligible)).toBe("Your order doesn't qualify for this code yet.");
+  expect(message("en", PROMO_MESSAGES.invalid)).toBe("This code isn't valid or has expired.");
+  expect(message("en", PROMO_MESSAGES.network)).toMatch(/Try again/);
+  for (const key of Object.values(PROMO_MESSAGES)) expect(message("ar", key)).toMatch(/[\u0600-\u06FF]/);
+});
+
+it("speaks Arabic on the Arabic checkout, including the accessible names", () => {
+  mockLocale = "ar";
+  mockCart = { ...mockCart, promotions: [{ code: "VI20" }] };
+  const html = render();
+  expect(html).toContain(">كود الخصم</label>");
+  expect(html).toContain(">تطبيق</button>");
+  expect(html).toContain('aria-label="إزالة VI20"');
+  expect(html).toContain('aria-label="أكواد الخصم المطبقة"');
+  expect(render(true)).toContain("أضف كود خصم");
 });

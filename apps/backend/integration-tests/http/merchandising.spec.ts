@@ -66,15 +66,22 @@ medusaIntegrationTestRunner({
       it("lists inventory-kit products as bundles, and normal products not", async () => {
         const container = getContainer()
         const { data: [store] } = await container.resolve(ContainerRegistrationKeys.QUERY).graph({ entity: "store", fields: ["default_sales_channel_id"] })
-        const { result: parts } = await createInventoryItemsWorkflow(container).run({ input: { items: [{ sku: "CRE-300", title: "Creatine 300g" }, { sku: "WHEY-2KG", title: "Whey 2kg" }] } })
-        const { result: [bundle] } = await createProductsWorkflow(container).run({ input: { products: [{
+        const { result: parts } = await createInventoryItemsWorkflow(container).run({ input: { items: [{ sku: "CRE-300", title: "Creatine 300g" }, { sku: "WHEY-2KG", title: "Whey 2kg" }, { sku: "WHEY-TYPO", title: "Whey typo" }] } })
+        const { result: [bundle, single] } = await createProductsWorkflow(container).run({ input: { products: [{
           title: "Strength Set", status: "published", sales_channels: [{ id: store.default_sales_channel_id as string }],
           options: [{ title: "Set", values: ["One"] }],
           variants: [{ title: "One", options: { Set: "One" }, manage_inventory: true, prices: [{ amount: 1500, currency_code: "egp" }],
             inventory_items: [{ inventory_item_id: parts[0].id, required_quantity: 1 }, { inventory_item_id: parts[1].id, required_quantity: 2 }] }],
+        }, {
+          // One stock item with a mistyped quantity (Seif's local data had 10,000) is not a bundle.
+          title: "Whey Typo", status: "published", sales_channels: [{ id: store.default_sales_channel_id as string }],
+          options: [{ title: "Size", values: ["2kg"] }],
+          variants: [{ title: "2kg", options: { Size: "2kg" }, manage_inventory: true, prices: [{ amount: 900, currency_code: "egp" }],
+            inventory_items: [{ inventory_item_id: parts[2].id, required_quantity: 10000 }] }],
         }] } })
         const response = await api.get("/store/deals", storeApi)
         expect(response.data.bundle_ids).toEqual([bundle.id])
+        expect(response.data.bundle_ids).not.toContain(single.id)
         expect(response.data.product_ids).not.toContain(bundle.id)
       })
 

@@ -338,8 +338,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
       if (!cart) return { ok: false, reason: "loading" };
       try {
         const updated = await applyCartPromotion(cart.id, code.trim());
-        syncFromMedusaCart(updated);
-        return promoOutcome(updated, code);
+        const outcome = promoOutcome(updated, code);
+        // A code that takes nothing off is not kept, so no chip shows without a discount.
+        syncFromMedusaCart(!outcome.ok && outcome.reason === "not_eligible" ? await removeCartPromotion(cart.id, code.trim()) : updated);
+        return outcome;
       } catch (err: unknown) {
         return promoFailure(err);
       }
