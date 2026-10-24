@@ -194,3 +194,9 @@ it.each(["en", "ar"] as const)("renders exactly one localized goal-removal chip 
   const html = render({ locale, filters: { ...props.filters, goal: "immune-support" } });
   expect(html.split(`${message(locale, "shop.removeFilter")}: ${message(locale, "goal.immune-support")}`)).toHaveLength(2);
 });
+
+it.each(["en", "ar"] as const)("names Deals as the current page in the %s breadcrumb", locale => {
+  const html = render({ locale, filters: { ...props.filters, deals: true } });
+  expect(html).toContain(`<span aria-current="page">${message(locale, "deals.title")}</span>`);
+  expect(render({ locale })).toContain(`<span aria-current="page">${message(locale, "shop.title")}</span>`);
+});
