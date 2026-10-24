@@ -2,6 +2,7 @@ import type { MedusaResponse, MedusaStoreRequest } from "@medusajs/framework/htt
 import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
 import { catalogSchema } from "../../validators"
 import { catalogContext, catalogOrder, catalogPriceVersion, readCatalogState } from "../../../lib/catalog-ranking"
+import { requestCatalogRefresh } from "../../../lib/catalog-refresh-request"
 import { productSearchFilters } from "../../../lib/product-search"
 
 export async function GET(req: MedusaStoreRequest, res: MedusaResponse) {
@@ -12,11 +13,11 @@ export async function GET(req: MedusaStoreRequest, res: MedusaResponse) {
     const query = req.scope.resolve(ContainerRegistrationKeys.QUERY)
     const context = await catalogContext(query)
     if (region_id !== context.regionId || req.publishable_key_context.sales_channel_ids.length !== 1 || req.publishable_key_context.sales_channel_ids[0] !== context.channelId) {
-      return res.status(400).json({ message: "Unsupported catalog context" })
+      return res.status(409).json({ message: "Catalog context changed. Retry or browse all products." })
     }
     const state = await readCatalogState(req.scope)
     if (state?.ready !== 1 || (state.valid_until ?? 0) <= Date.now() || state.price_version !== await catalogPriceVersion(query)) {
-      void req.scope.resolve(Modules.EVENT_BUS).emit({ name: "catalog-ranking.refresh", data: {} }).catch(() => {})
+      void requestCatalogRefresh(req.scope)
       return res.status(503).json({ message: "Catalog order is refreshing. Retry or browse all products." })
     }
     const result = await req.scope.resolve(Modules.SEARCH).search({

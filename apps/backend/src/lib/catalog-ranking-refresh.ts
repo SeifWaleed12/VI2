@@ -20,8 +20,8 @@ export async function refreshCatalog(container: MedusaContainer, productIds?: st
     const search = container.resolve(Modules.SEARCH)
     const previous = await readCatalogState(container)
     stopped(signal)
-    await writeCatalogState(container, 0, 0)
-    {
+    if (!productIds) await writeCatalogState(container, 0, 0)
+    try {
       const priceVersion = await catalogPriceVersion(query)
       const validUntil = await catalogValidUntil(query)
       if (productIds) {
@@ -60,11 +60,16 @@ export async function refreshCatalog(container: MedusaContainer, productIds?: st
         }
       }
       stopped(signal)
+      // Incremental writes keep the full-build revision so readers can span an update.
       // A partial retry cannot declare an earlier interrupted full refresh healthy.
       const ready = !productIds || (previous?.ready === 1 && (previous.valid_until ?? 0) > Date.now())
-      await writeCatalogState(container, ready ? 1 : 0, productIds ? Math.min(previous?.valid_until ?? 0, validUntil) : validUntil, productIds ? previous?.price_version ?? "" : priceVersion)
+      await writeCatalogState(container, ready ? 1 : 0, productIds ? Math.min(previous?.valid_until ?? 0, validUntil) : validUntil, productIds ? previous?.price_version ?? "" : priceVersion, productIds ? previous?.revision : undefined)
       // Optional response-cache invalidation must not hold the ranking lock during a Redis outage.
       void invalidateStoreCache(container)
+    } catch (error) {
+      // Never write after losing ownership: another worker may already hold the lock.
+      if (!signal?.aborted) await writeCatalogState(container, 0, 0)
+      throw error
     }
   }, { timeout: 30, expire: 60 })
 }

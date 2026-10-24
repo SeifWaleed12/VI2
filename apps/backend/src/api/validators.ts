@@ -68,3 +68,12 @@ export const catalogSchema = z.object({
   deals: z.enum(["true", "false"]).transform(value => value === "true").default(false),
   limit: z.coerce.number().int().min(1).max(24).default(24),
 }).strict()
+
+// Fresh hydration is limited to one explicit page; it cannot browse or filter the catalog.
+export const catalogProductsSchema = z.object({
+  id: searchIds.refine(ids => ids.length >= 1 && ids.length <= 24),
+  region_id: z.string().regex(/^[A-Za-z0-9_-]{1,128}$/),
+  fields: z.string().max(3000).optional(),
+  limit: z.coerce.number().int().min(1).max(24).default(24),
+  offset: z.coerce.number().int().min(0).max(0).default(0),
+}).strict()

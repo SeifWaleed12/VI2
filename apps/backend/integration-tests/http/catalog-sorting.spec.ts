@@ -85,6 +85,42 @@ medusaIntegrationTestRunner({
       const docs = async () => (await container.resolve(Modules.SEARCH).search({ entity: "product", filters: { record_type: "product" }, pagination: { take: 200 } })).hits.map(hit => hit.document)
       const first = await waitFor("&sort=price_asc", r => r.count === 113)
       expect(first.ids[0]).toBe(managed.id)
+      // Hold one real native projection open while polling the HTTP route.
+      let release!: () => void
+      let entered!: () => void
+      const projecting = new Promise<void>(resolve => { entered = resolve })
+      const proceed = new Promise<void>(resolve => { release = resolve })
+      const originalGraph = query.graph.bind(query)
+      const graphSpy = jest.spyOn(query, "graph").mockImplementation(async (...args: any[]) => {
+        if (args[0].entity === "product" && args[0].fields?.includes("variants.variant_rank")) {
+          entered()
+          await proceed
+        }
+        return originalGraph(...args as Parameters<typeof originalGraph>)
+      })
+      const incremental = refreshCatalog(container, [managed.id])
+      let projectionTimer: ReturnType<typeof setTimeout> | undefined
+      try {
+        await Promise.race([projecting, new Promise((_, reject) => projectionTimer = setTimeout(() => reject(new Error("Incremental projection did not start")), 10000))])
+        for (let n = 0; n < 5; n++) expect((await find("&sort=price_asc")).status).toBe(200)
+      } finally {
+        clearTimeout(projectionTimer)
+        release()
+        try { await incremental } finally { graphSpy.mockRestore() }
+      }
+      expect((await find("&sort=price_asc")).status).toBe(200)
+      const hydration = await api.get("/store/catalog-products?region_id=" + region + "&id=" + managed.id + "&limit=1&fields=id,variants.calculated_price,variants.inventory_quantity", options)
+      expect(hydration.status).toBe(200)
+      expect(hydration.headers["cache-control"]).toBe("no-store")
+      const localizedHydration = await api.get("/store/catalog-products?region_id=" + region + "&id=" + products[0].id + "&fields=id,brand.id,categories.id,categories.name", { ...options, headers: { ...options.headers, "x-medusa-locale": "ar-EG" } })
+      expect(localizedHydration.status).toBe(200)
+      expect(localizedHydration.data.products[0].categories).toEqual([expect.objectContaining({ id: category.id })])
+      expect(hydration.data.products[0].id).toBe(managed.id)
+      expect(hydration.data.products[0].variants[0].calculated_price.calculated_amount).toBe(10)
+      expect((await api.get("/store/catalog-products?region_id=" + region, options)).status).toBe(400)
+      expect((await api.get("/store/catalog-products?region_id=" + region + "&id=" + managed.id + "&offset=24", options)).status).toBe(400)
+      const hiddenIds = [byTitle.get("Hidden")!.id, byTitle.get("Draft")!.id]
+      expect((await api.get("/store/catalog-products?region_id=" + region + hiddenIds.map(id => "&id[]=" + id).join(""), options)).data.products).toEqual([])
       expect((await find("&q=catalog&sort=price_asc")).data.count).toBe(107)
       const sortedIds: string[] = []
       for (let offset = 0; offset < 113; offset += 24) {
@@ -120,7 +156,7 @@ medusaIntegrationTestRunner({
       await updateProductsWorkflow(container).run({ input: { products: [{ id: products[0].id, status: "draft" }] } })
       await waitFor("", r => r.count === 112)
       expect((await find("&sort=quantity")).status).toBe(400)
-      expect((await find("&region_id=reg_other")).status).toBe(400)
+      expect((await api.get("/store/catalog?region_id=reg_other", options)).status).toBe(409)
       // An expired snapshot is unavailable until the scheduled worker repairs it.
       await writeCatalogState(container, 1, Date.now() - 1)
       expect((await find("&sort=price_asc")).status).toBe(503)
@@ -141,6 +177,18 @@ medusaIntegrationTestRunner({
         id: byTitle.get("Bulk")!.variants[0].id, prices: [{ currency_code: "egp", amount: 900 }],
       }] } })
       await waitFor("&sort=price_desc", async result => result.ids[0] === byTitle.get("Bulk")!.id && (await docs()).find(p => p.id === byTitle.get("Bulk")!.id)!.catalog_price === 900)
+      const { result: multi } = await createProductsWorkflow(container).run({ input: { products: ["Unpriced first", "Sold-out first"].map((title, index) => product(title, 0, {
+        options: [{ title: "Size", values: ["first", "second"] }],
+        variants: [
+          { title: "first", variant_rank: 0, options: { Size: "first" }, manage_inventory: index === 1, prices: index === 0 ? [] : [{ amount: 10, currency_code: "egp" }] },
+          { title: "second", variant_rank: 1, options: { Size: "second" }, manage_inventory: false, prices: [{ amount: 50, currency_code: "egp" }] },
+        ],
+      })) } })
+      await waitFor("&sort=in_stock", async result => result.count === 114 && (await docs()).filter(row => multi.some(p => p.id === row.id) && row.catalog_available === 1).length === 2)
+      for (const p of multi) {
+        const document = (await docs()).find(row => row.id === p.id)
+        expect(document).toMatchObject({ catalog_price: 50, catalog_priced: 1, catalog_available: 1, display_variant_id: p.variants.find(v => v.title === "second")!.id })
+      }
       console.log("CATALOG_QUERY_MS", { first: reads[0], last: reads.at(-1), max: Math.max(...reads), samples: reads.length })
       console.log("CATALOG_SORTING: 113 visible products, 107 deals, 24/page, native mutation refresh, unhealthy recovery")
     })

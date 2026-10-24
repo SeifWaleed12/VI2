@@ -35,7 +35,7 @@ const isAnonymousRead = (req: Pick<MedusaRequest, "method" | "headers">) =>
 // falls through to the normal handler.
 export function cacheStoreGet(ttlSeconds: number) {
   return async (req: MedusaRequest, res: MedusaResponse, next: MedusaNextFunction) => {
-    if (!isAnonymousRead(req) || req.headers["cache-control"] === "no-cache") return next()
+    if (!isAnonymousRead(req)) return next()
     let cache: ICacheService
     const key = storeCacheKey(req)
     try {

@@ -265,11 +265,6 @@ export default function ShopClient(props: ShopProps) {
                   {msg(goalLabelKey(filters.goal))}<X size={14} aria-hidden="true" />
                 </Link>
               )}
-              {filters.goal && isHealthGoal(filters.goal) && (
-                <Link href={shopHref(handle, updateShopQuery(query, { goal: null }))}>
-                  {msg(goalLabelKey(filters.goal))}<X size={14} aria-hidden="true" />
-                </Link>
-              )}
               {brandNames.map((brand) => (
                 <Link
                   key={brand.id}

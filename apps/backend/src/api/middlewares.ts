@@ -7,6 +7,8 @@ import { managerLayoutView } from "./manager-layouts"
 import { assignOrderOwner, cartOwnerOnly, noEmailOnNewGuestCart } from "./cart-access"
 import { filterProductsByBrand } from "./catalog-filters"
 import { requireStrongPassword } from "./password-policy"
+import { storeProductRoutesMiddlewares } from "@medusajs/medusa/api/store/products/middlewares"
+import { boundCatalogHydration } from "./catalog-products"
 import { cacheStoreGet, invalidateStoreCacheAfterWrite } from "../lib/store-cache"
 
 // Staff and customers sign in, reset and set passwords through the same
@@ -23,6 +25,9 @@ const emailPassRoutes = (["user", "customer"] as ActorType[]).flatMap((actor) =>
 // the EDA number with its approval (shown to customers by owner decision,
 // 2026-10-09), and category fields Medusa only allows as a whole relation.
 const STORE_PRODUCT_EXTRA_FIELDS = ["brand.id", "brand.name", "brand.status", "eda_registration.registration_number", "eda_registration.is_approved", "categories.id", "categories.name", "categories.handle"]
+
+const nativeProductListMiddlewares = storeProductRoutesMiddlewares.find(route => route.matcher === "/store/products")?.middlewares
+if (!nativeProductListMiddlewares) throw new MedusaError(MedusaError.Types.UNEXPECTED_STATE, "Native product list middleware is unavailable")
 
 // Public catalog reads answered from Redis (lib/store-cache.ts). Products stay
 // short because their prices change most; the rest change rarely.
@@ -51,6 +56,12 @@ export default defineMiddlewares({
   routes: [
     ...emailPassRoutes,
     ...cachedCatalogRoutes,
+    { matcher: "/store/catalog-products", middlewares: [allowFields(...STORE_PRODUCT_EXTRA_FIELDS)] },
+    {
+      matcher: "/store/catalog-products", method: "GET",
+      middlewares: [boundCatalogHydration,
+        ...nativeProductListMiddlewares],
+    },
     { matcher: "/store/products", middlewares: [filterProductsByBrand, allowFields(...STORE_PRODUCT_EXTRA_FIELDS)] },
     { matcher: "/store/products/:id", middlewares: [allowFields(...STORE_PRODUCT_EXTRA_FIELDS)] },
     // Without a method these also cover every path under them (src/api/cart-access.ts).

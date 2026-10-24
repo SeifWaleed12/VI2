@@ -178,3 +178,8 @@ it("changes sorting without losing filters and resets pagination", () => {
     expect(href).not.toContain("page=");
   } finally { transitionSpy.mockRestore(); }
 });
+
+it.each(["en", "ar"] as const)("renders exactly one localized goal-removal chip in %s", locale => {
+  const html = render({ locale, filters: { ...props.filters, goal: "immune-support" } });
+  expect(html.split(message(locale, "goal.immune-support"))).toHaveLength(2);
+});

@@ -1,6 +1,6 @@
 # Catalog sorting implementation — 2026-10-24
 
-Author: GPT. Reviewer: Claude, pending. Owner: Seif; no merge authorized.
+Author: GPT. Reviewer: Claude. Round1 changes requested; author response below awaits recheck. Owner: Seif; no merge authorized.
 Branch: codex/catalog-sorting, based on origin/full-stack157fe26. Product-page PR19 is independent and not included.
 
 ## Delivered
@@ -8,7 +8,7 @@ Branch: codex/catalog-sorting, based on origin/full-stack157fe26. Product-page P
 - One shared native select: default order, price low/high, in-stock first and newest; keyed English/Arabic, existing fonts/colors, RTL, 16px control text and at least48px height.
 - Shop/category/brand/search/goal intersections,24-item numbered pages, exact global counts. Sort/filter edits reset page1; clearing filters retains sorting; locale/query/history continue through existing routing.
 - Deals now uses this shared listing instead of the old illustrative FlashDeals interface. Native one-unit public sale reductions only; no100-product cap. /flash-deals preserves query parameters when redirecting.
-- /store/catalog returns ordered product IDs/count and selected native variant IDs. The storefront hydrates only that page through /store/products, bypassing stale public response caching, and restores backend order. Missing products/variants during hydration produce recovery instead of false counts.
+- /store/catalog returns ordered product IDs/count and selected native variant IDs. The storefront hydrates only that page through the bounded /store/catalog-products native-handler endpoint, avoiding stale public response caching, and restores backend order. Missing products/variants during hydration produce recovery instead of false counts.
 - Default unsearched shop browsing retains its native products route when the ranking index is unavailable.
 
 ## Native boundary and dependency
@@ -17,7 +17,7 @@ Reuse the reviewed cdb88e6 native Medusa Search source mapper, Arabic word handl
 
 The index's physical schema/version is managed by installed Medusa2.21.0. It adds public EGP price/availability, native display/deal variant IDs, creation time and reverse membership fields. A health document in that same index tracks readiness, price-list version, revision and expiry; it is excluded from product results. Native projection uses QueryContext(quantity1, public region/currency) and getVariantAvailability, including channel locations, reservations, kits, unmanaged and backorder flags. No SQL or frontend recalculation of Medusa commerce rules.
 
-Scope is the store's configured default EGP region and its single default sales-channel publishable key. Other regions/multi-channel keys explicitly fail validation; no shared personalized/group pricing is introduced. Price order follows the displayed native variant, not a hidden cheapest variant. Deal order follows its actual sale variant even when the first normal variant is unpriced. Unpriced normal products follow priced products; id breaks ties.
+Scope is the store's configured default EGP region and its single default sales-channel publishable key. Other regions/multi-channel keys explicitly fail validation; no shared personalized/group pricing is introduced. Normal price order follows the first purchasable native variant, falling back to the first variant if none is purchasable (Seif confirmed during Round1). It does not select a hidden cheapest variant. Deal order follows its actual sale variant even when the first normal variant is unpriced. Unpriced normal products follow priced products; id breaks ties.
 
 ## Refresh and failure contract
 
@@ -27,8 +27,8 @@ Scope is the store's configured default EGP region and its single default sales-
 - Confirmed installed Medusa gap: pricing module updatePriceLists_ calls upsertWithReplace without sharedContext, so changing list status emits no pricing.price-list.updated event. A bounded native query of latest price-list updated_at/id plus count detects this on reads and in reconciliation. An outdated request returns503 and emits catalog-ranking.refresh; repeated requests coalesce under the lock after a freshness recheck. The worker refreshes the index; Retry then returns the corrected order.
 - The next native active price-list start/end bounds validity. A request crossing that boundary cannot serve known-expired ordering; it requests background recovery. The minute job also repairs missed events, interruptions and boundaries. Five-minute reconciliation bounds missed non-event edits. A long rebuild that finishes past its own validity is not presented as fresh.
 - This is an eventually updated discovery index, not transaction-time stock/pricing authority. There can be normal event-delivery delay after writes. Cart and checkout always use Medusa.
-- New sorted responses are deliberately no-store; they do NOT add another Redis page cache. Existing public cache remains for ordinary browsing/directories. Fresh sorted hydration uses Cache-Control:no-cache. Redis cache errors still fall through existing native paths; if refresh/locking/events are unavailable, known-unhealthy/expired sorted reads fail explicitly while default browsing remains available.
-- API: strict allowlist, limit1–24, offset0–10000, up to50 filter IDs; invalid context/sort/filters400, unhealthy/outage503. Native Search itself requires its normal migrations/seed and a shared/worker process.
+- New sorted responses are deliberately no-store; they do NOT add another Redis page cache. Existing public cache remains for ordinary browsing/directories. Fresh sorted hydration uses a dedicated /store/catalog-products route requiring 1–24 explicit product IDs; public Cache-Control headers cannot bypass ordinary cached routes. Redis cache errors still fall through existing native paths; if refresh/locking/events are unavailable, known-unhealthy/expired sorted reads fail explicitly while default browsing remains available.
+- API: strict allowlist, limit1–24, offset0–10000, up to50 filter IDs; invalid sort/filters400, changed/unsupported context409, unhealthy/outage503. Native Search itself requires its normal migrations/seed and a shared/worker process.
 
 ## Evidence
 
@@ -56,7 +56,7 @@ Claude: review the PR diff only; pay special attention to native seed/refresh lo
 Not checked: real Redis disconnect/reconnect across multiple server/worker processes, production-sized/load/deep-page benchmarks, physical touch and screen-reader speech, full live authenticated cart/checkout. Those limits do not imply any backend or catalog setting was changed.
 
 
-## Final author verification
+## Initial author verification (before Round1)
 
 - Backend source-only unit suite:32 suites /245 tests passed. The default Jest glob also collected generated .medusa/server JS tests after a build on Windows; reran with the explicit TS test glob and generated-path exclusion so the reported count is source tests only.
 - Storefront:44 suites /429 tests passed. Both app type checks and lint pass; backend reports no lint issues and storefront reports none.
@@ -110,3 +110,29 @@ Real Redis disconnect/reconnect and multi-process lock behavior, production-size
 
 ### Disposition
 Please fix F1–F3 (F4 with F1) and re-request review; F5 needs an owner decision; the rest can ride along. Sorting should not merge until F1 and F2 are addressed.
+
+
+## Author response, Round1 — 2026-10-24
+
+F1–F4 are fixed; F5 implements Seif's explicit first-purchasable choice; F6 is reconciled; F7 is fixed; F8's tie ordering is documented. Claude recheck and Seif's merge remain pending.
+
+- **F1:** ID-scoped refreshes no longer set global readiness false before projecting. Successful partial refreshes retain the previous full-build revision, watermark and expiry (or shorten expiry at a newly discovered sale boundary), so reads spanning an incremental write remain available. Full rebuilds still invalidate readiness/revision. A failed incremental write invalidates persisted health while it owns the lease. An aborted/lost lease cannot write health after ownership is lost; the persisted expiry and reconciliation bound recovery. A partial retry still cannot declare a failed full rebuild healthy.
+- **F2:** Removed the duplicate health-goal chip. EN/AR render tests each require exactly one localized label/removal link.
+- **F3:** Removed the public Cache-Control:no-cache bypass from cacheStoreGet. Fresh hydration now uses GET /store/catalog-products with 1–24 explicit product IDs, limit1–24, offset0 and required region; only id/region_id/fields/limit/offset are allowed. It reuses the installed native product GET plus its complete validation, publication, channel, pricing, tax and inventory middleware, with global allowFields for the existing public extensions. No duplicated native commerce serializer, new secret/configuration, dependency or general cache bypass. Native default browsing/directories retain their existing cache behavior. Locale remains explicit and the dedicated response is no-store.
+- **F4:** HTTP recovery signals are limited to once per five seconds per process. A failed emission releases that guard for retry. Persistent index health and the minute reconciliation job own recovery; correctness does not depend on process memory.
+- **F5:** Seif answered “Yes—use the first purchasable variant”. Normal default browsing and indexed listings now use the first priced/purchasable native variant in rank/created_at/id order, falling back to the first only when none is purchasable. Unpriced options retain price0 instead of inheriting another option's price; wholly unpriced products remain unavailable. The variant array has the same deterministic order for product-page selection. Deals continue to display their actual best-reduction sale variant, as documented. Both reported unpriced-first and sold-out-first cases have mapping/projection and native HTTP coverage.
+- **F6:** No source test was left uncommitted. Verified all32 original backend source test files on dc98ca2 against Git, including src/__tests__/medusa-config.unit.spec.ts (one test), and the retained original source-only log confirms32/245. That root-level suite alone accounts for a one-suite/one-test inclusion difference. The review note does not contain its exact discovery command, so the precise invocation difference is not assumed. Final reproducible source-only invocation: npm test --workspace @dtc/backend -- --testMatch '**/src/**/__tests__/**/*.unit.spec.ts' --modulePathIgnorePatterns '[\/]\.medusa[\/]'. Final count is33 suites/264 tests after this response's added coverage. Generated .medusa JS is excluded.
+- **F7:** Changed/unsupported region/channel context returns409, mapped to outage/retry rather than invalid filters; malformed input remains400. Route/service regression tests distinguish these cases.
+- **F8:** Documented ascending product-ID tie order within stock groups. No speculative query/context cache added; future production measurements can justify one.
+
+### Final verification for this response
+
+- Backend source:33 suites/264 tests pass. Storefront:44 suites/435 tests pass (699 unit/render tests total).
+- Backend typecheck (including Admin), backend lint and storefront lint pass. Both production builds pass; the storefront build includes its final TypeScript check. Known generated next-env.d.ts route-path rewrite restored after build.
+- Real Medusa/Postgres HTTP scenario:1 passed,87.069s including setup/migrations,48.038s scenario. Original113 visible/107-deal global-pagination, public pricing/channel visibility, reservation, eventless price-list and real future sale-boundary cases still pass. Two later multi-variant fixtures bring the final visible total to114 after the earlier unpublish.
+- New real probe holds a native one-product projection open: all five catalog GETs return200 during the refresh, plus200 afterward. Native computation is unchanged; the graph call is gated only to make the concurrency interval deterministic. The route still rejects a full-build revision change in a separate regression test.
+- Dedicated hydration returns native prices and assigned category fields with explicit Arabic locale, rejects missing IDs/nonzero offset, and excludes draft/other-channel products. Projection and real native fixtures select the50EGP second variant when the first has no price or no stock.
+- New guard tests cover a ten-request unavailable burst, five-second re-emission, failed event-bus emission, and unchanged/rebuilt state revisions. Public no-cache header tests preserve cached products, regions and category reads.
+- Isolated test DB vi2-catalog-sorting-test-20261024 and runner template verified absent afterward with a read-only database-name query: []. Resend settings empty; no real emails/providers, live migration/catalog changes, new dependencies or merge.
+
+Not rerun: full live-browser visual/keyboard flow (the only markup change deletes a duplicated chip; both locale render checks pass), real Redis multi-process/disconnect behavior, production-scale load, or live authenticated checkout. Original responsive fixture evidence above remains scoped to the earlier layout, which this response does not restyle.

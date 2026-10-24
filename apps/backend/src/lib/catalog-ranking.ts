@@ -86,10 +86,10 @@ export async function catalogDocuments(query: Query, rows: SearchSource[]): Prom
     const base = toSearchDocument(row, translated.get(row.id))
     const p = nativeById.get(row.id)
     if (!base || !p) return []
-    // The public card and index both use Medusa's first ranked variant; never sort by a different cheap variant.
+    // Match the product page: first purchasable option in native rank order, then the first option.
     const ordered = [...(p.variants ?? [])].sort((a, b) => (a.variant_rank ?? 0) - (b.variant_rank ?? 0)
       || String(a.created_at ?? "").localeCompare(String(b.created_at ?? "")) || a.id.localeCompare(b.id))
-    const first = ordered[0]
+    const first = ordered.find(buyable) ?? ordered[0]
     const deal = dealVariant(ordered)
     return [{ ...base, record_type: "product", region_id: regionId, channel_id: channelId,
       catalog_price: priced(first) ? amountOf(first) : 0, catalog_priced: priced(first) ? 1 : 0,
@@ -118,9 +118,9 @@ export async function readCatalogState(container: MedusaContainer) {
   return result.hits[0]?.document as { ready?: number, valid_until?: number, price_version?: string, revision?: string } | undefined
 }
 
-export async function writeCatalogState(container: MedusaContainer, ready: number, validUntil: number, priceVersion = "") {
+export async function writeCatalogState(container: MedusaContainer, ready: number, validUntil: number, priceVersion = "", revision: string = randomUUID()) {
   await container.resolve(Modules.SEARCH).upsertDocuments({
-    index: "product", documents: [{ id: CATALOG_STATE, record_type: "state", ready, valid_until: validUntil, price_version: priceVersion, revision: randomUUID() }],
+    index: "product", documents: [{ id: CATALOG_STATE, record_type: "state", ready, valid_until: validUntil, price_version: priceVersion, revision }],
   })
 }
 

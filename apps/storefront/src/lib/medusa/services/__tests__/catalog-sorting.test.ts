@@ -30,6 +30,8 @@ it("preserves global order/count and hydrates the backend-selected variant with 
 it("distinguishes invalid input, outages and a product disappearing during hydration", async () => {
   jest.mocked(medusa.client.fetch).mockRejectedValueOnce({ status: 400 });
   await expect(listCatalog(params)).rejects.toBeInstanceOf(InvalidCatalogFilterError);
+  jest.mocked(medusa.client.fetch).mockRejectedValueOnce({ status: 409 });
+  await expect(listCatalog(params)).rejects.toThrow("unavailable");
   jest.mocked(medusa.client.fetch).mockRejectedValueOnce({ status: 503 });
   await expect(listCatalog(params)).rejects.toThrow("unavailable");
   jest.mocked(medusa.client.fetch).mockResolvedValueOnce({ ids: ["gone"], count: 1, variants: {} });
