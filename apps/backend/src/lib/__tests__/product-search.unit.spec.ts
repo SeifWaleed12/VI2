@@ -1,5 +1,5 @@
 import { productSearchFilters, toSearchDocument, withoutArabicArticle } from "../product-search"
-import { productSearchSchema } from "../../api/validators"
+import { catalogSchema } from "../../api/validators"
 
 const whey = {
   id: "prod_whey", handle: "whey", status: "published", title: "Whey Protein",
@@ -33,10 +33,10 @@ it("searches only the shopper's sales channels and maps each filter onto the ind
   expect(productSearchFilters({ q: "whey", brand_id: [] }, [])).toEqual({ q: "whey", sales_channel_ids: [] })
 })
 
-it("accepts a short search with optional filters and refuses empty, long or malformed input", () => {
-  expect(productSearchSchema.parse({ q: "  whey ", brand_id: "brand_b", limit: "6" })).toEqual({ q: "whey", brand_id: ["brand_b"], limit: 6, offset: 0 })
-  for (const query of [{}, { q: "  " }, { q: "x".repeat(101) }, { q: "whey", limit: "25" }, { q: "whey", tag_id: ["bad id"] }, { q: "whey", other: "1" }])
-    expect(productSearchSchema.safeParse(query).success).toBe(false)
+it("accepts a bounded catalog search with optional filters and refuses malformed input", () => {
+  expect(catalogSchema.parse({ region_id: "reg_eg", q: "  whey ", brand_id: "brand_b", limit: "6" })).toMatchObject({ q: "whey", brand_id: ["brand_b"], limit: 6, offset: 0 })
+  for (const query of [{ region_id: "" }, { q: "x".repeat(101) }, { q: "whey", limit: "25" }, { q: "whey", tag_id: ["bad id"] }, { q: "whey", other: "1" }])
+    expect(catalogSchema.safeParse({ region_id: "reg_eg", ...query }).success).toBe(false)
 })
 
 it("drops the Arabic article from words, keeping short words and other text", () => {

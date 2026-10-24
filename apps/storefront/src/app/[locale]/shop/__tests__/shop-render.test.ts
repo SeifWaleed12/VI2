@@ -54,6 +54,10 @@ const props: ShopProps = {
   filters: { q: "protein", brandIds: ["brand_real"], goal: "", page: 6 },
   error: null,
 };
+beforeEach(() => {
+  jest.mocked(React.useState).mockImplementation((...args: unknown[]) => jest.requireActual("react").useState(...args));
+  jest.mocked(React.useTransition).mockImplementation(() => jest.requireActual("react").useTransition());
+});
 const render = (overrides: Partial<ShopProps> = {}) =>
   renderToStaticMarkup(createElement(ShopClient, { ...props, ...overrides }));
 it("renders backend products without a second browser filter, totals and real directory brands", () => {
@@ -154,4 +158,45 @@ it.each(["", "vitamin-c"])("moves mobile category selection to results only when
     stateSpy.mockRestore();
     transitionSpy.mockRestore();
   }
+});
+it.each(["en", "ar"] as const)("renders five localized native sort options and preserves selection in %s", locale => {
+  const html = render({ locale, filters: { ...props.filters, sort: "price_desc" } });
+  expect(html).toContain(message(locale, "shop.sort"));
+  expect(html).toContain('value="price_desc" selected=""');
+  for (const sort of ["default", "price_asc", "price_desc", "in_stock", "newest"] as const) {
+    expect(html).toContain(message(locale, `shop.sort.${sort}`));
+  }
+});
+it("changes sorting without losing filters and resets pagination", () => {
+  const transitionSpy = jest.spyOn(React, "useTransition").mockReturnValue([false, action => { void action(); }]);
+  let tree: React.ReactNode;
+  const findSelect = (node: React.ReactNode): React.ReactElement<{ children?: React.ReactNode; onChange?: (event: { target: { value: string } }) => void }> | undefined => {
+    for (const child of React.Children.toArray(node)) {
+      if (!React.isValidElement<{ children?: React.ReactNode; onChange?: (event: { target: { value: string } }) => void }>(child)) continue;
+      if (child.type === "select") return child;
+      const found = findSelect(child.props.children);
+      if (found) return found;
+    }
+  };
+  try {
+    mockNavigationPush.mockClear();
+    renderToStaticMarkup(createElement(() => { tree = ShopClient(props); return tree; }));
+    findSelect(tree)!.props.onChange!({ target: { value: "price_asc" } });
+    const href = mockNavigationPush.mock.calls[0][0];
+    expect(href).toContain("sort=price_asc");
+    expect(href).toContain("q=protein");
+    expect(href).toContain("brand_id=brand_real");
+    expect(href).not.toContain("page=");
+  } finally { transitionSpy.mockRestore(); }
+});
+
+it.each(["en", "ar"] as const)("renders exactly one localized goal-removal chip in %s", locale => {
+  const html = render({ locale, filters: { ...props.filters, goal: "immune-support" } });
+  expect(html.split(`${message(locale, "shop.removeFilter")}: ${message(locale, "goal.immune-support")}`)).toHaveLength(2);
+});
+
+it.each(["en", "ar"] as const)("names Deals as the current page in the %s breadcrumb", locale => {
+  const html = render({ locale, filters: { ...props.filters, deals: true } });
+  expect(html).toContain(`<span aria-current="page">${message(locale, "deals.title")}</span>`);
+  expect(render({ locale })).toContain(`<span aria-current="page">${message(locale, "shop.title")}</span>`);
 });

@@ -1,4 +1,4 @@
-import { cache } from "react";
+import { cache, type ReactNode } from "react";
 import { headers } from "next/headers";
 import type { Metadata } from "next";
 import { notFound, permanentRedirect, redirect } from "next/navigation";
@@ -6,9 +6,9 @@ import {
   listProducts,
   InvalidCatalogFilterError,
 } from "@/lib/medusa/services/products";
-import { getBrands } from "@/lib/medusa/services/brands";
+import { listCatalog } from "@/lib/medusa/services/catalog";
 import { getTagIds } from "@/lib/medusa/services/tags";
-import { searchProducts } from "@/lib/medusa/services/search";
+import { getBrands } from "@/lib/medusa/services/brands";
 import { loadCategoryDirectory } from "@/lib/medusa/category-directory";
 import { categoryScope, flattenCategories } from "@/lib/category-tree";
 import { isLocale, localizedHref, message } from "@/lib/i18n";
@@ -116,18 +116,12 @@ const loadShop = cache(
       limit: SHOP_PAGE_SIZE,
       offset: (filters.page - 1) * SHOP_PAGE_SIZE,
     };
-    // A goal no product has been tagged with yet (tag not set up) is an empty page.
-    let goalTagId: string | undefined;
-    if (!error && filters.goal) {
+    if (!error) {
       try {
-        goalTagId = (await getTagIds([filters.goal]))[filters.goal];
-      } catch {
-        error = "unavailable";
-      }
-    }
-    if (!error && (!filters.goal || goalTagId)) {
-      try {
-        const params = {
+        const tagId = filters.goal ? (await getTagIds([filters.goal]))[filters.goal] : undefined;
+        if (!filters.goal || tagId) products = await listCatalog({
+          sort: filters.sort, deals: filters.deals,
+          ...(tagId ? { tag_id: [tagId] } : {}),
           locale,
           limit: SHOP_PAGE_SIZE,
           offset: (filters.page - 1) * SHOP_PAGE_SIZE,
@@ -135,12 +129,8 @@ const loadShop = cache(
             ? { category_id: categoryScope(directory.roots, selected.id)! }
             : {}),
           ...(brandIds.length ? { brand_id: brandIds } : {}),
-          ...(goalTagId ? { tag_id: [goalTagId] } : {}),
-        };
-        // Text search goes through the ranked product search; browsing does not.
-        products = filters.q
-          ? await searchProducts({ ...params, q: filters.q })
-          : await listProducts(params);
+          ...(filters.q ? { q: filters.q } : {}),
+        });
       } catch (cause) {
         error =
           cause instanceof InvalidCatalogFilterError
@@ -158,7 +148,7 @@ const loadShop = cache(
       category: selected ?? null,
       handle: handle || selected?.handle || "",
       query: searchQuery(query).toString(),
-      filters: { q: filters.q, brandIds, goal: filters.goal, page: filters.page },
+      filters: { q: filters.q, brandIds, page: filters.page, sort: filters.sort, deals: filters.deals, goal: filters.goal },
       error,
     };
   },
@@ -174,7 +164,7 @@ export async function getShopMetadata(input: ShopRequest): Promise<Metadata> {
   const title = data.error
     ? msg(data.error === "invalid" ? "shop.invalidTitle" : "shop.errorTitle")
     : [
-        data.category?.name ?? msg("shop.title"),
+        data.category?.name ?? msg(data.filters.deals ? "deals.title" : "shop.title"),
         data.filters.q ? msg("shop.search") + ": " + data.filters.q : "",
         data.filters.page > 1 ? msg("shop.page") + " " + data.filters.page : "",
       ]
@@ -183,8 +173,8 @@ export async function getShopMetadata(input: ShopRequest): Promise<Metadata> {
   const noIndex = Boolean(
     data.error ||
     data.filters.q ||
+    data.filters.sort !== "default" || data.filters.deals || data.filters.goal ||
     data.filters.brandIds.length ||
-    data.filters.goal ||
     (data.filters.page > 1 && data.page.products.length === 0),
   );
   let siteUrl = process.env.SITE_URL;
@@ -226,6 +216,6 @@ export async function getShopMetadata(input: ShopRequest): Promise<Metadata> {
   };
 }
 
-export default async function ShopView(input: ShopRequest) {
-  return <ShopClient {...await shopData(input)} />;
+export default async function ShopView({ lead, ...input }: ShopRequest & { lead?: ReactNode }) {
+  return <ShopClient {...await shopData(input)} lead={lead} />;
 }
