@@ -57,15 +57,23 @@ export const productEdaSchema = z.object({
   is_approved: z.boolean(),
 }).strict()
 
-// Same id rules as the shop's filters; a single value arrives as a string.
-const searchIds = z.union([z.string(), z.array(z.string())])
-  .transform((value) => [value].flat())
+const searchIds = z.union([z.string(), z.array(z.string())]).transform(value => [value].flat())
   .pipe(z.array(z.string().regex(/^[A-Za-z0-9_-]{1,128}$/)).max(50))
-export const productSearchSchema = z.object({
-  q: z.string().trim().min(1).max(100),
-  limit: z.coerce.number().int().min(1).max(24).default(6),
+export const catalogSchema = z.object({
+  q: z.string().trim().max(100).optional(),
   offset: z.coerce.number().int().min(0).max(10000).default(0),
-  category_id: searchIds.optional(),
-  brand_id: searchIds.optional(),
-  tag_id: searchIds.optional(),
+  category_id: searchIds.optional(), brand_id: searchIds.optional(), tag_id: searchIds.optional(),
+  region_id: z.string().regex(/^[A-Za-z0-9_-]{1,128}$/),
+  sort: z.enum(["default", "price_asc", "price_desc", "in_stock", "newest"]).default("default"),
+  deals: z.enum(["true", "false"]).transform(value => value === "true").default(false),
+  limit: z.coerce.number().int().min(1).max(24).default(24),
+}).strict()
+
+// Fresh hydration is limited to one explicit page; it cannot browse or filter the catalog.
+export const catalogProductsSchema = z.object({
+  id: searchIds.refine(ids => ids.length >= 1 && ids.length <= 24),
+  region_id: z.string().regex(/^[A-Za-z0-9_-]{1,128}$/),
+  fields: z.string().max(3000).optional(),
+  limit: z.coerce.number().int().min(1).max(24).default(24),
+  offset: z.coerce.number().int().min(0).max(0).default(0),
 }).strict()

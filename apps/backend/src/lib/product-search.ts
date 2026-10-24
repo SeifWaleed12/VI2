@@ -63,12 +63,12 @@ export function toSearchDocument(product: SearchSource, arabic?: ArabicSource) {
 // with an "ال" word. Searching the word without it matches the right ones.
 export const withoutArabicArticle = (q: string) => q.replace(/(^|\s)ال(?=[؀-ۿ]{3,})/g, "$1")
 
-export type ProductSearchInput = { q: string, category_id?: string[], brand_id?: string[], tag_id?: string[] }
+export type ProductSearchInput = { q?: string, category_id?: string[], brand_id?: string[], tag_id?: string[] }
 
 // A list on an array field matches when it holds any of the ids.
 export function productSearchFilters(input: ProductSearchInput, salesChannelIds: string[]) {
   return {
-    q: withoutArabicArticle(input.q),
+    ...(input.q ? { q: withoutArabicArticle(input.q) } : {}),
     sales_channel_ids: salesChannelIds,
     ...(input.category_id?.length ? { category_ids: input.category_id } : {}),
     ...(input.brand_id?.length ? { brand_id: input.brand_id } : {}),

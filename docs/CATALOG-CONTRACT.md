@@ -15,7 +15,7 @@ Request (`ListProductsParams`):
 | `category_id` | Category IDs. Medusa matches only the IDs given: to show a category with its subcategories, send the category and all its descendants (`categoryScope` in `lib/category-tree.ts`). |
 | `brand_id` | Brand IDs, 1 to 50. Active brands only. |
 | `tag_id` | Product tag IDs (Medusa native). Health goals are tags; values in `lib/health-goals.ts`, looked up with `getTagIds`. |
-| `id` | Product IDs (Medusa native). Used by `getDeals`; not combined with `brand_id`, which also filters by product ID. |
+| `id` | Product IDs (Medusa native). Used by `getBundles` and catalog hydration; not combined with `brand_id`, which also filters by product ID. |
 | `q` | Search text; trimmed, left out when empty. |
 | `limit` | 1 to 100 (`MAX_PAGE_SIZE`); default 50. Out-of-range or non-numbers are brought within bounds. |
 | `offset` | 0 or more; default 0. |
@@ -61,17 +61,16 @@ Native `GET /store/products` supplies `category_id`, `q`, `id`, `limit`, `offset
 2. **Extra product fields the store API accepts** (`STORE_PRODUCT_EXTRA_FIELDS`):
    - `brand.id`, `brand.name`, `brand.status`;
    - `eda_registration.registration_number`, `eda_registration.is_approved`;
-   - `categories.id`, `categories.name`, `categories.handle`. Medusa otherwise drops these silently.
+   - `categories.id`, `categories.name`, `categories.handle`. Medusa otherwise drops these silently;
+   - `variants.variant_rank`, so native default browsing and uncached page hydration expose the same ordering used by the ranking projection.
 
-`GET /store/product-search?q=…` returns `{ ids, count }`: product ids best match first, from the `product` index on Medusa's Search module (Postgres engine, `src/search/product.ts`).
+Text search runs through `GET /store/catalog?q=…` (below), on the same `product` index (Medusa's Search module, Postgres engine, `src/search/product.ts`).
 - **Searched:** English and Arabic names, brand, categories, variant names (flavor and size) and health-goal words. Not SKU, barcode or description.
 - **Matching:** typo tolerant (`pg_trgm`, words of 4+ letters) and as-you-type (the last word is a prefix). A leading Arabic "ال" is dropped from the search words.
-- **Parameters:** `q` 1–100 characters, `limit` 1–24 (default 6), `offset`, `category_id[]`, `brand_id[]`, `tag_id[]`.
-- **Scope:** only published products in the publishable key's sales channels.
-- **Storefront:** `searchProducts` reads the matched products through `GET /store/products?id=…` for prices and translations, keeping the order. The shop uses it when `q` is set; the header pop-up uses it as you type.
-- **Freshness:** product events update the index at once. Renamed categories or brands, Arabic name edits and variant edits are picked up by the nightly rebuild (`jobs/reindex-product-search.ts`, 04:00) or by a rebuild from Admin → Settings → Search indexes. Cached 60 s, cleared by any Admin write.
+- **Scope:** only published products in the publishable key's sales channel.
+- **Storefront:** `listCatalog` serves the shop, search, sorting, Deals and the header pop-up (6 suggestions as you type).
 
-`GET /store/deals` returns `{ product_ids }`: products with a sale Price List that is active, applies to everyone (no customer-group rules) and is running now, in EGP, at most 100 (`src/lib/deals.ts`). The storefront lists them through `GET /store/products?id=…`, so unpublished products stay hidden. Cached 60 s, cleared by any Admin write.
+`GET /store/deals` returns `{ bundle_ids }`: products with an inventory-kit variant made of two or more different stock items, at most 100 (`src/lib/deals.ts`). The storefront lists them through `GET /store/products?id=…` above the sale list on the unfiltered first page of `/deals`. Products on sale come from `GET /store/catalog?deals=true`. Cached 60 s, cleared by any Admin write.
 
 `GET /store/brands` lists every active brand, sorted by name and not capped. Each brand has `id`, `name`, `slug`, `logo`, `country`, `description`.
 
@@ -82,3 +81,22 @@ The product–brand link is one brand to many products (`src/links/product-brand
 - **No admin screen or API assigns a brand to a product yet.** Brand filters return nothing until products are linked, either by the catalog import (Core 4) or by a future admin task.
 - Categories have no product counts per filter option.
 - Search is Medusa's basic text match. Meilisearch stays a separate task.
+
+
+## Shared catalog ordering — 2026-10-24
+
+GET /store/catalog: required region_id; sort=default|price_asc|price_desc|in_stock|newest; optional q (max100), category_id/brand_id/tag_id arrays (max50), deals=true|false; limit1–24 and offset0–10000. Returns { ids, count, limit, offset, variants: { [product_id]: display_variant_id } }. The order and count cover the complete matching index before pagination. IDs are hydrated through /store/catalog-products, which reuses the installed native /store/products handler and validation/context middleware; native data remains authoritative.
+
+This initial projection supports only the configured default EGP region and a publishable key scoped to its one default sales channel. It never adds customer-group rules to public pricing. In-stock first means the displayed native variant is priced and purchasable, including native backorder/unmanaged rules, not a stock-quantity ranking.
+
+Invalid filters400; a changed/unsupported region or channel context409 (retryable); unhealthy/expired/unavailable ranking503 with Retry/default-shop recovery. New sorted responses are no-store; their product hydration uses a separate uncached endpoint requiring 1–24 explicit product IDs, offset0, limit1–24 and the region. It accepts only id/region_id/fields/limit/offset; no arbitrary browsing, cart context or filters. Ordinary cached routes ignore public Cache-Control bypass headers. Initial native index migration/seeding and a shared/worker process are required. No custom catalog module/table, provider, dependency or direct storefront DB access.
+
+Native module/workflow events refresh the index; eventless Medusa2.21 price-list updates are detected with a native list watermark. Sale boundaries expire ranking readiness and enqueue background recovery. Minute reconciliation catches interruptions and future boundaries; five-minute expiry bounds missed non-event edits. This is an eventual discovery projection; cart/checkout revalidate commerce. See docs/reviews/catalog-sorting.md for source/recovery/deployment evidence and limits.
+
+Normal listings select the first priced, purchasable native variant in variant_rank/created_at/id order, falling back to the first variant only if none is purchasable (Seif, 2026-10-24). This also applies to native default browsing, and aligns with the product page's initial first-purchasable choice. Absent variant prices remain zero, never inherited from another option. Deals still select the actual public sale variant with the largest absolute reduction; only that variant's price/stock are displayed.
+
+Successful ID-scoped refreshes preserve readiness, the previous full-build revision, price-list watermark and expiry (shortened if an earlier sale boundary is discovered). Full rebuilds change revision and mark readiness false before rewriting. A failed incremental write marks health false while it still owns the lock; an aborted/lost lease never performs a health write and expiry bounds recovery. A partial retry cannot bless an interrupted full rebuild. An ordinary incremental update may become visible during a request; pagination is an eventual discovery view, not a transaction-time stock snapshot. The route still rejects a full-build revision change, known price-list version changes and expired sale boundaries.
+
+Expired/unhealthy HTTP reads signal refresh at most once per five seconds per process. Failed event emission permits a retry; persistent health and the minute reconciliation job provide recovery independently of this best-effort guard. In-stock groups break ties by ascending product ID, without a newest-first promise inside each group. No additional context cache was introduced.
+
+Hydration deliberately remains a public, uncached read bounded to24 explicit IDs. Set an edge rate-limit policy before launch; no new application limiter or guessed proxy/IP policy is introduced here. The native route/middleware imports must be revalidated on a Medusa upgrade. A reproducible native projection error keeps sorted/Deals reads unavailable until repaired; default browsing remains available. Full reconciliation does not silently omit products, which would change the promised complete-set filtering/count semantics.

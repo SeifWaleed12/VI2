@@ -6,32 +6,43 @@ import {
 } from "@medusajs/medusa/core-flows"
 import { setupEgyptStore } from "../../src/scripts/setup-egypt-store"
 import setupHealthGoalTags from "../../src/scripts/setup-health-goal-tags"
-import reindexProductSearchJob from "../../src/jobs/reindex-product-search"
-import { invalidateStoreCache } from "../../src/lib/store-cache"
+import { refreshCatalog } from "../../src/lib/catalog-ranking-refresh"
+import { readCatalogState } from "../../src/lib/catalog-ranking"
 import { BRAND_MODULE } from "../../src/modules/brand"
 import type BrandModuleService from "../../src/modules/brand/service"
 
 jest.setTimeout(240 * 1000)
 
-// The product search index on Medusa's Search module (Postgres engine), through
-// our store route: typos, as-you-type, both languages, filters and visibility.
+// Text search in the catalog index on Medusa's Search module (Postgres engine),
+// through /store/catalog: typos, as-you-type, both languages, filters and visibility.
 medusaIntegrationTestRunner({
   testSuite: ({ api, getContainer }) => {
+    beforeAll(async () => {
+      // Let native initial seeding finish before the runner snapshots its connections.
+      for (let n = 0; n < 120; n++) {
+        if ((await readCatalogState(getContainer()).catch(() => undefined))?.ready === 1) return
+        await new Promise(resolve => setTimeout(resolve, 250))
+      }
+      throw new Error("Native catalog index did not initialize")
+    })
     describe("product search", () => {
       let storeApi: { headers: Record<string, string>, validateStatus: () => boolean }
       const ids: Record<string, string> = {}
       let categoryId: string
       let brandId: string
       let goalTagId: string
+      let regionId: string
 
-      const find = async (params: string) => (await api.get(`/store/product-search?${params}`, storeApi)).data as { ids: string[], count: number }
-      // The index fills in the background after product events and rebuilds.
-      // Admin saves clear the store cache; these direct workflow calls must do it themselves.
+      const get = (params: string) => api.get(`/store/catalog?region_id=${regionId}&${params}`, storeApi)
+      const find = async (params: string) => {
+        const { ids, count } = (await get(params)).data as { ids: string[], count: number }
+        return { ids, count }
+      }
+      // The index follows product events in the background, and answers 503 while it refreshes.
       const until = async (params: string, expected: (result: { ids: string[] }) => boolean) => {
         for (let attempt = 0; attempt < 60; attempt++) {
-          await invalidateStoreCache(getContainer() as never)
           const result = await find(params)
-          if (expected(result)) return result
+          if (result.ids && expected(result)) return result
           await new Promise((resolve) => setTimeout(resolve, 500))
         }
         return find(params)
@@ -42,8 +53,9 @@ medusaIntegrationTestRunner({
         await setupEgyptStore(container)
         await setupHealthGoalTags({ container, args: [] } as never)
         const query = container.resolve(ContainerRegistrationKeys.QUERY)
-        const { data: [store] } = await query.graph({ entity: "store", fields: ["id", "default_sales_channel_id"] })
+        const { data: [store] } = await query.graph({ entity: "store", fields: ["id", "default_sales_channel_id", "default_region_id"] })
         const { data: [key] } = await query.graph({ entity: "api_key", fields: ["token"], filters: { type: "publishable" } })
+        regionId = store.default_region_id as string
         storeApi = { headers: { "x-publishable-api-key": key.token as string }, validateStatus: () => true }
         await updateStoresWorkflow(container).run({ input: { selector: { id: store.id as string }, update: { supported_locales: [{ locale_code: "en-US" }, { locale_code: "ar-EG" }] } } })
 
@@ -74,8 +86,8 @@ medusaIntegrationTestRunner({
           create: [{ reference: "product", reference_id: ids["Zinc Tablets"], locale_code: "ar-EG", translations: { title: "أقراص الزنك" } }],
           update: [], delete: [],
         } })
-        // A brand link and an Arabic name emit no product event: the nightly rebuild picks them up.
-        await reindexProductSearchJob(container)
+        // A brand link and an Arabic name emit no product event: the reconcile job picks them up.
+        await refreshCatalog(container)
         await until(`q=${encodeURIComponent("الزنك")}`, (r) => r.ids.length > 0)
       })
 
@@ -96,12 +108,13 @@ medusaIntegrationTestRunner({
         expect((await find(`q=protein&category_id=${categoryId}`)).ids).toEqual([ids["Whey Protein"]])
         expect((await find(`q=protein&tag_id=${goalTagId}`)).ids).toEqual([ids["Whey Protein"]])
         expect(await find("q=protein&limit=1")).toEqual({ ids: [expect.any(String)], count: 2 })
+        expect((await find("q=protein&sort=price_asc")).ids.sort()).toEqual([ids["Protein Bar"], ids["Whey Protein"]].sort())
 
         expect((await find("q=creatine")).ids).toEqual([])
         expect((await find("q=whey")).ids).not.toContain(ids["Hidden Whey"])
 
-        expect((await api.get("/store/product-search?q=", storeApi)).status).toBe(400)
-        expect((await api.get("/store/product-search?q=whey&limit=500", storeApi)).status).toBe(400)
+        expect((await get("q=whey&limit=500")).status).toBe(400)
+        expect((await get(`q=${"a".repeat(101)}`)).status).toBe(400)
 
         const container = getContainer()
         await updateProductsWorkflow(container).run({ input: { selector: { id: ids["Protein Bar"] }, update: { title: "Magnesium Glycinate" } } })

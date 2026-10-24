@@ -8,7 +8,6 @@ import {
 } from "@/lib/medusa/services/products";
 import { getBrands } from "@/lib/medusa/services/brands";
 import { getTagIds } from "@/lib/medusa/services/tags";
-import { searchProducts } from "@/lib/medusa/services/search";
 import { loadCategoryDirectory } from "@/lib/medusa/category-directory";
 import type { ShopProps } from "../ShopClient";
 
@@ -28,9 +27,9 @@ jest.mock("@/lib/medusa/services/products", () => ({
   listProducts: jest.fn(),
   InvalidCatalogFilterError: class extends Error {},
 }));
+jest.mock("@/lib/medusa/services/catalog", () => ({ listCatalog: (params: Record<string, unknown>) => { const { sort, deals, ...rest } = params; void sort; void deals; return listProducts(rest as never); } }));
+jest.mock("@/lib/medusa/services/tags", () => ({ getTagIds: jest.fn(async () => ({})) }));
 jest.mock("@/lib/medusa/services/brands", () => ({ getBrands: jest.fn() }));
-jest.mock("@/lib/medusa/services/tags", () => ({ getTagIds: jest.fn() }));
-jest.mock("@/lib/medusa/services/search", () => ({ searchProducts: jest.fn() }));
 jest.mock("@/lib/medusa/category-directory", () => ({
   loadCategoryDirectory: jest.fn(),
 }));
@@ -71,9 +70,6 @@ beforeEach(() => {
   jest
     .mocked(listProducts)
     .mockResolvedValue({ products: [], count: 137, limit: 24, offset: 120 });
-  jest
-    .mocked(searchProducts)
-    .mockResolvedValue({ products: [], count: 137, limit: 24, offset: 120 });
 });
 it("combines descendant IDs, brand IDs, search, locale and a page beyond the first 100", async () => {
   const result = await render({
@@ -81,7 +77,7 @@ it("combines descendant IDs, brand IDs, search, locale and a page beyond the fir
     handle: "vitamins",
     query: { brand_id: brand.id, q: "  بروتين ", page: "6" },
   });
-  expect(searchProducts).toHaveBeenCalledWith({
+  expect(listProducts).toHaveBeenCalledWith({
     locale: "ar",
     limit: 24,
     offset: 120,
@@ -89,7 +85,6 @@ it("combines descendant IDs, brand IDs, search, locale and a page beyond the fir
     brand_id: [brand.id],
     q: "بروتين",
   });
-  expect(listProducts).not.toHaveBeenCalled();
   expect(result.page.count).toBe(137);
   expect(result.error).toBeNull();
 });
@@ -160,7 +155,7 @@ it("keeps search and ID-based brand filtering usable when their directories fail
     locale: "en",
     query: { q: "protein", brand_id: brand.id },
   });
-  expect(searchProducts).toHaveBeenCalledWith({
+  expect(listProducts).toHaveBeenCalledWith({
     locale: "en",
     limit: 24,
     offset: 0,
@@ -178,13 +173,13 @@ it("keeps EN and AR requests separate when they run concurrently", async () => {
     render({ locale: "en", query: { q: "protein" } }),
     render({ locale: "ar", query: { q: "بروتين" } }),
   ]);
-  expect(searchProducts).toHaveBeenCalledWith({
+  expect(listProducts).toHaveBeenCalledWith({
     locale: "en",
     q: "protein",
     limit: 24,
     offset: 0,
   });
-  expect(searchProducts).toHaveBeenCalledWith({
+  expect(listProducts).toHaveBeenCalledWith({
     locale: "ar",
     q: "بروتين",
     limit: 24,
@@ -317,13 +312,4 @@ it("keeps goal-filtered pages out of search results", async () => {
   jest.mocked(getTagIds).mockResolvedValue({ "stress-sleep": "ptag_sleep" });
   const metadata = await getShopMetadata({ locale: "en", query: { goal: "stress-sleep" } });
   expect(metadata.robots).toEqual({ index: false, follow: true });
-});
-
-it("browses without search, and ranks a text search through product search with the same filters", async () => {
-  jest.mocked(getTagIds).mockResolvedValue({ "immune-support": "ptag_immune" });
-  await render({ locale: "en", handle: "vitamins", query: { goal: "immune-support" } });
-  expect(listProducts).toHaveBeenCalledTimes(1);
-  expect(searchProducts).not.toHaveBeenCalled();
-  jest.mocked(searchProducts).mockRejectedValueOnce(new Error("offline"));
-  expect((await render({ locale: "en", query: { q: "whey" } })).error).toBe("unavailable");
 });

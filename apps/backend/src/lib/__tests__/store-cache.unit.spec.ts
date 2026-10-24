@@ -97,3 +97,11 @@ it("clears the store cache after a successful admin write only", () => {
   finish(200)!()
   expect(cache.invalidate).toHaveBeenCalledWith("store-cache:*")
 })
+
+it.each(["/store/products?limit=5", "/store/regions", "/store/product-categories"])("does not let a public no-cache header bypass %s", async originalUrl => {
+  const cache = fakeCache()
+  await run(request(cache, { originalUrl }), response())
+  const next = await run(request(cache, { originalUrl, headers: { ...request(cache).headers, "cache-control": "no-cache" } }), response())
+  expect(next).not.toHaveBeenCalled()
+  expect(cache.get).toHaveBeenCalledTimes(2)
+})

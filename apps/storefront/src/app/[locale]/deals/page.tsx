@@ -1,70 +1,39 @@
-import { cache } from "react";
 import type { Metadata } from "next";
-import Link from "@/components/LocaleLink";
 import ProductCard from "@/components/ProductCard";
-import { isLocale, message, type Locale } from "@/lib/i18n";
-import { getDeals } from "@/lib/medusa";
-import type { Product } from "@/types/product";
+import { isLocale, message } from "@/lib/i18n";
+import { getBundles } from "@/lib/medusa";
+import ShopView, { getShopMetadata } from "../shop/ShopView";
+import type { ShopSearch } from "@/lib/shop-query";
 import styles from "../shop/Shop.module.css";
 import deals from "./Deals.module.css";
 
-type DealsProps = { params: Promise<{ locale: string }> };
-
-// Bundles and products with a sale Price List running now (apps/backend/src/lib/deals.ts).
-const loadDeals = cache(async (locale: Locale) => getDeals(locale).catch(() => null));
-
-const localeOf = async (params: DealsProps["params"]) => {
-  const { locale } = await params;
-  return isLocale(locale) ? locale : "en";
-};
-
-export async function generateMetadata({ params }: DealsProps): Promise<Metadata> {
-  const locale = await localeOf(params);
-  const found = await loadDeals(locale);
-  return {
-    title: `${message(locale, "deals.title")} | Vi2`,
-    description: message(locale, "deals.description"),
-    ...(found && (found.deals.length || found.bundles.length) ? {} : { robots: { index: false, follow: true } }),
-  };
+type DealsProps = { params: Promise<{ locale: string }>; searchParams: Promise<ShopSearch> };
+async function input({ params, searchParams }: DealsProps) {
+  const [{ locale }, query] = await Promise.all([params, searchParams]);
+  return { locale, query: { ...query, deals: "1" } };
+}
+export async function generateMetadata(props: DealsProps): Promise<Metadata> {
+  return getShopMetadata(await input(props));
 }
 
-export default async function DealsPage({ params }: DealsProps) {
-  const locale = await localeOf(params);
-  const msg = (key: Parameters<typeof message>[1]) => message(locale, key);
-  const found = await loadDeals(locale);
-  const section = (title: Parameters<typeof message>[1], products: Product[]) =>
-    products.length > 0 && (
-      <section className={deals.section} aria-labelledby={`deals-${title}`}>
-        <h2 id={`deals-${title}`}>{msg(title)}</h2>
-        <div className={styles.grid}>
-          {products.map((product) => (
-            <ProductCard key={product.id} product={product} />
-          ))}
-        </div>
-      </section>
-    );
+// Bundles (inventory-kit products) lead the unfiltered first page; the sortable
+// sale list follows. A search or filter shows only matching sale products.
+export async function Bundles({ locale, query }: { locale: string; query: ShopSearch }) {
+  const filtered = ["q", "brand_id", "brand", "category_id", "category", "goal"].some((key) => query[key] !== undefined);
+  if (!isLocale(locale) || filtered || (query.page !== undefined && query.page !== "1")) return null;
+  const bundles = await getBundles(locale).catch(() => []);
+  if (!bundles.length) return null;
   return (
-    <main className={styles.page} data-no-translate>
-      <header className={styles.intro}>
-        <h1>{msg("deals.title")}</h1>
-        <p>{msg("deals.description")}</p>
-      </header>
-      {found && (found.bundles.length || found.deals.length) ? (
-        <>
-          {section("deals.bundles", found.bundles)}
-          {section("deals.onSale", found.deals)}
-        </>
-      ) : (
-        <div className={styles.empty} role={found ? undefined : "alert"}>
-          <h2>{msg(found ? "deals.emptyTitle" : "deals.errorTitle")}</h2>
-          <p>{msg(found ? "deals.emptyDescription" : "deals.errorDescription")}</p>
-          <div className={styles.actions}>
-            {/* A document navigation retries the server request. */}
-            {!found && <a href={`/${locale}/deals`}>{msg("catalog.retry")}</a>}
-            <Link href="/shop">{msg("catalog.all")}</Link>
-          </div>
-        </div>
-      )}
-    </main>
+    <section className={deals.section} aria-labelledby="deals-bundles">
+      <h2 id="deals-bundles">{message(locale, "deals.bundles")}</h2>
+      <div className={styles.grid}>
+        {bundles.map((product) => <ProductCard key={product.id} product={product} />)}
+      </div>
+    </section>
   );
+}
+
+export default async function DealsPage(props: DealsProps) {
+  const shop = await input(props);
+  return <ShopView {...shop} lead={<Bundles {...shop} />} />;
 }
