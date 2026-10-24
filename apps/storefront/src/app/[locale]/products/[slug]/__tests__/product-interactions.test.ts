@@ -74,8 +74,11 @@ it("never submits an impossible combination, and sends the exact valid variant a
   addItem.mockResolvedValueOnce(true);
   await byClass(tree, "addButton").props.onClick!();
   expect(addItem).toHaveBeenCalledWith(expect.objectContaining({ variantId: "medium", price: 150, compareAtPrice: undefined }), 2);
-  byClass(render(), "buyNow").props.onClick!();
-  expect(push).toHaveBeenCalledWith("/checkout?buyNow=p&quantity=2&variantId=medium");
+  // Buy now adds the same variant to the cart without opening the drawer, then opens checkout.
+  addItem.mockResolvedValueOnce(true);
+  await byClass(render(), "buyNow").props.onClick!();
+  expect(addItem).toHaveBeenLastCalledWith(expect.objectContaining({ variantId: "medium", price: 150 }), 2, { quiet: true });
+  expect(push).toHaveBeenCalledWith("/checkout");
 });
 it("guards repeated cart activation while the native cart request is pending", async () => {
   let resolve!: (value: boolean) => void;

@@ -269,13 +269,6 @@
   background: var(--white);
 }
 
-.eda {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px 12px;
-}
-
 .edaBadge {
   display: inline-flex;
   align-items: center;

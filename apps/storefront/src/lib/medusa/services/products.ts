@@ -206,17 +206,23 @@ export async function listProducts(params: ListProductsParams): Promise<ProductP
   }
 }
 
-// Products with a sale price running now (Admin → Price Lists, type Sale).
-export async function getDeals(locale: Locale): Promise<Product[]> {
-  let ids: string[];
+export type DealsPage = { deals: Product[]; bundles: Product[] };
+
+// Products with a sale price running now (Admin → Price Lists, type Sale), and
+// bundles: inventory-kit products, at their own price. A bundle on sale shows
+// once, under bundles.
+export async function getDeals(locale: Locale): Promise<DealsPage> {
+  let found: { product_ids?: string[]; bundle_ids?: string[] };
   try {
-    ids = (await medusa.client.fetch<{ product_ids: string[] }>("/store/deals", { method: "GET" }))?.product_ids ?? [];
+    found = (await medusa.client.fetch<{ product_ids: string[]; bundle_ids: string[] }>("/store/deals", { method: "GET" })) ?? {};
   } catch {
     throw new Error("Deals temporarily unavailable.");
   }
-  if (!ids.length) return [];
-  const { products } = await listProducts({ locale, id: ids, limit: MAX_PAGE_SIZE });
-  return products.map(asDeal).filter((product): product is Product => product !== null);
+  const bundleIds = found.bundle_ids ?? [];
+  const saleIds = (found.product_ids ?? []).filter((id) => !bundleIds.includes(id));
+  const read = async (ids: string[]) => (ids.length ? (await listProducts({ locale, id: ids, limit: MAX_PAGE_SIZE })).products : []);
+  const [sale, bundles] = await Promise.all([read(saleIds), read(bundleIds)]);
+  return { deals: sale.map(asDeal).filter((product): product is Product => product !== null), bundles };
 }
 
 // The backend lists every product named in a sale price list; only Medusa's

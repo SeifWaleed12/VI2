@@ -30,13 +30,14 @@ it("shows only real product facts, with no serving, form or delivery-threshold c
   }
 });
 
-it("shows the EDA number, and the approval badge only when approved", () => {
+it("shows only the EDA approved badge, never the registration number", () => {
   const approved = render({ eda: { registrationNumber: "12345/2026", approved: true } });
-  expect(approved).toContain("12345/2026");
   expect(approved).toContain("EDA approved");
+  expect(approved).not.toContain("12345/2026");
   const pending = render({ eda: { registrationNumber: "999", approved: false } });
-  expect(pending).toContain("999");
+  expect(pending).not.toContain("999");
   expect(pending).not.toContain("EDA approved");
+  expect(pending).not.toContain("EDA registration");
   expect(render({})).not.toContain("EDA registration");
 });
 
