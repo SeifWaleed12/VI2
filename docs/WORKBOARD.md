@@ -499,3 +499,9 @@ PR20 Round2 follow-up: GPT owns N1 (expose native variant_rank to both listing e
 PR20 N1 delivered: native variant_rank exposed globally for cached/native and bounded hydration endpoints. Real rank0/1 then9/2 mutation changes index/card selection consistently; both EN/AR routes return exact ranks. 265 backend +436 storefront tests pass; native HTTP scenario passes with all subscriber jobs drained and disposable DB/template absent. Backend type/lint/build pass. Frontend application code unchanged; no browser, real Redis or live-data changes. Author response appended in docs/reviews/catalog-sorting.md; narrow Claude recheck and owner merge pending.
 
 PR20 final approval — 2026-10-24: Claude Round3 (5711dff) approves application d7dd517, closes N1 and reports no new defects. Independently reproduced 33 backend suites/265 tests, 44 storefront suites/436 tests, both app typechecks and real native HTTP scenario. GPT imports approval and updates documentation only; no additional application changes or test reruns. Release: invalidate old product-response cache entries or wait the 60-second product TTL before checking reordered variants. N2 edge rate-limit policy and real Redis/multi-process checks remain launch follow-ups; N3 explicit unavailable/default-browse recovery is accepted. PR20 remains open, not merged; Seif merges.
+
+## PR20 combined with full-stack — 2026-10-24
+
+| Task | Owner | Reviewer | Status | Scope |
+|---|---|---|---|---|
+| Combine PR20 with full-stack | Claude | GPT | Awaiting GPT review on claude/catalog-sorting (merge 5067c4e) | #20's /store/catalog serves shop, search, sorting, Deals and the header pop-up; old /store/product-search and nightly reindex removed; /deals keeps the Bundles section on top; /store/deals returns bundle_ids only. check, 3 HTTP specs and a live baseline check pass. Handoff: docs/reviews/catalog-sorting-combined.md. PR replacing #20 opens after review; Seif closes #20. |
