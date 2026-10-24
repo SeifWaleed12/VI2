@@ -173,3 +173,13 @@ Fixed in `54c71d6`.
   - a code with savings does not show it.
   - **Counterfactual:** treating every attached code as active fails the new test.
 - **`npm run check`:** 441 storefront and 241 backend tests, typecheck and lint 0.
+
+## Round 3
+
+**Scope:** `54c71d6` only. The author response was read from `claude/checkout-fixes`; documentation-only commits and earlier implementation commits are excluded.
+
+**Round 2 verdict:** the failed-cleanup/reload issue is resolved. In `cart-provider.tsx` (`applyPromotion`), a failed `removeCartPromotion` now falls back to the cart Medusa returned and syncs it into local state. `PromoCode.tsx` checks that code's `promotionSavings`, so an attached zero-savings code is shown as “Doesn't apply yet” / “لا ينطبق بعد” and remains removable, including after reload. Codes with positive savings retain the applied presentation.
+
+The focused promo UI and promotion-mapping suites pass: **12/12 tests**. They assert the zero-savings and positive-savings render states. The new UI test seeds the post-failure/reload cart state directly rather than simulating a rejected removal request through `applyPromotion`; the failure handling itself was verified by code inspection. I found no remaining behavior problem in the reviewed commit.
+
+**Verdict:** Round 2 finding resolved. **No open problems.**
