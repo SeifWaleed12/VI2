@@ -54,16 +54,22 @@ export default function PromoCode({ collapsible = false }: { collapsible?: boole
     <div className={styles.promo} data-no-translate>
       {applied.length > 0 && (
         <ul className={styles.promoChips} aria-label={msg("promo.appliedList")}>
-          {applied.map((promotion) => (
-            <li key={promotion.code}>
+          {applied.map((promotion) => {
+            // An attached code that takes nothing off (for example after a reload)
+            // never looks applied.
+            const active = (cart?.promotionSavings?.[promotion.code.toUpperCase()] ?? 0) > 0;
+            return (
+            <li key={promotion.code} className={active ? undefined : styles.promoChipIdle}>
               <Tag size={15} strokeWidth={1.6} aria-hidden="true" />
               <strong>{promotion.code}</strong>
+              {!active && <span>{msg("promo.inactive")}</span>}
               <button type="button" onClick={() => removePromotion(promotion.code)} aria-label={msg("promo.removeCode").replace("{code}", promotion.code)}>
                 <X size={15} strokeWidth={1.6} aria-hidden="true" />
                 {msg("promo.remove")}
               </button>
             </li>
-          ))}
+            );
+          })}
         </ul>
       )}
 
