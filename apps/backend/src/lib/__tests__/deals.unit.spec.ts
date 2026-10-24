@@ -1,4 +1,4 @@
-import { saleProductIds, type SalePriceList } from "../deals"
+import { kitProductIds, saleProductIds, type SalePriceList } from "../deals"
 
 const now = new Date("2026-11-01T12:00:00.000Z")
 const price = (productId: string, currency = "egp") => ({ currency_code: currency, price_set: { variant: { product_id: productId } } })
@@ -23,4 +23,15 @@ it("leaves out sales not started, already ended, or only for a customer group", 
 
 it("ignores prices in another currency and prices without a product", () => {
   expect(saleProductIds([{ prices: [price("prod_usd", "usd"), null, { currency_code: "egp", price_set: null }] }], now)).toEqual([])
+})
+
+it("finds bundles: variants made of several stock items, or more than one of an item", () => {
+  const link = (variant: string, product: string, required = 1) => ({ variant_id: variant, required_quantity: required, variant: { product_id: product } })
+  expect(kitProductIds([
+    link("v_whey", "prod_whey"),
+    link("v_set", "prod_set"), link("v_set", "prod_set"),
+    link("v_pack", "prod_pack", 3),
+    link("v_set2", "prod_set"), link("v_set2", "prod_set"),
+  ])).toEqual(["prod_set", "prod_pack"])
+  expect(kitProductIds([])).toEqual([])
 })

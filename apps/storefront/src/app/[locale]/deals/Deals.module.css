@@ -1,0 +1,11 @@
+.section {
+  padding-top: 40px;
+}
+
+.section h2 {
+  margin: 0 0 24px;
+  font-family: var(--font-heading), sans-serif;
+  font-size: var(--text-section);
+  font-weight: 400;
+  line-height: 1.05;
+}

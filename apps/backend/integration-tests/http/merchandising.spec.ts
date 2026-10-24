@@ -1,9 +1,10 @@
 import { medusaIntegrationTestRunner } from "@medusajs/test-utils"
 import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
-import { createPriceListsWorkflow, createProductsWorkflow, updatePriceListsWorkflow } from "@medusajs/medusa/core-flows"
+import { createInventoryItemsWorkflow, createPriceListsWorkflow, createProductsWorkflow, updatePriceListsWorkflow } from "@medusajs/medusa/core-flows"
 import { setupEgyptStore } from "../../src/scripts/setup-egypt-store"
 import setupHealthGoalTags, { HEALTH_GOAL_TAGS } from "../../src/scripts/setup-health-goal-tags"
 import { dealProductIds } from "../../src/lib/deals"
+import { invalidateStoreCache } from "../../src/lib/store-cache"
 
 jest.setTimeout(240 * 1000)
 
@@ -19,6 +20,8 @@ medusaIntegrationTestRunner({
 
       beforeEach(async () => {
         const container = getContainer()
+        // The runner empties the database between tests; a cached /store/deals answer would outlive it.
+        await invalidateStoreCache(container as never)
         await setupEgyptStore(container)
         // Run twice: the second run must not fail or duplicate.
         await setupHealthGoalTags({ container, args: [] } as never)
@@ -58,6 +61,21 @@ medusaIntegrationTestRunner({
           sale("Override", { type: "override" }),
           sale("Draft sale", { status: "draft" }),
         ] as never } })
+      })
+
+      it("lists inventory-kit products as bundles, and normal products not", async () => {
+        const container = getContainer()
+        const { data: [store] } = await container.resolve(ContainerRegistrationKeys.QUERY).graph({ entity: "store", fields: ["default_sales_channel_id"] })
+        const { result: parts } = await createInventoryItemsWorkflow(container).run({ input: { items: [{ sku: "CRE-300", title: "Creatine 300g" }, { sku: "WHEY-2KG", title: "Whey 2kg" }] } })
+        const { result: [bundle] } = await createProductsWorkflow(container).run({ input: { products: [{
+          title: "Strength Set", status: "published", sales_channels: [{ id: store.default_sales_channel_id as string }],
+          options: [{ title: "Set", values: ["One"] }],
+          variants: [{ title: "One", options: { Set: "One" }, manage_inventory: true, prices: [{ amount: 1500, currency_code: "egp" }],
+            inventory_items: [{ inventory_item_id: parts[0].id, required_quantity: 1 }, { inventory_item_id: parts[1].id, required_quantity: 2 }] }],
+        }] } })
+        const response = await api.get("/store/deals", storeApi)
+        expect(response.data.bundle_ids).toEqual([bundle.id])
+        expect(response.data.product_ids).not.toContain(bundle.id)
       })
 
       it("lists only products with a sale running now for everyone, and shows the sale and normal price", async () => {

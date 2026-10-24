@@ -241,6 +241,24 @@ export async function applyCartPromotion(
   return mapMedusaCart(cart);
 }
 
+export type PromoResult =
+  | { ok: true }
+  | { ok: false; reason: "loading" | "invalid" | "not_applicable" | "network" };
+
+// Medusa accepts a real code that fits nothing in the cart (200) but leaves it
+// off the cart, so a code counts as applied only when the cart now carries it.
+export function promoOutcome(cart: Cart, code: string): PromoResult {
+  const wanted = code.trim().toLowerCase();
+  return cart.promotions.some((promotion) => promotion.code?.toLowerCase() === wanted)
+    ? { ok: true }
+    : { ok: false, reason: "not_applicable" };
+}
+
+// Medusa answers 400 for a code that does not exist or has ended.
+export function promoFailure(error: unknown): PromoResult {
+  return { ok: false, reason: (error as { status?: unknown } | null)?.status === 400 ? "invalid" : "network" };
+}
+
 export async function removeCartPromotion(
   cartId: string,
   promoCode: string,
