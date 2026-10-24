@@ -185,3 +185,31 @@ Validation: backend33 suites/265 tests and storefront44 suites/436 tests pass (7
 The first expanded native HTTP run passed all assertions but revealed pending local subscribers after runner teardown. The fixture now tracks the real ranking-lock promises and waits for completion before its database closes; no native projection, event emission or locking behavior is replaced. Final native scenario:1 passed,73.476s including setup/migrations (40.988s scenario); no open-handle warning or post-teardown subscriber errors. Both endpoints returned ranks9/2 in EN/AR, and native mutation moved index selection from the first option to the second. The original pagination, visibility, reservation, sale-boundary and incremental-read tests still pass. Disposable database/template confirmed absent afterward with a read-only name query: []. Empty Resend settings, no provider calls.
 
 No live migration, catalog/provider changes or merge. Claude can recheck N1 and the fixture-only additions; owner merges.
+
+## Round3 — Claude recheck of N1 at d7dd517 (2026-10-24)
+Reviewer: Claude. Range cacafbf..d7dd517. Review only; no application code touched, nothing pushed or merged.
+
+**Verdict: approve.** N1 is fixed and the regression coverage is real. N2 and N3 are retained as stated and I accept both as follow-ups. No new defects.
+
+### What I ran
+- Backend source unit tests with the documented command: **33 suites / 265 tests pass**. Storefront: **44 suites / 436 tests pass**. `tsc --noEmit` clean for both apps. The counts match the author's.
+- The PR's real Medusa/Postgres scenario, including the new reordered-variants case: **passes**. Isolated database created and dropped by the Medusa test runner, in-memory event bus and cache (no `REDIS_URL`), `RESEND_API_KEY`/`RESEND_FROM` unset. Not run: production builds, a browser pass, real Redis.
+- A throwaway probe of mine (not committed) on a second isolated database. One product with three purchasable variants, reordered through the native update workflow to ranks a=5, b=5, c=1, then read through the real routes using the storefront's actual `PRODUCT_FIELDS` string.
+
+### N1 verification
+- **Exposure.** `variants.variant_rank` is added to the one shared `STORE_PRODUCT_EXTRA_FIELDS` list that feeds both `/store/products` and `/store/products/:id`, and `/store/catalog-products` reuses it. Probe: the list, hydration and single-product retrieval responses all returned `a:5, b:5, c:1`. The earlier probe returned no rank on these same requests, so the field is now actually reaching the storefront. The field is a harmless public ordering integer.
+- **Index agrees.** For that product the index selected variant c (rank 1), the same variant the storefront mapper picks when it sorts by the exposed rank first.
+- **Regression coverage.** The HTTP scenario now creates a product, sets ranks 0/1, waits for the index to show the first option, then reorders to 9/2 through the native workflow. It requires both endpoints in English and Arabic to return exactly 9 and 2, the index to move to the second (50 EGP) option, and the rank-sorted hydrated list to start with that option. Two unit tests (backend projection, storefront mapper) give both options purchasable prices and make rank beat `created_at` and id. Together these fail if rank is dropped on either side, which is the divergence I flagged.
+- **Fixture-only change.** The lock spy tracks `search:seed:product` executions and drains them before the runner closes the database. It does not alter projection, events or locking. One note: if an assertion fails earlier in that test, the drain and `mockRestore` are skipped, which can only add post-teardown noise to a failing run, not to a passing one.
+
+### Notes
+- **Deploy note (info).** `/store/products` responses are cached in Redis for their TTL, so entries cached before this deploy have no rank until they expire or are invalidated; until then the storefront falls back to `created_at`/id ordering. This matters only for products whose ranks are not all equal. Flush or wait out the product-cache TTL on release.
+- **Ties (info).** Equal ranks fall back to `created_at` and id on both sides (probe: a and b, both rank 5, stay deterministic), and the backend and storefront use the same comparator.
+- **N2.** Accepted as a launch follow-up: edge rate limit for the public bounded hydration route, and retest its Medusa-internal imports on an upgrade.
+- **N3.** Accepted: a persistent projection error keeps sorted/Deals on the recovery state rather than serving silently incomplete counts, and default browsing remains available.
+
+### Not verified
+Real Redis behavior and cache invalidation across processes, production-scale performance, real-browser rendering and the production build.
+
+### Disposition
+N1 closed. PR 20 is approved from my side for the owner to merge, with N2 and the cache-flush deploy note as follow-ups.
