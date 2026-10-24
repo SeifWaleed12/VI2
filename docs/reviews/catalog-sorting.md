@@ -68,3 +68,45 @@ Not checked: real Redis disconnect/reconnect across multiple server/worker proce
 - No package/lock/config/AGENTS changes, live DB migration/backfill, external provider calls or merge. Claude review and owner merge remain pending.
 
 Publication: PR20 https://github.com/SeifWaleed12/VI2/pull/20 ; application479c444; branch codex/catalog-sorting -> full-stack. Verified open/unmerged, clean merge status. This publication note changes documentation only; all application source is the validated commit above. Review pending.
+
+## Round1 — Claude review of PR 20 (2026-10-24)
+Reviewer: Claude. Range origin/full-stack..dc98ca2 (application commit 479c444). Review only; no application code touched, nothing pushed or merged.
+
+**Verdict: changes requested (one medium, two low-medium).** The sorting/index design is sound and the real Medusa/Postgres scenario passes; the incremental-refresh readiness flip (F1), the duplicated goal chip (F2) and the cache-bypass header (F3) should be fixed before merge. Everything else below is minor or informational.
+
+### What I ran
+- Backend source unit tests: 31 suites / 244 tests pass (the author reports 32 / 245; see F6). Storefront: 44 suites / 429 tests pass, `tsc --noEmit` clean.
+- The PR's own real-Medusa HTTP scenario `integration-tests/http/catalog-sorting.spec.ts`: **1 passed**, against a disposable Postgres database created and dropped by the Medusa test runner, in-memory event bus/cache (no `REDIS_URL`), `RESEND_API_KEY`/`RESEND_FROM` unset. No provider calls, no real data touched.
+- A throwaway probe spec of mine (not committed, removed with the worktree) on a second disposable database, to cover what the PR's spec does not: multi-variant products, in-stock ordering, deal-variant choice, and behavior during an incremental refresh.
+
+### Verified correct
+- **Global sort before pagination, exact count.** Order and `count` come from the index over the whole matching set; ties break on `id`; unpriced products sort after priced; a 24-per-page walk returned 113 unique ids; deals offset 96 returned 11 of 107.
+- **Sale boundaries.** `catalogValidUntil` takes the next active price-list start/end; a request past `valid_until` returns 503 until the worker refreshes, and real scheduled start/end crossings entered and left Deals with GET traffic only. The re-read of `revision`/`valid_until`/watermark after the search closes the stale-read race.
+- **Eventless price-list update.** The `price_list` count + latest `updated_at` watermark detected a status change to draft, and a description-only edit left Deals consistent (probe: 200 with the right count).
+- **Variant prices.** Index price follows the displayed (first-ranked) variant and matches native `/store/products`; bulk-quantity, customer-group and override price lists do not leak into public price or Deals. For a product with two sale variants the deal variant is the one with the largest discount (probe: 300→150 chosen over 200→190), and the card hydrates that variant's id/price.
+- **Stock.** Availability uses Medusa's `getVariantAvailability` with the channel's locations; managed-with-no-stock is unavailable, unmanaged and backorder are available; reservation create/delete flipped availability through native events without explicit ingestion.
+- **Filtering.** Category, search, brand and tag filters intersect through the same index query; hidden-channel and draft products are excluded; invalid sort/context returns 400; `limit`/`offset`/id-list caps are enforced by a strict schema.
+- **Lock sharing.** Refresh, reconciliation and native seeding all run under the same `search:seed:product` lock, with abort-signal guards before each write.
+
+### Findings
+**F1 (medium) — every incremental refresh makes sorted/Deals reads fail with 503.** `refreshCatalog` calls `writeCatalogState(container, 0, 0)` before it touches the products, and the route returns 503 whenever `ready !== 1`. So each native product/variant/price/inventory/reservation event, including an ordinary order's reservation, takes the whole sorted catalog down for the duration of the refresh, even though only one product is being rewritten. In my probe, a refresh of a **single** product produced 3 consecutive 503s and zero 200s on a 5-product catalog on a local in-memory setup; the window grows with catalog size, Redis latency and lock contention, and each 503 also emits another `catalog-ranking.refresh` event. On a store taking orders the shop would show "temporarily unavailable" at random. Suggested fix: keep `ready: 1` and the existing `valid_until` for id-scoped refreshes and mark the state unhealthy only on failure (the 5-minute `valid_until` already bounds a crashed worker); reserve the `ready: 0` write for full rebuilds. A test that polls the route during a one-product refresh and expects no 503 would pin it.
+
+**F2 (low-medium, UI bug) — the active health-goal chip renders twice.** `ShopClient.tsx` (around lines 262–271) has two identical `filters.goal && isHealthGoal(...)` blocks, so `/shop?goal=...` shows duplicate, identical chips (same label, same clear link). The fixtures did not use a goal, so tests and the design scan missed it. Delete one block and add a render test with `goal` set.
+
+**F3 (low-medium, perf/abuse) — `Cache-Control: no-cache` now bypasses the public Redis cache for every cached store route.** `cacheStoreGet` skips the cache when the request header is `no-cache`. The storefront needs that for hydration, but any anonymous client (and every browser hard reload) can send it to any route using the middleware and force it to the database. Prefer a narrow, non-forgeable switch (a dedicated route, or a server-side secret header only the hydration path sends), or rate-limit it.
+
+**F4 (low) — anonymous 503s fan out refresh events.** The route emits `catalog-ranking.refresh` for every unhealthy/expired request. Handlers coalesce after taking the lock and re-checking freshness, but each still takes the lock and queries state and the price-list watermark. While F1 exists this fires continuously; even after F1, add a short guard (emit at most once per few seconds per process).
+
+**F5 (low, consistency) — listing variant vs product-page variant.** The index (and the contract) deliberately use the first-ranked variant for price and in-stock. Probe: a product whose first variant is unpriced but whose second sells at 50 EGP is `catalog_priced: 0` and sorts last; one whose first variant is sold out but whose second is unmanaged and priced has `catalog_available: 0`. The card will say "unavailable" while the product page (PR 19, whose initial selection prefers the first purchasable variant) can open on a buyable variant. This matches the documented design, but the two PRs disagree about "the" variant; pick one rule or record it as accepted in the contract.
+
+**F6 (low, process) — claimed counts do not match the head.** The review file reports 32 suites / 245 tests for the backend; the PR head runs 31 / 244. Likely a locally added test that was not committed; please confirm nothing is missing from the PR.
+
+**F7 (info) — context mismatch is reported as an invalid filter.** A `region_id`/channel mismatch returns 400, which the storefront maps to `InvalidCatalogFilterError` (the "invalid filters" page). If the default region ever changes between the storefront's cached region and the backend, shoppers see a filter error instead of a retry. Consider 409/503 for context mismatch.
+
+**F8 (info) — hygiene.** `catalogContext` runs two graph queries on every request, plus two watermark queries; fine at this size, worth a short TTL later. Within `in_stock` the order inside each availability group is by `id` (oldest first), not newest; acceptable but undocumented.
+
+### Not verified
+Real Redis disconnect/reconnect and multi-process lock behavior, production-size or deep-page performance, the response-time numbers in the author's notes, real browser rendering (I did not run the storefront against this backend), physical touch/screen-reader behavior, and a production build of the PR. The integration run used the in-memory event bus, so Redis retry/backoff is as untested for me as for the author.
+
+### Disposition
+Please fix F1–F3 (F4 with F1) and re-request review; F5 needs an owner decision; the rest can ride along. Sorting should not merge until F1 and F2 are addressed.
