@@ -116,14 +116,20 @@ describe("catalog contract (docs/CATALOG-CONTRACT.md)", () => {
   });
 });
 
-it("lists deals by the ids the backend gives, and asks nothing more when there are none", async () => {
-  jest.mocked(medusa.client.fetch).mockResolvedValueOnce({ product_ids: ["prod_a", "prod_b"] } as never);
-  jest.mocked(medusa.store.product.list).mockResolvedValueOnce({ products: [{ id: "prod_a", variants: [{ id: "v_a", calculated_price: { calculated_amount: 800, original_amount: 1000 } }] }], count: 1 } as never);
-  expect((await getDeals("ar")).map((p) => p.id)).toEqual(["prod_a"]);
+it("lists deals and bundles by the ids the backend gives, and asks nothing more when there are none", async () => {
+  jest.mocked(medusa.client.fetch).mockResolvedValueOnce({ product_ids: ["prod_a", "prod_b", "prod_set"], bundle_ids: ["prod_set"] } as never);
+  jest.mocked(medusa.store.product.list)
+    .mockResolvedValueOnce({ products: [{ id: "prod_a", variants: [{ id: "v_a", calculated_price: { calculated_amount: 800, original_amount: 1000 } }] }], count: 1 } as never)
+    .mockResolvedValueOnce({ products: [{ id: "prod_set", variants: [{ id: "v_set", calculated_price: { calculated_amount: 1500, original_amount: 1500 } }] }], count: 1 } as never);
+  const found = await getDeals("ar");
+  expect(found.deals.map((p) => p.id)).toEqual(["prod_a"]);
+  expect(found.bundles.map((p) => p.id)).toEqual(["prod_set"]);
+  // A bundle on sale is read once, as a bundle.
   expect(medusa.store.product.list).toHaveBeenCalledWith(expect.objectContaining({ id: ["prod_a", "prod_b"], limit: 100 }), { "x-medusa-locale": "ar-EG" });
-  jest.mocked(medusa.client.fetch).mockResolvedValueOnce({ product_ids: [] } as never);
-  expect(await getDeals("en")).toEqual([]);
-  expect(medusa.store.product.list).toHaveBeenCalledTimes(1);
+  expect(medusa.store.product.list).toHaveBeenCalledWith(expect.objectContaining({ id: ["prod_set"] }), { "x-medusa-locale": "ar-EG" });
+  jest.mocked(medusa.client.fetch).mockResolvedValueOnce({ product_ids: [], bundle_ids: [] } as never);
+  expect(await getDeals("en")).toEqual({ deals: [], bundles: [] });
+  expect(medusa.store.product.list).toHaveBeenCalledTimes(2);
   jest.mocked(medusa.client.fetch).mockRejectedValueOnce(new Error("offline"));
   await expect(getDeals("en")).rejects.toThrow("Deals temporarily unavailable.");
 });

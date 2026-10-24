@@ -185,18 +185,14 @@ export default function ProductDetailClient({
       : []),
     ...fixedOptions.map((option) => ({ label: option.title, value: option.values[0] })),
     ...(sku ? [{ label: copy.sku, value: <span dir="ltr">{sku}</span> }] : []),
-    ...(product.eda
+    // Seif (2026-10-24): only the approval is shown, never the registration number.
+    ...(product.eda?.approved
       ? [{
           label: copy.eda,
           value: (
-            <span className={styles.eda}>
-              <span dir="ltr">{product.eda.registrationNumber}</span>
-              {product.eda.approved && (
-                <span className={styles.edaBadge}>
-                  <BadgeCheck size={16} strokeWidth={1.6} aria-hidden="true" />
-                  {copy.edaApproved}
-                </span>
-              )}
+            <span className={styles.edaBadge}>
+              <BadgeCheck size={16} strokeWidth={1.6} aria-hidden="true" />
+              {copy.edaApproved}
             </span>
           ),
         }]
@@ -208,24 +204,25 @@ export default function ProductDetailClient({
     setQuantity(1);
   }
 
-  async function addToCart() {
+  // Adds the selected variant; Buy now does it quietly and goes to checkout,
+  // so the order, its totals and any promo code all use the one cart.
+  async function addSelected(buyNow: boolean) {
     if (!canBuy || addInFlight.current) return;
     addInFlight.current = true;
     if (resetTimer.current) clearTimeout(resetTimer.current);
     setCartState("pending");
     try {
-      const success = await addItem(
-        {
-          ...product,
-          variantId: selectedVariant?.id ?? product.variantId,
-          price,
-          compareAtPrice,
-          size: selectedOptions.Size ?? product.size,
-          flavor: selectedOptions.Flavor ?? product.flavor,
-          stock,
-        },
-        quantity,
-      );
+      const selected = {
+        ...product,
+        variantId: selectedVariant?.id ?? product.variantId,
+        price,
+        compareAtPrice,
+        size: selectedOptions.Size ?? product.size,
+        flavor: selectedOptions.Flavor ?? product.flavor,
+        stock,
+      };
+      const success = buyNow ? await addItem(selected, quantity, { quiet: true }) : await addItem(selected, quantity);
+      if (success && buyNow) return router.push("/checkout");
       setCartState(success ? "added" : "failed");
       if (success) resetTimer.current = setTimeout(() => setCartState("idle"), 1400);
     } catch {
@@ -234,12 +231,8 @@ export default function ProductDetailClient({
       addInFlight.current = false;
     }
   }
-
-  function buyNow() {
-    if (!canBuy) return;
-    const variant = selectedVariant?.id ? `&variantId=${encodeURIComponent(selectedVariant.id)}` : "";
-    router.push(`/checkout?buyNow=${encodeURIComponent(product.slug)}&quantity=${quantity}${variant}`);
-  }
+  const addToCart = () => addSelected(false);
+  const buyNow = () => addSelected(true);
 
   async function share() {
     try {
@@ -354,7 +347,7 @@ export default function ProductDetailClient({
                 </button>
               </div>
               {cartState === "failed" && <p className={styles.error} role="alert">{copy.addFailed}</p>}
-              <button type="button" className={styles.buyNow} disabled={!canBuy} onClick={buyNow}>
+              <button type="button" className={styles.buyNow} disabled={!canBuy || cartState === "pending"} onClick={buyNow}>
                 {copy.buyNow}
               </button>
 
@@ -400,7 +393,7 @@ export default function ProductDetailClient({
           <span>{product.name}</span>
           <strong>{priced ? `${formatPrice(price * quantity)} ${copy.currency}` : copy.priceUnavailable}</strong>
         </div>
-        <button type="button" disabled={!canBuy} onClick={buyNow}>
+        <button type="button" disabled={!canBuy || cartState === "pending"} onClick={buyNow}>
           {canBuy ? copy.buyNow : priced ? copy.outOfStock : copy.unavailable}
         </button>
       </div>

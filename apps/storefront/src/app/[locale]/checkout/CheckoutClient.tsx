@@ -17,14 +17,10 @@ import {
   useRef,
   useState,
 } from "react";
-import {
-  useSearchParams,
-} from "next/navigation";
 
 import { useCart } from "@/context/CartContext";
 import {
   getShippingOptions,
-  getProductByHandle,
   setCartAddress,
   setCartShippingMethod,
   completeCheckout,
@@ -32,13 +28,13 @@ import {
   addCartItem,
 } from "@/lib/medusa";
 import type { ShippingOption } from "@/types/shipping";
-import type { Product } from "@/types/product";
 
 import styles from "./Checkout.module.css";
 import { deliveryStatus, type ShippingLoad } from "./delivery-status";
 import { checkoutTotal, formatPrice } from "./checkout-total";
 import { governorates, initialForm, isValidEgyptPhone, normalizeEgyptPhone, type CheckoutForm } from "./checkout-details";
 import OrderSummary, { type CheckoutItem } from "./OrderSummary";
+import PromoCode from "./PromoCode";
 import CatalogImage from "@/components/CatalogImage";
 
 type CheckoutStep =
@@ -48,8 +44,6 @@ type CheckoutStep =
 
 export default function CheckoutClient() {
   const router = useLocaleRouter();
-  const searchParams =
-    useSearchParams();
 
   const submissionLock = useRef(false);
   const topRef =
@@ -93,67 +87,7 @@ export default function CheckoutClient() {
   }, [cartId, loadShippingOptions]);
 
   const [recovering, setRecovering] = useState(false);
-  const buyNowSlug =
-    searchParams.get("buyNow");
-
-  const requestedQuantity =
-    Number(
-      searchParams.get("quantity") ??
-        "1",
-    );
-
-  const [buyNowProduct, setBuyNowProduct] =
-    useState<Product | undefined>(undefined);
-
-  // Fetch buyNow product from Medusa using SDK service
-  useEffect(() => {
-    if (!buyNowSlug) return;
-    getProductByHandle(buyNowSlug)
-      .then((product) => {
-        if (product) {
-          const variantId = searchParams.get("variantId");
-          const variant = variantId ? product.variants?.find((v) => v.id === variantId) : product.variants?.[0];
-          if (!variant?.inStock) return;
-          setBuyNowProduct({ ...product, variantId: variant.id, price: variant.price, stock: variant.stock, inventoryKnown: variant.inventoryKnown, inStock: variant.inStock });
-        }
-      })
-      .catch(() => {});
-  }, [buyNowSlug, searchParams]);
-
-  const buyNowQuantity =
-    Number.isFinite(
-      requestedQuantity,
-    )
-      ? Math.max(
-          1,
-          Math.min(
-            Math.floor(requestedQuantity),
-            buyNowProduct?.inventoryKnown && buyNowProduct.stock > 0 ? buyNowProduct.stock : 1,
-          ),
-        )
-      : 1;
-
-  const checkoutItems =
-    useMemo<
-      CheckoutItem[]
-    >(() => {
-      if (buyNowProduct) {
-        return [
-          {
-            product:
-              buyNowProduct,
-            quantity:
-              buyNowQuantity,
-          },
-        ];
-      }
-
-      return items;
-    }, [
-      buyNowProduct,
-      buyNowQuantity,
-      items,
-    ]);
+  const checkoutItems: CheckoutItem[] = items;
 
   const cartSubtotal = cart?.itemSubtotal ?? 0;
   const cartShippingTotal = cart?.shippingTotal ?? 0;
@@ -203,7 +137,7 @@ export default function CheckoutClient() {
   // hydration because sessionStorage is unavailable during server render.
   useEffect(() => {
     try {
-      const pendingId = window.sessionStorage.getItem(`vi2-pending-checkout:${buyNowSlug || "cart"}`);
+      const pendingId = window.sessionStorage.getItem("vi2-pending-checkout:cart");
       // eslint-disable-next-line react-hooks/set-state-in-effect -- browser storage exists only after hydration
       if (pendingId) { setRecovering(true); setStep(2); }
     } catch { /* recovery storage unavailable */ }
@@ -211,7 +145,7 @@ export default function CheckoutClient() {
     const onSignedOut = () => setRecovering(false);
     window.addEventListener("vi2-signed-out", onSignedOut);
     return () => window.removeEventListener("vi2-signed-out", onSignedOut);
-  }, [buyNowSlug]);
+  }, []);
 
   const [
     form,
@@ -333,7 +267,7 @@ export default function CheckoutClient() {
 
   async function placeOrder() {
     if (submissionLock.current) return;
-    const recoveryKey = `vi2-pending-checkout:${buyNowSlug || "cart"}`;
+    const recoveryKey = "vi2-pending-checkout:cart";
     let recoveryId: string | null = null;
     try { recoveryId = window.sessionStorage.getItem(recoveryKey); } catch { /* optional recovery storage */ }
     if (!recoveryId && !validateDetails()) {
@@ -352,8 +286,7 @@ export default function CheckoutClient() {
           setError("Checkout is unavailable until payment methods are configured.");
           return;
         }
-        if (buyNowSlug && !buyNowProduct) throw new Error("Product unavailable");
-        if (!activeCartId || buyNowProduct) {
+        if (!activeCartId) {
           const created = await createCart();
           activeCartId = created.id;
           for (const item of checkoutItems) {
@@ -388,7 +321,7 @@ export default function CheckoutClient() {
       } catch { /* confirmed order remains authoritative */ }
       // The order exists in Medusa now. A local cart-reset failure must not be
       // reported as a checkout failure, or the customer may order twice.
-      if (!buyNowSlug) await clearCart().catch(() => {});
+      await clearCart().catch(() => {});
       router.push(`/order/success?order=${encodeURIComponent(completion.orderId)}`);
     } catch {
       setError(completionAttempted
@@ -400,10 +333,7 @@ export default function CheckoutClient() {
     }
   }
 
-  const backHref =
-    buyNowProduct
-      ? `/products/${buyNowProduct.slug}`
-      : "/shop";
+  const backHref = "/shop";
 
   return (
     <>
@@ -578,6 +508,10 @@ export default function CheckoutClient() {
             </div>
           </button>
 
+          <div className={styles.mobilePromo}>
+            <PromoCode collapsible />
+          </div>
+
           {summaryOpen && (
             <div
               className={
@@ -640,6 +574,13 @@ export default function CheckoutClient() {
                   styles.mobileTotals
                 }
               >
+                {discountTotal > 0 && (
+                  <div className={styles.discountLine}>
+                    <span>DISCOUNT</span>
+                    <strong>-{formatPrice(discountTotal)} EGP</strong>
+                  </div>
+                )}
+
                 <div>
                   <span>
                     DELIVERY
