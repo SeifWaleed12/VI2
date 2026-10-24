@@ -19,7 +19,7 @@ import {
 } from "react";
 
 import type { Product } from "@/types/product";
-import { searchProducts } from "@/lib/medusa";
+import { listCatalog } from "@/lib/medusa/services/catalog";
 
 import styles from "./GlobalSearch.module.css";
 import CatalogImage from "@/components/CatalogImage";
@@ -88,7 +88,7 @@ export default function GlobalSearch({
     if (!searchable) return;
     let active = true;
     const timer = window.setTimeout(() => {
-      searchProducts({ q: term, locale: language, limit: SUGGESTION_COUNT })
+      listCatalog({ q: term, locale: language, limit: SUGGESTION_COUNT, sort: "default" })
         .then((page) => { if (active) setFound({ key: searchKey, products: page.products, failed: false }); })
         .catch(() => { if (active) setFound({ key: searchKey, products: [], failed: true }); });
     }, SEARCH_DELAY_MS);

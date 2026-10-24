@@ -1,4 +1,4 @@
-import { mapMedusaProduct, getProducts, listProducts, getDeals, asDeal, InvalidCatalogFilterError } from "../products";
+import { mapMedusaProduct, getProducts, listProducts, getBundles, InvalidCatalogFilterError } from "../products";
 import { mapMedusaCart } from "../cart";
 import { selectRegion } from "../regions";
 import { medusa } from "../../client";
@@ -15,7 +15,7 @@ it("reads brand from the active linked record", () => {
   expect(mapMedusaProduct({ id: "prod_1", brand: { name: "Confirmed", status: "active" }, variants: [] } as never).brand).toBe("Confirmed");
 });
 it.each([{ manage_inventory: false }, { manage_inventory: true, allow_backorder: true }, { manage_inventory: true, inventory_quantity: 2 }])("respects explicit Medusa availability %j", (variant) => {
-  expect(mapMedusaProduct({ id: "prod_1", variants: [{ id: "variant_1", ...variant }] } as never).inStock).toBe(true);
+  expect(mapMedusaProduct({ id: "prod_1", variants: [{ id: "variant_1", calculated_price: { calculated_amount: 10 }, ...variant }] } as never).inStock).toBe(true);
 });
 it("distinguishes an empty catalog from a backend outage", async () => {
   jest.mocked(medusa.store.product.list).mockResolvedValueOnce({ products: [] } as never).mockRejectedValueOnce(new Error("offline"));
@@ -116,39 +116,6 @@ describe("catalog contract (docs/CATALOG-CONTRACT.md)", () => {
   });
 });
 
-it("lists deals and bundles by the ids the backend gives, and asks nothing more when there are none", async () => {
-  jest.mocked(medusa.client.fetch).mockResolvedValueOnce({ product_ids: ["prod_a", "prod_b", "prod_set"], bundle_ids: ["prod_set"] } as never);
-  jest.mocked(medusa.store.product.list)
-    .mockResolvedValueOnce({ products: [{ id: "prod_a", variants: [{ id: "v_a", calculated_price: { calculated_amount: 800, original_amount: 1000 } }] }], count: 1 } as never)
-    .mockResolvedValueOnce({ products: [{ id: "prod_set", variants: [{ id: "v_set", calculated_price: { calculated_amount: 1500, original_amount: 1500 } }] }], count: 1 } as never);
-  const found = await getDeals("ar");
-  expect(found.deals.map((p) => p.id)).toEqual(["prod_a"]);
-  expect(found.bundles.map((p) => p.id)).toEqual(["prod_set"]);
-  // A bundle on sale is read once, as a bundle.
-  expect(medusa.store.product.list).toHaveBeenCalledWith(expect.objectContaining({ id: ["prod_a", "prod_b"], limit: 100 }), { "x-medusa-locale": "ar-EG" });
-  expect(medusa.store.product.list).toHaveBeenCalledWith(expect.objectContaining({ id: ["prod_set"] }), { "x-medusa-locale": "ar-EG" });
-  jest.mocked(medusa.client.fetch).mockResolvedValueOnce({ product_ids: [], bundle_ids: [] } as never);
-  expect(await getDeals("en")).toEqual({ deals: [], bundles: [] });
-  expect(medusa.store.product.list).toHaveBeenCalledTimes(2);
-  jest.mocked(medusa.client.fetch).mockRejectedValueOnce(new Error("offline"));
-  await expect(getDeals("en")).rejects.toThrow("Deals temporarily unavailable.");
-});
-
-// MERCH-1: Medusa's one-unit price decides, not the price list row.
-const priced = (...prices: [number, number][]) => mapMedusaProduct({
-  id: "prod_whey", title: "Whey", options: [{ id: "opt", title: "Size", values: [] }],
-  variants: prices.map(([calculated, original], i) => ({ id: `v${i + 1}`, title: `${i + 1}kg`, manage_inventory: false, calculated_price: { calculated_amount: calculated, original_amount: original } })),
-} as never);
-it("drops a listed sale that is not cheaper for one unit: a minimum quantity, or a higher price", () => {
-  // Medusa answers 1000/1000 for both, so no compare-at price exists.
-  expect(asDeal(priced([1000, 1000]))).toBeNull();
-  expect(asDeal(priced([1000, 1000], [1500, 1500]))).toBeNull();
-});
-it("offers the discounted variant itself, named, when it is not the first one", () => {
-  const deal = asDeal(priced([1000, 1000], [1200, 1500], [1900, 2000]))!;
-  expect(deal).toMatchObject({ variantId: "v2", name: "Whey — 2kg", price: 1200, compareAtPrice: 1500, inStock: true });
-  expect(asDeal(priced([800, 1000]))).toMatchObject({ variantId: "v1", name: "Whey", price: 800, compareAtPrice: 1000 });
-});
 it("never borrows a price or comparison from another variant", () => {
   const product = mapMedusaProduct({
     id: "prod", variants: [
@@ -157,6 +124,53 @@ it("never borrows a price or comparison from another variant", () => {
       { id: "higher", calculated_price: { calculated_amount: 400, original_amount: 300 } },
     ],
   } as never);
-  expect(product.variants?.[1]).toMatchObject({ price: 0, compareAtPrice: undefined });
-  expect(product.variants?.[2].compareAtPrice).toBeUndefined();
+  const variant = (id: string) => product.variants?.find((v) => v.id === id);
+  expect(variant("unpriced")).toMatchObject({ price: 0, compareAtPrice: undefined });
+  expect(variant("higher")?.compareAtPrice).toBeUndefined();
+});
+
+it("reads bundles by the ids the backend gives, and asks nothing more when there are none", async () => {
+  jest.mocked(medusa.client.fetch).mockResolvedValueOnce({ bundle_ids: ["prod_set"] } as never);
+  jest.mocked(medusa.store.product.list).mockResolvedValueOnce({ products: [{ id: "prod_set", variants: [{ id: "v_set", calculated_price: { calculated_amount: 1500, original_amount: 1500 } }] }], count: 1 } as never);
+  expect((await getBundles("ar")).map((p) => p.id)).toEqual(["prod_set"]);
+  expect(medusa.store.product.list).toHaveBeenCalledWith(expect.objectContaining({ id: ["prod_set"], limit: 100 }), { "x-medusa-locale": "ar-EG" });
+  jest.mocked(medusa.client.fetch).mockResolvedValueOnce({ bundle_ids: [] } as never);
+  expect(await getBundles("en")).toEqual([]);
+  expect(medusa.store.product.list).toHaveBeenCalledTimes(1);
+  jest.mocked(medusa.client.fetch).mockRejectedValueOnce(new Error("offline"));
+  await expect(getBundles("en")).rejects.toThrow("Bundles temporarily unavailable.");
+});
+
+it("hydrates only the requested page through the bounded fresh endpoint, retaining locale", async () => {
+  jest.mocked(medusa.client.fetch).mockResolvedValue({ products: [{ id: "prod_1", variants: [] }], count: 1 });
+  expect(await listProducts({ locale: "ar", regionId: "reg_eg", id: ["prod_1"], limit: 1, fresh: true })).toMatchObject({ count: 1, products: [{ id: "prod_1" }] });
+  expect(medusa.client.fetch).toHaveBeenCalledWith("/store/catalog-products", expect.objectContaining({
+    cache: "no-store", headers: { "x-medusa-locale": "ar-EG" },
+    query: expect.objectContaining({ id: ["prod_1"], limit: 1, offset: 0 }),
+  }));
+  expect(medusa.store.product.list).not.toHaveBeenCalled();
+});
+
+it.each(["unpriced", "sold-out"])("shows the first purchasable variant when the first option is %s", state => {
+  const product = mapMedusaProduct({ id: "prod_1", variants: [
+    { id: "second", variant_rank: 1, manage_inventory: false, calculated_price: { calculated_amount: 50 } },
+    { id: "first", variant_rank: 0, manage_inventory: state === "sold-out", inventory_quantity: 0,
+      calculated_price: state === "unpriced" ? null : { calculated_amount: 10 } },
+  ] } as never);
+  expect(product).toMatchObject({ variantId: "second", price: 50, inStock: true });
+  expect(product.variants?.map(v => v.id)).toEqual(["first", "second"]);
+  if (state === "unpriced") expect(product.variants?.[0].price).toBe(0);
+});
+it("keeps an entirely unpriced product unavailable even with unmanaged inventory", () => {
+  expect(mapMedusaProduct({ id: "prod_1", variants: [{ id: "first", manage_inventory: false }] } as never))
+    .toMatchObject({ variantId: "first", price: 0, inStock: false });
+});
+
+it("uses exposed native rank before creation order when both options are purchasable", () => {
+  const product = mapMedusaProduct({ id: "prod_ranked", variants: [
+    { id: "first", variant_rank: 9, created_at: "2026-01-01", manage_inventory: false, calculated_price: { calculated_amount: 10 } },
+    { id: "second", variant_rank: 2, created_at: "2026-02-01", manage_inventory: false, calculated_price: { calculated_amount: 50 } },
+  ] } as never);
+  expect(product).toMatchObject({ variantId: "second", price: 50, inStock: true });
+  expect(product.variants?.map(v => v.id)).toEqual(["second", "first"]);
 });
