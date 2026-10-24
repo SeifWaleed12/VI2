@@ -56,3 +56,16 @@ export const productEdaSchema = z.object({
   registration_number: text.max(100),
   is_approved: z.boolean(),
 }).strict()
+
+// Same id rules as the shop's filters; a single value arrives as a string.
+const searchIds = z.union([z.string(), z.array(z.string())])
+  .transform((value) => [value].flat())
+  .pipe(z.array(z.string().regex(/^[A-Za-z0-9_-]{1,128}$/)).max(50))
+export const productSearchSchema = z.object({
+  q: z.string().trim().min(1).max(100),
+  limit: z.coerce.number().int().min(1).max(24).default(6),
+  offset: z.coerce.number().int().min(0).max(10000).default(0),
+  category_id: searchIds.optional(),
+  brand_id: searchIds.optional(),
+  tag_id: searchIds.optional(),
+}).strict()

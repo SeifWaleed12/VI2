@@ -49,6 +49,8 @@ export type Cart = {
   billingAddress?: CartAddress;
   shippingMethods: ShippingMethod[];
   promotions: CartPromotion[];
+  // What each applied code takes off now, by upper-case code.
+  promotionSavings: Record<string, number>;
   itemSubtotal: number;
   shippingTotal: number;
   discountTotal: number;
