@@ -17,12 +17,13 @@ import {
 } from "react";
 
 import { useLanguage } from "@/context/LanguageContext";
+import { goalLabelKey, type HealthGoal } from "@/lib/health-goals";
 import styles from "./HomeDiscovery.module.css";
 
 const goals = [
   {
     name: "IMMUNE SUPPORT",
-    query: "Immune Support",
+    handle: "immune-support" as HealthGoal,
     description:
       "Everyday defense",
     detail:
@@ -31,7 +32,7 @@ const goals = [
   },
   {
     name: "GUT HEALTH",
-    query: "Gut Health",
+    handle: "gut-health" as HealthGoal,
     description:
       "Feel better daily",
     detail:
@@ -40,7 +41,7 @@ const goals = [
   },
   {
     name: "ENERGY & FITNESS",
-    query: "Energy & Fitness",
+    handle: "energy-fitness" as HealthGoal,
     description:
       "Fuel your day",
     detail:
@@ -49,7 +50,7 @@ const goals = [
   },
   {
     name: "MUSCLE & RECOVERY",
-    query: "Muscle & Recovery",
+    handle: "muscle-recovery" as HealthGoal,
     description:
       "Build. Repair. Perform.",
     detail:
@@ -58,7 +59,7 @@ const goals = [
   },
   {
     name: "HEART HEALTH",
-    query: "Heart Health",
+    handle: "heart-health" as HealthGoal,
     description:
       "For a healthier tomorrow",
     detail:
@@ -67,7 +68,7 @@ const goals = [
   },
   {
     name: "STRESS & SLEEP",
-    query: "Stress & Sleep",
+    handle: "stress-sleep" as HealthGoal,
     description:
       "A calmer, better you",
     detail:
@@ -350,12 +351,12 @@ export default function HomeDiscovery() {
             </div>
 
             <Link
-              href="/shop"
+              href={`/shop?goal=${activeGoal.handle}`}
               className={
                 styles.shopNow
               }
             >
-              {msg("catalog.all")}
+              {msg("home.shopGoal").replace("{goal}", msg(goalLabelKey(activeGoal.handle)))}
               <ArrowRight
                 size={16}
                 strokeWidth={

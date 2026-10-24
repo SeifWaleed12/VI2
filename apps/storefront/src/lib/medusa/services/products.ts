@@ -157,6 +157,9 @@ export type ListProductsParams = {
   category_id?: string[];
   // Active brands only; unknown or inactive brands give an empty page.
   brand_id?: string[];
+  // Health goals are product tags (lib/health-goals.ts).
+  tag_id?: string[];
+  id?: string[];
   q?: string;
   order?: string;
 };
@@ -190,6 +193,8 @@ export async function listProducts(params: ListProductsParams): Promise<ProductP
     const query: Record<string, unknown> = { limit, offset, fields: PRODUCT_FIELDS, region_id: regionId };
     if (params.category_id?.length) query.category_id = params.category_id;
     if (params.brand_id?.length) query.brand_id = params.brand_id;
+    if (params.tag_id?.length) query.tag_id = params.tag_id;
+    if (params.id?.length) query.id = params.id;
     if (params.q?.trim()) query.q = params.q.trim();
     if (params.order) query.order = params.order;
 
@@ -199,6 +204,43 @@ export async function listProducts(params: ListProductsParams): Promise<ProductP
     if ((error as { status?: unknown } | null)?.status === 400) throw new InvalidCatalogFilterError();
     throw new Error("Catalog temporarily unavailable.");
   }
+}
+
+// Products with a sale price running now (Admin → Price Lists, type Sale).
+export async function getDeals(locale: Locale): Promise<Product[]> {
+  let ids: string[];
+  try {
+    ids = (await medusa.client.fetch<{ product_ids: string[] }>("/store/deals", { method: "GET" }))?.product_ids ?? [];
+  } catch {
+    throw new Error("Deals temporarily unavailable.");
+  }
+  if (!ids.length) return [];
+  const { products } = await listProducts({ locale, id: ids, limit: MAX_PAGE_SIZE });
+  return products.map(asDeal).filter((product): product is Product => product !== null);
+}
+
+// The backend lists every product named in a sale price list; only Medusa's
+// price for one unit says whether it is cheaper now (a sale price can need a
+// minimum quantity, or be higher than the normal price). The card then shows
+// and adds the variant with the biggest saving, named when there are several.
+export function asDeal(product: Product): Product | null {
+  const [best] = (product.variants ?? [])
+    .filter((v) => v.compareAtPrice !== undefined && v.compareAtPrice > v.price)
+    .sort((a, b) => b.compareAtPrice! - b.price - (a.compareAtPrice! - a.price));
+  if (!best) return null;
+  const named = (name: string) => ((product.variants?.length ?? 0) > 1 && best.title ? `${name} — ${best.title}` : name);
+  return {
+    ...product,
+    variantId: best.id,
+    name: named(product.name),
+    shortName: named(product.shortName),
+    price: best.price,
+    compareAtPrice: best.compareAtPrice,
+    stock: best.stock,
+    inventoryKnown: best.inventoryKnown,
+    inStock: best.inStock === true,
+    image: best.image || product.image,
+  };
 }
 
 export type GetProductsParams = Omit<ListProductsParams, "locale" | "brand_id"> & { locale?: Locale };

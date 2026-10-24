@@ -60,11 +60,12 @@ it.each(["en", "ar"] as const)("renders the whole localized hero statement befor
   expect(html).not.toContain("<br")
 })
 
-it.each(["en", "ar"] as const)("takes health-goal content to explicitly unfiltered browsing in %s", locale => {
+it.each(["en", "ar"] as const)("takes the highlighted health goal to the shop filtered by it in %s", locale => {
   mockHeroLocale = locale;
   const html = renderToStaticMarkup(createElement(HomeDiscovery));
-  expect(html).not.toContain("?goal=");
+  expect(html).toContain('href="/' + locale + '/shop?goal=muscle-recovery"');
+  expect(html).toContain(message(locale, "home.shopGoal").replace("{goal}", message(locale, "goal.muscle-recovery")).replace("&", "&amp;"));
+  // "View all" stays unfiltered.
   expect(html).toContain('href="/' + locale + '/shop"');
-  expect(html).toContain(message(locale, "catalog.all"));
   expect(html).not.toContain("SHOP NOW");
 });
