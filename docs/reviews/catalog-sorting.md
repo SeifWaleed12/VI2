@@ -1,6 +1,6 @@
 # Catalog sorting implementation — 2026-10-24
 
-Author: GPT. Reviewer: Claude. Round2 approved cacafbf; the small N1 follow-up below awaits recheck. Owner: Seif; no merge authorized.
+Author: GPT. Reviewer: Claude. Round3 approves application d7dd517 with no new defects; ready for Seif to merge. Owner: Seif; no merge authorized.
 Branch: codex/catalog-sorting, based on origin/full-stack157fe26. Product-page PR19 is independent and not included.
 
 ## Delivered
@@ -213,3 +213,10 @@ Real Redis behavior and cache invalidation across processes, production-scale pe
 
 ### Disposition
 N1 closed. PR 20 is approved from my side for the owner to merge, with N2 and the cache-flush deploy note as follow-ups.
+
+
+## Final disposition — 2026-10-24
+
+Claude Round3 approval5711dff imported unchanged above. Application remains d7dd517; this publication updates documentation only. No further code fixes or repeat tests required by the recheck. Owner merge remains pending.
+
+Release follow-up: invalidate pre-release product-response cache entries or wait the current60-second product TTL before manually checking non-zero/reordered variant ranks. Sorted hydration is already uncached. No cache was flushed here. Keep the documented edge rate-limit/Medusa-upgrade checks and real Redis/multi-process validation as launch follow-ups. N3's explicit unhealthy-index recovery/default browsing behavior is accepted.
