@@ -21,6 +21,9 @@ import {
   updateCartItem,
   removeCartItem,
   applyCartPromotion,
+  promoFailure,
+  promoOutcome,
+  type PromoResult,
   removeCartPromotion,
 } from "@/lib/medusa/services/cart";
 import { cartQueue } from "@/lib/medusa/cart-queue";
@@ -48,13 +51,13 @@ export type CartContextValue = {
   openCart: () => void;
   closeCart: () => void;
   toggleCart: () => void;
-  addItem: (product: Product, quantity?: number) => Promise<boolean>;
+  addItem: (product: Product, quantity?: number, options?: { quiet?: boolean }) => Promise<boolean>;
   removeItem: (productIdOrLineId: string) => Promise<void>;
   updateQuantity: (
     productIdOrLineId: string,
     quantity: number,
   ) => Promise<void>;
-  applyPromotion: (code: string) => Promise<{ ok: boolean; message?: string }>;
+  applyPromotion: (code: string) => Promise<PromoResult>;
   removePromotion: (code: string) => Promise<void>;
   clearCart: () => Promise<void>;
   refreshCart: () => Promise<void>;
@@ -200,8 +203,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
   );
 
   const addItem = useCallback(
-    async (product: Product, quantity = 1) => {
-      openCart();
+    async (product: Product, quantity = 1, options?: { quiet?: boolean }) => {
+      if (!options?.quiet) openCart();
       setMutationError(null);
 
       // Snapshot previous state for rollback
@@ -331,18 +334,14 @@ export function CartProvider({ children }: { children: ReactNode }) {
   );
 
   const applyPromotion = useCallback(
-    async (code: string): Promise<{ ok: boolean; message?: string }> => {
-      if (!cart) return { ok: false, message: "Cart not initialized" };
+    async (code: string): Promise<PromoResult> => {
+      if (!cart) return { ok: false, reason: "loading" };
       try {
         const updated = await applyCartPromotion(cart.id, code.trim());
         syncFromMedusaCart(updated);
-        return { ok: true };
+        return promoOutcome(updated, code);
       } catch (err: unknown) {
-        const msg =
-          err instanceof Error
-            ? err.message
-            : "Invalid or expired promotion code";
-        return { ok: false, message: msg };
+        return promoFailure(err);
       }
     },
     [cart, syncFromMedusaCart],
