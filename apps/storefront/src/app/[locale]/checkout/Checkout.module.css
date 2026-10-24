@@ -1210,6 +1210,16 @@
   letter-spacing: 0.08em;
 }
 
+.promoChipIdle {
+  border-style: dashed;
+
+  color: #5e5a55;
+}
+
+.promoChipIdle span {
+  font-size: var(--text-caption);
+}
+
 .promoChips button {
   min-height: 42px;
 

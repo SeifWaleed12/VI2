@@ -30,11 +30,19 @@ it("says the cart is still loading instead of failing on Apply", () => {
 });
 
 it("shows each applied code as a removable chip, without emoji", () => {
-  mockCart = { ...mockCart, promotions: [{ code: "VI20" }] };
+  mockCart = { ...mockCart, cart: { id: "cart_1", promotionSavings: { VI20: 100 } }, promotions: [{ code: "VI20" }] };
   const html = render();
   expect(html).toContain("<strong>VI20</strong>");
   expect(html).toContain('aria-label="Remove VI20"');
   expect(html).not.toContain("🎟");
+  expect(html).not.toContain("Doesn't apply yet");
+});
+
+it("marks an attached code that takes nothing off as not applying, still removable (reload after a failed removal)", () => {
+  mockCart = { ...mockCart, cart: { id: "cart_1", promotionSavings: { VI20: 0 } }, promotions: [{ code: "VI20" }] };
+  const html = render();
+  expect(html).toMatch(/Doesn(&#x27;|')t apply yet/);
+  expect(html).toContain('aria-label="Remove VI20"');
 });
 
 it("starts as a quiet Add promo code button on mobile", () => {
@@ -53,7 +61,7 @@ it("words every failure as the problem and what to do, in both languages", () =>
 
 it("speaks Arabic on the Arabic checkout, including the accessible names", () => {
   mockLocale = "ar";
-  mockCart = { ...mockCart, promotions: [{ code: "VI20" }] };
+  mockCart = { ...mockCart, cart: { id: "cart_1", promotionSavings: { VI20: 100 } }, promotions: [{ code: "VI20" }] };
   const html = render();
   expect(html).toContain(">كود الخصم</label>");
   expect(html).toContain(">تطبيق</button>");

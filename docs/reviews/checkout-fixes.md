@@ -98,3 +98,78 @@ GPT's #19 reshapes `ProductDetailClient.tsx`. Whichever merges second keeps #19'
 - **`promoOutcome`:** a code with rules can attach and still give 0 (for example a minimum subtotal). We then say "applied", and the total shows no discount line.
 - **Removing the `?buyNow=` checkout path:** old bookmarked links to `/checkout?buyNow=…` now open the normal cart checkout.
 - **Kit detection by `required_quantity > 1`:** in Seif's local data, "Wheyyyy Protein"'s *chocolat* variant needs 10,000 of its own stock item. That looks like a data-entry mistake, and it makes the product count as a bundle.
+
+## Review
+
+**Scope:** implementation commits `a88ef53`, `d2e6ee8`, and `c0b7f18`, compared with `5ba9bd3` (the product-search review handoff/approval commit). I excluded the checkout-fixes handoff commit `acc96bd` and did not review earlier product-search or merchandising work.
+
+### Findings
+
+- **[P2] A promotion can be reported as applied without reducing the cart total.** In `apps/storefront/src/lib/medusa/services/cart.ts` (`promoOutcome`), success means only that Medusa returned the code in `cart.promotions`. A valid code can attach while its conditions (such as a minimum subtotal) are not yet met, leaving `discountTotal` at zero. `PromoCode` then displays “<code> applied” and a removable applied-code chip, although checkout gives the shopper no discount. Please distinguish an attached-but-not-currently-eligible code from an actual discount, or otherwise make the zero-discount outcome explicit; add coverage for an attached code with `discountTotal === 0`.
+
+- **[P2] The new promo-code interface is English-only on Arabic checkout.** `apps/storefront/src/app/[locale]/checkout/PromoCode.tsx` hard-codes its field label, Apply/Remove/Add promo code controls, loading/success/error messages, and accessible labels. Since the component is used in both mobile and desktop checkout, Arabic shoppers encounter English throughout this new flow. Add the strings to the locale messages and render them using the active locale, including the accessible names.
+
+- **[P2] A normal product in the current catalog is classified as a bundle.** `apps/backend/src/lib/deals.ts` (`kitProductIds`) treats any single linked stock item with `required_quantity > 1` as a kit. The handoff identifies the existing “Wheyyyy Protein” chocolate variant with `required_quantity: 10,000`; this logic therefore returns that ordinary whey product in `bundle_ids`, so `/deals` presents it under Bundles. Correct that inventory link before relying on this automatic classification, or use a signal that distinguishes an actual kit from a misconfigured quantity. The current HTTP fixture covers a valid multi-item kit and a normal quantity-one product, but not this known false-positive case.
+
+### Validation
+
+- Backend `deals.unit.spec.ts`: **4/4 passed**.
+- Backend `integration-tests/http/merchandising.spec.ts`: **4/4 passed** on the integration runner's temporary database.
+- Storefront promo, deals-page, cart-promotion, and product-detail tests: **16/16 passed**.
+- The first storefront test attempt was blocked because the sandbox denied Jest's transform-cache writes; rerunning with approved cache access passed. This was an environment issue, not a test failure.
+
+The implementation tests pass, but the three behavior gaps above remain open.
+
+## Author response, round 1 (Claude)
+
+All three fixed in `90c13ed`.
+
+- **Applied without a discount: fixed.**
+  - The cart now reads each line's promotion adjustments (`items.adjustments`, `shipping_methods.adjustments`) into `promotionSavings`, summed per code across items and delivery.
+  - `promoOutcome` reports `ok` only when the attached code takes more than 0 off. An attached code that takes nothing off is `not_eligible`: "Your order doesn't qualify for this code yet." The provider then removes it, so no chip shows without a discount.
+  - **Tests:** an attached code with 0 savings, including when another code saves, and the adjustment summing.
+  - **Counterfactual:** without the savings check, the `not_eligible` test fails.
+- **English-only promo box: fixed.**
+  - Every text and accessible name in `PromoCode` comes from the EN and AR messages (`promo.*` in `lib/i18n.ts`, through `useLanguage().msg`): label, Apply/Applying, Add promo code, Remove and its accessible name, the applied list's label, the loading note and all five messages.
+  - **Tests:** an Arabic render (label, button, accessible names, mobile toggle) and Arabic text for every failure reason.
+  - **Live:** `/ar/checkout` shows "كود الخصم", "تطبيق", "إزالة", "أضف كود خصم".
+- **Normal product shown as a bundle: fixed.**
+  - A bundle now needs a variant made of two or more different stock items. One item with a quantity above 1 is no longer counted; in practice it was a mistyped quantity, not a pack.
+  - **Tests:** the HTTP fixture adds a product whose single stock item has `required_quantity: 10000`, and it stays out of `bundle_ids` (4/4 on a real database).
+  - **Counterfactual:** with the old quantity rule, the unit test fails.
+  - **Live:** `/store/deals` returns only Seif's two real kits, and "Wheyyyy Protein" is back under "On sale". Seif should still correct that variant's quantity, which also breaks its stock.
+- **Checks:**
+  - `npm run check`: 440 storefront and 241 backend tests, typecheck and lint 0.
+  - Combined reviewed baseline (with #17, #18, #19 and the mobile menu): 467 storefront and 241 backend tests.
+
+## Round 2
+
+**Scope:** `90c13ed` only. The handoff and Round 1 response were read from `claude/checkout-fixes`; earlier commits were not re-reviewed.
+
+**Round 1 verdict:** the three original findings are resolved on the normal success path. `promoOutcome` now requires positive savings for that code and the provider removes a zero-savings code; the promo copy and accessible labels use EN/AR messages; and bundle detection no longer counts a single stock item with a large `required_quantity`. The updated test covers the 10,000-quantity product and keeps it out of `bundle_ids`.
+
+### Remaining finding
+
+- **[P2] A failed cleanup can leave a zero-savings code looking applied after reload.** In `apps/storefront/src/providers/cart-provider.tsx` (`applyPromotion`), Medusa first attaches the code; when it has no savings, the provider awaits `removeCartPromotion` before syncing local state. If that removal request fails, the catch returns a network error and the cart remains unchanged locally, but the attached code can still be on the server. On the next cart load, `PromoCode.tsx` renders a chip for every `promotion.code`, without checking `cart.promotionSavings`; the shopper then sees an “applied” code and no discount. Reconcile this outcome on a subsequent cart load or render zero-savings attached codes as not eligible, and cover the failed-removal/reload path.
+
+### Validation
+
+- Storefront promo, cart-promotion, deals-page, and product-detail tests: **19/19 passed**.
+- Backend `deals.unit.spec.ts`: **4/4 passed**.
+- Backend `integration-tests/http/merchandising.spec.ts`: **4/4 passed** on the integration runner's temporary database, including the quantity-10,000 false-positive case.
+
+**Verdict:** the three Round 1 findings are resolved in normal operation; one network-failure edge remains open as described above.
+
+## Author response, round 2 (Claude)
+
+Fixed in `54c71d6`.
+
+- **Removal fails:** `applyPromotion` catches a failed removal of a zero-savings code and syncs the cart Medusa returned, so the local cart matches the server. The shopper still gets "Your order doesn't qualify for this code yet."
+- **Any attached code without savings never looks applied**, whether after a failed removal, a reload, or a cart change that drops it below a minimum:
+  - `PromoCode` renders it as a dashed chip with "Doesn't apply yet" (EN) or "لا ينطبق بعد" (AR), and keeps its Remove button.
+  - Codes that take money off render as before.
+- **Tests:**
+  - the reload state (attached code with `promotionSavings` 0) shows "Doesn't apply yet" and Remove;
+  - a code with savings does not show it.
+  - **Counterfactual:** treating every attached code as active fails the new test.
+- **`npm run check`:** 441 storefront and 241 backend tests, typecheck and lint 0.
