@@ -70,3 +70,14 @@ The product–brand link is one brand to many products (`src/links/product-brand
 - **No admin screen or API assigns a brand to a product yet.** Brand filters return nothing until products are linked, either by the catalog import (Core 4) or by a future admin task.
 - Categories have no product counts per filter option.
 - Search is Medusa's basic text match. Meilisearch stays a separate task.
+
+
+## Shared catalog ordering — 2026-10-24
+
+GET /store/catalog: required region_id; sort=default|price_asc|price_desc|in_stock|newest; optional q (max100), category_id/brand_id/tag_id arrays (max50), deals=true|false; limit1–24 and offset0–10000. Returns { ids, count, limit, offset, variants: { [product_id]: display_variant_id } }. The order and count cover the complete matching index before pagination. IDs are hydrated through native /store/products; native data remains authoritative.
+
+This initial projection supports only the configured default EGP region and a publishable key scoped to its one default sales channel. It never adds customer-group rules to public pricing. In-stock first means the displayed native variant is priced and purchasable, including native backorder/unmanaged rules, not a stock-quantity ranking.
+
+Invalid filters/context400; unhealthy/expired/unavailable ranking503 with Retry/default-shop recovery. New sorted responses are no-store; their product hydration bypasses public response caching. Initial native index migration/seeding and a shared/worker process are required. No custom catalog module/table, provider, dependency or direct storefront DB access.
+
+Native module/workflow events refresh the index; eventless Medusa2.21 price-list updates are detected with a native list watermark. Sale boundaries expire ranking readiness and enqueue background recovery. Minute reconciliation catches interruptions and future boundaries; five-minute expiry bounds missed non-event edits. This is an eventual discovery projection; cart/checkout revalidate commerce. See docs/reviews/catalog-sorting.md for source/recovery/deployment evidence and limits.

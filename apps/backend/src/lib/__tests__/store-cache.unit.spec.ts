@@ -97,3 +97,11 @@ it("clears the store cache after a successful admin write only", () => {
   finish(200)!()
   expect(cache.invalidate).toHaveBeenCalledWith("store-cache:*")
 })
+
+it("bypasses cached product hydration when the catalog requests current native values", async () => {
+  const cache = fakeCache()
+  const next = await run(request(cache, { headers: { "cache-control": "no-cache" } }), response())
+  expect(next).toHaveBeenCalledTimes(1)
+  expect(cache.get).not.toHaveBeenCalled()
+  expect(cache.set).not.toHaveBeenCalled()
+})

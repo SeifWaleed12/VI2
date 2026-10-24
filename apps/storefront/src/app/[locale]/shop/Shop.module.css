@@ -476,3 +476,32 @@
 .filterLink { justify-content: space-between; padding-inline: 8px; }
 .filterLink svg { flex: 0 0 auto; margin-block-start: 3px; }
 .filterSelected { background: var(--cream-deep); font-weight: 600; }
+
+/* Keep search, filter access and ordering distinct at every width. */
+.sortControl {
+  display: grid;
+  flex: 0 0 auto;
+  gap: 4px;
+  color: var(--ink);
+  font-size: var(--text-ui);
+  line-height: 1.5;
+}
+.sortControl select {
+  min-height: 48px;
+  max-width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 0;
+  padding: 10px 12px;
+  background: var(--white);
+  color: var(--ink);
+  font: inherit;
+  font-size: var(--text-body);
+  cursor: pointer;
+}
+.sortControl select:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
+@media (max-width: 980px) {
+  .toolbar { flex-wrap: wrap; align-items: end; }
+  .searchBox { flex-basis: 100%; }
+  .sortControl { flex: 1; min-width: 0; }
+  .sortControl select { width: 100%; }
+}

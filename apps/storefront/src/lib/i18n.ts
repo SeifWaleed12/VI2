@@ -17,6 +17,20 @@ export function removedCategoryPath(path: string) {
   return /^\/(?:en\/|ar\/)?categories(?:\/|$)/.test(path);
 }
 const en = {
+  "shop.sort": "Sort by",
+  "shop.sort.default": "Default order",
+  "shop.sort.price_asc": "Price: low to high",
+  "shop.sort.price_desc": "Price: high to low",
+  "shop.sort.in_stock": "In-stock items first",
+  "shop.sort.newest": "Newest",
+  "deals.title": "Deals",
+  "deals.description": "Explore current sale prices when you buy one item.",
+  "goal.immune-support": "Immune support",
+  "goal.gut-health": "Gut health",
+  "goal.energy-fitness": "Energy & fitness",
+  "goal.muscle-recovery": "Muscle & recovery",
+  "goal.heart-health": "Heart health",
+  "goal.stress-sleep": "Stress & sleep",
   "catalog.categoryError": "Categories are temporarily unavailable.",
   "catalog.categoryRetry": "Retry categories",
   "home.catalogErrorDescription": "Product and brand information could not be loaded. Try again, or browse the shop.",
@@ -92,7 +106,6 @@ const en = {
   "search.empty": "Try another product, brand, category or health goal.",
   "search.error": "Search is temporarily unavailable.",
   "shop.filters": "Filters",
-  "shop.sort": "Sort",
   "shop.featured": "Featured",
   "shop.low": "Price: Low to High",
   "shop.high": "Price: High to Low",
@@ -125,8 +138,21 @@ const en = {
   "catalog.noProducts": "No products are available in this category yet.",
   "catalog.loading": "Loading categories…",
 } as const;
-type MessageKey = keyof typeof en;
+export type MessageKey = keyof typeof en;
 const ar: Record<MessageKey, string> = {
+  "shop.sort.default": "الترتيب الافتراضي",
+  "shop.sort.price_asc": "السعر: من الأقل إلى الأعلى",
+  "shop.sort.price_desc": "السعر: من الأعلى إلى الأقل",
+  "shop.sort.in_stock": "المنتجات المتوفرة أولاً",
+  "shop.sort.newest": "الأحدث",
+  "deals.title": "العروض",
+  "deals.description": "أسعار التخفيضات الحالية عند شراء قطعة واحدة.",
+  "goal.immune-support": "دعم المناعة",
+  "goal.gut-health": "صحة الجهاز الهضمي",
+  "goal.energy-fitness": "الطاقة واللياقة",
+  "goal.muscle-recovery": "العضلات والاستشفاء",
+  "goal.heart-health": "صحة القلب",
+  "goal.stress-sleep": "التوتر والنوم",
   "catalog.categoryError": "الأقسام غير متاحة مؤقتاً.",
   "catalog.categoryRetry": "إعادة تحميل الأقسام",
   "home.catalogErrorDescription": "تعذّر تحميل معلومات المنتجات والعلامات التجارية. حاول مرة أخرى أو تصفح المتجر.",

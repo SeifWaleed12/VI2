@@ -6,6 +6,8 @@ import {
   listProducts,
   InvalidCatalogFilterError,
 } from "@/lib/medusa/services/products";
+import { listCatalog } from "@/lib/medusa/services/catalog";
+import { getTagIds } from "@/lib/medusa/services/tags";
 import { getBrands } from "@/lib/medusa/services/brands";
 import { loadCategoryDirectory } from "@/lib/medusa/category-directory";
 import { categoryScope, flattenCategories } from "@/lib/category-tree";
@@ -116,7 +118,10 @@ const loadShop = cache(
     };
     if (!error) {
       try {
-        products = await listProducts({
+        const tagId = filters.goal ? (await getTagIds([filters.goal]))[filters.goal] : undefined;
+        if (!filters.goal || tagId) products = await listCatalog({
+          sort: filters.sort, deals: filters.deals,
+          ...(tagId ? { tag_id: [tagId] } : {}),
           locale,
           limit: SHOP_PAGE_SIZE,
           offset: (filters.page - 1) * SHOP_PAGE_SIZE,
@@ -143,7 +148,7 @@ const loadShop = cache(
       category: selected ?? null,
       handle: handle || selected?.handle || "",
       query: searchQuery(query).toString(),
-      filters: { q: filters.q, brandIds, page: filters.page },
+      filters: { q: filters.q, brandIds, page: filters.page, sort: filters.sort, deals: filters.deals, goal: filters.goal },
       error,
     };
   },
@@ -159,7 +164,7 @@ export async function getShopMetadata(input: ShopRequest): Promise<Metadata> {
   const title = data.error
     ? msg(data.error === "invalid" ? "shop.invalidTitle" : "shop.errorTitle")
     : [
-        data.category?.name ?? msg("shop.title"),
+        data.category?.name ?? msg(data.filters.deals ? "deals.title" : "shop.title"),
         data.filters.q ? msg("shop.search") + ": " + data.filters.q : "",
         data.filters.page > 1 ? msg("shop.page") + " " + data.filters.page : "",
       ]
@@ -168,6 +173,7 @@ export async function getShopMetadata(input: ShopRequest): Promise<Metadata> {
   const noIndex = Boolean(
     data.error ||
     data.filters.q ||
+    data.filters.sort !== "default" || data.filters.deals || data.filters.goal ||
     data.filters.brandIds.length ||
     (data.filters.page > 1 && data.page.products.length === 0),
   );

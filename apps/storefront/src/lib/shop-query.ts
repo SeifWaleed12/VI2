@@ -1,3 +1,5 @@
+import { isCatalogSort, type CatalogSort } from "./catalog-sort";
+import { isHealthGoal } from "./health-goals";
 import { categoryHref } from "./category-tree";
 
 export type ShopSearch = Record<string, string | string[] | undefined>;
@@ -25,21 +27,26 @@ export function parseShopQuery(values: ShopSearch) {
   const pageText = single("page") || "1";
   const page = Number(pageText);
   const q = single("q").trim();
-  const scalarKeys = ["q", "page", "category_id", "category", "brand"];
+  const sort = single("sort") || "default";
+  const scalarKeys = ["q", "page", "category_id", "category", "brand", "sort", "goal", "deals"];
   const invalid =
     scalarKeys.some((key) => Array.isArray(values[key])) ||
     !/^[1-9]\d*$/.test(pageText) ||
     !Number.isSafeInteger((page - 1) * SHOP_PAGE_SIZE) ||
-    q.length > 200 ||
+    q.length > 100 ||
+    !isCatalogSort(sort) ||
+    (values.goal !== undefined && !isHealthGoal(single("goal"))) ||
+    (values.deals !== undefined && single("deals") !== "1") ||
     brandIds.length > 50 ||
     brandIds.some((id) => !/^[a-zA-Z0-9_-]{1,128}$/.test(id)) ||
     (values.category_id !== undefined &&
       !/^[a-zA-Z0-9_-]{1,128}$/.test(single("category_id"))) ||
-    ["goal", "form", "diet", "allergen", "rating", "sort", "availability"].some(
+    ["form", "diet", "allergen", "rating", "availability"].some(
       (key) => values[key] !== undefined,
     );
   return {
     q,
+    sort: sort as CatalogSort, deals: single("deals") === "1", goal: single("goal"),
     page,
     brandIds,
     categoryId: single("category_id"),

@@ -23,6 +23,8 @@ import { message, type Locale } from "@/lib/i18n";
 import type { Category } from "@/lib/category-tree";
 import type { Brand } from "@/types/brand";
 import type { ProductPage } from "@/lib/medusa/services/products";
+import { CATALOG_SORTS, type CatalogSort } from "@/lib/catalog-sort";
+import { goalLabelKey, isHealthGoal } from "@/lib/health-goals";
 import { shopHref, updateShopQuery } from "@/lib/shop-query";
 import ShopFilters, { type FilterSelection } from "./ShopFilters";
 import styles from "./Shop.module.css";
@@ -37,7 +39,7 @@ export type ShopProps = {
   category: Category | null;
   handle: string;
   query: string;
-  filters: { q: string; brandIds: string[]; page: number };
+  filters: { q: string; brandIds: string[]; page: number; sort?: CatalogSort; deals?: boolean; goal?: string };
   error: "invalid" | "unavailable" | null;
 };
 
@@ -91,7 +93,7 @@ export default function ShopClient(props: ShopProps) {
     });
     startTransition(() =>
       router.push(
-        shopHref(selection.handle, next) + (selection.handle !== handle ? "#shop-results" : ""),
+        shopHref(selection.handle, next) + (selection.handle !== handle ? "#shop-results" : (typeof window === "undefined" ? "" : window.location.hash)),
         { scroll: selection.handle !== handle },
       ),
     );
@@ -111,7 +113,8 @@ export default function ShopClient(props: ShopProps) {
       diet: null,
       allergen: null,
       rating: null,
-      sort: null,
+      sort: error === "invalid" ? null : (filters.sort ?? "default"),
+      deals: filters.deals ? "1" : null,
       availability: null,
     }),
   );
@@ -127,7 +130,7 @@ export default function ShopClient(props: ShopProps) {
     brandError: props.brandError,
     retry,
   };
-  const active = Boolean(handle || filters.q || filters.brandIds.length);
+  const active = Boolean(handle || filters.q || filters.brandIds.length || filters.goal);
   const brandNames = filters.brandIds.map((id) => ({
     id,
     name: props.brands.find((brand) => brand.id === id)?.name ?? id,
@@ -153,8 +156,8 @@ export default function ShopClient(props: ShopProps) {
         )}
       </nav>
       <header className={styles.intro}>
-        <h1>{category?.name ?? msg("shop.title")}</h1>
-        <p>{msg("shop.description")}</p>
+        <h1>{category?.name ?? msg(filters.deals ? "deals.title" : "shop.title")}</h1>
+        <p>{msg(filters.deals ? "deals.description" : "shop.description")}</p>
       </header>
       <div className={styles.catalogLayout}>
         <aside className={styles.sidebar} aria-label={msg("shop.filters")}>
@@ -189,7 +192,7 @@ export default function ShopClient(props: ShopProps) {
                 type="search"
                 name="q"
                 defaultValue={filters.q}
-                maxLength={200}
+                maxLength={100}
                 placeholder={msg("shop.searchPlaceholder")}
                 aria-label={msg("search.products")}
               />
@@ -211,6 +214,13 @@ export default function ShopClient(props: ShopProps) {
               <SlidersHorizontal size={18} aria-hidden="true" />
               {msg("shop.filters")}
             </button>
+            <label className={styles.sortControl}>
+              <span>{msg("shop.sort")}</span>
+              <select aria-label={msg("shop.sort")} value={filters.sort ?? "default"} disabled={pending}
+                onChange={event => navigate(selection, { sort: event.target.value === "default" ? null : event.target.value })}>
+                {CATALOG_SORTS.map(sort => <option key={sort} value={sort}>{msg(`shop.sort.${sort}`)}</option>)}
+              </select>
+            </label>
           </div>
           <div className={styles.resultsTop} id="shop-results" ref={results} tabIndex={-1}>
             <p role="status" aria-live="polite">
@@ -248,6 +258,16 @@ export default function ShopClient(props: ShopProps) {
                   aria-label={`${msg("search.clear")}: ${filters.q}`}
                 >
                   “{filters.q}”<X size={14} aria-hidden="true" />
+                </Link>
+              )}
+              {filters.goal && isHealthGoal(filters.goal) && (
+                <Link href={shopHref(handle, updateShopQuery(query, { goal: null }))}>
+                  {msg(goalLabelKey(filters.goal))}<X size={14} aria-hidden="true" />
+                </Link>
+              )}
+              {filters.goal && isHealthGoal(filters.goal) && (
+                <Link href={shopHref(handle, updateShopQuery(query, { goal: null }))}>
+                  {msg(goalLabelKey(filters.goal))}<X size={14} aria-hidden="true" />
                 </Link>
               )}
               {brandNames.map((brand) => (
@@ -292,7 +312,7 @@ export default function ShopClient(props: ShopProps) {
                     {msg("catalog.retry")}
                   </button>
                 )}
-                <Link href={allHref}>{msg("catalog.all")}</Link>
+                <Link href="/shop">{msg("catalog.all")}</Link>
               </div>
             </div>
           ) : page.products.length ? (

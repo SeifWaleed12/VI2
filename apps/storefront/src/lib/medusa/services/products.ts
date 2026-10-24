@@ -157,8 +157,11 @@ export type ListProductsParams = {
   category_id?: string[];
   // Active brands only; unknown or inactive brands give an empty page.
   brand_id?: string[];
+  id?: string[];
   q?: string;
   order?: string;
+  tag_id?: string[];
+  fresh?: boolean;
 };
 
 export type ProductPage = {
@@ -190,10 +193,12 @@ export async function listProducts(params: ListProductsParams): Promise<ProductP
     const query: Record<string, unknown> = { limit, offset, fields: PRODUCT_FIELDS, region_id: regionId };
     if (params.category_id?.length) query.category_id = params.category_id;
     if (params.brand_id?.length) query.brand_id = params.brand_id;
+    if (params.tag_id?.length) query.tag_id = params.tag_id;
+    if (params.id?.length) query.id = params.id;
     if (params.q?.trim()) query.q = params.q.trim();
     if (params.order) query.order = params.order;
 
-    const { products, count } = await medusa.store.product.list(query, { "x-medusa-locale": medusaLocale(params.locale) });
+    const { products, count } = await medusa.store.product.list(query, { "x-medusa-locale": medusaLocale(params.locale), ...(params.fresh ? { "cache-control": "no-cache" } : {}) });
     return { products: (products || []).map(mapMedusaProduct), count: count ?? 0, limit, offset };
   } catch (error) {
     if ((error as { status?: unknown } | null)?.status === 400) throw new InvalidCatalogFilterError();

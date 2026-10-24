@@ -26,6 +26,8 @@ jest.mock("@/lib/medusa/services/products", () => ({
   listProducts: jest.fn(),
   InvalidCatalogFilterError: class extends Error {},
 }));
+jest.mock("@/lib/medusa/services/catalog", () => ({ listCatalog: (params: Record<string, unknown>) => { const { sort, deals, ...rest } = params; void sort; void deals; return listProducts(rest as never); } }));
+jest.mock("@/lib/medusa/services/tags", () => ({ getTagIds: jest.fn(async () => ({})) }));
 jest.mock("@/lib/medusa/services/brands", () => ({ getBrands: jest.fn() }));
 jest.mock("@/lib/medusa/category-directory", () => ({
   loadCategoryDirectory: jest.fn(),
