@@ -319,9 +319,24 @@ it.each(["en", "ar"] as const)("publishes no removed shop filters in %s navigati
   expect(links).toContain("/" + locale + "/#health-goals");
   for (const href of links) {
     const query = new URL(href, "https://example.test").searchParams;
-    for (const key of ["goal", "form", "diet", "allergen", "rating", "sort", "availability"]) expect(query.has(key)).toBe(false);
+    for (const key of ["form", "diet", "allergen", "rating", "sort", "availability"]) expect(query.has(key)).toBe(false);
   }
-  expect(html).not.toContain('setMobilePanel("health")');
+});
+
+it.each(["en", "ar"] as const)("opens Brands and Health Goals as mobile sub-menus and shows Deals without an arrow in %s", locale => {
+  mockLocale = locale;
+  const html = renderToStaticMarkup(createElement(Navbar));
+  const label = 'aria-label="' + message(locale, "nav.shopBy") + '"';
+  const shopBy = html.slice(html.indexOf(label), html.indexOf("</nav>", html.indexOf(label)));
+  const buttons = Array.from(shopBy.matchAll(/<button type="button"[^>]*>(.*?)<\/button>/g), match => match[1]);
+  expect(buttons).toHaveLength(2);
+  expect(buttons[0]).toContain(message(locale, "nav.brands"));
+  expect(buttons[1]).toContain(message(locale, "nav.health"));
+  expect(shopBy).not.toContain("/brands\"");
+  expect(shopBy).not.toContain("#health-goals");
+  const deals = shopBy.slice(shopBy.indexOf('href="/' + locale + '/deals"'));
+  expect(deals).toContain(message(locale, "nav.deals"));
+  expect(deals).not.toContain("lucide-chevron-right");
 });
 
 it.each(["en", "ar"] as const)("gives the utility strip to announcements without a flash-deals promotion in %s", locale => {
