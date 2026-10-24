@@ -1023,6 +1023,7 @@
   padding-top: 18px;
 
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
 
   gap: 12px;
 
@@ -1033,6 +1034,7 @@
 
 .promoForm {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
 
   gap: 8px;
 }
@@ -1053,6 +1055,7 @@
 }
 
 .promoRow input {
+  width: 100%;
   min-width: 0;
   height: 48px;
 
