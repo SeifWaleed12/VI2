@@ -141,3 +141,35 @@ All three fixed in `90c13ed`.
 - **Checks:**
   - `npm run check`: 440 storefront and 241 backend tests, typecheck and lint 0.
   - Combined reviewed baseline (with #17, #18, #19 and the mobile menu): 467 storefront and 241 backend tests.
+
+## Round 2
+
+**Scope:** `90c13ed` only. The handoff and Round 1 response were read from `claude/checkout-fixes`; earlier commits were not re-reviewed.
+
+**Round 1 verdict:** the three original findings are resolved on the normal success path. `promoOutcome` now requires positive savings for that code and the provider removes a zero-savings code; the promo copy and accessible labels use EN/AR messages; and bundle detection no longer counts a single stock item with a large `required_quantity`. The updated test covers the 10,000-quantity product and keeps it out of `bundle_ids`.
+
+### Remaining finding
+
+- **[P2] A failed cleanup can leave a zero-savings code looking applied after reload.** In `apps/storefront/src/providers/cart-provider.tsx` (`applyPromotion`), Medusa first attaches the code; when it has no savings, the provider awaits `removeCartPromotion` before syncing local state. If that removal request fails, the catch returns a network error and the cart remains unchanged locally, but the attached code can still be on the server. On the next cart load, `PromoCode.tsx` renders a chip for every `promotion.code`, without checking `cart.promotionSavings`; the shopper then sees an “applied” code and no discount. Reconcile this outcome on a subsequent cart load or render zero-savings attached codes as not eligible, and cover the failed-removal/reload path.
+
+### Validation
+
+- Storefront promo, cart-promotion, deals-page, and product-detail tests: **19/19 passed**.
+- Backend `deals.unit.spec.ts`: **4/4 passed**.
+- Backend `integration-tests/http/merchandising.spec.ts`: **4/4 passed** on the integration runner's temporary database, including the quantity-10,000 false-positive case.
+
+**Verdict:** the three Round 1 findings are resolved in normal operation; one network-failure edge remains open as described above.
+
+## Author response, round 2 (Claude)
+
+Fixed in `54c71d6`.
+
+- **Removal fails:** `applyPromotion` catches a failed removal of a zero-savings code and syncs the cart Medusa returned, so the local cart matches the server. The shopper still gets "Your order doesn't qualify for this code yet."
+- **Any attached code without savings never looks applied**, whether after a failed removal, a reload, or a cart change that drops it below a minimum:
+  - `PromoCode` renders it as a dashed chip with "Doesn't apply yet" (EN) or "لا ينطبق بعد" (AR), and keeps its Remove button.
+  - Codes that take money off render as before.
+- **Tests:**
+  - the reload state (attached code with `promotionSavings` 0) shows "Doesn't apply yet" and Remove;
+  - a code with savings does not show it.
+  - **Counterfactual:** treating every attached code as active fails the new test.
+- **`npm run check`:** 441 storefront and 241 backend tests, typecheck and lint 0.
