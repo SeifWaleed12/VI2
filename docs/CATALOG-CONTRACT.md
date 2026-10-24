@@ -14,6 +14,8 @@ Request (`ListProductsParams`):
 | `locale` | Required, `"en"` or `"ar"`. Sent as `x-medusa-locale` (`en-US`, `ar-EG`), so names come translated. |
 | `category_id` | Category IDs. Medusa matches only the IDs given: to show a category with its subcategories, send the category and all its descendants (`categoryScope` in `lib/category-tree.ts`). |
 | `brand_id` | Brand IDs, 1 to 50. Active brands only. |
+| `tag_id` | Product tag IDs (Medusa native). Health goals are tags; values in `lib/health-goals.ts`, looked up with `getTagIds`. |
+| `id` | Product IDs (Medusa native). Used by `getDeals`; not combined with `brand_id`, which also filters by product ID. |
 | `q` | Search text; trimmed, left out when empty. |
 | `limit` | 1 to 100 (`MAX_PAGE_SIZE`); default 50. Out-of-range or non-numbers are brought within bounds. |
 | `offset` | 0 or more; default 0. |
@@ -60,6 +62,8 @@ Native `GET /store/products` supplies `category_id`, `q`, `id`, `limit`, `offset
    - `brand.id`, `brand.name`, `brand.status`;
    - `eda_registration.registration_number`, `eda_registration.is_approved`;
    - `categories.id`, `categories.name`, `categories.handle`. Medusa otherwise drops these silently.
+
+`GET /store/deals` returns `{ product_ids }`: products with a sale Price List that is active, applies to everyone (no customer-group rules) and is running now, in EGP, at most 100 (`src/lib/deals.ts`). The storefront lists them through `GET /store/products?id=…`, so unpublished products stay hidden. Cached 60 s, cleared by any Admin write.
 
 `GET /store/brands` lists every active brand, sorted by name and not capped. Each brand has `id`, `name`, `slug`, `logo`, `country`, `description`.
 

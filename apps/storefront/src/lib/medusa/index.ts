@@ -9,6 +9,7 @@ export * from "./services/payment";
 export * from "./services/checkout";
 export * from "./services/regions";
 export * from "./services/brands";
+export * from "./services/tags";
 
 import * as productService from "./services/products";
 import * as categoryService from "./services/categories";

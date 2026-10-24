@@ -7,6 +7,7 @@ import {
   InvalidCatalogFilterError,
 } from "@/lib/medusa/services/products";
 import { getBrands } from "@/lib/medusa/services/brands";
+import { getTagIds } from "@/lib/medusa/services/tags";
 import { loadCategoryDirectory } from "@/lib/medusa/category-directory";
 import type { ShopProps } from "../ShopClient";
 
@@ -27,6 +28,7 @@ jest.mock("@/lib/medusa/services/products", () => ({
   InvalidCatalogFilterError: class extends Error {},
 }));
 jest.mock("@/lib/medusa/services/brands", () => ({ getBrands: jest.fn() }));
+jest.mock("@/lib/medusa/services/tags", () => ({ getTagIds: jest.fn() }));
 jest.mock("@/lib/medusa/category-directory", () => ({
   loadCategoryDirectory: jest.fn(),
 }));
@@ -127,6 +129,7 @@ it.each([
   { page: "0" },
   { q: ["a", "b"] },
   { goal: "muscle" },
+  { goal: ["immune-support", "gut-health"] },
 ])(
   "rejects invalid filters without silently showing all products: %j",
   async (query) => {
@@ -286,4 +289,26 @@ it.each(["en", "ar"] as const)("retains search metadata with two selected brands
     q: "whey", brand_id: [brand.id, second.id], utm: "1",
   } });
   expect(metadata.title).toBe(parent.name + (locale === "ar" ? " — بحث: whey | Vi2" : " — Search: whey | Vi2"));
+});
+
+it("filters by a health goal through its product tag, with the other filters", async () => {
+  jest.mocked(getTagIds).mockResolvedValue({ "immune-support": "ptag_immune" });
+  const result = await render({ locale: "en", query: { goal: "immune-support", brand_id: brand.id } });
+  expect(getTagIds).toHaveBeenCalledWith(["immune-support"]);
+  expect(listProducts).toHaveBeenCalledWith(expect.objectContaining({ tag_id: ["ptag_immune"], brand_id: [brand.id] }));
+  expect(result.filters.goal).toBe("immune-support");
+  expect(result.error).toBeNull();
+});
+it("shows a goal no product is tagged with yet as empty, and a failed lookup as unavailable", async () => {
+  jest.mocked(getTagIds).mockResolvedValueOnce({});
+  const empty = await render({ locale: "en", query: { goal: "heart-health" } });
+  expect([empty.error, empty.page.count, empty.page.products]).toEqual([null, 0, []]);
+  expect(listProducts).not.toHaveBeenCalled();
+  jest.mocked(getTagIds).mockRejectedValueOnce(new Error("offline"));
+  expect((await render({ locale: "en", query: { goal: "gut-health" } })).error).toBe("unavailable");
+});
+it("keeps goal-filtered pages out of search results", async () => {
+  jest.mocked(getTagIds).mockResolvedValue({ "stress-sleep": "ptag_sleep" });
+  const metadata = await getShopMetadata({ locale: "en", query: { goal: "stress-sleep" } });
+  expect(metadata.robots).toEqual({ index: false, follow: true });
 });

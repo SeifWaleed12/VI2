@@ -1,4 +1,5 @@
 import { categoryHref } from "./category-tree";
+import { isHealthGoal } from "./health-goals";
 
 export type ShopSearch = Record<string, string | string[] | undefined>;
 export const SHOP_PAGE_SIZE = 24;
@@ -25,7 +26,7 @@ export function parseShopQuery(values: ShopSearch) {
   const pageText = single("page") || "1";
   const page = Number(pageText);
   const q = single("q").trim();
-  const scalarKeys = ["q", "page", "category_id", "category", "brand"];
+  const scalarKeys = ["q", "page", "category_id", "category", "brand", "goal"];
   const invalid =
     scalarKeys.some((key) => Array.isArray(values[key])) ||
     !/^[1-9]\d*$/.test(pageText) ||
@@ -35,13 +36,15 @@ export function parseShopQuery(values: ShopSearch) {
     brandIds.some((id) => !/^[a-zA-Z0-9_-]{1,128}$/.test(id)) ||
     (values.category_id !== undefined &&
       !/^[a-zA-Z0-9_-]{1,128}$/.test(single("category_id"))) ||
-    ["goal", "form", "diet", "allergen", "rating", "sort", "availability"].some(
+    (values.goal !== undefined && !isHealthGoal(single("goal"))) ||
+    ["form", "diet", "allergen", "rating", "sort", "availability"].some(
       (key) => values[key] !== undefined,
     );
   return {
     q,
     page,
     brandIds,
+    goal: single("goal"),
     categoryId: single("category_id"),
     legacyCategory: single("category"),
     legacyBrand: single("brand"),

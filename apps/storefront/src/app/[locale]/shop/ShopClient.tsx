@@ -24,6 +24,7 @@ import type { Category } from "@/lib/category-tree";
 import type { Brand } from "@/types/brand";
 import type { ProductPage } from "@/lib/medusa/services/products";
 import { shopHref, updateShopQuery } from "@/lib/shop-query";
+import { goalLabelKey, type HealthGoal } from "@/lib/health-goals";
 import ShopFilters, { type FilterSelection } from "./ShopFilters";
 import styles from "./Shop.module.css";
 
@@ -37,7 +38,7 @@ export type ShopProps = {
   category: Category | null;
   handle: string;
   query: string;
-  filters: { q: string; brandIds: string[]; page: number };
+  filters: { q: string; brandIds: string[]; goal: string; page: number };
   error: "invalid" | "unavailable" | null;
 };
 
@@ -51,6 +52,7 @@ export default function ShopClient(props: ShopProps) {
   const [draft, setDraft] = useState<FilterSelection>({
     handle,
     brandIds: filters.brandIds,
+    goal: filters.goal,
   });
   const results = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -87,6 +89,7 @@ export default function ShopClient(props: ShopProps) {
     close();
     const next = updateShopQuery(query, {
       brand_id: selection.brandIds,
+      goal: selection.goal || null,
       ...changes,
     });
     startTransition(() =>
@@ -99,7 +102,7 @@ export default function ShopClient(props: ShopProps) {
   function search(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const q = String(new FormData(event.currentTarget).get("q") ?? "").trim();
-    navigate({ handle, brandIds: filters.brandIds }, { q });
+    navigate({ handle, brandIds: filters.brandIds, goal: filters.goal }, { q });
   }
   const allHref = shopHref(
     "",
@@ -115,7 +118,7 @@ export default function ShopClient(props: ShopProps) {
       availability: null,
     }),
   );
-  const selection = { handle, brandIds: filters.brandIds };
+  const selection = { handle, brandIds: filters.brandIds, goal: filters.goal };
   const totalPages = Math.ceil(page.count / page.limit);
   const number = (value: number) =>
     new Intl.NumberFormat(locale === "ar" ? "ar-EG" : "en-EG").format(value);
@@ -127,7 +130,8 @@ export default function ShopClient(props: ShopProps) {
     brandError: props.brandError,
     retry,
   };
-  const active = Boolean(handle || filters.q || filters.brandIds.length);
+  const active = Boolean(handle || filters.q || filters.brandIds.length || filters.goal);
+  const goalName = filters.goal ? msg(goalLabelKey(filters.goal as HealthGoal)) : "";
   const brandNames = filters.brandIds.map((id) => ({
     id,
     name: props.brands.find((brand) => brand.id === id)?.name ?? id,
@@ -166,7 +170,7 @@ export default function ShopClient(props: ShopProps) {
             {...filterProps}
             value={selection}
             linkTo={selection =>
-              shopHref(selection.handle, updateShopQuery(query, { brand_id: selection.brandIds })) +
+              shopHref(selection.handle, updateShopQuery(query, { brand_id: selection.brandIds, goal: selection.goal || null })) +
               (selection.handle !== handle ? "#shop-results" : "")
             }
           />
@@ -248,6 +252,15 @@ export default function ShopClient(props: ShopProps) {
                   aria-label={`${msg("search.clear")}: ${filters.q}`}
                 >
                   “{filters.q}”<X size={14} aria-hidden="true" />
+                </Link>
+              )}
+              {goalName && (
+                <Link
+                  href={shopHref(handle, updateShopQuery(query, { goal: null }))}
+                  aria-label={`${msg("shop.removeFilter")}: ${goalName}`}
+                >
+                  {goalName}
+                  <X size={14} aria-hidden="true" />
                 </Link>
               )}
               {brandNames.map((brand) => (
@@ -381,7 +394,7 @@ export default function ShopClient(props: ShopProps) {
           <div className={styles.sheetFooter}>
             <button
               type="button"
-              onClick={() => setDraft({ handle: "", brandIds: [] })}
+              onClick={() => setDraft({ handle: "", brandIds: [], goal: "" })}
             >
               {msg("shop.resetFilters")}
             </button>

@@ -5,9 +5,10 @@ import Link from "@/components/LocaleLink";
 import { flattenCategories, type Category } from "@/lib/category-tree";
 import { message, type Locale } from "@/lib/i18n";
 import type { Brand } from "@/types/brand";
+import { HEALTH_GOALS, goalLabelKey } from "@/lib/health-goals";
 import styles from "./Shop.module.css";
 
-export type FilterSelection = { handle: string; brandIds: string[] };
+export type FilterSelection = { handle: string; brandIds: string[]; goal: string };
 type FilterActions =
   | { linkTo: (value: FilterSelection) => string; onChange?: never }
   | { linkTo?: never; onChange: (value: FilterSelection) => void };
@@ -40,6 +41,7 @@ export default function ShopFilters({
     next: FilterSelection,
     type: "radio" | "checkbox" = "radio",
     accessibleLabel?: string,
+    name = group,
   ) {
     if (linkTo)
       return (
@@ -58,7 +60,7 @@ export default function ShopFilters({
       <label className={styles.option} key={key}>
         <input
           type={type}
-          name={type === "radio" ? group : undefined}
+          name={type === "radio" ? name : undefined}
           checked={checked}
           aria-label={accessibleLabel}
           onChange={() => onChange?.(next)}
@@ -122,6 +124,13 @@ export default function ShopFilters({
           categories.map(branch)
         ) : (
           <p className={styles.notice}>{msg("catalog.empty")}</p>
+        )}
+      </fieldset>
+      <fieldset className={styles.filterGroup}>
+        <legend>{msg("shop.goal")}</legend>
+        {[{ goal: "", label: msg("shop.allGoals") }, ...HEALTH_GOALS.map((goal) => ({ goal, label: msg(goalLabelKey(goal)) }))].map(
+          ({ goal, label }) =>
+            choice(label, `goal:${goal || "all"}`, value.goal === goal, { ...value, goal }, "radio", undefined, `${group}-goal`),
         )}
       </fieldset>
       <fieldset className={styles.filterGroup}>
