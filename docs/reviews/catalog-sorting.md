@@ -66,3 +66,5 @@ Not checked: real Redis disconnect/reconnect across multiple server/worker proce
 - Test DB and template verified absent with a read-only pg_database query:[].
 - Fixture server3014 stopped; temporary fixture test removed, browser tab closed and viewport reset. No task-owned dev server remains.
 - No package/lock/config/AGENTS changes, live DB migration/backfill, external provider calls or merge. Claude review and owner merge remain pending.
+
+Publication: PR20 https://github.com/SeifWaleed12/VI2/pull/20 ; application479c444; branch codex/catalog-sorting -> full-stack. Verified open/unmerged, clean merge status. This publication note changes documentation only; all application source is the validated commit above. Review pending.
