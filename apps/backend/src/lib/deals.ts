@@ -46,8 +46,9 @@ export async function dealProductIds(container: MedusaContainer, now = new Date(
 }
 
 // A bundle is a product with an inventory-kit variant (Admin → product →
-// variant → Inventory kit): selling one takes stock from several items, or
-// more than one of an item. No tag or category needed.
+// variant → Inventory kit) made of two or more different stock items. A single
+// item with a quantity above 1 is not counted: in practice it was a mistyped
+// quantity, not a pack. No tag or category needed.
 export type StockLink = { variant_id?: string | null, required_quantity?: number | null, variant?: { product_id?: string | null } | null }
 
 export function kitProductIds(links: StockLink[]) {
@@ -58,7 +59,7 @@ export function kitProductIds(links: StockLink[]) {
   const ids = new Set<string>()
   for (const parts of byVariant.values()) {
     const productId = parts[0].variant?.product_id
-    if (productId && (parts.length > 1 || (parts[0].required_quantity ?? 1) > 1)) ids.add(productId)
+    if (productId && parts.length > 1) ids.add(productId)
   }
   return [...ids].slice(0, MAX_DEAL_PRODUCTS)
 }

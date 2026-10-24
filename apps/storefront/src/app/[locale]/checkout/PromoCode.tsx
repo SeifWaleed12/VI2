@@ -4,23 +4,27 @@ import { Tag, X } from "lucide-react";
 import { useId, useState, type FormEvent } from "react";
 
 import { useCart } from "@/context/CartContext";
+import { useLanguage } from "@/context/LanguageContext";
+import type { MessageKey } from "@/lib/i18n";
 import type { PromoResult } from "@/lib/medusa/services/cart";
 
 import styles from "./Checkout.module.css";
 
 type Failure = Extract<PromoResult, { ok: false }>["reason"];
 
-export const PROMO_MESSAGES: Record<Failure, string> = {
-  loading: "Your cart is still loading. Try again in a moment.",
-  invalid: "This code isn't valid or has expired.",
-  not_applicable: "This code doesn't apply to the items in your cart.",
-  network: "We couldn't check this code. Try again.",
+export const PROMO_MESSAGES: Record<Failure, MessageKey> = {
+  loading: "promo.loading",
+  invalid: "promo.invalid",
+  not_applicable: "promo.notApplicable",
+  not_eligible: "promo.notEligible",
+  network: "promo.network",
 };
 
 // The promo code field, shared by the desktop summary and the mobile summary.
 // `collapsible` starts as a quiet "Add promo code" button until it is needed.
 export default function PromoCode({ collapsible = false }: { collapsible?: boolean }) {
   const { cart, loading, promotions, applyPromotion, removePromotion } = useCart();
+  const { msg } = useLanguage();
   const id = useId();
   const [code, setCode] = useState("");
   const [open, setOpen] = useState(!collapsible);
@@ -38,25 +42,25 @@ export default function PromoCode({ collapsible = false }: { collapsible?: boole
     setApplying(false);
     if (result.ok) {
       setCode("");
-      setMessage({ ok: true, text: `${entered.toUpperCase()} applied.` });
+      setMessage({ ok: true, text: msg("promo.applied").replace("{code}", entered.toUpperCase()) });
     } else {
-      setMessage({ ok: false, text: PROMO_MESSAGES[result.reason] });
+      setMessage({ ok: false, text: msg(PROMO_MESSAGES[result.reason]) });
     }
   }
 
   const applied = promotions.filter((promotion) => promotion.code);
 
   return (
-    <div className={styles.promo}>
+    <div className={styles.promo} data-no-translate>
       {applied.length > 0 && (
-        <ul className={styles.promoChips} aria-label="Applied promo codes">
+        <ul className={styles.promoChips} aria-label={msg("promo.appliedList")}>
           {applied.map((promotion) => (
             <li key={promotion.code}>
               <Tag size={15} strokeWidth={1.6} aria-hidden="true" />
               <strong>{promotion.code}</strong>
-              <button type="button" onClick={() => removePromotion(promotion.code)} aria-label={`Remove ${promotion.code}`}>
+              <button type="button" onClick={() => removePromotion(promotion.code)} aria-label={msg("promo.removeCode").replace("{code}", promotion.code)}>
                 <X size={15} strokeWidth={1.6} aria-hidden="true" />
-                Remove
+                {msg("promo.remove")}
               </button>
             </li>
           ))}
@@ -65,7 +69,7 @@ export default function PromoCode({ collapsible = false }: { collapsible?: boole
 
       {open ? (
         <form className={styles.promoForm} onSubmit={apply} noValidate aria-busy={applying}>
-          <label htmlFor={`${id}-code`}>Promo code</label>
+          <label htmlFor={`${id}-code`}>{msg("promo.label")}</label>
           <div className={styles.promoRow}>
             <input
               id={`${id}-code`}
@@ -83,7 +87,7 @@ export default function PromoCode({ collapsible = false }: { collapsible?: boole
               aria-describedby={message || !cartReady ? `${id}-note` : undefined}
             />
             <button type="submit" disabled={applying || !cartReady || !code.trim()}>
-              {applying ? "Applying…" : "Apply"}
+              {msg(applying ? "promo.applying" : "promo.apply")}
             </button>
           </div>
           {message ? (
@@ -91,13 +95,13 @@ export default function PromoCode({ collapsible = false }: { collapsible?: boole
               {message.text}
             </p>
           ) : !cartReady ? (
-            <p id={`${id}-note`} className={styles.promoNote}>Loading your cart…</p>
+            <p id={`${id}-note`} className={styles.promoNote}>{msg("promo.cartLoading")}</p>
           ) : null}
         </form>
       ) : (
         <button type="button" className={styles.promoToggle} onClick={() => setOpen(true)} aria-expanded="false">
           <Tag size={16} strokeWidth={1.6} aria-hidden="true" />
-          Add promo code
+          {msg("promo.add")}
         </button>
       )}
     </div>
