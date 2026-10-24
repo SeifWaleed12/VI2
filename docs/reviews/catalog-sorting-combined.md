@@ -70,3 +70,16 @@ Branch `claude/catalog-sorting`, merge commit `5067c4e` (parents: `full-stack` `
 
 - No changes to #20's ranking, refresh or hydration code.
 - No live migration outside the local baseline. No PR yet: it opens after this review.
+
+## GPT review, round 1 (2026-10-24)
+
+- **[P3] Deals breadcrumb names the wrong page.** On `/deals` the current breadcrumb item said "Shop" under a "Deals" heading.
+- **Bundles ordering and count:** acceptable as a separate section.
+- **Header search during a catalog refresh:** acceptable. It shows a localized "temporarily unavailable" alert, never stale suggestions.
+- **Validation:** Deals page and shop render suites passed, 18/18.
+
+## Author response
+
+- **P3 fixed:** the current breadcrumb item uses `deals.title` when `filters.deals` is set (`ShopClient.tsx`).
+- **New test:** EN/AR, Deals vs Shop. It fails without the fix.
+- `npm run check`: backend 266, storefront 486 tests; typecheck and lint pass.

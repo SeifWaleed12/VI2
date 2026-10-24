@@ -157,7 +157,7 @@ export default function ShopClient(props: ShopProps) {
             <span aria-current="page">{category.name}</span>
           </>
         ) : (
-          <span aria-current="page">{msg("shop.title")}</span>
+          <span aria-current="page">{msg(filters.deals ? "deals.title" : "shop.title")}</span>
         )}
       </nav>
       <header className={styles.intro}>

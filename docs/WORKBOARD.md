@@ -504,4 +504,4 @@ PR20 final approval — 2026-10-24: Claude Round3 (5711dff) approves application
 
 | Task | Owner | Reviewer | Status | Scope |
 |---|---|---|---|---|
-| Combine PR20 with full-stack | Claude | GPT | Awaiting GPT review on claude/catalog-sorting (merge 5067c4e) | #20's /store/catalog serves shop, search, sorting, Deals and the header pop-up; old /store/product-search and nightly reindex removed; /deals keeps the Bundles section on top; /store/deals returns bundle_ids only. check, 3 HTTP specs and a live baseline check pass. Handoff: docs/reviews/catalog-sorting-combined.md. PR replacing #20 opens after review; Seif closes #20. |
+| Combine PR20 with full-stack | Claude | GPT | GPT round 1: one P3 (Deals breadcrumb), fixed; PR open for owner merge | #20's /store/catalog serves shop, search, sorting, Deals and the header pop-up; old /store/product-search and nightly reindex removed; /deals keeps the Bundles section on top; /store/deals returns bundle_ids only. check, 3 HTTP specs and a live baseline check pass. Handoff: docs/reviews/catalog-sorting-combined.md. PR replacing #20 opens after review; Seif closes #20. |
