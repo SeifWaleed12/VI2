@@ -27,6 +27,7 @@ import {
   removeCartPromotion,
 } from "@/lib/medusa/services/cart";
 import { cartQueue } from "@/lib/medusa/cart-queue";
+import { forgetPendingCart } from "@/lib/pending-checkout";
 
 export type CartItem = {
   id?: string;
@@ -206,6 +207,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     async (product: Product, quantity = 1, options?: { quiet?: boolean }) => {
       if (!options?.quiet) openCart();
       setMutationError(null);
+      forgetPendingCart(); // a changed cart is a new checkout; the old one is not retried
 
       // Snapshot previous state for rollback
       const prevItems = [...items];
@@ -253,6 +255,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const removeItem = useCallback(
     async (productIdOrLineId: string) => {
       setMutationError(null);
+      forgetPendingCart();
 
       // Snapshot previous state for rollback
       const prevItems = [...items];
@@ -295,6 +298,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       }
 
       setMutationError(null);
+      forgetPendingCart();
 
       // Snapshot previous state for rollback
       const prevItems = [...items];

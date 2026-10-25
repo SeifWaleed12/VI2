@@ -26,6 +26,15 @@ export async function completeCheckout(cartId: string, resume = false): Promise<
     // 403: refused before Medusa ran (the cart belongs to another account's
     // login), so nothing was placed and the same cart must not be retried.
     if (response.status === 403) return { ok: false, unknown: false, error: "This checkout belongs to another account and was not placed. Sign in to that account, or start a new checkout." };
+    // Medusa refused the cart (stock, a missing step): nothing was placed, so
+    // the same completion must not be retried. 409 means a completion is
+    // already running, and 5xx or no answer leave the outcome unknown.
+    if (response.status >= 400 && response.status < 500 && response.status !== 409) {
+      const refusal: { message?: unknown } | null = await response.json().catch(() => null);
+      return { ok: false, unknown: false, error: /inventory/i.test(String(refusal?.message ?? ""))
+        ? "Some items in your cart are not available in that quantity, and your order was not placed. Update your cart and try again."
+        : "Checkout was not completed. Review your cart and delivery details, then try again." };
+    }
     if (!response.ok) throw new Error(`Checkout completion failed with ${response.status}`);
     const result = await response.json();
     if (result.type === "order" && typeof result.order?.id === "string" && result.order.id.startsWith("order_")) {

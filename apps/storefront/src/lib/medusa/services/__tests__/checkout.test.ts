@@ -29,6 +29,17 @@ it("treats a refused completion as a definite failure, so the cart is not retrie
 it("treats other completion failures as unknown, so the same cart is retried", async () => {
   jest.mocked(global.fetch).mockResolvedValueOnce(Response.json({ message: "busy" }, { status: 503 }));
   expect(await completeCheckout("cart_123", true)).toMatchObject({ ok: false, unknown: true });
+  jest.mocked(global.fetch).mockResolvedValueOnce(Response.json({ message: "already completing" }, { status: 409 }));
+  expect(await completeCheckout("cart_123", true)).toMatchObject({ ok: false, unknown: true });
+});
+
+it("treats Medusa refusing the cart as not placed, and names a stock problem plainly", async () => {
+  jest.mocked(global.fetch).mockResolvedValueOnce(Response.json({ type: "not_allowed", message: "Some variant does not have the required inventory" }, { status: 400 }));
+  const stock = await completeCheckout("cart_123", true);
+  expect(stock).toMatchObject({ ok: false, unknown: false });
+  expect(!stock.ok && stock.error).toMatch(/not available in that quantity/);
+  jest.mocked(global.fetch).mockResolvedValueOnce(Response.json({ message: "Shipping method missing" }, { status: 400 }));
+  expect(await completeCheckout("cart_123", true)).toMatchObject({ ok: false, unknown: false, error: expect.stringMatching(/not completed/) });
 });
 
 it.each([

@@ -18,7 +18,8 @@ export async function POST(request: NextRequest) {
       cache: "no-store", signal: AbortSignal.timeout(AUTH_TIMEOUT_MS),
     });
     if (!backend.ok) {
-      if (backend.status === 400 || backend.status === 409) return authError("Unable to register with these details. Try signing in or contact support.", 400);
+      if (backend.status === 409) return authJson({ ok: false, code: "email_taken", message: "This email already has an account." }, 409);
+      if (backend.status === 400) return authError("Unable to register with these details. Try signing in or contact support.", 400);
       return backendFailure(backend.status);
     }
     const data = await backend.json();

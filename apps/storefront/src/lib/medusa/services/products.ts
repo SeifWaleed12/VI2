@@ -44,6 +44,8 @@ export function mapMedusaProduct(p: CatalogProduct): Product {
     p.images?.[0]?.url ||
     String(meta.image ?? "");
 
+  const images = [...new Set([image, ...(p.images ?? []).map((i) => i?.url)])].filter((url): url is string => !!url);
+
   const categories: ProductCategoryRef[] = (p.categories ?? [])
     .filter((c): c is NonNullable<typeof c> => typeof c?.id === "string")
     .map((c) => ({ id: c.id, name: c.name ?? "", handle: c.handle ?? "" }));
@@ -138,6 +140,7 @@ export function mapMedusaProduct(p: CatalogProduct): Product {
     rating: 0,
     reviewCount: 0,
     image,
+    ...(images.length > 1 ? { images } : {}),
     ...(meta.flavor ? { flavor: String(meta.flavor) } : {}),
     ...(meta.size ? { size: String(meta.size) } : {}),
     ...(meta.servings ? { servings: Number(meta.servings) } : {}),

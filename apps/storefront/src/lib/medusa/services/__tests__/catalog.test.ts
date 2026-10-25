@@ -174,3 +174,10 @@ it("uses exposed native rank before creation order when both options are purchas
   expect(product).toMatchObject({ variantId: "second", price: 50, inStock: true });
   expect(product.variants?.map(v => v.id)).toEqual(["second", "first"]);
 });
+
+it("keeps every product photo once, the main one first, and lists them only when there are several", () => {
+  const photos = (thumbnail: string | null, urls: string[]) => mapMedusaProduct({ id: "p", thumbnail, images: urls.map((url) => ({ url })) } as never);
+  expect(photos("t.jpg", ["t.jpg", "b.jpg", "b.jpg"]).images).toEqual(["t.jpg", "b.jpg"]);
+  expect(photos(null, ["a.jpg", "b.jpg"]).images).toEqual(["a.jpg", "b.jpg"]);
+  expect(photos("t.jpg", ["t.jpg"]).images).toBeUndefined();
+});

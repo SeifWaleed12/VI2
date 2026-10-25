@@ -478,15 +478,20 @@
 .filterSelected { background: var(--cream-deep); font-weight: 600; }
 
 /* Keep search, filter access and ordering distinct at every width. */
+/* Beside the search box on desktop: label inline, select as tall as the box. */
 .sortControl {
-  display: grid;
+  display: flex;
+  align-items: center;
+  align-self: stretch;
   flex: 0 0 auto;
-  gap: 4px;
+  gap: 10px;
+  white-space: nowrap;
   color: var(--ink);
   font-size: var(--text-ui);
   line-height: 1.5;
 }
 .sortControl select {
+  align-self: stretch;
   min-height: 48px;
   max-width: 100%;
   border: 1px solid var(--border);
@@ -502,6 +507,6 @@
 @media (max-width: 980px) {
   .toolbar { flex-wrap: wrap; align-items: end; }
   .searchBox { flex-basis: 100%; }
-  .sortControl { flex: 1; min-width: 0; }
+  .sortControl { display: grid; gap: 4px; flex: 1; min-width: 0; white-space: normal; }
   .sortControl select { width: 100%; }
 }

@@ -659,7 +659,18 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
                 {msg("nav.brands")}
               </Link>
 
-              <Link href="/#health-goals">
+              <Link
+                href="/#health-goals"
+                onMouseEnter={() =>
+                  setMegaOpen("goals")
+                }
+                onFocus={() =>
+                  setMegaOpen("goals")
+                }
+                onClick={() =>
+                  setMegaOpen(null)
+                }
+              >
                 {msg("nav.health")}
               </Link>
               <Link
