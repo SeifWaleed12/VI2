@@ -3,7 +3,7 @@ import { medusa } from "../client";
 import type { Cart, CartAddress } from "@/types/cart";
 
 export const CART_FIELDS =
-  "*items,*items.variant,*items.product,*shipping_address,*billing_address,*shipping_methods,*promotions,*payment_collection,items.adjustments.code,items.adjustments.amount,shipping_methods.adjustments.code,shipping_methods.adjustments.amount";
+  "*items,*items.variant,*items.product,*shipping_address,*billing_address,*shipping_methods,*promotions,*payment_collection,+items.adjustments.code,+items.adjustments.amount,+shipping_methods.adjustments.code,+shipping_methods.adjustments.amount";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function mapMedusaCart(c: any): Cart {

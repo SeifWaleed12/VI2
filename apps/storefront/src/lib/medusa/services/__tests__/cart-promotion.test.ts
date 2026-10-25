@@ -1,4 +1,4 @@
-import { mapMedusaCart, promoFailure, promoOutcome } from "../cart";
+import { CART_FIELDS, mapMedusaCart, promoFailure, promoOutcome } from "../cart";
 import type { Cart } from "@/types/cart";
 
 jest.mock("../../client", () => ({ medusa: {} }));
@@ -33,4 +33,9 @@ it("adds up what each code takes off across items and delivery", () => {
     shipping_methods: [{ id: "s1", amount: 70, adjustments: [{ code: "SHIP", amount: 70 }] }],
   });
   expect(mapped.promotionSavings).toEqual({ VI20: 160, SHIP: 70 });
+});
+
+it("asks for extra cart fields on top of Medusa's defaults, so totals and discounts still come back", () => {
+  // A field without "*" or "+" replaces Medusa's default fields, dropping total and discount_total.
+  expect(CART_FIELDS.split(",").filter((field) => !/^[*+]/.test(field))).toEqual([]);
 });
