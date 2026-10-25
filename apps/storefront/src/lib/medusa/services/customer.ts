@@ -77,7 +77,7 @@ export async function loginCustomer(
  */
 export async function registerCustomer(
   credentials: RegisterCredentials,
-): Promise<{ ok: true; customer: Customer } | { ok: false; message: string }> {
+): Promise<{ ok: true; customer: Customer } | { ok: false; message: string; emailTaken?: boolean }> {
   try {
     const res = await fetch("/api/auth/register", {
       method: "POST",
@@ -99,6 +99,7 @@ export async function registerCustomer(
         ok: false,
         message:
           data.message || "Registration failed. Please try again.",
+        emailTaken: data.code === "email_taken",
       };
     }
 

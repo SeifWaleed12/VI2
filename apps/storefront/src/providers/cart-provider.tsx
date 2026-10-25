@@ -27,6 +27,7 @@ import {
   removeCartPromotion,
 } from "@/lib/medusa/services/cart";
 import { cartQueue } from "@/lib/medusa/cart-queue";
+import { forgetPendingCart } from "@/lib/pending-checkout";
 
 export type CartItem = {
   id?: string;
@@ -194,7 +195,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
       const { show, latest, error } = await queue.run(task);
       if (show) syncFromMedusaCart(show);
       else if (error && latest) rollback();
-      if (error === undefined) return true;
+      // A confirmed item change is a new checkout: an unconfirmed old order is
+      // no longer retried. A failed change keeps that retry.
+      if (error === undefined) { forgetPendingCart(); return true; }
       console.error(failure, error);
       setMutationError(error instanceof Error ? error.message : failure);
       return false;

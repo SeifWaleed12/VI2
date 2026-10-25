@@ -51,15 +51,22 @@ test("normalizes email and names while preserving the actual password", async ()
   expect(res.status).toHaveBeenCalledWith(201)
 })
 
-test("uses the same safe registration error for existing accounts and provider rejection", async () => {
+test("says an email is taken, from a customer account or another login, and keeps other rejections vague", async () => {
   customerService.listCustomers.mockResolvedValue([{ id: "cus_existing" }])
   const duplicate = context()
   await POST(duplicate.req, duplicate.res)
   customerService.listCustomers.mockResolvedValue([])
-  authService.register.mockResolvedValue({ success: false, error: "private authentication error" })
+  authService.register.mockResolvedValueOnce({ success: false, error: "Identity with email already exists" })
+  const staffLogin = context()
+  await POST(staffLogin.req, staffLogin.res)
+  authService.register.mockResolvedValueOnce({ success: false, error: "private authentication error" })
   const rejected = context()
   await POST(rejected.req, rejected.res)
-  expect(duplicate.res.json).toHaveBeenCalledWith({ message: "Unable to register with these details. Try signing in or contact support." })
+  for (const taken of [duplicate, staffLogin]) {
+    expect(taken.res.status).toHaveBeenCalledWith(409)
+    expect(taken.res.json).toHaveBeenCalledWith({ code: "email_taken", message: "This email already has an account." })
+  }
+  expect(rejected.res.status).toHaveBeenCalledWith(400)
   expect(rejected.res.json).toHaveBeenCalledWith({ message: "Unable to register with these details. Try signing in or contact support." })
 })
 

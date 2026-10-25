@@ -109,3 +109,11 @@ it("opens on a purchasable native default variant when no real options are shown
   expect(html).not.toContain("300 EGP");
   expect(html).not.toContain("Out of stock");
 });
+
+it("offers every photo as a labelled thumbnail, and none for a single photo", () => {
+  const html = render({ image: "https://cdn.test/a.jpg", images: ["https://cdn.test/a.jpg", "https://cdn.test/b.jpg", "https://cdn.test/c.jpg"] });
+  expect(html.match(/aria-pressed=/g)).toHaveLength(3);
+  expect(html).toContain('aria-pressed="true" aria-label="Show photo 1 / 3"');
+  expect(html).toContain("https://cdn.test/c.jpg");
+  expect(render({ image: "https://cdn.test/a.jpg" })).not.toContain("aria-pressed=");
+});

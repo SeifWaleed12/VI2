@@ -19,6 +19,8 @@ import {
 } from "react";
 
 import { useCart } from "@/context/CartContext";
+import { useAuth } from "@/context/AuthContext";
+import { forgetDetails, forgetPendingCart, pendingCartId, rememberPendingCart, saveDetails, savedDetails } from "@/lib/pending-checkout";
 import {
   getShippingOptions,
   setCartAddress,
@@ -26,6 +28,7 @@ import {
   completeCheckout,
   createCart,
   addCartItem,
+  listAddresses,
 } from "@/lib/medusa";
 import type { ShippingOption } from "@/types/shipping";
 
@@ -133,20 +136,6 @@ export default function CheckoutClient() {
       1,
     );
 
-  // Resume a submitted-but-unconfirmed checkout after refresh. Runs after
-  // hydration because sessionStorage is unavailable during server render.
-  useEffect(() => {
-    try {
-      const pendingId = window.sessionStorage.getItem("vi2-pending-checkout:cart");
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- browser storage exists only after hydration
-      if (pendingId) { setRecovering(true); setStep(2); }
-    } catch { /* recovery storage unavailable */ }
-    // Sign-out removes the pending checkout; stop offering to resume it.
-    const onSignedOut = () => setRecovering(false);
-    window.addEventListener("vi2-signed-out", onSignedOut);
-    return () => window.removeEventListener("vi2-signed-out", onSignedOut);
-  }, []);
-
   const [
     form,
     setForm,
@@ -154,6 +143,58 @@ export default function CheckoutClient() {
     useState<CheckoutForm>(
       initialForm,
     );
+  // Saving starts only after the saved details are read, so the empty first
+  // render never overwrites them.
+  const [detailsRestored, setDetailsRestored] = useState(false);
+
+  // Resume a submitted-but-unconfirmed checkout and the details typed so far.
+  // Runs after hydration because sessionStorage is unavailable during server render.
+  useEffect(() => {
+    const saved = savedDetails(initialForm);
+    /* eslint-disable react-hooks/set-state-in-effect -- browser storage exists only after hydration */
+    if (saved) setForm(saved);
+    if (pendingCartId()) { setRecovering(true); setStep(2); }
+    setDetailsRestored(true);
+    /* eslint-enable react-hooks/set-state-in-effect */
+    // Sign-out removes the pending checkout and its details.
+    const onSignedOut = () => { setRecovering(false); setForm(initialForm); };
+    window.addEventListener("vi2-signed-out", onSignedOut);
+    return () => window.removeEventListener("vi2-signed-out", onSignedOut);
+  }, []);
+
+  useEffect(() => {
+    if (detailsRestored) saveDetails(form);
+  }, [detailsRestored, form]);
+
+  // A confirmed cart change drops the pending retry (cart provider); show
+  // "Place order" again instead of offering a retry that no longer exists.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- follows browser storage the cart provider changed
+    if (recovering && !pendingCartId()) setRecovering(false);
+  }, [items, recovering]);
+
+  // A signed-in customer starts with their name, contact and first saved
+  // address; only empty fields are filled, so nothing typed is replaced.
+  const { customer, isLoading: customerLoading } = useAuth();
+  useEffect(() => {
+    if (!detailsRestored || !customer) return;
+    let active = true;
+    const fill = (values: Partial<CheckoutForm>) => setForm((current) => ({
+      ...current,
+      ...Object.fromEntries(Object.entries(values).filter(([key, value]) => value && !current[key as keyof CheckoutForm])),
+    }));
+    fill({ name: `${customer.firstName} ${customer.lastName}`.trim(), email: customer.email, phone: customer.phone ?? "" });
+    void listAddresses().then((result) => {
+      const address = result.ok ? result.addresses[0] : undefined;
+      if (!active || !address) return;
+      fill({
+        governorate: address.city && governorates.includes(address.city) ? address.city : "",
+        area: address.address_2 ?? "", address: address.address_1 ?? "",
+        phone: address.phone ?? "",
+      });
+    });
+    return () => { active = false; };
+  }, [detailsRestored, customer]);
 
   const [
     submitting,
@@ -267,9 +308,7 @@ export default function CheckoutClient() {
 
   async function placeOrder() {
     if (submissionLock.current) return;
-    const recoveryKey = "vi2-pending-checkout:cart";
-    let recoveryId: string | null = null;
-    try { recoveryId = window.sessionStorage.getItem(recoveryKey); } catch { /* optional recovery storage */ }
+    const recoveryId = pendingCartId();
     if (!recoveryId && !validateDetails()) {
       setStep(1);
       scrollToTop();
@@ -304,21 +343,20 @@ export default function CheckoutClient() {
         if (!selectedShippingOptionId) throw new Error("Select a shipping method");
         await setCartShippingMethod(activeCartId, selectedShippingOptionId);
         // Store only the cart capability before completion, for refresh recovery.
-        window.sessionStorage.setItem(recoveryKey, activeCartId);
+        rememberPendingCart(activeCartId);
         setRecovering(true);
       }
       if (!activeCartId) throw new Error("Cart unavailable");
       completionAttempted = true;
       const completion = await completeCheckout(activeCartId, Boolean(recoveryId));
       if (!completion.ok) {
-        if (!completion.unknown) { window.sessionStorage.removeItem(recoveryKey); setRecovering(false); }
+        if (!completion.unknown) { forgetPendingCart(); setRecovering(false); }
         setError(completion.error);
         return;
       }
-      try {
-        window.sessionStorage.removeItem(recoveryKey);
-        window.localStorage.removeItem("vi2-last-order");
-      } catch { /* confirmed order remains authoritative */ }
+      forgetPendingCart();
+      forgetDetails();
+      try { window.localStorage.removeItem("vi2-last-order"); } catch { /* confirmed order remains authoritative */ }
       // The order exists in Medusa now. A local cart-reset failure must not be
       // reported as a checkout failure, or the customer may order twice.
       await clearCart().catch(() => {});
@@ -682,6 +720,14 @@ export default function CheckoutClient() {
                       DELIVERING TO?
                     </small>
                   </div>
+
+                  {!customerLoading && !customer && (
+                    <p className={styles.signInHint}>
+                      {/* Two whole phrases, so the Arabic dictionary translates each one. */}
+                      <span>Have an account?</span>{" "}
+                      <Link href="/account/sign-in?next=/checkout">Sign in to fill in your details and keep this order in your account.</Link>
+                    </p>
+                  )}
 
                   <div
                     className={

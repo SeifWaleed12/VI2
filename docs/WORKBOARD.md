@@ -511,3 +511,9 @@ PR20 final approval — 2026-10-24: Claude Round3 (5711dff) approves application
 | Task | Owner | Reviewer | Status | Scope |
 |---|---|---|---|---|
 | Promo applied but total unchanged | Claude | GPT | GPT approved ff639dc, no findings; PR open for owner merge | CART_FIELDS adjustment fields lacked "+", so Medusa dropped cart totals and checkout showed the item sum. Prefix fix plus a regression test; live: 500 − 100 + 70 = 470. Handoff: docs/reviews/promo-total-fix.md. |
+
+## Manual-test fixes — 2026-10-25
+
+| Task | Owner | Reviewer | Status | Scope |
+|---|---|---|---|---|
+| Fixes from Seif's manual test | Claude | GPT | GPT round 2 approved 374d20f, no open problems; PR open for owner merge | Checkout: a refused cart is "not placed" (no endless retry), cart changes drop a pending retry, details kept and autofilled from the account, sign-in hint. Sign-up says "email already has an account" with links. Sort aligned on desktop; no Cart in the mobile bar; Health goals hover panel; product photo gallery. Handoff: docs/reviews/test-round-fixes.md. Open: registration rate limit needs the visitor IP (same as CART-5) — Cloudflare rule at deployment. |

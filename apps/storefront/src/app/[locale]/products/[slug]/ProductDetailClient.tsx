@@ -47,6 +47,7 @@ const COPY = {
     addFailed: "Could not add to cart. Please try again.",
     buyNow: "Buy now",
     share: "Share product",
+    photo: "Show photo",
     linkCopied: "Link copied",
     delivery: "Delivery across Egypt",
     deliveryFee: "The delivery fee is shown at checkout, before you place the order.",
@@ -83,6 +84,7 @@ const COPY = {
     addFailed: "مقدرناش نضيف المنتج للسلة. حاول تاني.",
     buyNow: "اشتري دلوقتي",
     share: "مشاركة المنتج",
+    photo: "عرض الصورة",
     linkCopied: "تم نسخ الرابط",
     delivery: "توصيل لكل مصر",
     deliveryFee: "رسوم التوصيل بتظهر في صفحة الدفع قبل تأكيد الطلب.",
@@ -122,6 +124,9 @@ export default function ProductDetailClient({
   const [quantity, setQuantity] = useState(1);
   const [cartState, setCartState] = useState<"idle" | "pending" | "added" | "failed">("idle");
   const [shareCopied, setShareCopied] = useState(false);
+  // The first photo slot shows the chosen flavor's own photo when it has one.
+  const photos = product.images ?? [product.image];
+  const [photo, setPhoto] = useState(0);
   const addInFlight = useRef(false);
   const resetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => () => {
@@ -147,6 +152,7 @@ export default function ProductDetailClient({
     [options.length, variants, selectedOptions],
   );
   const invalidSelection = variants.length > 0 && !selectedVariant;
+  const shownPhoto = (photo === 0 && selectedVariant?.image) || photos[photo] || product.image;
   const price = variants.length ? selectedVariant?.price ?? 0 : product.price;
   const compareAtPrice = variants.length ? selectedVariant?.compareAtPrice : product.compareAtPrice;
   const stock = variants.length ? selectedVariant?.stock ?? 0 : product.stock;
@@ -199,6 +205,7 @@ export default function ProductDetailClient({
   function selectOption(title: string, value: string) {
     setSelectedOptions((current) => ({ ...current, [title]: value }));
     setQuantity(1);
+    setPhoto(0);
   }
 
   // Adds the selected variant; Buy now does it quietly and goes to checkout,
@@ -276,8 +283,18 @@ export default function ProductDetailClient({
                 <button type="button" className={styles.shareButton} onClick={share} aria-label={shareCopied ? copy.linkCopied : copy.share}>
                   {shareCopied ? <Check size={18} strokeWidth={1.6} /> : <Share2 size={18} strokeWidth={1.6} />}
                 </button>
-                <CatalogImage key={selectedVariant?.image || product.image} src={selectedVariant?.image || product.image} alt={product.name} className={styles.image} placeholderClassName={styles.imagePlaceholder} />
+                <CatalogImage key={shownPhoto} src={shownPhoto} alt={product.name} className={styles.image} placeholderClassName={styles.imagePlaceholder} />
               </div>
+              {photos.length > 1 && (
+                <div className={styles.thumbs}>
+                  {photos.map((src, index) => (
+                    <button key={src} type="button" className={styles.thumb} aria-pressed={index === photo}
+                      aria-label={`${copy.photo} ${index + 1} / ${photos.length}`} onClick={() => setPhoto(index)}>
+                      <CatalogImage src={src} alt="" className={styles.thumbImage} />
+                    </button>
+                  ))}
+                </div>
+              )}
               <span className={styles.srOnly} aria-live="polite">{shareCopied ? copy.linkCopied : ""}</span>
             </div>
 

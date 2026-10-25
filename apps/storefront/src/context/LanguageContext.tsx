@@ -743,6 +743,11 @@ const dictionary: Record<string, string> = {
     "أوافق على إنشاء حساب Vi2 بالبيانات دي على المتصفح ده.",
   "CREATING ACCOUNT...": "جاري إنشاء الحساب...",
   "Already have an account?": "عندك حساب بالفعل؟",
+  "This email already has an account.": "هذا البريد الإلكتروني مسجّل بحساب بالفعل.",
+  "Have an account?": "عندك حساب؟",
+  "Sign in to fill in your details and keep this order in your account.": "سجّل الدخول لملء بياناتك تلقائياً وحفظ هذا الطلب في حسابك.",
+  "Sign in": "تسجيل الدخول",
+  "Reset password": "إعادة تعيين كلمة المرور",
   "JOIN THE": "ابدأ",
   "VI2 ROUTINE.": "روتين Vi2.",
   "A simple member experience built around your routine, without connecting any backend yet.":
