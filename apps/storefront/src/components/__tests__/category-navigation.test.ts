@@ -94,6 +94,15 @@ it("renders Arabic native names and stable localized parent and child destinatio
   expect(html).not.toContain(message("ar", "nav.bundles"));
   expect(html).not.toContain("#value-sets");
 });
+it("opens the six health goals like a category, each into the shop filtered by its goal", () => {
+  const html = renderToStaticMarkup(createElement(DesktopMegaMenu, { active: "goals", categories: [parent], onClose: jest.fn() }));
+  expect(html).toContain(message("ar", "nav.health"));
+  for (const goal of ["immune-support", "gut-health", "energy-fitness", "muscle-recovery", "heart-health", "stress-sleep"] as const) {
+    expect(html).toContain(message("ar", `goal.${goal}`));
+    expect(html).toContain(`/ar/shop?goal=${goal}`);
+  }
+  expect(getBrands).not.toHaveBeenCalled();
+});
 it("scopes a parent through Medusa using descendants and the requested locale", async () => {
   await CategoryShopPage({
     params: Promise.resolve({ locale: "ar", handle: parent.handle }),

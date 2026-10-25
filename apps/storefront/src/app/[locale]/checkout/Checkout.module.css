@@ -287,6 +287,22 @@
   letter-spacing: var(--tracking-ui);
 }
 
+.signInHint {
+  margin: 16px 0 0;
+
+  color: #5f5a52;
+
+  font-size: var(--text-body);
+  line-height: 1.5;
+}
+
+.signInHint a {
+  color: var(--ink);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
 .fields {
   margin-top: 23px;
 

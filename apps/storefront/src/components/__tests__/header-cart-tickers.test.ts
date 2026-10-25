@@ -245,6 +245,8 @@ it.each(["en", "ar"] as const)("hides bottom navigation while the mobile drawer 
   const html = renderToStaticMarkup(createElement(BottomNav, { hidden: false, onOpenSearch: jest.fn() }));
   expect(html).toContain(message(locale, "nav.mobile"));
   expect(html).toContain(message(locale, "nav.account"));
+  // The cart stays in the header only (Seif, 2026-10-25).
+  expect(html).not.toContain(message(locale, "nav.cart"));
 });
 it("keeps search and cart in the banner while category navigation scrolls separately", () => {
   const html = renderToStaticMarkup(createElement(Navbar));

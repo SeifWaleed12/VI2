@@ -56,6 +56,8 @@ export type Product = {
   reviewCount: number;
 
   image: string;
+  // Every photo, the main one first; set only when there is more than one.
+  images?: string[];
 
   flavor?: string;
   size?: string;

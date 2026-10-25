@@ -128,6 +128,36 @@
   padding: 8%;
 }
 
+/* One row of thumbnails under the main photo; scrolls sideways when it overflows. */
+.thumbs {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  scrollbar-width: thin;
+}
+
+.thumb {
+  flex: 0 0 72px;
+  aspect-ratio: 1;
+  padding: 0;
+  border: 1px solid var(--border);
+  background: var(--cream);
+  cursor: pointer;
+  scroll-snap-align: start;
+}
+
+.thumb[aria-pressed="true"] { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
+.thumb:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+
+.thumbImage {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  padding: 6px;
+}
+
 .imagePlaceholder {
   width: 100%;
   height: 100%;

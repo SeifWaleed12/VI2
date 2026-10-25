@@ -8,6 +8,7 @@ import {
 import { useLanguage } from "@/context/LanguageContext";
 import { getBrands } from "@/lib/medusa/services/brands";
 import type { Brand } from "@/types/brand";
+import { HEALTH_GOALS, goalLabelKey } from "@/lib/health-goals";
 import {
   categoryHref,
   flattenCategories,
@@ -34,7 +35,7 @@ export default function DesktopMegaMenu({
   }, [active]);
   if (!active) return null;
   const category = categories.find((c) => c.id === active);
-  if (active !== "brands" && !category) return null;
+  if (active !== "brands" && active !== "goals" && !category) return null;
   const items =
     active === "brands"
       ? brands.map((b) => ({
@@ -42,6 +43,8 @@ export default function DesktopMegaMenu({
           name: b.name,
           href: `/shop?brand_id=${encodeURIComponent(b.id)}`,
         }))
+      : active === "goals"
+        ? HEALTH_GOALS.map((goal) => ({ id: goal, name: msg(goalLabelKey(goal)), href: `/shop?goal=${goal}` }))
       : flattenCategories(category!.children).map((c) => ({
           id: c.id,
           name: c.name,
@@ -65,9 +68,9 @@ export default function DesktopMegaMenu({
         <div className={styles.inner}>
           <div className={styles.intro}>
             <span>{msg("nav.shopVi2")}</span>
-            <h3>{category?.name ?? msg("nav.brands")}</h3>
+            <h3>{category?.name ?? msg(active === "goals" ? "nav.health" : "nav.brands")}</h3>
             <Link
-              href={category ? categoryHref(category.id, category.handle) : "/brands"}
+              href={category ? categoryHref(category.id, category.handle) : active === "goals" ? "/#health-goals" : "/brands"}
               onClick={onClose}
             >
               {msg("nav.shopAll")}

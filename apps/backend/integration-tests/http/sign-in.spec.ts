@@ -105,6 +105,15 @@ medusaIntegrationTestRunner({
         expect((await signIn("user", "admin@test.dev", password)).status).toBe(200)
       })
 
+      it("says plainly when an email already has an account, in any letter case, without a second customer", async () => {
+        await registerCustomer()
+        for (const email of ["shopper@test.dev", "SHOPPER@test.dev", "admin@test.dev"]) {
+          const again = await api.post("/store/auth/register", { email, password, first_name: "A", last_name: "B" }, store())
+          expect([again.status, again.data.code]).toEqual([409, "email_taken"])
+        }
+        expect(await getContainer().resolve(Modules.CUSTOMER).listCustomers({ email: "shopper@test.dev" })).toHaveLength(1)
+      })
+
       it("rejects a short password on every route that sets one, without creating an identity", async () => {
         const staff = await api.post("/auth/user/emailpass/register", { email: "weak@test.dev", password: "seven77" }, anyStatus)
         expect(staff.status).toBe(400)
