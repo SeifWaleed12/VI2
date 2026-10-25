@@ -5,6 +5,8 @@ Auditor: GPT, Ponytail full
 Snapshot: `9f8e0c2417be3e0ffb563922bfc10bbc1c16c59d` (merged promo-total-fix, PR24)  
 Delivery branch: `codex/architecture-audit`
 
+> Historical snapshot. Current fixes, validation and remaining launch gates: [remediation handoff](audit-remediation-2026-10-25.md).
+
 ## Verdict
 
 Keep the Medusa modular monolith and Next.js storefront. The main architectural choice is appropriate for the MVP. A rewrite, more services, another database, a generic repository layer, and replacing native search are not justified by this audit.
