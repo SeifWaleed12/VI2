@@ -510,4 +510,4 @@ PR20 final approval — 2026-10-24: Claude Round3 (5711dff) approves application
 
 | Task | Owner | Reviewer | Status | Scope |
 |---|---|---|---|---|
-| Promo applied but total unchanged | Claude | GPT | Awaiting GPT review on claude/promo-total-fix (ff639dc) | CART_FIELDS adjustment fields lacked "+", so Medusa dropped cart totals and checkout showed the item sum. Prefix fix plus a regression test; live: 500 − 100 + 70 = 470. Handoff: docs/reviews/promo-total-fix.md. |
+| Promo applied but total unchanged | Claude | GPT | GPT approved ff639dc, no findings; PR open for owner merge | CART_FIELDS adjustment fields lacked "+", so Medusa dropped cart totals and checkout showed the item sum. Prefix fix plus a regression test; live: 500 − 100 + 70 = 470. Handoff: docs/reviews/promo-total-fix.md. |

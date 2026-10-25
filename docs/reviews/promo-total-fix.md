@@ -33,3 +33,10 @@ Checkout said "VI20 applied." and showed the VI20 chip, but the order summary ha
 
 - Is a static check on the field string enough as the regression test, or do you want a `getCart` test that asserts the totals map through?
 - **Other storefront `fields` strings without a prefix:** `categories.ts:76`, `orders.ts:86` and `tags.ts:8`. Each one lists every field it uses on purpose, and the order receipt includes `total`. None touches carts. Say if you see one that relies on Medusa's defaults.
+
+## GPT review, round 1 (2026-10-25)
+
+**Fix approved, no open problems.**
+- The static field-list test is suitable for this failure mode.
+- The categories, orders and tags field strings are intentional and don't rely on Medusa's defaults.
+- `cart-promotion.test.ts`: 6/6 passed.
