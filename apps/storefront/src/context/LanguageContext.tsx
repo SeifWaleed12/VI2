@@ -744,6 +744,8 @@ const dictionary: Record<string, string> = {
   "CREATING ACCOUNT...": "جاري إنشاء الحساب...",
   "Already have an account?": "عندك حساب بالفعل؟",
   "This email already has an account.": "هذا البريد الإلكتروني مسجّل بحساب بالفعل.",
+  "Have an account?": "عندك حساب؟",
+  "Sign in to fill in your details and keep this order in your account.": "سجّل الدخول لملء بياناتك تلقائياً وحفظ هذا الطلب في حسابك.",
   "Sign in": "تسجيل الدخول",
   "Reset password": "إعادة تعيين كلمة المرور",
   "JOIN THE": "ابدأ",

@@ -166,6 +166,13 @@ export default function CheckoutClient() {
     if (detailsRestored) saveDetails(form);
   }, [detailsRestored, form]);
 
+  // A confirmed cart change drops the pending retry (cart provider); show
+  // "Place order" again instead of offering a retry that no longer exists.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- follows browser storage the cart provider changed
+    if (recovering && !pendingCartId()) setRecovering(false);
+  }, [items, recovering]);
+
   // A signed-in customer starts with their name, contact and first saved
   // address; only empty fields are filled, so nothing typed is replaced.
   const { customer, isLoading: customerLoading } = useAuth();
@@ -716,9 +723,9 @@ export default function CheckoutClient() {
 
                   {!customerLoading && !customer && (
                     <p className={styles.signInHint}>
-                      Have an account?{" "}
-                      <Link href="/account/sign-in?next=/checkout">Sign in</Link>
-                      {" "}to fill in your details and keep this order in your account.
+                      {/* Two whole phrases, so the Arabic dictionary translates each one. */}
+                      <span>Have an account?</span>{" "}
+                      <Link href="/account/sign-in?next=/checkout">Sign in to fill in your details and keep this order in your account.</Link>
                     </p>
                   )}
 
