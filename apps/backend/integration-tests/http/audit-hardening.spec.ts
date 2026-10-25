@@ -148,7 +148,9 @@ medusaIntegrationTestRunner({
       const query = container.resolve(ContainerRegistrationKeys.QUERY)
       const { data: [store] } = await query.graph({ entity: "store", fields: ["default_region_id", "default_sales_channel_id"] })
       const { data: [key] } = await query.graph({ entity: "api_key", fields: ["token"], filters: { type: "publishable" } })
-      const { result: [product] } = await createProductsWorkflow(container).run({ input: { products: [{ title: "Audit variant load", status: "published", sales_channels: [{ id: store.default_sales_channel_id }],
+      const channelId = store.default_sales_channel_id
+      if (!channelId) throw new Error("Audit fixture requires the initialized sales channel")
+      const { result: [product] } = await createProductsWorkflow(container).run({ input: { products: [{ title: "Audit variant load", status: "published", sales_channels: [{ id: channelId }],
         options: [{ title: "Size", values: Array.from({ length: 200 }, (_, i) => String(i)) }],
         variants: Array.from({ length: 200 }, (_, i) => ({ title: String(i), options: { Size: String(i) }, manage_inventory: false, prices: [{ amount: 100, currency_code: "egp" }] })),
       }] } })

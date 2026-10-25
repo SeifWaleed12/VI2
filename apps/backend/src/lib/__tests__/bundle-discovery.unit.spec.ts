@@ -1,3 +1,4 @@
+import { GET } from "../../api/store/deals/route"
 import { bundleProductIds } from "../deals"
 import { catalogContext, catalogPriceVersion, readCatalogState } from "../catalog-ranking"
 jest.mock("../catalog-ranking", () => ({ catalogContext: jest.fn(), catalogPriceVersion: jest.fn(), readCatalogState: jest.fn() }))
@@ -22,7 +23,6 @@ it("fails honestly for an expired projection or another sales channel", async ()
 })
 
 it("keeps invalid channel errors distinct from a refreshing projection at the HTTP boundary", async () => {
-  const { GET } = await import("../../api/store/deals/route")
   const res = { status: jest.fn().mockReturnThis(), json: jest.fn() }
   await expect(GET({ scope, publishable_key_context: { sales_channel_ids: ["other"] } } as never, res as never)).rejects.toThrow("channel")
   expect(res.status).not.toHaveBeenCalled()

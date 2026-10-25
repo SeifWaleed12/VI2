@@ -155,7 +155,8 @@ it("lets followers receive native validation errors instead of a false outage", 
   await middleware(req, first, jest.fn())
   const next = jest.fn(() => second.status(400).json({ message: "Invalid brand" }))
   const follower = middleware(req, second, next)
-  await Promise.resolve(); await Promise.resolve()
+  await new Promise(resolve => setImmediate(resolve))
+  expect(next).not.toHaveBeenCalled()
   first.status(400).json({ message: "Invalid brand" })
   await follower
   expect(next).toHaveBeenCalledTimes(1)
