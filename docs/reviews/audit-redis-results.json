@@ -2,14 +2,22 @@
   "cacheOptions": {
     "enableOfflineQueue": false,
     "maxRetriesPerRequest": 0,
-    "commandTimeout": 250,
-    "socketTimeout": 500,
+    "commandTimeout": 1500,
+    "socketTimeout": 2000,
     "autoResendUnfulfilledCommands": false
+  },
+  "slowRead": {
+    "pauseMs": 500,
+    "keyPreserved": true
+  },
+  "invalidationRecovery": {
+    "pauseMs": 1800,
+    "staleKeyRemoved": true
   },
   "stalledCache": {
     "requests": 150,
     "fallback": 150,
-    "pendingCommandsAfter1200ms": 3
+    "pendingCommandsAfter2500ms": 2
   },
   "disconnectedCache": {
     "requests": 150,
@@ -26,6 +34,6 @@
   },
   "processCrash": {
     "childTerminated": true,
-    "reacquiredMs": 1103
+    "reacquiredMs": 1471
   }
 }

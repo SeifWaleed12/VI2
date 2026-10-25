@@ -29,16 +29,28 @@ async function main() {
   const config=load('apps/backend/src/lib/redis-config.ts').redisModules({NODE_ENV:'production',REDIS_URL:url})
   const options=config.find(x=>x.resolve.endsWith('/cache-redis')).options.redisOptions
   const client=await connect(options),cache=new Cache({cacheRedisConnection:client},{namespace:'audit-fix'})
-  const middleware=load('apps/backend/src/lib/store-cache.ts').cacheStoreGet(60)
+  const cacheModule=load('apps/backend/src/lib/store-cache.ts'),middleware=cacheModule.cacheStoreGet(60)
   const results={cacheOptions:options};let paused=false
   try {
+    await cache.set('slow-valid',{ok:true},120)
+    execFileSync('docker',['pause',container],{stdio:'pipe'});paused=true
+    const resumeSlow=setTimeout(()=>{execFileSync('docker',['unpause',container],{stdio:'pipe'});paused=false},500)
+    try { assert.deepEqual(await cache.get('slow-valid'),{ok:true}) } finally { clearTimeout(resumeSlow) }
+    assert.deepEqual(await cache.get('slow-valid'),{ok:true})
+    results.slowRead={pauseMs:500,keyPreserved:true}
+    await cache.set('store-cache:stale',{old:true},120)
+    execFileSync('docker',['pause',container],{stdio:'pipe'});paused=true
+    const resumeInvalidation=setTimeout(()=>{execFileSync('docker',['unpause',container],{stdio:'pipe'});paused=false},1800)
+    try { await cacheModule.invalidateStoreCache({resolve:()=>cache}) } finally { clearTimeout(resumeInvalidation) }
+    assert.equal(await cache.get('store-cache:stale'),null)
+    results.invalidationRecovery={pauseMs:1800,staleKeyRemoved:true}
     execFileSync('docker',['pause',container],{stdio:'pipe'});paused=true
     let fallback=0
     await Promise.all(Array.from({length:150},()=>middleware({method:'GET',originalUrl:'/store/products?limit=24',headers:{},scope:{resolve:()=>cache}},{statusCode:200,json(){},on(){}},()=>fallback++)))
-    await sleep(1200)
+    await sleep(2500)
     const remaining=client.commandQueue.length+client.offlineQueue.length
     assert.equal(fallback,150);assert.ok(remaining<10)
-    results.stalledCache={requests:150,fallback,pendingCommandsAfter1200ms:remaining}
+    results.stalledCache={requests:150,fallback,pendingCommandsAfter2500ms:remaining}
     execFileSync('docker',['unpause',container],{stdio:'pipe'});paused=false
     for(let i=0;i<80&&client.status!=='ready';i++)await sleep(50)
     await client.ping()

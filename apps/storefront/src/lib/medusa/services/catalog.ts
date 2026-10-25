@@ -26,7 +26,10 @@ export async function listCatalog(params: ListProductsParams & { sort: CatalogSo
       },
     });
   } catch (error) {
-    if ((error as { status?: unknown } | null)?.status === 400) throw new InvalidCatalogFilterError();
+    const status = (error as { status?: number } | null)?.status;
+    if (status === 400) throw new InvalidCatalogFilterError();
+    if (sort === "default" && !deals && !params.q && params.brand_id?.length && !params.signal?.aborted
+      && (status === undefined || status === 404 || status >= 500)) return listProducts(filters);
     throw new Error("Catalog ordering temporarily unavailable.");
   }
   if (!found.ids.length) return { products: [], count: found.count, limit, offset };

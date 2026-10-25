@@ -12,6 +12,7 @@ const PREFIX = "store-cache:"
 // read must give up on its own. Every request pays this wait while Redis is down.
 const READ_TIMEOUT_MS = 250
 const FILL_TIMEOUT = Symbol("fill timeout")
+const invalidations = new WeakMap<ICacheService, Promise<void>>()
 const fills = new Map<string, { promise: Promise<unknown>, finish: (body?: unknown) => void }>()
 let revision = 0
 
@@ -107,9 +108,22 @@ export function invalidateStoreCacheAfterWrite(req: MedusaRequest, res: MedusaRe
 
 export async function invalidateStoreCache(scope: MedusaRequest["scope"]) {
   revision++
-  try {
-    await scope.resolve<ICacheService>(Modules.CACHE).invalidate(`${PREFIX}*`)
-  } catch {
-    // The expiry time still removes the stale copy.
-  }
+  let cache: ICacheService
+  try { cache = scope.resolve<ICacheService>(Modules.CACHE) } catch { return }
+  const pending = invalidations.get(cache)
+  if (pending) return pending
+  const work = (async () => {
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const requested = revision
+        await cache.invalidate(`${PREFIX}*`)
+        if (requested === revision) return
+      } catch {
+        if (attempt < 2) await new Promise(resolve => setTimeout(resolve, 500 * (attempt + 1)))
+      }
+    }
+    // Bounded retries exhausted: expiry remains the final stale-copy bound.
+  })()
+  invalidations.set(cache, work)
+  try { await work } finally { invalidations.delete(cache) }
 }

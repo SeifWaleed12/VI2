@@ -30,3 +30,11 @@ it("keeps invalid channel errors distinct from a refreshing projection at the HT
   await GET({ scope, publishable_key_context: { sales_channel_ids: ["sc_eg"] } } as never, res as never)
   expect(res.status).toHaveBeenCalledWith(503)
 })
+
+it("maps a missing native index version to retryable unavailability", async () => {
+  const { MedusaError } = require("@medusajs/framework/utils")
+  jest.mocked(readCatalogState).mockRejectedValueOnce(new MedusaError(MedusaError.Types.NOT_FOUND, "Search index has no active version"))
+  const res = { status: jest.fn().mockReturnThis(), json: jest.fn() }
+  await GET({ scope, publishable_key_context: { sales_channel_ids: ["sc_eg"] } } as never, res as never)
+  expect(res.status).toHaveBeenCalledWith(503)
+})

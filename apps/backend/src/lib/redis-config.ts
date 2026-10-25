@@ -16,8 +16,8 @@ export function redisModules(env: NodeJS.ProcessEnv = process.env) {
   return [
     // Optional cache commands must not accumulate during an outage or a stalled socket.
     { resolve: "@medusajs/medusa/cache-redis", options: { redisUrl, redisOptions: {
-      enableOfflineQueue: false, maxRetriesPerRequest: 0, commandTimeout: 250,
-      socketTimeout: 500, autoResendUnfulfilledCommands: false,
+      enableOfflineQueue: false, maxRetriesPerRequest: 0, commandTimeout: 1500,
+      socketTimeout: 2000, autoResendUnfulfilledCommands: false,
     } } },
     // A subscriber that throws (for example an email send during a provider
     // outage) is retried with growing waits; subscribers that succeeded are not rerun.

@@ -3,7 +3,7 @@ import { EVENT_RETRY, redisModules } from "../redis-config"
 it("uses Redis for the cache, events, workflows and locks when REDIS_URL is set", () => {
   const modules = redisModules({ REDIS_URL: " redis://cache:6379 " })
   expect(modules).toEqual([
-    { resolve: "@medusajs/medusa/cache-redis", options: { redisUrl: "redis://cache:6379", redisOptions: { enableOfflineQueue: false, maxRetriesPerRequest: 0, commandTimeout: 250, socketTimeout: 500, autoResendUnfulfilledCommands: false } } },
+    { resolve: "@medusajs/medusa/cache-redis", options: { redisUrl: "redis://cache:6379", redisOptions: { enableOfflineQueue: false, maxRetriesPerRequest: 0, commandTimeout: 1500, socketTimeout: 2000, autoResendUnfulfilledCommands: false } } },
     { resolve: "@medusajs/medusa/event-bus-redis", options: { redisUrl: "redis://cache:6379", jobOptions: EVENT_RETRY } },
     { resolve: "@medusajs/medusa/workflow-engine-redis", options: { redis: { redisUrl: "redis://cache:6379" } } },
     {

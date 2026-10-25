@@ -1,5 +1,5 @@
 import type { FilterableCartProps, MedusaContainer } from "@medusajs/framework/types"
-import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
+import { ContainerRegistrationKeys, MedusaError, Modules } from "@medusajs/framework/utils"
 
 // Seif (2026-10-19): guest carts nobody has touched for 30 days are deleted.
 // Raise it to 60-90 days if abandoned-cart emails are added.
@@ -81,7 +81,14 @@ export async function removeAbandonedCarts(container: MedusaContainer, now = new
 }
 
 export default async function removeAbandonedCartsJob(container: MedusaContainer) {
-  const removed = await container.resolve(Modules.LOCKING).execute("job:remove-abandoned-carts", (signal?: AbortSignal) => removeAbandonedCarts(container, new Date(), signal), { timeout: 1, expire: 300 })
+  let entered = false
+  const removed = await container.resolve(Modules.LOCKING).execute("job:remove-abandoned-carts", (signal?: AbortSignal) => {
+    entered = true
+    return removeAbandonedCarts(container, new Date(), signal)
+  }, { timeout: 1, expire: 300 }).catch((error: unknown) => {
+    if (!entered && error instanceof MedusaError && error.type === MedusaError.Types.CONFLICT && error.message === "Timed-out acquiring lock.") return 0
+    throw error
+  })
   if (removed) container.resolve(ContainerRegistrationKeys.LOGGER).info(`Removed ${removed} abandoned guest carts`)
 }
 

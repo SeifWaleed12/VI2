@@ -52,3 +52,24 @@ it("keeps a product without variants browsable without inventing a price or purc
   jest.mocked(listProducts).mockResolvedValueOnce({ products: [{ id: "empty", variants: [] }] as never, count: 1, limit: 1, offset: 0 });
   expect((await listCatalog(params)).products[0]).toMatchObject({ id: "empty", price: 0, inStock: false, variantId: undefined });
 });
+
+it.each([503, 404, undefined])("falls back to bounded native default-brand browsing on index failure %s", async status => {
+  jest.mocked(medusa.client.fetch).mockRejectedValueOnce({ status });
+  jest.mocked(listProducts).mockResolvedValueOnce({ products: [], count: 8, limit: 24, offset: 24 });
+  const filters = { locale: "en" as const, brand_id: ["brand_one"], limit: 24, offset: 24 };
+  expect((await listCatalog({ ...filters, sort: "default" })).count).toBe(8);
+  expect(listProducts).toHaveBeenCalledWith(filters);
+});
+
+it("preserves native large-brand validation and never falls back on invalid filters or aborted searches", async () => {
+  jest.mocked(medusa.client.fetch).mockRejectedValueOnce({ status: 503 });
+  jest.mocked(listProducts).mockRejectedValueOnce(new InvalidCatalogFilterError());
+  await expect(listCatalog({ locale: "en", sort: "default", brand_id: ["large"] })).rejects.toBeInstanceOf(InvalidCatalogFilterError);
+  jest.mocked(listProducts).mockClear();
+  jest.mocked(medusa.client.fetch).mockRejectedValueOnce({ status: 400 });
+  await expect(listCatalog({ locale: "en", sort: "default", brand_id: ["bad"] })).rejects.toBeInstanceOf(InvalidCatalogFilterError);
+  const controller = new AbortController(); controller.abort();
+  jest.mocked(medusa.client.fetch).mockRejectedValueOnce(new Error("aborted"));
+  await expect(listCatalog({ locale: "en", sort: "default", brand_id: ["brand"], signal: controller.signal })).rejects.toThrow();
+  expect(listProducts).not.toHaveBeenCalled();
+});

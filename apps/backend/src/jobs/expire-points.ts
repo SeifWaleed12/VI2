@@ -1,5 +1,5 @@
 import type { MedusaContainer } from "@medusajs/framework/types"
-import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
+import { ContainerRegistrationKeys, MedusaError, Modules } from "@medusajs/framework/utils"
 import { customerPoints, expiresAt, recordPoints } from "../lib/points"
 import { LOYALTY_MODULE } from "../modules/loyalty"
 import type LoyaltyModuleService from "../modules/loyalty/service"
@@ -34,7 +34,14 @@ export async function expirePoints(container: MedusaContainer, now = new Date(),
 }
 
 export default async function expirePointsJob(container: MedusaContainer) {
-  const expired = await container.resolve(Modules.LOCKING).execute("job:expire-vi2-points", (signal?: AbortSignal) => expirePoints(container, new Date(), signal), { timeout: 1, expire: 300 })
+  let entered = false
+  const expired = await container.resolve(Modules.LOCKING).execute("job:expire-vi2-points", (signal?: AbortSignal) => {
+    entered = true
+    return expirePoints(container, new Date(), signal)
+  }, { timeout: 1, expire: 300 }).catch((error: unknown) => {
+    if (!entered && error instanceof MedusaError && error.type === MedusaError.Types.CONFLICT && error.message === "Timed-out acquiring lock.") return 0
+    throw error
+  })
   if (expired) container.resolve(ContainerRegistrationKeys.LOGGER).info(`Expired Vi2 Points for ${expired} customers`)
 }
 

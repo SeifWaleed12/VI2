@@ -1,4 +1,4 @@
-import { cacheStoreGet, invalidateStoreCacheAfterWrite, storeCacheKey } from "../store-cache"
+import { cacheStoreGet, invalidateStoreCache, invalidateStoreCacheAfterWrite, storeCacheKey } from "../store-cache"
 
 function fakeCache() {
   const store = new Map<string, unknown>()
@@ -162,4 +162,42 @@ it("lets followers receive native validation errors instead of a false outage", 
   expect(next).toHaveBeenCalledTimes(1)
   expect(second.status).toHaveBeenCalledWith(400)
   expect(second.setHeader).not.toHaveBeenCalled()
+})
+
+it("retries a failed invalidation after recovery and shares bounded retry work", async () => {
+  jest.useFakeTimers()
+  try {
+    const cache = fakeCache(), req = request(cache)
+    cache.store.set("store-cache:old", { products: ["old"] })
+    cache.invalidate.mockRejectedValueOnce(new Error("Redis stalled"))
+
+    const first = invalidateStoreCache(req.scope), second = invalidateStoreCache(req.scope)
+    await jest.advanceTimersByTimeAsync(501)
+    await Promise.all([first, second])
+    expect(cache.invalidate).toHaveBeenCalledTimes(2)
+    expect(cache.store.size).toBe(0)
+  } finally { jest.useRealTimers() }
+})
+
+it("stops invalidation retries after three failures", async () => {
+  jest.useFakeTimers()
+  try {
+    const cache = fakeCache()
+    cache.invalidate.mockRejectedValue(new Error("offline"))
+    const work = invalidateStoreCache(request(cache).scope)
+    await jest.advanceTimersByTimeAsync(2000)
+    await work
+    expect(cache.invalidate).toHaveBeenCalledTimes(3)
+  } finally { jest.useRealTimers() }
+})
+
+it("rescans when a write arrives during an in-flight invalidation", async () => {
+  const cache = fakeCache()
+  let release!: () => void
+  cache.invalidate.mockImplementationOnce(() => new Promise(resolve => { release = resolve }))
+  const scope = request(cache).scope
+  const first = invalidateStoreCache(scope), second = invalidateStoreCache(scope)
+  release()
+  await Promise.all([first, second])
+  expect(cache.invalidate).toHaveBeenCalledTimes(2)
 })

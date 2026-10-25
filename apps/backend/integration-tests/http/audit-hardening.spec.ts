@@ -1,5 +1,4 @@
 import { dirname, join } from "node:path"
-import { writeFileSync } from "node:fs"
 import { medusaIntegrationTestRunner } from "@medusajs/test-utils"
 import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
 import { createProductsWorkflow, createUsersWorkflow } from "@medusajs/medusa/core-flows"
@@ -142,7 +141,7 @@ medusaIntegrationTestRunner({
       } finally { pages.mockRestore() }
     })
 
-    it("bounds a cold forty-read burst after creating a two-hundred-variant product", async () => {
+    it("completes a forty-read burst with explicit backpressure after creating a two-hundred-variant product", async () => {
       const container = getContainer()
       await setupEgyptStore(container)
       const query = container.resolve(ContainerRegistrationKeys.QUERY)
@@ -161,7 +160,7 @@ medusaIntegrationTestRunner({
       }).catch((error: { code?: string }) => ({ status: error.code ?? "error" }))))
       const statuses: Record<string, number> = {}
       for (const response of responses) statuses[String(response.status)] = (statuses[String(response.status)] ?? 0) + 1
-      writeFileSync(join(__dirname, "../../../../docs/reviews/audit-load-results.json"), JSON.stringify({ products: 1, variants: 200, requests: 40, statuses, elapsedMs: Date.now() - started, note: "Explicit 503 with Retry-After is permitted backpressure; request timeouts and unexpected server errors are not." }, null, 2))
+      console.info("Audit HTTP burst", { requests: 40, variants: 200, statuses, elapsedMs: Date.now() - started })
       expect(responses.every(response => response.status === 200 || response.status === 503)).toBe(true)
       expect(statuses["200"]).toBeGreaterThan(0)
       await new Promise(resolve => setImmediate(resolve))
