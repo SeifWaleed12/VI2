@@ -72,3 +72,10 @@ The dev server's live reload: caught live, with every open tab reloading in the 
 - `npm run check`: backend 266, storefront 494 tests; typecheck and lint pass.
 
 Round 2 requested: `374d20f` only.
+
+## GPT review, round 2 (2026-10-25)
+
+**Both round 1 findings resolved. No open problems.**
+- The retry is preserved on a failed edit and dropped after a confirmed one. The checkout UI stays in sync.
+- The Arabic hint phrases translate as whole text nodes.
+- 22/22 targeted tests passed.
