@@ -138,7 +138,7 @@ For a major architectural decision:
 
 ## Audit remediation operational boundaries (25 October 2026)
 
-Production requires REDIS_URL. The optional cache connection has a 250 ms command deadline, 500 ms stalled-socket deadline, no offline queue and no replay of unfinished commands. Events/workflow/locking connections retain their native coordination policy; optional cache failure does not make shared correctness infrastructure optional.
+Production requires REDIS_URL. The optional cache connection has a 1,500 ms command deadline, 2,000 ms stalled-socket deadline, no offline queue and no replay of unfinished commands. Events/workflow/locking connections retain their native coordination policy; optional cache failure does not make shared correctness infrastructure optional.
 
 Within each server, identical anonymous cold reads share a fill for up to 2 seconds, with at most 256 fill records. Waiting readers get an explicit 503/Retry-After if the fill does not complete. This is bounded optional coordination, not commerce authority or a cross-process lock. Cache URL keys sort query parameters; unknown query keys/oversized cache-key inputs are not admitted. Broad invalidation and cross-process in-flight-read staleness remain TTL-bounded; legitimate query cardinality and Redis memory/connection budgets require deployment sizing.
 
@@ -147,3 +147,5 @@ Catalog refresh signals merge per worker into bounded batches (over 1,000 retain
 Loyalty is an append-only Medusa module ledger. A customer-scoped PostgreSQL transaction advisory lock fences balance decisions even when Redis ownership is lost. Transactional removal, duplicate detection and ledger writes share the same READ COMMITTED context; cancellation before/after a write rolls that transaction back. This does not establish distributed atomicity for other modules. Balances/activity are aggregated in the module persistence boundary; no mutable second balance exists. Expiry and cart cleanup have renewable job-wide native locks and cancellation checks. Failed event jobs retain at most 5,000 entries/7 days.
 
 Staff editing policy set by Seif: the latest successful committed save wins for an ordinary field. Independent partial field updates survive concurrent saves. A last click need not be the last committed save. Native inventory/order workflows and the loyalty invariant remain mandatory; no blanket last-save policy replaces them.
+
+Cache response reads still stop waiting after250ms. A500ms Redis delay must not trigger the native cache provider's read-error key deletion. Failed invalidation retries at most3 times with500/1000ms delays; callers share in-flight retry work per cache instance, and a new local write during a scan requests another bounded scan. After exhaustion TTL remains the fallback. Scheduled maintenance skips only acquisition-timeout contention before its callback starts; Redis outages and job-body errors still fail visibly.

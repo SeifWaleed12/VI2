@@ -4,29 +4,31 @@
   "base": "56df776",
   "applicationCommits": [
     "2c5c1a3",
-    "2dd10dd"
+    "2dd10dd",
+    "7672f70"
   ],
-  "testFollowup": "3d465c1",
+  "testFollowup": "599ec7e",
   "claude": {
     "verdict": "approve",
-    "reviewedApplication": "2dd10dd",
+    "reviewedApplication": "7672f70",
     "method": "read-only source review; did not run tests"
   },
   "checks": {
     "backendAndAdminBuild": "pass",
-    "backendFinalFocusedTests": 32,
+    "backendFinalFocusedTests": 29,
     "storefrontProductionBuild": "pass",
-    "storefrontFullTests": 503,
+    "storefrontFullTests": 507,
     "backendLint": "pass",
     "storefrontTypes": "pass",
-    "postgresHttpTests": 29,
+    "postgresHttpTests": 109,
     "backendTypes": "pass",
     "storefrontLint": "pass",
-    "storefrontFinalFocusedTests": 7,
-    "backendSourceTests": 287
+    "storefrontFinalFocusedTests": 12,
+    "backendSourceTests": 292,
+    "postgresHttpSpecs": 14
   },
   "limits": [
-    "HTTP tests preceded review corrections; focused tests cover corrections",
+    "Full14 HTTP specs passed after independent review corrections; 2 backend and 3 storefront tests added after full unit runs passed in focused reruns",
     "Cloudflare/trusted visitor IP rate policy remains deployment gate",
     "Production pool/memory and larger/longer soak measurement remains",
     "Bundle index migration/reseed requires rollout approval"
