@@ -122,7 +122,7 @@ export async function invalidateStoreCache(scope: MedusaRequest["scope"]) {
         if (attempt < 2) await new Promise(resolve => setTimeout(resolve, 500 * (attempt + 1)))
       }
     }
-    // Bounded retries exhausted: expiry remains the final stale-copy bound.
+    // Failures and concurrent writes share this budget; after three scans TTL is the final bound.
   })()
   invalidations.set(cache, work)
   try { await work } finally { invalidations.delete(cache) }

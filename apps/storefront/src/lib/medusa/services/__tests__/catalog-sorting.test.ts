@@ -73,3 +73,13 @@ it("preserves native large-brand validation and never falls back on invalid filt
   await expect(listCatalog({ locale: "en", sort: "default", brand_id: ["brand"], signal: controller.signal })).rejects.toThrow();
   expect(listProducts).not.toHaveBeenCalled();
 });
+
+it.each([
+  { sort: "price_asc" as const },
+  { sort: "default" as const, q: "vitamin" },
+  { sort: "default" as const, deals: true },
+])("does not replace requested ordering/search/deals with default native browsing: %j", async mode => {
+  jest.mocked(medusa.client.fetch).mockRejectedValueOnce({ status: 503 });
+  await expect(listCatalog({ locale: "en", brand_id: ["brand"], ...mode })).rejects.toThrow("unavailable");
+  expect(listProducts).not.toHaveBeenCalled();
+});

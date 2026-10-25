@@ -14,7 +14,7 @@ export function redisModules(env: NodeJS.ProcessEnv = process.env) {
   if (env.NODE_ENV === "production" && !redisUrl) throw new MedusaError(MedusaError.Types.INVALID_DATA, "REDIS_URL is required in production")
   if (!redisUrl || env.NODE_ENV === "test") return []
   return [
-    // Optional cache commands must not accumulate during an outage or a stalled socket.
+    // Bound stalled work; native cache still deletes read-error keys beyond this deadline.
     { resolve: "@medusajs/medusa/cache-redis", options: { redisUrl, redisOptions: {
       enableOfflineQueue: false, maxRetriesPerRequest: 0, commandTimeout: 1500,
       socketTimeout: 2000, autoResendUnfulfilledCommands: false,
