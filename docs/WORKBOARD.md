@@ -505,3 +505,9 @@ PR20 final approval — 2026-10-24: Claude Round3 (5711dff) approves application
 | Task | Owner | Reviewer | Status | Scope |
 |---|---|---|---|---|
 | Combine PR20 with full-stack | Claude | GPT | GPT round 1: one P3 (Deals breadcrumb), fixed; PR open for owner merge | #20's /store/catalog serves shop, search, sorting, Deals and the header pop-up; old /store/product-search and nightly reindex removed; /deals keeps the Bundles section on top; /store/deals returns bundle_ids only. check, 3 HTTP specs and a live baseline check pass. Handoff: docs/reviews/catalog-sorting-combined.md. PR replacing #20 opens after review; Seif closes #20. |
+
+## Promo total fix — 2026-10-24
+
+| Task | Owner | Reviewer | Status | Scope |
+|---|---|---|---|---|
+| Promo applied but total unchanged | Claude | GPT | Awaiting GPT review on claude/promo-total-fix (ff639dc) | CART_FIELDS adjustment fields lacked "+", so Medusa dropped cart totals and checkout showed the item sum. Prefix fix plus a regression test; live: 500 − 100 + 70 = 470. Handoff: docs/reviews/promo-total-fix.md. |
