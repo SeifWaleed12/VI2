@@ -1,4 +1,4 @@
-import { createElement, useState } from "react"
+import { createElement } from "react"
 import { renderToStaticMarkup } from "react-dom/server"
 import HomeBestSellers from "../HomeBestSellers"
 import TrendingNow from "../TrendingNow"
@@ -26,7 +26,7 @@ it("links the collection action to the shop without claiming sales rank", () => 
   expect(html).toContain("SHOP PRODUCTS")
   expect(html).not.toContain("BEST SELLERS")
   expect(html).not.toContain("data-rank")
-  expect(html).toContain('aria-pressed="true"')
+  expect(html).not.toContain('aria-pressed=')
 })
 
 it("renders each discovery product once for keyboard browsing with its visible name", () => {
@@ -44,12 +44,11 @@ it("keeps four manual slide controls and one active slide", () => {
 
 jest.mock("react", () => ({ ...jest.requireActual("react"), useState: jest.fn((...args: unknown[]) => jest.requireActual("react").useState(...args)) }))
 
-it("explains an empty selected category and offers a reset", () => {
-  jest.mocked(useState).mockReturnValueOnce(["Wellness", jest.fn()] as never)
-  const html = renderToStaticMarkup(createElement(HomeBestSellers, { initialProducts: [product] }))
-  expect(html).toContain("No products in this category yet.")
-  expect(html).toContain("SHOW ALL CATEGORIES")
-  expect(html).toContain('role="status"')
+it("shows supplied Arabic products without an English keyword taxonomy", () => {
+  const html = renderToStaticMarkup(createElement(HomeBestSellers, { initialProducts: [{ ...product, name: "فيتامين", category: "", description: "" }] }))
+  expect(html).toContain("فيتامين")
+  expect(html).not.toContain("No products in this category yet.")
+  expect(html).not.toContain("VITAMINS &amp; MINERALS")
 })
 it.each(["en", "ar"] as const)("renders the whole localized hero statement before hydration in %s", (locale) => {
   mockHeroLocale = locale

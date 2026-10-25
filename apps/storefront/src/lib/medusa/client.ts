@@ -20,3 +20,11 @@ export const medusa = new Medusa({
     jwtTokenStorageMethod: "nostore",
   },
 });
+
+// A timeout is an unknown mutation outcome; callers reconcile the same cart.
+// No automatic write retries are introduced here.
+const publicFetch = medusa.client.fetch_.bind(medusa.client);
+medusa.client.fetch_ = (input, init = {}) => {
+  const deadline = AbortSignal.timeout(15_000);
+  return publicFetch(input, { ...init, signal: init.signal ? AbortSignal.any([init.signal, deadline]) : deadline });
+};

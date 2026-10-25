@@ -73,3 +73,43 @@ it("marks a full rebuild unavailable before it writes product documents", async 
   expect(order).toEqual(["unhealthy", "read"])
   expect(writeCatalogState).toHaveBeenLastCalledWith(container, 1, expect.any(Number), "version", undefined)
 })
+
+it("combines a burst of product events into one bounded native write", async () => {
+  jest.mocked(readCatalogRows).mockResolvedValue([{ id: "p" }] as never)
+  await Promise.all(Array.from({ length: 100 }, (_, i) => refreshCatalog(container, undefined, { name: "product.updated", data: { id: `p${i}` } })))
+  expect(execute).toHaveBeenCalledTimes(1)
+  expect(readCatalogRows).toHaveBeenCalledWith(expect.anything(), { id: expect.arrayContaining(["p0", "p99"]) })
+  expect(search.upsertDocuments).toHaveBeenCalledTimes(1)
+})
+
+it("combines broad events into one full reconciliation", async () => {
+  jest.mocked(readCatalogRows).mockResolvedValue([])
+  Object.assign(search, { search: jest.fn(async () => ({ hits: [] })) })
+  await Promise.all(Array.from({ length: 50 }, (_, i) => refreshCatalog(container, undefined, { name: "translation.translation.updated", data: { id: `t${i}` } })))
+  expect(execute).toHaveBeenCalledTimes(1)
+  expect(writeCatalogState).toHaveBeenCalledTimes(2)
+})
+
+it("keeps a still-valid projection readable throughout routine reconciliation", async () => {
+  jest.mocked(readCatalogState).mockResolvedValue({ ready: 1, valid_until: Date.now() + 30000, price_version: "version", revision: "previous" })
+  jest.mocked(readCatalogRows).mockResolvedValue([])
+  Object.assign(search, { search: jest.fn(async () => ({ hits: [] })) })
+  await refreshCatalog(container, undefined, { name: "catalog-ranking.reconcile", data: {} })
+  expect(writeCatalogState).toHaveBeenCalledTimes(1)
+  expect(writeCatalogState).toHaveBeenCalledWith(container, 1, expect.any(Number), "version", undefined)
+})
+
+it("does not extend or invalidate valid state after a failed routine refresh", async () => {
+  jest.mocked(readCatalogState).mockResolvedValue({ ready: 1, valid_until: Date.now() + 30000, price_version: "version", revision: "previous" })
+  jest.mocked(readCatalogRows).mockRejectedValueOnce(new Error("temporary read failure"))
+  await expect(refreshCatalog(container, undefined, { name: "catalog-ranking.reconcile", data: {} })).rejects.toThrow("temporary read failure")
+  expect(writeCatalogState).not.toHaveBeenCalled()
+})
+
+it("still fails closed during routine reconciliation when the price watermark changed", async () => {
+  jest.mocked(readCatalogState).mockResolvedValue({ ready: 1, valid_until: Date.now() + 30000, price_version: "old", revision: "previous" })
+  jest.mocked(readCatalogRows).mockResolvedValue([])
+  Object.assign(search, { search: jest.fn(async () => ({ hits: [] })) })
+  await refreshCatalog(container, undefined, { name: "catalog-ranking.reconcile", data: {} })
+  expect(writeCatalogState).toHaveBeenNthCalledWith(1, container, 0, 0)
+})

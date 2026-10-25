@@ -13,6 +13,7 @@ export default defineSearchIndex({
     catalog_price: search.float().sortable(), catalog_priced: search.integer().sortable(),
     catalog_available: search.integer().sortable(), created: search.float().sortable(),
     deal: search.integer().filterable(), deal_price: search.float().sortable(), deal_available: search.integer().sortable(),
+    bundle: search.integer().filterable(),
     display_variant_id: search.keyword(), deal_variant_id: search.keyword(),
     variant_ids: search.keyword().array().filterable(), inventory_ids: search.keyword().array().filterable(),
     price_set_ids: search.keyword().array().filterable(),

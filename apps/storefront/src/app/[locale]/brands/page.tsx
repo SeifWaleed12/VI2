@@ -1,5 +1,4 @@
 import { LegacyTranslations } from "@/context/LanguageContext";
-import { isLocale } from "@/lib/i18n";
 import type { Metadata } from "next";
 import Image, {
   type StaticImageData,
@@ -19,7 +18,6 @@ import optimumNutritionLogo from "@/assets/brands/optimum-nutrition.png";
 import bigRamyLabsLogo from "@/assets/brands/big-ramy-labs.png";
 
 import {
-  getProducts,
   getBrands,
 } from "@/lib/medusa";
 
@@ -49,38 +47,12 @@ const logoByBrand: Record<
     bigRamyLabsLogo,
 };
 
-export default async function BrandsPage({ params }: { params: Promise<{ locale: string }> }) {
-  const { locale: requested } = await params;
-  const locale = isLocale(requested) ? requested : "en";
-  const [medusaProducts, medusaBrands] = await Promise.all([
-    getProducts({locale}),
-    getBrands(),
-  ]);
-
-  const activeProducts = medusaProducts;
+export default async function BrandsPage() {
+  const medusaBrands = await getBrands();
   const brandProfiles = medusaBrands;
   const alphabetGroups = [...new Set(medusaBrands.map((brand) => brand.name[0].toUpperCase()))].sort().map((letter) => ({
-    letter, brands: medusaBrands.filter((brand) => brand.name[0].toUpperCase() === letter).map((brand) => brand.name),
+    letter, brands: medusaBrands.filter((brand) => brand.name[0].toUpperCase() === letter),
   }));
-  const productCountByBrand =
-    activeProducts.reduce<
-      Record<string, number>
-    >(
-      (
-        counts,
-        product,
-      ) => {
-        counts[
-          product.brand
-        ] =
-          (counts[
-            product.brand
-          ] ?? 0) + 1;
-
-        return counts;
-      },
-      {},
-    );
 
   return (
     <LegacyTranslations><main
@@ -181,18 +153,13 @@ export default async function BrandsPage({ params }: { params: Promise<{ locale:
                         (
                           brand,
                         ) => {
-                          const count =
-                            productCountByBrand[
-                              brand
-                            ] ?? 0;
-
                           return (
                             <Link
                               key={
-                                brand
+                                brand.id
                               }
                               href={`/shop?brand_id=${encodeURIComponent(
-                                medusaBrands.find(profile => profile.name === brand)!.id,
+                                brand.id,
                               )}`}
                               className={
                                 styles.brandLink
@@ -201,19 +168,11 @@ export default async function BrandsPage({ params }: { params: Promise<{ locale:
                               <div>
                                 <span>
                                   {
-                                    brand
+                                    brand.name
                                   }
                                 </span>
 
-                                <small data-arabic-text={`${count} منتج`}>
-                                  {
-                                    count
-                                  }{" "}
-                                  {count ===
-                                  1
-                                    ? "product"
-                                    : "products"}
-                                </small>
+
                               </div>
 
                               <ArrowUpRight

@@ -11,6 +11,14 @@ it("keeps native default browsing usable without the index", async () => {
   expect((await listCatalog({ locale: "en", sort: "default", limit: 24 })).count).toBe(5);
   expect(medusa.client.fetch).not.toHaveBeenCalled();
 });
+
+it("uses bounded indexed pagination for large brand browsing even with default sort", async () => {
+  jest.mocked(medusa.client.fetch).mockResolvedValue({ ids: [], count: 2000, variants: {} });
+  const result = await listCatalog({ locale: "en", sort: "default", brand_id: ["brand_large"], limit: 24, offset: 1008 });
+  expect(result).toMatchObject({ count: 2000, offset: 1008 });
+  expect(medusa.client.fetch).toHaveBeenCalledWith("/store/catalog", expect.objectContaining({ query: expect.objectContaining({ brand_id: ["brand_large"], offset: 1008, limit: 24 }) }));
+  expect(listProducts).not.toHaveBeenCalled();
+});
 it("preserves global order/count and hydrates the backend-selected variant with fresh localized prices", async () => {
   jest.mocked(medusa.client.fetch).mockResolvedValue({ ids: ["b", "a"], count: 107, variants: { b: "vb", a: "va" } });
   jest.mocked(listProducts).mockResolvedValue({ products: [

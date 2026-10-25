@@ -1,0 +1,31 @@
+{
+  "cacheOptions": {
+    "enableOfflineQueue": false,
+    "maxRetriesPerRequest": 0,
+    "commandTimeout": 250,
+    "socketTimeout": 500,
+    "autoResendUnfulfilledCommands": false
+  },
+  "stalledCache": {
+    "requests": 150,
+    "fallback": 150,
+    "pendingCommandsAfter1200ms": 3
+  },
+  "disconnectedCache": {
+    "requests": 150,
+    "offlineQueue": 0
+  },
+  "sharedLock": {
+    "workers": 2,
+    "maxActive": 1
+  },
+  "renewal": {
+    "initialLeaseSeconds": 1,
+    "handlerMs": 2600,
+    "competitorTimedOut": true
+  },
+  "processCrash": {
+    "childTerminated": true,
+    "reacquiredMs": 1103
+  }
+}

@@ -15,7 +15,7 @@ const LOCK_TIMEOUT = 5
 // registered customers are kept.
 // shortcut: a deleted cart's unpaid payment collection stays (the system
 // provider only), delete those too once a real payment provider stores data.
-export async function removeAbandonedCarts(container: MedusaContainer, now = new Date()) {
+export async function removeAbandonedCarts(container: MedusaContainer, now = new Date(), signal?: AbortSignal) {
   const carts = container.resolve(Modules.CART)
   const query = container.resolve(ContainerRegistrationKeys.QUERY)
   const locking = container.resolve(Modules.LOCKING)
@@ -58,9 +58,11 @@ export async function removeAbandonedCarts(container: MedusaContainer, now = new
   let removed = 0
   let skip = 0
   for (;;) {
+    signal?.throwIfAborted()
     const page = await carts.listCarts(filters, { select: ["id"], take: BATCH, skip, order: { created_at: "ASC" } })
     let kept = page.length
     for (const { id } of page) {
+      signal?.throwIfAborted()
       // Medusa's cart workflows (add, update, complete, transfer to a
       // customer) lock the cart by its id, so none can change it in between.
       const gone = await locking.execute(id, () => remove(id), { timeout: LOCK_TIMEOUT }).catch((error: Error) => {
@@ -79,7 +81,7 @@ export async function removeAbandonedCarts(container: MedusaContainer, now = new
 }
 
 export default async function removeAbandonedCartsJob(container: MedusaContainer) {
-  const removed = await removeAbandonedCarts(container)
+  const removed = await container.resolve(Modules.LOCKING).execute("job:remove-abandoned-carts", (signal?: AbortSignal) => removeAbandonedCarts(container, new Date(), signal), { timeout: 1, expire: 300 })
   if (removed) container.resolve(ContainerRegistrationKeys.LOGGER).info(`Removed ${removed} abandoned guest carts`)
 }
 

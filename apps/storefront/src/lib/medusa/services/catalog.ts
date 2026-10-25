@@ -9,7 +9,7 @@ export async function listCatalog(params: ListProductsParams & { sort: CatalogSo
   const limit = params.limit ?? 24;
   const offset = params.offset ?? 0;
   // The native all-products path remains usable if the derived index is unavailable.
-  if (sort === "default" && !deals && !params.q) return listProducts(filters);
+  if (sort === "default" && !deals && !params.q && !params.brand_id?.length) return listProducts(filters);
   const regionId = await resolveRegionId(params.regionId);
   let found: { ids: string[]; count: number; variants: Record<string, string> };
   try {
@@ -17,6 +17,7 @@ export async function listCatalog(params: ListProductsParams & { sort: CatalogSo
       method: "GET",
       headers: { "x-medusa-locale": medusaLocale(params.locale) },
       cache: "no-store",
+      signal: params.signal,
       query: { region_id: regionId, limit, offset, sort, deals: String(deals),
         ...(params.q ? { q: params.q } : {}),
         ...(params.category_id?.length ? { category_id: params.category_id } : {}),
@@ -29,7 +30,7 @@ export async function listCatalog(params: ListProductsParams & { sort: CatalogSo
     throw new Error("Catalog ordering temporarily unavailable.");
   }
   if (!found.ids.length) return { products: [], count: found.count, limit, offset };
-  const page = await listProducts({ locale: params.locale, regionId, id: found.ids, limit: found.ids.length, fresh: true });
+  const page = await listProducts({ locale: params.locale, regionId, id: found.ids, limit: found.ids.length, fresh: true, signal: params.signal });
   const byId = new Map(page.products.map(product => [product.id, product]));
   const products = found.ids.map(id => {
     const product = byId.get(id);

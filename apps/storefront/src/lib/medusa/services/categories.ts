@@ -71,11 +71,20 @@ import { buildCategoryTree, type Category } from "@/lib/category-tree"
 import { medusaLocale, type Locale } from "@/lib/i18n"
 export async function getCategoryTree(locale: Locale): Promise<Category[]> {
   const categories: Omit<Category,"children">[] = []
+  const seen = new Set<string>()
+  const deadline = AbortSignal.timeout(15_000)
   for (let offset = 0; ; offset += 50) {
+    deadline.throwIfAborted()
     const response = await medusa.client.fetch<{ product_categories: Omit<Category,"children">[]; count: number }>("/store/product-categories", {
       query: { limit: 50, offset, fields: "id,name,handle,parent_category_id,rank" },
-      headers: { "x-medusa-locale": medusaLocale(locale) }, cache: "no-store", signal: AbortSignal.timeout(8000),
+      headers: { "x-medusa-locale": medusaLocale(locale) }, cache: "no-store", signal: AbortSignal.any([deadline, AbortSignal.timeout(8000)]),
     })
+    if (!Number.isSafeInteger(response.count) || response.count < 0) throw new Error("Invalid category count")
+    for (const category of response.product_categories) {
+      if (seen.has(category.id)) throw new Error("Category pagination made no progress")
+      seen.add(category.id)
+    }
+    if (seen.size > 10_000) throw new Error("Category directory exceeds its render budget")
     categories.push(...response.product_categories)
     if (categories.length >= response.count || response.product_categories.length < 50) break
   }

@@ -517,3 +517,9 @@ PR20 final approval — 2026-10-24: Claude Round3 (5711dff) approves application
 | Task | Owner | Reviewer | Status | Scope |
 |---|---|---|---|---|
 | Fixes from Seif's manual test | Claude | GPT | Awaiting GPT review on claude/test-round-fixes (373032e) | Checkout: a refused cart is "not placed" (no endless retry), cart changes drop a pending retry, details kept and autofilled from the account, sign-in hint. Sign-up says "email already has an account" with links. Sort aligned on desktop; no Cart in the mobile bar; Health goals hover panel; product photo gallery. Handoff: docs/reviews/test-round-fixes.md. Open: registration rate limit needs the visitor IP (same as CART-5) — Cloudflare rule at deployment. |
+## Audit remediation — authorized 2026-10-25
+
+| Task | Owner | Reviewer | Status | Scope |
+|---|---|---|---|---|
+| Resolve architecture audit A01–A18 and verify launch edges | GPT | Claude | implementation in progress | Seif authorized a new fix branch and Claude review. Branch codex/audit-fixes, isolated audit-fixes checkout started at full-stack 7405cc8 and rebased onto 56df776, preserving manual-test changes. Fix reproducible application defects with native primitives and focused tests; investigate conditional items, record deployment-only decisions rather than inventing them. No merge/deployment; owner merges after Claude review. |
+A11 owner decision: Seif chose latest successful save wins for competing ordinary admin edits; document and test native same-field/different-field behavior. This does not relax stock/order/points invariants.

@@ -55,6 +55,15 @@ it("reports changed catalog context as retryable rather than invalid filters", a
   expect(response.status).toHaveBeenCalledWith(409)
   expect(search).not.toHaveBeenCalled()
 })
+
+it("refuses a projection that expires while its query is running", async () => {
+  const state = { ...ready(), valid_until: Date.now() + 10 }
+  jest.mocked(readCatalogState).mockResolvedValue(state)
+  search.mockImplementationOnce(async () => { jest.advanceTimersByTime(20); return { hits: [], metadata: { count: 0 } } })
+  const response = res()
+  await GET(req(), response)
+  expect(response.status).toHaveBeenCalledWith(503)
+})
 it.each([
   {}, { id: [] }, { id: Array(25).fill("prod_1") }, { id: "bad id" },
   { id: ["prod_1"], limit: 25 }, { id: ["prod_1"], offset: 1 },

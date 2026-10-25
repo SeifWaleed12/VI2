@@ -24,7 +24,7 @@ export default async function pointsOnRefund({ event, container }: SubscriberArg
         container,
         { customer_id: order.customer_id, kind: "refund", source_id: `${order.id}/${refund.id}` },
         () => -pointsFor(refund.amount),
-        () => orderPointsLeft(container, order.id),
+        context => orderPointsLeft(container, order.id, context),
       )
     }
   } catch (error) {
