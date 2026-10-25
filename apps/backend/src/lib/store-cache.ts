@@ -11,6 +11,7 @@ const PREFIX = "store-cache:"
 // With Redis stopped, the Redis client queues commands and never answers, so the
 // read must give up on its own. Every request pays this wait while Redis is down.
 const READ_TIMEOUT_MS = 250
+const FILL_TIMEOUT = Symbol("fill timeout")
 const fills = new Map<string, { promise: Promise<unknown>, finish: (body?: unknown) => void }>()
 let revision = 0
 
@@ -59,7 +60,8 @@ export function cacheStoreGet(ttlSeconds: number) {
     const pending = fills.get(key)
     if (pending) {
       const body = await pending.promise
-      if (body !== undefined) return res.json(body)
+      if (body === undefined) return next()
+      if (body !== FILL_TIMEOUT) return res.json(body)
       res.setHeader("Retry-After", "1")
       return res.status(503).json({ message: "Catalog temporarily busy. Retry shortly." })
     }
@@ -69,7 +71,7 @@ export function cacheStoreGet(ttlSeconds: number) {
     const started = revision
     let finish!: (body?: unknown) => void
     const promise = new Promise<unknown>(resolve => { finish = resolve })
-    const timer = setTimeout(() => complete(), 2000)
+    const timer = setTimeout(() => complete(FILL_TIMEOUT), 2000)
     const complete = (body?: unknown) => {
       if (fills.get(key)?.promise !== promise) return
       fills.delete(key)

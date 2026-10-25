@@ -56,28 +56,28 @@ async function runRefresh(container: MedusaContainer, productIds?: string[], eve
   return container.resolve(Modules.LOCKING).execute(CATALOG_LOCK, async signal => {
     stopped(signal)
     const query = container.resolve(ContainerRegistrationKeys.QUERY)
-    if (events.length && events.every(event => ["catalog-ranking.refresh", "catalog-ranking.reconcile"].includes(event.name)) && !productIds?.length) {
-      const state = await readCatalogState(container)
-      const margin = events.some(event => event.name === "catalog-ranking.reconcile") ? 60_000 : 0
-      if (state?.ready === 1 && (state.valid_until ?? 0) > Date.now() + margin && state.price_version === await catalogPriceVersion(query)) return
-      productIds = undefined
-    } else if (events.length) {
+    const previous = await readCatalogState(container)
+    const priceVersion = await catalogPriceVersion(query)
+    const routines = events.filter(event => ["catalog-ranking.refresh", "catalog-ranking.reconcile"].includes(event.name))
+    const mutations = events.filter(event => !routines.includes(event))
+    const margin = routines.some(event => event.name === "catalog-ranking.reconcile") ? 60_000 : 0
+    const routineNeedsFull = routines.length > 0 && !(previous?.ready === 1 && (previous.valid_until ?? 0) > Date.now() + margin && previous.price_version === priceVersion)
+    let broadMutation = false
+    if (mutations.length) {
       const ids = new Set(productIds)
-      for (const event of events) {
+      for (const event of mutations) {
         const affected = await affectedCatalogProducts(container, event)
-        if (!affected) { productIds = undefined; break }
+        if (!affected) { productIds = undefined; broadMutation = true; break }
         affected.forEach(id => ids.add(id))
         productIds = [...ids]
       }
     }
+    if (routineNeedsFull) productIds = undefined
     if (productIds?.length === 0) return
     const search = container.resolve(Modules.SEARCH)
-    const previous = await readCatalogState(container)
-    const priceVersion = await catalogPriceVersion(query)
-    const routine = events.length > 0 && events.every(event => ["catalog-ranking.refresh", "catalog-ranking.reconcile"].includes(event.name))
     // Routine reconciliation may use the still-valid projection, just as
     // incremental refresh does. Known broad mutations and expired state fail closed.
-    const keepReadable = !productIds && routine && previous?.ready === 1
+    const keepReadable = !productIds && routines.length > 0 && !broadMutation && previous?.ready === 1
       && (previous.valid_until ?? 0) > Date.now() && previous.price_version === priceVersion
     stopped(signal)
     if (!productIds && !keepReadable) await writeCatalogState(container, 0, 0)

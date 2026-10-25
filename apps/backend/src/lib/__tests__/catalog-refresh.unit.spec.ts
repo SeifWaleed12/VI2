@@ -113,3 +113,26 @@ it("still fails closed during routine reconciliation when the price watermark ch
   await refreshCatalog(container, undefined, { name: "catalog-ranking.reconcile", data: {} })
   expect(writeCatalogState).toHaveBeenNthCalledWith(1, container, 0, 0)
 })
+
+it.each([300000, 30000])("separates routine checks from product events with %i ms validity", async remaining => {
+  jest.mocked(readCatalogState).mockResolvedValue({ ready: 1, valid_until: Date.now() + remaining, price_version: "version", revision: "previous" })
+  Object.assign(search, { search: jest.fn(async () => ({ hits: [] })) })
+  await Promise.all([
+    refreshCatalog(container, undefined, { name: "catalog-ranking.reconcile", data: {} }),
+    refreshCatalog(container, undefined, { name: "product.updated", data: { id: "p" } }),
+  ])
+  expect(writeCatalogState).toHaveBeenCalledTimes(1)
+  expect(jest.mocked(writeCatalogState).mock.calls.some(call => call[1] === 0)).toBe(false)
+  if (remaining === 300000) expect(readCatalogRows).toHaveBeenCalledWith(expect.anything(), { id: ["p"] })
+})
+
+it("keeps broad mutations fail-closed even when coalesced with a routine check", async () => {
+  jest.mocked(readCatalogState).mockResolvedValue({ ready: 1, valid_until: Date.now() + 300000, price_version: "version" })
+  jest.mocked(readCatalogRows).mockResolvedValue([])
+  Object.assign(search, { search: jest.fn(async () => ({ hits: [] })) })
+  await Promise.all([
+    refreshCatalog(container, undefined, { name: "catalog-ranking.reconcile", data: {} }),
+    refreshCatalog(container, undefined, { name: "translation.translation.updated", data: { id: "t" } }),
+  ])
+  expect(writeCatalogState).toHaveBeenNthCalledWith(1, container, 0, 0)
+})

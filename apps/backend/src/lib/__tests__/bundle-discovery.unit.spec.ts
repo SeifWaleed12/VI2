@@ -20,3 +20,13 @@ it("fails honestly for an expired projection or another sales channel", async ()
   await expect(bundleProductIds(scope, ["other"])).rejects.toThrow("channel")
   expect(search).not.toHaveBeenCalled()
 })
+
+it("keeps invalid channel errors distinct from a refreshing projection at the HTTP boundary", async () => {
+  const { GET } = await import("../../api/store/deals/route")
+  const res = { status: jest.fn().mockReturnThis(), json: jest.fn() }
+  await expect(GET({ scope, publishable_key_context: { sales_channel_ids: ["other"] } } as never, res as never)).rejects.toThrow("channel")
+  expect(res.status).not.toHaveBeenCalled()
+  jest.mocked(readCatalogState).mockResolvedValue({ ready: 0, valid_until: 0 })
+  await GET({ scope, publishable_key_context: { sales_channel_ids: ["sc_eg"] } } as never, res as never)
+  expect(res.status).toHaveBeenCalledWith(503)
+})

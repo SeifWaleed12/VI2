@@ -25,6 +25,13 @@ export const medusa = new Medusa({
 // No automatic write retries are introduced here.
 const publicFetch = medusa.client.fetch_.bind(medusa.client);
 medusa.client.fetch_ = (input, init = {}) => {
-  const deadline = AbortSignal.timeout(15_000);
-  return publicFetch(input, { ...init, signal: init.signal ? AbortSignal.any([init.signal, deadline]) : deadline });
+  const controller = new AbortController();
+  const cancel = () => controller.abort(init.signal?.reason);
+  if (init.signal?.aborted) cancel();
+  else init.signal?.addEventListener("abort", cancel, { once: true });
+  const timer = setTimeout(() => controller.abort(new DOMException("Request timed out", "TimeoutError")), 15_000);
+  return publicFetch(input, { ...init, signal: controller.signal }).finally(() => {
+    clearTimeout(timer);
+    init.signal?.removeEventListener("abort", cancel);
+  });
 };

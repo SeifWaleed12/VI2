@@ -148,3 +148,17 @@ it.each(["/store/products?limit=5", "/store/regions", "/store/product-categories
   expect(next).not.toHaveBeenCalled()
   expect(cache.get).toHaveBeenCalledTimes(2)
 })
+
+it("lets followers receive native validation errors instead of a false outage", async () => {
+  const cache = fakeCache(), req = request(cache, { originalUrl: "/store/products?brand_id=bad" })
+  const middleware = cacheStoreGet(60), first = response(), second = response()
+  await middleware(req, first, jest.fn())
+  const next = jest.fn(() => second.status(400).json({ message: "Invalid brand" }))
+  const follower = middleware(req, second, next)
+  await Promise.resolve(); await Promise.resolve()
+  first.status(400).json({ message: "Invalid brand" })
+  await follower
+  expect(next).toHaveBeenCalledTimes(1)
+  expect(second.status).toHaveBeenCalledWith(400)
+  expect(second.setHeader).not.toHaveBeenCalled()
+})
