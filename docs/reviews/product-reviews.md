@@ -441,3 +441,68 @@ Claude **APPROVE of92b1528** and all six Round2 resolutions are preserved above 
 ### Claude follow-up prompt
 
 Review **272b07b** against **7a26e39** on codex/product-reviews. Your Round3 approved92b1528; recheck only R3-1/2/3 and observations4/5 using the author response above. In EN/AR desktop/mobile320/390, submit with no stars and verify the short message/visible outline beside the focused radios and no cart-bar obstruction; fix text/rating and verify stale validation clears. Reproduce same-browserA/B account switching: no wrong-account publication/private-draft exposure and the status explains the change; normal sign-in and same-account expiry recovery should not show an account-swap message. Check radio semantics and relevant tests. The backend diff is a comment only: do not repeat a full backend/DB audit without a new concern. Keep the unchanged Deals build/bootstrap issues separate. Append your short recheck below; review only, no application edits/live migrations. Seif merges.
+
+## Round 4 — Claude recheck of 272b07b (2026-10-26)
+
+Scope: commit `272b07b` against `7a26e39`, rechecking R3-1, R3-2, R3-3 and observations 4 and 5, as asked. The later commit `e0d2395` only changes documentation. Review only: I changed no application code here and ran no live migration. I worked in a throwaway worktree at `272b07b` (removed) and a disposable database (`vi2_claude_rev4_20261026`, created and dropped by me, empty provider settings). The backend diff is one comment, so I did not repeat the backend or native audit.
+
+**Verdict: APPROVE. R3-1, R3-2 and R3-3 are resolved and observations 4 and 5 are closed.** I found two small display issues (R4-1, R4-2), neither blocking. Merge approval is Seif's.
+
+### What I ran versus what was reported
+
+| Check | Mine | Reported |
+|---|---|---|
+| Storefront unit, full run | **59 suites / 548 pass** | 59 / 548 |
+| Backend, the review module's tests only (the diff is a comment) | **34 pass** | not rerun |
+| `tsc --noEmit` backend and storefront; ESLint `--quiet` both | clean | clean |
+| `next build --webpack` (source as committed, no `ignoreBuildErrors`) | compiles, then fails only on the Deals/Bundles export | same |
+| Real browser, English and Arabic, desktop and phone widths, real backend, storefront production build | **run by me** (below) | not run |
+| Physical phones, screen-reader speech, 200% zoom, real Redis | not run | not run |
+
+As before, the browser build used `typescript.ignoreBuildErrors` in my scratch copy only, to get past the known Deals error.
+
+### Results
+
+| Item | Result |
+|---|---|
+| **R3-1** missing-star message | **Resolved.** Submitting an empty form puts the short message "Choose 1–5 stars." (Arabic: "اختر من نجمة إلى خمس نجوم.") directly above the star row, 12 px above it, inside the viewport; focus is on the first star; the star group has a visible outline. On a 390 px phone the message is at y 392–417 with the stars ending at 478 and the cart bar starting at 771, so nothing is hidden. On a 320 px Arabic phone the message is at y 290–318 (one line, no overflow) with the bar at 565. A short text field gets the longer message right under the text area and the focused field, in view at 1024 and 390 px; at 320×640 see R4-1. Only one alert renders at a time. |
+| **R3-3** stale message | **Resolved.** After the empty-form error, choosing a star removes the message and the outlines; after a short-text error, typing in the field removes the message and `aria-invalid`. The next Submit validates again. |
+| **R3-2** account switch | **Resolved.** With a second account signed in from another tab and the first tab still showing the first account, pressing Submit publishes nothing (the second account's own review stays `null`; the list is empty), the header changes to the second account, the first account's typed text is nowhere on the page, and a status line appears: "Your account changed. Check the signed-in account before submitting a review." It names no account and includes no draft text. On a phone it sits after the write button in the stacked order (y 1502 between the button at 1430 and the list at 1578), in view. It does **not** appear after a normal sign-in, and it does not appear after a genuine expiry followed by signing back in as the same account: the expired message showed first, the notice did not, and the draft was restored with the recovery banner (client-side navigation, so the in-tab memory was kept). |
+| Obs. 4 shortcut comment | **Resolved.** The one-line `shortcut:` comment about one-sided dot spacing is in `screen.ts`. |
+| Obs. 5 radio semantics | **Resolved.** The star group is `role="radiogroup"`, labelled by its legend ("Your rating" / "تقييمك بالنجوم"), with `aria-invalid` and `aria-describedby` set only when the rating is missing; the text field's `aria-describedby` no longer points at a rating-only message. |
+
+### New small findings
+
+#### R4-1 (Low) — On a 320×640 phone the focused text field can end up under the sticky header
+**Where:** `Reviews.module.css:41` (`scroll-margin-block`) and the focus step in `ReviewForm.tsx` `submit`.
+**Trigger (reproduced in English and Arabic):** at 320×640, open the form, pick a star, type "short", press Submit. The message is in view (y 282–359) but the focused text area sits at y 11–165 while the sticky header ends at y 75, so its first lines are hidden. The same steps at 390×844 are fine (text area at y 139–293, header at 75).
+**Impact:** on the smallest phones the user cannot see the start of the text they must lengthen.
+**Smallest fix:** after focusing, scroll the field into view below the header (for example `scrollIntoView({ block: "center" })` or a larger `scroll-margin-top` for this field).
+
+#### R4-2 (Low) — On desktop the account-change status can be above the visible area
+**Where:** `ProductReviews.tsx` (the notice is rendered between the section heading and the form).
+**Trigger (reproduced):** with the form open and the page scrolled to the Submit button, the swap happens: the header changes to the other account and a blank form remains, but the notice is at y −112 to −86 (above the viewport) and nothing scrolls it into view. Screen readers announce it (it is `role="status"`); sighted users may only notice the changed name. On a phone the notice was in view.
+**Smallest fix:** show the notice at the top of the form instead, or scroll or move focus to it when it first appears.
+
+### Remaining / not covered
+
+Physical phones and touch, spoken screen-reader output, 200% text zoom, real Redis, native Arabic wording, the Admin as the `admin` role in the browser (unchanged in this commit). Two earlier observations still stand as notes rather than defects: the one-sided spacing limit of the link screen, and the dev-mode streaming stall I saw in Round 2.
+
+### Baseline items kept separate
+
+Unchanged: the Deals/Bundles build error (`next build --webpack` fails only on `Property 'Bundles' is incompatible with index signature`) and the fresh-database bootstrap stop in `initial-data-seed` ("No store exists", worked around with `db:migrate --skip-scripts`).
+
+
+## Author response to Round4 —2026-10-26
+
+Claude's **APPROVE of272b07b** is preserved above unchanged; R3-1/2/3 and observations4/5 are closed. The two nonblocking visibility follow-ups are addressed in **c638ff9** on codex/product-reviews; this new candidate needs only a targeted browser recheck.
+
+- **R4-1:** focus the first invalid control with preventScroll, then explicitly scroll it to the viewport center using instant behavior. Existing logical scroll margins remain active. This avoids browser-default focus scrolling that placed the textarea under the sticky header on320x640, without introducing animated motion or changing form validation/labels/draft behavior.
+- **R4-2:** the account-change status is focusable and explicitly centered when the replacement account's own-review state finishes loading. The parent effect runs after the replacement form's mount/focus, preventing its initial radio focus from leaving the notice above the desktop viewport. This happens on account transition/readiness changes, not ordinary typing or validation. Copy, privacy, cookie assertion and account-scoped drafts are unchanged.
+- Focus/scroll tests cover short feedback in EN/AR and account-notice visibility ordering before/after replacement readiness. They assert platform calls, not actual browser geometry.
+
+Verification: **59 storefront suites /549 tests pass** in one full run; focused form/interaction **2 suites /16 tests pass**; ESLint clean. Production webpack compiles10.5s, then type validation reports only the unchanged baseline Deals/Bundles export error. No ignoreBuildErrors or generated next-env rewrite delivered. Backend/runtime/schema/source are untouched in this follow-up; no DB/native/backend rebuild, browser recapture, detector loop, preview server, live migration, provider call, dependency, push or merge.
+
+### Claude targeted recheck prompt
+
+Recheck **c638ff9** against **e0d2395** on codex/product-reviews. Your Round4 approved272b07b; only R4-1/R4-2 need confirmation. In EN/AR320x640, short-text Submit should center the focused textarea clear of sticky header/cart while its error stays reachable. On desktop, repeat same-browser accountA/B switching while scrolled to Submit: refusal/private-draft protection stays intact, and after the replacement writer loads the account-change status receives focus and becomes visible. Check that normal typing/validation does not repeatedly steal focus. Append a short result here; review only, no application edits, full backend re-audit or live migration. Keep known Deals/build/bootstrap limits separate. Seif merges.
