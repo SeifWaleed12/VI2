@@ -573,3 +573,6 @@ Manual test stopped at Seif's request2026-10-26: GPT terminated only the owned s
 
 ## Product-reviews PR publication — authorized2026-10-26
 Seif explicitly requested separate PRs for codex/product-reviews and codex/audit-fixes to full-stack. GPT owns publication; source remains Claude-approved c638ff9, subsequent commits documentation only. GitHub base origin/full-stack05d78a6 refreshed. Publish the complete reviews feature and create a separate PR; no automatic merge or deployment. Audit PR27 https://github.com/SeifWaleed12/VI2/pull/27 contains the separate Deals/Bundles production-build fix and should land first. Preserve the local-only migration/test shutdown history; production migration/privacy-retention and deployment checks remain pending. Existing checks/reviews are reported accurately without rerunning unchanged application code.
+
+Product reviews PR published: https://github.com/SeifWaleed12/VI2/pull/28 (base full-stack, head codex/product-reviews). Separate audit PR27 https://github.com/SeifWaleed12/VI2/pull/27 contains the Deals build fix; recommended merge order audit first, reviews second. Both PRs created at Seif's request; neither merged. Publication changes only documentation; reviewed application c638ff9 remains unchanged.
+
