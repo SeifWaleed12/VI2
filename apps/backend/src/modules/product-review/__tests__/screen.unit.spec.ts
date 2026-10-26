@@ -45,3 +45,13 @@ it.each(["Great.Thanks for the quick service", "Contains 100.eg capsules", "No c
 it.each(["title", "content"])("rejects NUL in %s before persistence", field => {
   expect(reviewInput.safeParse({ rating: 3, title: "Good", content: "A sufficiently detailed review.", [field]: "Text with a NUL \u0000 character inside" }).success).toBe(false)
 })
+
+it.each([
+  "Works great. Me and my wife both use it daily.", "Arrived quickly. Online ordering was easy.",
+  "Good price. Store staff were helpful.", "Good price. Shop assistants were polite.",
+  "Good price. Site was easy to use.", "I like it. App tracking worked well.",
+  "I like it. Info on the label is clear.", "I like it. Net weight matches the label.",
+  "I like it. Link between sleep and rest is clearer.", "I like it. Org was easy to deal with.",
+])("keeps sentence boundaries separate from domain names: %s", text => {
+  expect(screenReview(text)).not.toContain("external_link")
+})

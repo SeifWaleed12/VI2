@@ -1,7 +1,7 @@
 import { defineRouteConfig } from "@medusajs/admin-sdk"
 import { Badge, Button, Container, Heading, Input, Label, Text } from "@medusajs/ui"
 import { MessageSquare } from "lucide-react"
-import { useId, useRef, useState } from "react"
+import { useEffect, useId, useRef, useState } from "react"
 import { Link } from "react-router-dom"
 import { useProductReviews } from "../../hooks/use-product-reviews"
 import type { AdminReview } from "../../lib/product-reviews"
@@ -14,6 +14,8 @@ function ReviewRow({ review, title, decide }: RowProps) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const inFlight = useRef(false)
+  const errorMessage = useRef<HTMLParagraphElement>(null)
+  useEffect(() => { if (!busy && error) errorMessage.current?.focus() }, [busy, error])
   const act = async (status: "approved" | "rejected") => {
     if (inFlight.current) return
     if (!reason.trim()) { setError("Give a reason for the decision."); return }
@@ -38,7 +40,7 @@ function ReviewRow({ review, title, decide }: RowProps) {
     {review.status !== "withdrawn" && <div className="mt-4 grid max-w-3xl gap-3">
       <Label htmlFor={`${id}-reason`}>Decision reason (shown to the customer if rejected)</Label>
       <Input id={`${id}-reason`} value={reason} onChange={event => setReason(event.target.value)} maxLength={500} disabled={busy} />
-      {error && <Text role="alert">{error}</Text>}
+      {error && <p ref={errorMessage} tabIndex={-1} role="alert">{error}</p>}
       <div className="flex flex-wrap gap-3">
         <Button variant="primary" disabled={busy} onClick={() => void act("approved")}>{busy ? "Saving…" : "Approve"}</Button>
         <Button variant="secondary" disabled={busy} onClick={() => void act("rejected")}>Reject</Button>

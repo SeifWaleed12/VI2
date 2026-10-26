@@ -24,6 +24,13 @@ export default function ProductReviews({ productId, locale, initial }: Props) {
   const recovery = customer ? readReviewDraft(productId, customer.id) : null;
   const writeButton = useRef<HTMLButtonElement>(null);
   const heading = useRef<HTMLHeadingElement>(null);
+  const restoreWriteFocus = useRef(false);
+  useEffect(() => {
+    if (restoreWriteFocus.current && !own.busy && !authLoading) {
+      restoreWriteFocus.current = false;
+      writeButton.current?.focus();
+    }
+  }, [writing, own.busy, authLoading]);
   const number = (value: number) => new Intl.NumberFormat(locale === "ar" ? "ar-EG" : "en-EG", { maximumFractionDigits: 1 }).format(value);
   const summary = reviews.page?.summary;
   const page = Math.floor(reviews.query.offset / 10) + 1;
@@ -32,7 +39,7 @@ export default function ProductReviews({ productId, locale, initial }: Props) {
     const destination = window.location.pathname + window.location.search + "#customer-reviews";
     router.push(localizedHref(`/account/sign-in?next=${encodeURIComponent(destination)}`, locale));
   };
-  const close = () => { if (customer) clearReviewDraft(productId, customer.id); setWriting("closed"); writeButton.current?.focus(); };
+  const close = () => { if (customer) clearReviewDraft(productId, customer.id); restoreWriteFocus.current = true; setWriting("closed"); };
   const saved = () => { close(); void reviews.refresh(); router.refresh(); };
   const changePage = (offset: number) => {
     void reviews.load({ ...reviews.query, offset });

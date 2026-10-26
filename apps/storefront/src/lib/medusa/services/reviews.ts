@@ -11,16 +11,17 @@ export async function listReviews(productId: string, locale: Locale, input: { so
     headers: { "x-medusa-locale": medusaLocale(locale) }, cache: "no-store", signal: AbortSignal.timeout(8000),
   });
 }
-async function ownRequest(productId: string, locale: Locale, method: "GET" | "POST" | "DELETE", body?: ReviewDraft | { version: number }): Promise<OwnReview | null> {
+async function ownRequest(productId: string, locale: Locale, method: "GET" | "POST" | "DELETE", customerId: string, body?: ReviewDraft | { version: number }): Promise<OwnReview | null> {
   const response = await fetch(`/api/reviews/${encodeURIComponent(productId)}?locale=${locale}`, {
     method, cache: "no-store", signal: AbortSignal.timeout(12000),
-    ...(body ? { headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) } : {}),
+    headers: { "x-review-customer-id": customerId, ...(body ? { "Content-Type": "application/json" } : {}) },
+    ...(body ? { body: JSON.stringify(body) } : {}),
   });
   if (!response.ok) throw new ReviewRequestError(response.status);
   const result = await response.json();
   if (!("review" in result)) throw new ReviewRequestError(502);
   return result.review;
 }
-export const getOwnReview = (id: string, locale: Locale) => ownRequest(id, locale, "GET");
-export const submitReview = (id: string, locale: Locale, draft: ReviewDraft) => ownRequest(id, locale, "POST", draft);
-export const withdrawReview = (id: string, locale: Locale, version: number) => ownRequest(id, locale, "DELETE", { version });
+export const getOwnReview = (id: string, locale: Locale, customerId: string) => ownRequest(id, locale, "GET", customerId);
+export const submitReview = (id: string, locale: Locale, customerId: string, draft: ReviewDraft) => ownRequest(id, locale, "POST", customerId, draft);
+export const withdrawReview = (id: string, locale: Locale, customerId: string, version: number) => ownRequest(id, locale, "DELETE", customerId, { version });

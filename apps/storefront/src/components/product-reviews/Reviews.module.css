@@ -38,7 +38,7 @@
 .primary:hover, .secondary:hover { text-decoration: underline; text-underline-offset: 4px; }
 .primary:disabled, .secondary:disabled { opacity: .55; cursor: default; text-decoration: none; }
 .section :is(button, a, input, select, textarea, summary):focus-visible, .ratingChoice:has(input:focus-visible) { outline: 2px solid var(--ink); outline-offset: 4px; }
-.section :is(button, input, select, textarea, summary) { scroll-margin-block: 112px 140px; }
+.section :is(button, input, select, textarea, summary, [tabindex="-1"]) { scroll-margin-block: 112px 140px; }
 .form { max-width: 760px; display: grid; gap: 20px; padding: 28px; margin-block-end: 32px; background: var(--cream); }
 .form > p { margin: 0; }
 .ratingInput { min-width: 0; margin: 0; padding: 0; border: 0; }
@@ -73,5 +73,5 @@
 }
 
 .starCell { position: relative; display: inline-block; width: 18px; height: 18px; }
-.starFill { position: absolute; inset: 0 auto 0 0; overflow: hidden; }
+.starFill { position: absolute; inset-block: 0; inset-inline-start: 0; inset-inline-end: auto; overflow: hidden; }
 .starCell svg { display: block; min-width: 18px; }

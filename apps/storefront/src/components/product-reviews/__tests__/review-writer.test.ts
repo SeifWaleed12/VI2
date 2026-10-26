@@ -18,3 +18,13 @@ it("restores an account-scoped draft at the form boundary after reauthentication
  const html=renderToString(createElement(ReviewWriter,{own:state(null),copy:REVIEW_COPY.en,open:true,draft,onDraft:jest.fn(),onClose:jest.fn(),onSaved:jest.fn(),onSignIn:jest.fn()}));
  expect(html).toContain(draft.title);expect(html).toContain(draft.content);expect(html).toContain(REVIEW_COPY.en.recovered);
 });
+
+it("keeps failure feedback inside the form and does not claim ordinary failures restored a draft", () => {
+ const html=renderToString(createElement(ReviewWriter,{own:state(409),copy:REVIEW_COPY.en,open:true,draft:null,onDraft:jest.fn(),onClose:jest.fn(),onSaved:jest.fn(),onSignIn:jest.fn()}));
+ const form=html.slice(html.indexOf("<form"),html.indexOf("</form>"));
+ expect(form).toContain(REVIEW_COPY.en.conflict);
+ expect(form).toContain(REVIEW_COPY.en.loadLatest);
+ expect(html).not.toContain(REVIEW_COPY.en.recovered);
+ expect(html.match(/role="alert"/g)).toHaveLength(1);
+ expect(form.indexOf(REVIEW_COPY.en.conflict)).toBeLessThan(form.indexOf('type="submit"'));
+});

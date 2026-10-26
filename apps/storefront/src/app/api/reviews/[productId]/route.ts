@@ -10,6 +10,14 @@ async function proxy(request: NextRequest, context: Context, method: "GET" | "PO
   }
   const token = request.cookies.get(AUTH_COOKIE)?.value;
   if (!token) return expiredSession();
+  // This assertion prevents stale-tab writes; Medusa still verifies the token and authorizes every request.
+  const expectedCustomer = request.headers.get("x-review-customer-id");
+  try {
+    const payload = JSON.parse(Buffer.from(token.split(".")[1], "base64url").toString("utf8"));
+    if (!expectedCustomer || payload.actor_id !== expectedCustomer || payload.actor_type !== "customer") {
+      return authError("Account changed. Reload your session before continuing.", 401);
+    }
+  } catch { return expiredSession(); }
   const { productId } = await context.params;
   if (!/^[a-zA-Z0-9_-]{1,100}$/.test(productId)) return authError("Invalid product.", 400);
   const locale = request.nextUrl.searchParams.get("locale") ?? "en";

@@ -15,7 +15,7 @@ export function useOwnReview(productId: string, locale: Locale, customerId: stri
     if (!customerId) return false;
     const current = ++sequence.current;
     try {
-      const review = await getOwnReview(productId, locale);
+      const review = await getOwnReview(productId, locale, customerId);
       if (current === sequence.current) { setState({ owner: customerId, review, loaded: true, ready: true, error: null, source: null }); return true; }
       return false;
     } catch (error) {
@@ -46,7 +46,7 @@ export function useOwnReview(productId: string, locale: Locale, customerId: stri
   return {
     review: current ? state.review : null, loaded: current && state.loaded, readError: current && state.source === "read" && !state.ready, sessionExpired: state.error === 401 && (!customerId || state.owner === customerId), error: current ? state.error : null, busy,
     reload: load,
-    save: (draft: ReviewDraft) => change(() => submitReview(productId, locale, draft)),
-    withdraw: (version: number) => change(() => withdrawReview(productId, locale, version)),
+    save: (draft: ReviewDraft) => customerId ? change(() => submitReview(productId, locale, customerId, draft)) : Promise.resolve(false),
+    withdraw: (version: number) => customerId ? change(() => withdrawReview(productId, locale, customerId, version)) : Promise.resolve(false),
   };
 }

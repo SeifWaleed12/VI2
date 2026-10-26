@@ -9,13 +9,13 @@ const BLOCKED_TERMS = new Set([
   "fuck", "fucking", "fucked", "motherfucker", "shit", "bullshit", "bitch", "asshole", "cunt",
   "كس", "كسم", "كسمك", "احا", "خول", "شرموط", "شرموطة", "متناك", "زب", "زبي",
 ])
-export const SCREEN_VERSION = 2
+export const SCREEN_VERSION = 3
 export function screenReview(text: string): string[] {
   const normalized = normalize(text)
   const tokens = normalized.match(/[\p{L}\p{N}]+/gu) ?? []
   const flags: string[] = []
   if (tokens.some(token => BLOCKED_TERMS.has(token))) flags.push("profanity")
-  const links = normalized.replace(/\s*\.\s*|\s+dot\s+/gu, ".")
+  const links = normalized.replace(/\s+\.\s+|\s+dot\s+/gu, ".")
   const knownDomain = /(?:^|[^\p{L}\p{N}-])(?=[\p{L}\p{N}-]*\p{L})[\p{L}\p{N}-]+\.(?:com|net|org|io|shop|xyz|eg|ly|me|co|link|site|online|store|app|info)(?=$|[^\p{L}\p{N}-])/iu
   const domainWithPath = /(?:^|[^\p{L}\p{N}-])[\p{L}\p{N}-]+(?:\.[\p{L}\p{N}-]+)*\.[\p{L}]{2,63}\//iu
   if (/(?:https?:\/\/|www\.)\S+/iu.test(links) || knownDomain.test(links) || domainWithPath.test(links)) flags.push("external_link")

@@ -26,8 +26,9 @@ async function run() {
  record.push("truthful empty state")
  const login = await fetch(front + "/api/auth/login", { method: "POST", headers: { Origin: front, "Content-Type": "application/json" }, body: JSON.stringify({email:"customer@reviews.test",password:"review-preview-password"}) })
  assert.equal(login.status, 200)
+ const customerId = (await login.json()).customer.id
  const cookie = login.headers.get("set-cookie").split(";")[0]
- const request = (method, body, origin=front) => fetch(front + api + "?locale=ar", { method, headers: { Cookie: cookie, Origin: origin, "Content-Type": "application/json" }, ...(body ? { body: JSON.stringify(body) } : {}) })
+ const request = (method, body, origin=front) => fetch(front + api + "?locale=ar", { method, headers: { "x-review-customer-id": customerId, Cookie: cookie, Origin: origin, "Content-Type": "application/json" }, ...(body ? { body: JSON.stringify(body) } : {}) })
  assert.equal((await request("POST", {}, "https://attacker.example")).status, 403)
  const draft = {rating:4,title:"My illustrative review",content:"I am checking the real storefront-to-Medusa review flow."}
  const submit = await request("POST", draft); assert.equal(submit.status, 200)

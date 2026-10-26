@@ -57,6 +57,7 @@ it("never exposes the previous customer's own review after an identity change", 
   await render(hook("b")).reload();
   old.resolve(own("customer-a")); await pending;
   expect(render(hook("b")).review?.id).toBe("customer-b");
+  expect(getOwnReview).toHaveBeenLastCalledWith("p", "en", "b");
 });
 it("guards duplicate saves and does not leave a different account busy", async () => {
   const saved = deferred<OwnReview>();
@@ -66,6 +67,7 @@ it("guards duplicate saves and does not leave a different account busy", async (
   const pending = render(hook("a")).save(draft);
   await render(hook("a")).save(draft);
   expect(submitReview).toHaveBeenCalledTimes(1);
+  expect(submitReview).toHaveBeenCalledWith("p", "en", "a", draft);
   expect(render(hook("b")).busy).toBe(false);
   saved.resolve(own("a")); await pending;
   expect(render(hook("b")).review).toBeNull();
