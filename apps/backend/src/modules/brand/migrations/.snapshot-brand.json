@@ -86,6 +86,22 @@
           "enumItems": [],
           "mappedType": "text"
         },
+        "logo_file_id": {
+          "name": "logo_file_id",
+          "type": "text",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "unique": false,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "enumItems": [],
+          "mappedType": "text"
+        },
         "country": {
           "name": "country",
           "type": "text",

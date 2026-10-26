@@ -55,3 +55,27 @@ The dev server's live reload: caught live, with every open tab reloading in the 
 - The 4xx classification in `completeCheckout`: is any 4xx other than 403 and 409 possible after Medusa actually placed the order?
 - Checkout details live in sessionStorage (this tab only, cleared on sign-out and on success). Is it OK to keep PII there, or would you prefer memory only plus the reload issue being dev-only?
 - The autofill uses the first saved address. Medusa has no "default address" flag in our data.
+
+## GPT review, round 1 (2026-10-25)
+
+- **[P2] A failed cart edit could discard an unresolved checkout retry.** `forgetPendingCart()` ran before the change was confirmed.
+- **[P2] The checkout sign-in hint was English-only** on the Arabic site.
+- **Checked and fine:** the 4xx classification matches Medusa 2.21 (400 refusals, 409 already completing, 200 cart for payment cases); sessionStorage for details; `email_taken`.
+- **Validation:** 163/163 targeted storefront tests and 13/13 backend registration tests passed.
+
+## Author response (`374d20f`)
+
+- **P2 retry fixed.** The retry is dropped in `sendChange` only after Medusa confirms the change (`error === undefined`). A failed or rolled-back add, remove or quantity change keeps it. Checkout resets "Retry confirmation" to "Place order" when a confirmed change drops the retry.
+  - New provider tests: a successful add drops the retry, and a failed add keeps it. The failure test fails on `373032e`.
+- **P2 Arabic fixed.** The hint is two whole phrases ("Have an account?", plus a link reading "Sign in to fill in your details and keep this order in your account."), both in the Arabic dictionary.
+  - Live on `/ar/checkout`: "عندك حساب؟ سجّل الدخول لملء بياناتك تلقائياً وحفظ هذا الطلب في حسابك."
+- `npm run check`: backend 266, storefront 494 tests; typecheck and lint pass.
+
+Round 2 requested: `374d20f` only.
+
+## GPT review, round 2 (2026-10-25)
+
+**Both round 1 findings resolved. No open problems.**
+- The retry is preserved on a failed edit and dropped after a confirmed one. The checkout UI stays in sync.
+- The Arabic hint phrases translate as whole text nodes.
+- 22/22 targeted tests passed.

@@ -12,7 +12,7 @@ import {
   toast,
 } from "@medusajs/ui"
 import { Tag } from "lucide-react"
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState, type DragEvent } from "react"
 
 type Brand = {
   id: string
@@ -28,19 +28,38 @@ type FormState = {
   name: string
   slug: string
   description: string
-  logo: string
   country: string
   status: string
+  // The saved logo's address; a newly picked file and a removal wait for Save.
+  logo: string
+  logoFile: File | null
+  removeLogo: boolean
 }
 
 const emptyForm: FormState = {
   name: "",
   slug: "",
   description: "",
-  logo: "",
   country: "",
   status: "active",
+  logo: "",
+  logoFile: null,
+  removeLogo: false,
 }
+
+// The server checks the file's real type and size again (lib/brand-logo.ts).
+const LOGO_TYPES = ["image/png", "image/jpeg", "image/webp"]
+const MAX_LOGO_BYTES = 1024 * 1024
+const logoProblem = (file: File) =>
+  !LOGO_TYPES.includes(file.type) ? "The logo must be a PNG, JPG or WebP image."
+    : file.size > MAX_LOGO_BYTES ? "The logo must be 1 MB or smaller." : null
+
+const base64Of = (file: File) => new Promise<string>((resolve, reject) => {
+  const reader = new FileReader()
+  reader.onload = () => resolve(String(reader.result).split(",")[1] ?? "")
+  reader.onerror = () => reject(new Error("The logo file could not be read."))
+  reader.readAsDataURL(file)
+})
 
 const slugify = (text: string) =>
   text
@@ -85,9 +104,11 @@ const BrandsPage = () => {
       name: brand.name,
       slug: brand.slug,
       description: brand.description || "",
-      logo: brand.logo || "",
       country: brand.country || "",
       status: brand.status,
+      logo: brand.logo || "",
+      logoFile: null,
+      removeLogo: false,
     })
     setEditingId(brand.id)
     setShowForm(true)
@@ -127,7 +148,6 @@ const BrandsPage = () => {
           name: form.name.trim(),
           slug: form.slug.trim(),
           description: form.description.trim() || null,
-          logo: form.logo.trim() || null,
           country: form.country.trim() || null,
           status: form.status,
         }),
@@ -135,6 +155,21 @@ const BrandsPage = () => {
 
       const data = await res.json()
       if (!res.ok) throw new Error(data.message || "Request failed")
+      // A new brand exists now: a failed logo upload below can be retried as an edit.
+      setEditingId(data.brand.id)
+
+      if (form.logoFile) {
+        const logo = await fetch(`/admin/brands/${data.brand.id}/logo`, {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ content: await base64Of(form.logoFile) }),
+        })
+        if (!logo.ok) throw new Error(`Brand saved, but the logo was not: ${(await logo.json().catch(() => ({}))).message || "upload failed"}`)
+      } else if (form.removeLogo) {
+        const logo = await fetch(`/admin/brands/${data.brand.id}/logo`, { method: "DELETE", credentials: "include" })
+        if (!logo.ok) throw new Error("Brand saved, but the logo was not removed.")
+      }
 
       toast.success(isEditing ? "Brand Updated" : "Brand Created", {
         description: `"${form.name}" has been ${isEditing ? "updated" : "created"} successfully.`,
@@ -243,19 +278,10 @@ const BrandsPage = () => {
               />
             </div>
 
-            {/* Logo URL + Country + Status row */}
+            <LogoField form={form} setForm={setForm} />
+
+            {/* Country + Status row */}
             <div style={{ display: "flex", gap: "12px" }}>
-              <div style={{ flex: 2 }}>
-                <Label htmlFor="brand-logo" style={{ display: "block", marginBottom: "4px" }}>
-                  Logo URL
-                </Label>
-                <Input
-                  id="brand-logo"
-                  placeholder="e.g. /brands/optimum-nutrition.png"
-                  value={form.logo}
-                  onChange={(e) => setForm((f) => ({ ...f, logo: e.target.value }))}
-                />
-              </div>
               <div style={{ flex: 1 }}>
                 <Label htmlFor="brand-country" style={{ display: "block", marginBottom: "4px" }}>
                   Country
@@ -357,20 +383,7 @@ const BrandsPage = () => {
                   </Table.Cell>
                   <Table.Cell>
                     {brand.logo ? (
-                      <Text
-                        size="small"
-                        style={{
-                          fontFamily: "monospace",
-                          color: "var(--fg-muted)",
-                          maxWidth: "200px",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          whiteSpace: "nowrap",
-                          display: "block",
-                        }}
-                      >
-                        {brand.logo}
-                      </Text>
+                      <img src={brand.logo} alt={`${brand.name} logo`} style={{ width: "40px", height: "40px", objectFit: "contain", display: "block" }} />
                     ) : (
                       <Text size="small" style={{ color: "var(--fg-muted)" }}>
                         —
@@ -399,6 +412,83 @@ const BrandsPage = () => {
           </Table>
         )}
       </Container>
+    </div>
+  )
+}
+
+// Pick or drop a logo; it shows at once and is uploaded when the brand is saved.
+const LogoField = ({ form, setForm }: { form: FormState, setForm: (update: (f: FormState) => FormState) => void }) => {
+  const input = useRef<HTMLInputElement>(null)
+  const [preview, setPreview] = useState<string | null>(null)
+  useEffect(() => {
+    if (!form.logoFile) return setPreview(null)
+    const url = URL.createObjectURL(form.logoFile)
+    setPreview(url)
+    return () => URL.revokeObjectURL(url)
+  }, [form.logoFile])
+
+  const shown = preview ?? (form.removeLogo ? null : form.logo || null)
+  const pick = (file: File | undefined) => {
+    if (!file) return
+    const problem = logoProblem(file)
+    if (problem) return void toast.error("Logo not added", { description: problem })
+    setForm((f) => ({ ...f, logoFile: file, removeLogo: false }))
+  }
+  const drop = (event: DragEvent<HTMLDivElement>) => {
+    event.preventDefault()
+    pick(event.dataTransfer.files[0])
+  }
+
+  return (
+    <div>
+      <Label htmlFor="brand-logo" style={{ display: "block", marginBottom: "4px" }}>
+        Logo
+      </Label>
+      <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+        <div
+          onDragOver={(event) => event.preventDefault()}
+          onDrop={drop}
+          style={{
+            width: "96px", height: "96px", flex: "0 0 96px", display: "grid", placeItems: "center",
+            border: "1px dashed var(--border-strong)", borderRadius: "8px", background: "var(--bg-subtle)",
+          }}
+        >
+          {shown
+            ? <img src={shown} alt="Brand logo preview" style={{ maxWidth: "84px", maxHeight: "84px", objectFit: "contain" }} />
+            : <Text size="xsmall" style={{ color: "var(--fg-muted)", textAlign: "center" }}>Drop logo here</Text>}
+        </div>
+        <div style={{ display: "grid", gap: "8px" }}>
+          <div style={{ display: "flex", gap: "8px" }}>
+            <Button variant="secondary" size="small" type="button" onClick={() => input.current?.click()}>
+              {shown ? "Replace logo" : "Upload logo"}
+            </Button>
+            {shown && (
+              <Button
+                variant="transparent"
+                size="small"
+                type="button"
+                onClick={() => setForm((f) => ({ ...f, logoFile: null, removeLogo: !!f.logo }))}
+              >
+                Remove
+              </Button>
+            )}
+          </div>
+          <Text size="xsmall" style={{ color: "var(--fg-muted)" }}>
+            PNG, JPG or WebP, up to 1 MB. Saved with the brand.
+          </Text>
+        </div>
+        <input
+          ref={input}
+          id="brand-logo"
+          type="file"
+          accept={LOGO_TYPES.join(",")}
+          hidden
+          onChange={(event) => {
+            pick(event.target.files?.[0])
+            event.target.value = ""
+          }}
+        />
+      </div>
     </div>
   )
 }

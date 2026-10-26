@@ -173,6 +173,36 @@ medusaIntegrationTestRunner({
         expect((await api.post("/admin/brands", { name: "Optimum", slug: "optimum" }, manager)).status).toBe(201)
       })
 
+      it("lets staff upload, replace and remove a brand logo, stored as a file and checked on the server", async () => {
+        const pixel = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII="
+        const { data: { brand } } = await api.post("/admin/brands", { name: "Logo Brand", slug: "logo-brand" }, admin)
+        const served = async (url: string) => (await api.get(new URL(url).pathname, { validateStatus: () => true })).status
+
+        const first = await api.post(`/admin/brands/${brand.id}/logo`, { content: pixel }, manager)
+        expect(first.status).toBe(200)
+        expect(first.data.brand.logo).toMatch(/brand-logo-logo-brand.*\.png$/)
+        expect(await served(first.data.brand.logo)).toBe(200)
+
+        // Replacing deletes the old file once the brand points to the new one.
+        const second = await api.post(`/admin/brands/${brand.id}/logo`, { content: pixel }, admin)
+        expect(second.status).toBe(200)
+        expect(second.data.brand.logo).not.toBe(first.data.brand.logo)
+        expect(await served(first.data.brand.logo)).toBe(404)
+
+        const svg = Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>').toString("base64")
+        const big = Buffer.concat([Buffer.from(pixel, "base64"), Buffer.alloc(1024 * 1024)]).toString("base64")
+        expect((await api.post(`/admin/brands/${brand.id}/logo`, { content: svg }, admin)).data.message).toContain("PNG, JPG or WebP")
+        expect((await api.post(`/admin/brands/${brand.id}/logo`, { content: big }, admin)).data.message).toContain("1 MB")
+        expect((await api.post(`/admin/brands/${brand.id}/logo`, { content: pixel }, nobody)).status).toBe(403)
+        expect((await api.post("/admin/brands/brand_missing/logo", { content: pixel }, admin)).status).toBe(404)
+        // The address can no longer be typed in.
+        expect((await api.put(`/admin/brands/${brand.id}`, { logo: "https://evil.test/x.png" }, admin)).status).toBe(400)
+
+        const removed = await api.delete(`/admin/brands/${brand.id}/logo`, admin)
+        expect([removed.status, removed.data.brand.logo, removed.data.brand.logo_file_id]).toEqual([200, null, null])
+        expect(await served(second.data.brand.logo)).toBe(404)
+      })
+
       it("lets a manager see stock and store data but not change them", async () => {
         for (const path of ["/admin/inventory-items", "/admin/stores", "/admin/regions", "/admin/sales-channels", "/admin/stock-locations"]) {
           expect({ path, status: (await api.get(path, manager)).status }).toEqual({ path, status: 200 })
