@@ -21,6 +21,8 @@ export default function ReviewForm({ review, draft, copy, busy, error, feedback,
   const titleInvalid = invalid && title.trim().length > 120;
   const contentInvalid = invalid && (content.trim().length < 20 || content.trim().length > 3000);
   useEffect(() => { if (!busy && error) errorMessage.current?.focus(); }, [busy, error]);
+  const edited = () => { setInvalid(false); onEdit?.(); };
+  const validation = <p id={`${id}-error`} className={styles.validation} role="alert">{ratingInvalid ? copy.ratingRequired : copy.invalid}</p>;
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     if (busy) return;
@@ -35,24 +37,26 @@ export default function ReviewForm({ review, draft, copy, busy, error, feedback,
   return <form noValidate className={styles.form} onSubmit={submit} aria-labelledby={`${id}-heading`} aria-busy={busy}>
     <h3 id={`${id}-heading`}>{review && review.status !== "withdrawn" ? copy.edit : copy.write}</h3>
     <p>{copy.help}</p>
-    <fieldset disabled={busy} className={styles.ratingInput} aria-invalid={ratingInvalid || undefined} aria-describedby={ratingInvalid ? `${id}-error` : undefined}>
-      <legend>{copy.rating}</legend>
-      <div className={styles.ratingOptions}>
+    <fieldset disabled={busy} className={styles.ratingInput}>
+      <legend id={`${id}-rating-label`}>{copy.rating}</legend>
+      {ratingInvalid && validation}
+      <div className={styles.ratingOptions} role="radiogroup" aria-labelledby={`${id}-rating-label`} aria-invalid={ratingInvalid || undefined} aria-describedby={ratingInvalid ? `${id}-error` : undefined}>
         {[1, 2, 3, 4, 5].map(value => <label key={value} className={styles.ratingChoice}>
-          <input ref={value === 1 ? firstRating : undefined} type="radio" name={`${id}-rating`} value={value} required checked={rating === value} onChange={() => { setRating(value); onEdit?.(); }} />
+          <input ref={value === 1 ? firstRating : undefined} type="radio" name={`${id}-rating`} value={value} required checked={rating === value} onChange={() => { setRating(value); edited(); }} />
           <Star size={24} fill={value <= rating ? "currentColor" : "none"} strokeWidth={1.5} aria-hidden="true" />
           <span className={styles.srOnly}>{copy.starLabel(value)}</span>
         </label>)}
       </div>
     </fieldset>
     <label className={styles.field} htmlFor={`${id}-title`}>{copy.title}
-      <input ref={titleInput} aria-invalid={titleInvalid || undefined} aria-describedby={titleInvalid ? `${id}-error` : undefined} id={`${id}-title`} dir="auto" value={title} onChange={event => { setTitle(event.target.value); onEdit?.(); }} maxLength={120} disabled={busy} />
+      <input ref={titleInput} aria-invalid={titleInvalid || undefined} aria-describedby={!ratingInvalid && titleInvalid ? `${id}-error` : undefined} id={`${id}-title`} dir="auto" value={title} onChange={event => { setTitle(event.target.value); edited(); }} maxLength={120} disabled={busy} />
     </label>
+    {!ratingInvalid && titleInvalid && validation}
     <label className={styles.field} htmlFor={`${id}-content`}>{copy.feedback}
-      <textarea ref={contentInput} id={`${id}-content`} dir="auto" value={content} onChange={event => { setContent(event.target.value); onEdit?.(); }} minLength={20} maxLength={3000} required rows={5} disabled={busy} aria-invalid={contentInvalid || undefined} aria-describedby={`${id}-help${contentInvalid ? ` ${id}-error` : ""}`} />
+      <textarea ref={contentInput} id={`${id}-content`} dir="auto" value={content} onChange={event => { setContent(event.target.value); edited(); }} minLength={20} maxLength={3000} required rows={5} disabled={busy} aria-invalid={contentInvalid || undefined} aria-describedby={`${id}-help${!ratingInvalid && !titleInvalid && contentInvalid ? ` ${id}-error` : ""}`} />
     </label>
     <p id={`${id}-help`} className={styles.muted}>{copy.feedbackHelp}</p>
-    {invalid && <p id={`${id}-error`} role="alert">{copy.invalid}</p>}
+    {!ratingInvalid && !titleInvalid && contentInvalid && validation}
     {recovered && <p role="status">{copy.recovered}</p>}
     {error && <p ref={errorMessage} tabIndex={-1} role="alert">{error}</p>}
     {feedback}

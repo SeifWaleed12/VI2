@@ -21,6 +21,10 @@
 .field { display: grid; gap: 8px; font-size: var(--text-body); font-weight: 500; }
 .field input, .field textarea, .control select { min-width: 0; width: 100%; min-height: 48px; border: 1px solid var(--border); border-radius: 0; background: var(--paper); padding: 12px; color: var(--ink); font: inherit; caret-color: var(--ink); }
 .field textarea { resize: vertical; }
+.field :is(input, textarea)[aria-invalid="true"] { border-color: var(--ink); outline: 1px solid var(--ink); }
+.ratingOptions[aria-invalid="true"] { outline: 1px solid var(--ink); outline-offset: 4px; }
+.validation { margin-block: 8px 12px; font-weight: 600; }
+.accountNotice { order: 3; margin-block: 0 24px; }
 .control { display: grid; gap: 4px; font-size: var(--text-ui); }
 .control select { font-size: var(--text-body); max-width: 240px; }
 .list { list-style: none; margin: 0; padding: 0; min-height: 160px; }

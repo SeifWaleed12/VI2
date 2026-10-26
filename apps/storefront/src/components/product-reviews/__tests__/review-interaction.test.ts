@@ -9,17 +9,18 @@ const refs: {current: unknown}[]=[];
 const effects: (()=>void)[]=[];
 let stateIndex=0,refIndex=0;
 let own: ReturnType<typeof useOwnReview>;
+let customer: {id:string}|null={id:"a"};
 jest.mock("react",()=>({...jest.requireActual("react"),useId:()=>"test",useEffect:(fn:()=>void)=>effects.push(fn),useRef:(initial:unknown)=>refs[refIndex++]??(refs[refIndex-1]={current:initial}),useState:(initial:unknown)=>{const i=stateIndex++;if(!(i in states))states[i]=typeof initial==="function"?initial():initial;return[states[i],(value:unknown)=>{states[i]=value}];}}));
 jest.mock("../Reviews.module.css",()=>({}));
 jest.mock("next/navigation",()=>({useRouter:()=>({push:jest.fn(),refresh:jest.fn()})}));
-jest.mock("@/context/AuthContext",()=>({useAuth:()=>({customer:{id:"a"},isLoading:false,refreshCustomer:jest.fn()})}));
+jest.mock("@/context/AuthContext",()=>({useAuth:()=>({customer,isLoading:false,refreshCustomer:jest.fn()})}));
 jest.mock("../use-own-review",()=>({useOwnReview:()=>own}));
 jest.mock("../use-product-reviews",()=>({useProductReviews:()=>({page:null,query:{offset:0,sort:"newest"},error:false,loading:false,refresh:jest.fn()})}));
-type Props={children?:ReactNode;ref?:{current:unknown};onClick?:()=>void;onEdit?:()=>void;recovered?:boolean};
+type Props={role?:string;children?:ReactNode;ref?:{current:unknown};onClick?:()=>void;onEdit?:()=>void;recovered?:boolean};
 function walk(node:ReactNode):ReactElement<Props>[]{if(Array.isArray(node))return node.flatMap(walk);if(!isValidElement<Props>(node))return[];return[node,...walk(node.props.children)]}
 function useRender(fn:()=>ReactNode){stateIndex=0;refIndex=0;effects.length=0;const tree=walk(fn());for(const node of tree){if(node.props.ref)node.props.ref.current={focus:jest.fn()}}return tree}
 const writer=(draft:Parameters<typeof ReviewWriter>[0]["draft"]=null)=>ReviewWriter({own,copy:REVIEW_COPY.en,open:true,draft,onDraft:jest.fn(),onClose:jest.fn(),onSaved:jest.fn(),onSignIn:jest.fn()});
-beforeEach(()=>{states.length=0;refs.length=0;effects.length=0;own={review:{id:"r",rating:4,title:null,content:"Previously saved feedback here.",first_name:"Sara",created_at:"2026-10-20",updated_at:"2026-10-20",status:"approved",version:1,moderation_reason:null},busy:false,loaded:true,readError:false,error:null,sessionExpired:false,reload:jest.fn(),save:jest.fn(),withdraw:jest.fn()}});
+beforeEach(()=>{customer={id:"a"};states.length=0;refs.length=0;effects.length=0;own={review:{id:"r",rating:4,title:null,content:"Previously saved feedback here.",first_name:"Sara",created_at:"2026-10-20",updated_at:"2026-10-20",status:"approved",version:1,moderation_reason:null},busy:false,loaded:true,readError:false,error:null,sessionExpired:false,reload:jest.fn(),save:jest.fn(),withdraw:jest.fn()}});
 it("does not call a failed attempt a restored draft, and clears genuine recovery after editing",()=>{
  const draft={rating:4,title:"",content:"A sufficiently detailed retained draft."};
  useRender(()=>writer());
@@ -53,4 +54,25 @@ it("defers closing focus until the write action is enabled after saving",()=>{
  own.busy=false;
  tree=useRender(page);effects.forEach(fn=>fn());
  expect((tree.find(node=>node.type==="button")!.props.ref!.current as {focus:jest.Mock}).focus).toHaveBeenCalledTimes(1);
+});
+
+it.each(["en", "ar"] as const)("explains a direct account switch without exposing the previous review in %s",locale=>{
+ const page=()=>ProductReviews({productId:"p",locale,initial:null});
+ let tree=useRender(page);
+ expect(tree.some(node=>node.props.children===REVIEW_COPY[locale].accountChanged)).toBe(false);
+ customer={id:"b"};own.review=null;
+ useRender(page);tree=useRender(page);
+ const notice=tree.find(node=>node.props.children===REVIEW_COPY[locale].accountChanged)!;
+ expect(notice.props.role).toBe("status");
+ expect(tree.some(node=>node.props.children==="Previously saved feedback here.")).toBe(false);
+});
+it("does not treat first sign-in or same-account reauthentication as an account swap",()=>{
+ const page=()=>ProductReviews({productId:"p",locale:"en",initial:null});
+ customer=null;useRender(page);
+ customer={id:"a"};useRender(page);
+ let tree=useRender(page);
+ expect(tree.some(node=>node.props.children===REVIEW_COPY.en.accountChanged)).toBe(false);
+ customer=null;useRender(page);useRender(page);
+ customer={id:"a"};useRender(page);tree=useRender(page);
+ expect(tree.some(node=>node.props.children===REVIEW_COPY.en.accountChanged)).toBe(false);
 });

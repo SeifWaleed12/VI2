@@ -17,6 +17,11 @@ export default function ProductReviews({ productId, locale, initial }: Props) {
   const copy = REVIEW_COPY[locale];
   const router = useRouter();
   const { customer, isLoading: authLoading, refreshCustomer } = useAuth();
+  const customerId = customer?.id ?? null;
+  const [account, setAccount] = useState({ id: customerId, changed: false });
+  if (account.id !== customerId) {
+    setAccount({ id: customerId, changed: !!account.id && !!customerId });
+  }
   const reviews = useProductReviews(productId, locale, initial);
   const own = useOwnReview(productId, locale, customer?.id ?? null);
   useEffect(() => { if (own.error === 401) void refreshCustomer(); }, [own.error, refreshCustomer]);
@@ -52,6 +57,7 @@ export default function ProductReviews({ productId, locale, initial }: Props) {
         {authLoading ? copy.accountLoading : !customer ? copy.signIn : own.review && own.review.status !== "withdrawn" ? copy.edit : copy.write}
       </button>
     </header>
+    {account.changed && customer && <p className={styles.accountNotice} role="status">{copy.accountChanged}</p>}
     {!customer && own.sessionExpired && <p role="alert">{copy.session}</p>}
     {customer && <ReviewWriter key={customer.id} own={own} copy={copy} open={writing === "open" || (writing === "auto" && !!recovery)} draft={recovery} onDraft={draft => keepReviewDraft(productId, customer.id, draft)} onClose={close} onSaved={saved} onSignIn={signIn} />}
     <div className={styles.grid}>

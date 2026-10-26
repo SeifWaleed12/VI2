@@ -15,6 +15,7 @@ export function screenReview(text: string): string[] {
   const tokens = normalized.match(/[\p{L}\p{N}]+/gu) ?? []
   const flags: string[] = []
   if (tokens.some(token => BLOCKED_TERMS.has(token))) flags.push("profanity")
+  // shortcut: one-sided dot spacing stays unjoined to avoid sentence false positives; revisit with reviewed spam examples.
   const links = normalized.replace(/\s+\.\s+|\s+dot\s+/gu, ".")
   const knownDomain = /(?:^|[^\p{L}\p{N}-])(?=[\p{L}\p{N}-]*\p{L})[\p{L}\p{N}-]+\.(?:com|net|org|io|shop|xyz|eg|ly|me|co|link|site|online|store|app|info)(?=$|[^\p{L}\p{N}-])/iu
   const domainWithPath = /(?:^|[^\p{L}\p{N}-])[\p{L}\p{N}-]+(?:\.[\p{L}\p{N}-]+)*\.[\p{L}]{2,63}\//iu
