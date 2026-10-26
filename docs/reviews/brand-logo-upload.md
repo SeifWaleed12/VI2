@@ -68,3 +68,16 @@ Branch `claude/brand-logo-upload` from `full-stack` `05d78a6`. One commit: `3df5
 
 1. Run `db:migrate` (new `logo_file_id` column), then restart the backend.
 2. Upload the six logos from `VI2 FInal/brand-logos-to-upload/` in Admin → Brands.
+
+## GPT review, round 1 (2026-10-26)
+
+- **[P2] Delete the uploaded file when deleting its brand.** `DELETE /admin/brands/:id` soft-deleted the brand but left its public logo file in storage.
+- Upload, replace and logo removal were otherwise consistent. Read-only review.
+
+## Author response (`HEAD` of the branch)
+
+- **Fixed.** `DELETE /admin/brands/:id` reads `logo_file_id`, runs `deleteBrandWorkflow`, then deletes the file after the deletion succeeds. It uses the same best-effort helper, now shared as `deleteBrandLogoFile` in `lib/brand-logo.ts`, which the logo route uses too. An unknown brand now answers 404 instead of a silent 200.
+- **HTTP test extended:** upload a logo, delete the brand, and the file answers 404; deleting a missing brand answers 404. The new check fails on `3df5ca7` (the file was still served with 200).
+- **Checks:** full `admin-access.spec.ts` 20/20. `npm run check`: backend 270, storefront 495; typecheck and lint pass.
+
+Round 2 requested: the fix commit only.
