@@ -1,9 +1,6 @@
 import { LegacyTranslations } from "@/context/LanguageContext";
 import { isLocale } from "@/lib/i18n";
 import type { Metadata } from "next";
-import Image, {
-  type StaticImageData,
-} from "next/image";
 import Link from "@/components/LocaleLink";
 import {
   ArrowRight,
@@ -11,12 +8,7 @@ import {
   Package,
 } from "lucide-react";
 
-import nutriNationsLogo from "@/assets/brands/nutri-nations.png";
-import doctorsBestLogo from "@/assets/brands/doctors-best.png";
-import nowFoodsLogo from "@/assets/brands/now-foods.png";
-import californiaGoldLogo from "@/assets/brands/california-gold.png";
-import optimumNutritionLogo from "@/assets/brands/optimum-nutrition.png";
-import bigRamyLabsLogo from "@/assets/brands/big-ramy-labs.png";
+import BrandLogo from "./BrandLogo";
 
 import {
   getProducts,
@@ -29,24 +21,6 @@ export const metadata: Metadata = {
   title: "Brands A–Z | Vi2",
   description:
     "Browse every supplement and wellness brand available at Vi2.",
-};
-
-const logoByBrand: Record<
-  string,
-  StaticImageData
-> = {
-  "Nutri-Nations":
-    nutriNationsLogo,
-  "Doctor's Best":
-    doctorsBestLogo,
-  "NOW Foods":
-    nowFoodsLogo,
-  "California Gold Nutrition":
-    californiaGoldLogo,
-  "Optimum Nutrition":
-    optimumNutritionLogo,
-  "Big Ramy Labs":
-    bigRamyLabsLogo,
 };
 
 export default async function BrandsPage({ params }: { params: Promise<{ locale: string }> }) {
@@ -298,15 +272,7 @@ export default async function BrandsPage({ params }: { params: Promise<{ locale:
                         styles.logoTile
                       }
                     >
-                      {(brand.logo || logoByBrand[brand.name]) ? <Image
-                        src={brand.logo || logoByBrand[brand.name]}
-                        alt={`${brand.name} logo`}
-                        fill
-                        sizes="220px"
-                        className={
-                          styles.logo
-                        }
-                      /> : <span>{brand.name}</span>}
+                      <BrandLogo name={brand.name} logo={brand.logo} className={styles.logo} />
 
                       {false && (
                         <span

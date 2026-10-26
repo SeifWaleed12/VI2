@@ -32,11 +32,11 @@ export async function PUT(req: MedusaRequest, res: MedusaResponse) {
   const { id } = req.params
   const parsed = brandSchema.partial().strict().safeParse(req.body)
   if (!parsed.success) return res.status(400).json({ message: "Invalid brand details" })
-  const { name, slug, description, logo, country, status } = parsed.data
+  const { name, slug, description, country, status } = parsed.data
 
   try {
     const { result: brand } = await updateBrandWorkflow(req.scope).run({
-      input: { id, name, slug, description, logo, country, status },
+      input: { id, name, slug, description, country, status },
     })
 
     res.json({ brand })
