@@ -201,6 +201,13 @@ medusaIntegrationTestRunner({
         const removed = await api.delete(`/admin/brands/${brand.id}/logo`, admin)
         expect([removed.status, removed.data.brand.logo, removed.data.brand.logo_file_id]).toEqual([200, null, null])
         expect(await served(second.data.brand.logo)).toBe(404)
+
+        // Deleting the brand deletes its logo file too; nothing points to it any more.
+        const third = await api.post(`/admin/brands/${brand.id}/logo`, { content: pixel }, admin)
+        expect(await served(third.data.brand.logo)).toBe(200)
+        expect((await api.delete(`/admin/brands/${brand.id}`, admin)).status).toBe(200)
+        expect(await served(third.data.brand.logo)).toBe(404)
+        expect((await api.delete("/admin/brands/brand_missing", admin)).status).toBe(404)
       })
 
       it("lets a manager see stock and store data but not change them", async () => {
