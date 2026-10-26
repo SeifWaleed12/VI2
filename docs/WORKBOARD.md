@@ -517,3 +517,17 @@ PR20 final approval — 2026-10-24: Claude Round3 (5711dff) approves application
 | Task | Owner | Reviewer | Status | Scope |
 |---|---|---|---|---|
 | Fixes from Seif's manual test | Claude | GPT | GPT round 2 approved 374d20f, no open problems; PR open for owner merge | Checkout: a refused cart is "not placed" (no endless retry), cart changes drop a pending retry, details kept and autofilled from the account, sign-in hint. Sign-up says "email already has an account" with links. Sort aligned on desktop; no Cart in the mobile bar; Health goals hover panel; product photo gallery. Handoff: docs/reviews/test-round-fixes.md. Open: registration rate limit needs the visitor IP (same as CART-5) — Cloudflare rule at deployment. |
+
+## Product reviews — authorized 2026-10-26
+
+GPT owns REV-1 through REV-5 on codex/product-reviews, isolated worktree product-reviews/vi2, baseline origin/full-stack 05d78a6. Claude reviews only; Seif merges. Any signed-in customer may review without an order. One review per customer/product; stars 1–5 and written content, optional title; own edit/withdraw. Owner selected local screening only: English/Arabic profanity and spam checks, clean submissions auto-publish, flagged submissions remain pending for admin OR manager review; no AI/external service, purchase check or verified badge. Negative ratings and ordinary product/side-effect criticism are not screening grounds.
+
+| ID | Scope | Owner | Reviewer | Status |
+|---|---|---|---|---|
+| REV-1 | API/data/screening contract and separate desktop/mobile mockups, preserve fonts/colors | GPT | Claude | in progress; images before UI edits |
+| REV-2 | Native reviews module, generated migration, bounded reads, protected writes, concurrency/ownership tests | GPT | Claude | queued |
+| REV-3 | Admin and manager moderation queue, scoped access and stale-version protection | GPT | Claude | queued |
+| REV-4 | EN/AR product reviews, accessible form, summaries/filter/sort/pagination, own review states | GPT | Claude | queued; mockup approval before UI implementation |
+| REV-5 | Disposable database proof, both app checks/builds and EN/AR responsive/accessibility regression | GPT | Claude | queued |
+
+No live migration or catalog changes. New review table/indexes only, native module links if required and documented. Preserve all other worktrees. Use Ponytail, Impeccable and UI/UX Pro Max; thin routes, cohesive review domain, existing auth/limiting/RBAC patterns, no new dependencies or unrelated refactor. Public approved-only reviews are separate from private no-store own-review state. Invalid/stale mutations must fail without losing draft or publishing unreviewed edits. Reviews must not block product purchase on failure. Deliver commit-scoped review handoff to Seif; no automatic push/merge.
