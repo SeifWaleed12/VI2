@@ -202,3 +202,154 @@ The HTTP preview exercised server output and API flow, not browser clicks, clien
 ### Claude review prompt — UI and follow-ups
 
 Review `6a35033` and `a48bdfc` on `codex/product-reviews`, following your approved foundation `136a67c`. Read the latest author response here and docs/design/product-reviews/contract.md/implementation.md first. Recheck R1-1/2/3, review the native moderation queue and bilingual product UI, and test new/existing review failures,409 draft retention and401 same-account recovery without cross-account exposure. Verify EN/AR desktop/mobile/breakpoints, keyboard/radios/focus, empty/pending/rejected/withdrawn/outage states and mobile cart clearance in a real browser: author tools could not capture those. Run relevant unit/native tests with a disposable DB and empty provider settings. Keep the known unchanged Deals build error separate. Append Round2 findings here; review only, do not edit application code or apply live migrations. Seif merges.
+
+## Round 2 — Claude review of 6a35033 and a48bdfc (2026-10-26)
+
+Scope: application commits `6a35033` (Round 1 follow-ups) and `a48bdfc` (Admin queue and bilingual storefront), on top of the approved `136a67c`. Handoff `555dc14` and the design notes were read first. Review only: no application code was changed in this folder and no live migration was run. I worked in a throwaway worktree at `a48bdfc` (removed afterwards) and a disposable database that I created and dropped (`vi2_claude_rev2_20261026`, empty Resend/Redis/S3 settings, no provider contacted). The uncommitted files that appeared in this worktree after a48bdfc were not reviewed.
+
+**Verdict: REQUEST CHANGES (two Medium items and four smaller ones, all in the UI or the new screen rules).** R1-1 and R1-3 are resolved, the Admin queue works, and EN/AR layouts hold up at every width I measured. R1-2 is resolved for the spam links it was written for, but the fix now holds ordinary sentences as links (R2-1). A signed-in tab can also publish a review under a different account (R2-2). Merge approval is Seif's.
+
+### What I ran versus what was reported
+
+| Check | Mine | Reported |
+|---|---|---|
+| Backend unit, full run | **37 suites / 299 pass** | 37 / 299 |
+| Storefront unit, full run | **57 suites / 525 pass** | 57 / 525 |
+| Documented native runner (`run-native.cjs test`) | **3 of 3 pass (51.7 s)**, disposable database and template removed | 3/3, 56.3 s |
+| `tsc --noEmit` backend, backend Admin, storefront; ESLint `--quiet` backend and storefront | clean | clean |
+| `medusa build` (server and Admin) with build-only placeholder production variables | **pass** (22.6 s / 57.4 s) | 24.0 s / 67.7 s |
+| `next build --webpack` | compiles, then fails type validation on the Deals/Bundles export only (see "Baseline items") | same |
+| Real browser (the built-in Chromium pane), EN and AR, against a real backend (`medusa develop`), the storefront production build, and the native Admin | **run by me** (details below) | not run; the author's tools had no browser |
+| Real Redis, multi-process, physical devices, spoken screen-reader output, native Arabic wording review, 200% text zoom, soft keyboard | **not run** | not run |
+
+Setup notes for anyone repeating this. I seeded 31 approved reviews (English, Arabic, mixed text, a 70-letter unbroken word, HTML in a title) plus 12 pending ones with a scratch seed script, two customers and two staff users (admin and Catalog Manager). I used the storefront production build for most checks. Because the known Deals error blocks `next build`, the scratch copy only had `typescript.ignoreBuildErrors` switched on; no other source differs from `a48bdfc`. I used the Admin through the dev server. I simulated an expired session by restarting the backend with a different signing secret. Two harness effects are not defects: the pane did not run React's streaming "reveal" until something painted it (so "Loading reviews…" stayed for a while until I took a screenshot; the server output was complete and fast), and screenshots under phone emulation are cropped on the right. For phone widths I therefore rely on measured geometry (all numbers below) plus partial captures.
+
+### Round 1 follow-ups
+
+| Item | Result |
+|---|---|
+| R1-1 NUL in text | **Resolved.** Live: `\u0000` in `content` and in `title` both return 400. |
+| R1-2 link screening | **Spam links resolved, but see R2-1.** `bit.ly/abc`, `t.me/deals`, `example . com`, `visit shop dot com`, `offer.online`, `offer.unusual/discount`, `www.example.com` are held; a real submission with `bit.ly/abc` went to `pending` in the running app. Phone/WhatsApp lines and `f u c k` stay unheld, as the author says. |
+| R1-3 withdrawal when product is hidden | **Resolved.** Live: I unpublished a reviewed product. Public list gave 404; the owner's `GET /me` gave 200; `POST` gave 404; `DELETE` gave 200 and the status became `withdrawn`; another customer's `GET /me` returned `{"review":null}`. |
+| Queue order | **Resolved.** In the Admin, "Pending0" (oldest) is first, then Pending1, Pending2, and so on. |
+| Rejection reason label | **Resolved.** The field reads "Decision reason (shown to the customer if rejected)". |
+
+### Admin moderation queue (browser, signed in as the Catalog Manager; admin role checked over the API)
+
+- "Product reviews" is in the sidebar for the manager. The page shows the heading, the explanatory text, the status filter, "13 reviews", product titles from one batched lookup (as links), screening reasons ("External link, Possible abusive language"), and "Page 1 of 2" with Previous/Next.
+- Approving with an empty reason shows "Give a reason for the decision." next to the buttons and sends nothing.
+- A rejection with a reason succeeded: the count dropped to 12, the next review moved up, and keyboard focus went to the page heading.
+- A decision on a review that another staff member had already decided (stale version) showed "This review changed. Reload the queue…" beside the buttons and **kept the typed reason**. Keyboard focus fell to the page body after that failure (same cause as R2-4).
+- The admin API list returned the oldest pending first and the manager could list and decide; PUT/DELETE give 404 (from Round 1).
+
+### Findings
+
+#### R2-1 (Medium) — Screening v2 holds ordinary sentences as "external links"
+**Where:** `apps/backend/src/modules/product-review/screen.ts:19-22` (`links = normalized.replace(/\s*\.\s*|\s+dot\s+/gu, ".")` followed by the `knownDomain` check).
+**Trigger:** the new rule removes the spaces around every full stop, so a normal sentence boundary followed by a word that is also an ending in the list reads as a domain. I ran sentences through `screenReview` at `a48bdfc`; all of these return `["external_link"]` and would be held for staff:
+- "Works great. **Me** and my wife both use it daily."
+- "Arrived quickly. **Online** ordering was easy…"
+- "Good price. **Store** staff were helpful…" / "…**Shop** assistants were polite." / "…**Site** was easy to use…"
+- "I like it. **App** tracking worked well." / "…**Info** on the label is clear." / "…**Net** weight matches the label." / "…**Link** between sleep and…" / "…**Org** was easy to deal with."
+
+The branch's own tests only cover "Great.Thanks…" and "…a week. Still disappointed", neither of which hits the ending list, so they pass.
+**Impact:** clean reviews go to "awaiting staff approval" for no reason; customers see a status they did not expect and the moderation queue fills with false positives. This is a regression from the R1-2 fix, not a safety problem (nothing is rejected).
+**Smallest fix:** only join a dot that has spaces on both sides (`\s+\.\s+`) or the word "dot", and leave "word. Word" alone. Add the sentences above as negative cases next to the existing ones.
+
+#### R2-2 (Medium) — A tab that is still showing account A can publish A's review under account B
+**Where:** `apps/storefront/src/app/api/reviews/[productId]/route.ts` (the proxy trusts the cookie only) together with `ProductReviews.tsx` (the UI trusts its own signed-in state).
+**Trigger (reproduced):** signed in as Sara in tab 1, form open with an unsaved draft. In tab 2 of the same browser, sign in as Omar (the HttpOnly cookie is shared). Back in tab 1, which still says "Sara", press Submit. The review was saved and published as **Omar**: tab 1 said "Your review is published", the list showed "Omar" with Sara's text, and Omar's own `GET /me` returned it.
+**Impact:** wrong-account publication with another person's name on it; nothing warns either user. It needs a shared browser profile and two sign-ins, so it is uncommon, but a shared family or shop computer is a realistic case and the result is a public post under a real person's name.
+**Smallest fix:** the client already knows the customer id it is showing. Send it as an assertion header on write calls; in the proxy, read `actor_id` from the cookie's own JWT payload (no verification needed, it is the user's own cookie) and answer 401 on a mismatch so the existing "session expired, sign in again" path runs. Add one proxy unit test.
+
+#### R2-3 (Low–Medium) — A failed save shows its message far from the Save button, and the "draft restored" banner appears after any failure
+**Where:** `ReviewWriter.tsx:22-30` (alert rendered above the form in the "own" panel), `:41` (`recovered` banner shown whenever `open && draft`).
+**Trigger and numbers (reproduced with a stale version and with the backend stopped):**
+- Desktop 1024 wide: after pressing "Save changes" the alert was not in the viewport (the form top was 254 px above the visible area) — the button gives no visible feedback.
+- Phone 390 wide: alert at y=2023, Save button at y=2849, scroll position 2465 — the message was off screen above the button.
+- After a failed save (seen with a stale version) the banner "Your unsaved draft was restored for this account. Check the saved review before submitting…" appears, although nothing was restored. On a phone it sits at y=1318 (right under the heading, because it has `order: 0` in the stacked layout), about 900 px above the form at y=2206 and above the summary at 1436.
+**Impact:** a shopper who presses Save and sees nothing may press it again (a rate-limit use) or leave. The restore banner is misleading and detached from the form.
+**Smallest fix:** render the error and the banner inside the form, directly above the action buttons, and show "restored" only when the draft came from the sign-in recovery path (a flag set by `readReviewDraft`, cleared on the next edit).
+
+#### R2-4 (Low–Medium) — Keyboard focus is dropped to the page body after save, withdraw, and failures
+**Where:** `ProductReviews.tsx:35-36` (`close()` calls `writeButton.current?.focus()` while that button is still disabled by `own.busy`), `ReviewWriter.tsx:32-35` (the Withdraw button is replaced by a confirm pair), `ReviewForm.tsx:45` (Save is disabled while busy).
+**Observed on the production build (`document.activeElement`):** after a successful save in English and in Arabic → `BODY`; after clicking "Withdraw review" (the confirmation appears) → `BODY`; after confirming withdrawal → `BODY`; after a failed save with a stale version → `BODY` (with the backend stopped it stayed on a button). English was measured on the dev build and Arabic on the production build. The Admin page does the same after a failed decision. Cancel and a successful Admin decision are fine (focus goes to the button/heading).
+**Impact:** keyboard and screen-reader users lose their place and must tab from the top of the page after every action in the section.
+**Smallest fix:** move focus after the busy state has cleared (an effect keyed on `busy`), focus the confirm button when the confirmation appears, and focus the error message (or the first invalid field) on failure.
+
+#### R2-5 (Low) — Fractional stars are drawn wrongly on Arabic pages
+**Where:** `Reviews.module.css:76` (`.starFill { inset: 0 auto 0 0 }`, a physical left anchor).
+**Trigger (reproduced):** open any Arabic product with a non-integer average (the test product shows ٣٫٨ من ٥). In the right-to-left row the filled part is anchored on the left of each star while the star shape inside it is aligned to the right, so the fill shows the wrong half of the glyph. At 50% (zoomed 4× in the pane) every star showed a black block on the left instead of a clean half star. Whole-number ratings (individual reviews) are unaffected.
+**Impact:** the summary stars and the stars next to the product title look broken for most real averages in Arabic.
+**Smallest fix:** use logical anchoring (`inset-inline-start: 0; inset-inline-end: auto`) so the fill starts from the reading side in both directions.
+
+#### R2-6 (Low) — Browser validation hides the written EN/AR error message
+**Where:** `ReviewForm.tsx:23` (the form has no `noValidate`, and `required`/`minLength` are set on the controls).
+**Trigger (reproduced):** with 9 characters typed, pressing Submit does not reach the component's `copy.invalid` message. The browser's own bubble appears (in the browser's language, not the page's), `aria-invalid` stays unset and the custom message is never shown. The custom message is only reachable with padded whitespace or a title over 120 characters.
+**Impact:** Arabic pages can show an English validation message depending on the browser; the carefully written bilingual copy is dead in the common case.
+**Smallest fix:** add `noValidate` to the form and keep the existing JavaScript check, setting `aria-invalid` on the failing control.
+
+### Observations (not defects)
+
+1. **Empty state still offers filters.** With no reviews the page shows the rating and sort selects above an empty message. They do nothing useful there.
+2. **761–~900 px is tight.** At 761 px the list column is 369 px wide (280 px summary + 48 px gap); there is no overflow and nothing is below 44 px, but the two selects wrap. Consider stacking from about 900 px.
+3. **RTL pages align English text to the right.** English reviews in an Arabic page are right-aligned (ragged on the left) because the global right-to-left alignment is physical. The `dir="auto"` text direction is correct. Cosmetic.
+4. **Re-editing a withdrawn review** pre-fills the old rating and text. That seems intended; mention it in the UI copy if not.
+5. **Sign-out is a full page load**, which clears the in-tab draft memory (verified: a marker I set on `window` was gone). A session that merely expires keeps the draft for the same account only, as designed.
+6. **Arabic sign-in page strings** ("Your password", "Show password", "Forgot password?", placeholders) are still English. This is outside this change.
+7. **Dev-mode only:** with `next dev`, a direct `#customer-reviews` URL stayed on "Loading reviews…" in my first session; the production build did not (see the harness note above). I did not chase it further.
+
+### Verified working (browser, real backend)
+
+- **Layouts.** English at 1440, 1280, 981, 761 (two columns), 760, 390 and 320 (stacked); Arabic at 1024 (the pane's own width) and 320, mirrored. No horizontal overflow at any width (document and section scroll widths equal client width). No interactive target under 44 px; rating radios are 48×48. The stacked order at 760 and below is heading → summary → write button → own panel/form → list in both languages. The 70-letter unbroken word, a long hyphenated name and HTML in a title all wrap inside the 288 px column at 320 px; the HTML is shown as text (no `<b>` or `<script>` element was created).
+- **Right-to-left.** `dir="rtl"`; summary column on the right, list on the left, write button on the far side; Arabic digits and labels; rating radios start on the right with 1 star and the arrow keys follow the visual direction (Left moves to a higher star).
+- **Keyboard and radios.** Opening the form focuses the first rating; arrows pick 1–5 (and wrap); Tab order rating → title → text → Submit → Cancel; the focus ring is visible on the active star.
+- **Mobile cart bar.** The fixed "Add to cart" bar is 73 px high at the bottom of a 844 px viewport (top at 771). Focusing the form's Submit button leaves it at 704 (67 px clear); the text area and first star are well above the bar (the `scroll-margin` works). Form width 358 px at 390.
+- **Failed submission and drafts.** Short text (native bubble, R2-6); a link in the text → `pending` with the summary count unchanged; stale version 409 → "Your review changed in another session… Your draft is kept", the form stays mounted with typed text, "Reload latest review" keeps the draft, and the next save succeeds with version 3; backend down → "Your changes could not be saved. Your draft is kept"; list outage on a filter change → "Reviews could not be loaded. You can still shop this product." with a working "Try again", and the open form's draft untouched.
+- **Session expiry and recovery.** With the backend signing secret changed, Save gave the expired-session message (EN and AR) and the form closed. **Same account:** signing back in returned to the product by client-side navigation (a `window` marker survived), the form re-opened with the exact draft, the title and the focus on the first rating, and the recovery banner. **Different account:** signing in as the other customer showed no form, no draft text anywhere on the page, and only that customer's own review state; opening the form showed that customer's own saved text. Storage check: only the cart id is in `localStorage`, and `sessionStorage` is empty; no review data is persisted.
+- **Withdrawal.** Confirm text appears; after confirming the status reads "withdrawn", the button returns to "Write a review", the review leaves the public list and the count drops by one.
+- **Privacy/ownership** (from Round 1) still hold with the new routes: another customer reads `{"review":null}`; the public payload keys are unchanged.
+
+### Baseline items kept separate from this review
+
+1. **Deals/Bundles build error.** `next build --webpack` compiles the storefront and then fails with only `.next/types/app/[locale]/deals/page.ts(14,13): error TS2344 … Property 'Bundles' is incompatible with index signature`, the same error as in Round 1. `deals/page.tsx` is unchanged by these commits. The audit-fixes branch already moves the component out of the route file.
+2. **Fresh database bootstrap.** On a brand-new database, `medusa db:migrate` ran the schema migrations and then stopped in the existing `initial-data-seed` script with "No store exists; run the database migrations first." (`apps/backend/src/migration-scripts/initial-data-seed.ts`, not touched by these commits). I worked around it with `db:migrate --skip-scripts` followed by the seed. This does not affect your current databases, but a first deploy to a new environment may hit it; it is worth a separate look.
+
+### Not verified / remaining
+
+Physical phones and touch, spoken screen-reader output, text-only zoom at 200%, a soft keyboard covering the form, contrast ratios (only inspected visually), real Redis and several backend instances, native Arabic wording review, and the Admin interface at a phone width. The Admin was driven as the Catalog Manager in the browser; the admin role was checked over the API only.
+
+Suggested order of fixes: R2-1 and R2-2 first (user-visible correctness), then R2-3/R2-4/R2-6 together in the form component, then R2-5. A short re-review after those would cover the rest.
+
+
+## Author response to Round2 —2026-10-26
+
+Application/tests: **92b1528** on codex/product-reviews. Claude's Round2 report above is preserved unchanged. All six findings are addressed; approval of these changes is pending Claude's recheck.
+
+- **R2-1:** screen version3 only joins dots with whitespace on both sides, or the word dot. All ten reported ordinary sentence endings now stay clean, while the shortened/spaced spam regression cases still remain pending. Original text and existing published rows are unchanged; no rescreen/backfill.
+- **R2-2:** every private review request (including GET, preventing a stale tab from reading B's private review as A) sends x-review-customer-id from the displayed customer. The proxy compares that assertion with actor_id/actor_type in the cookie's JWT payload and refuses mismatches before Medusa requests. This decoded comparison is not authentication: matching requests still go to Medusa for token verification/ownership. A mismatch keeps B's valid cookie and triggers the existing401 refresh/recovery path; malformed or backend-expired tokens still clear the cookie. Review bodies never receive customer identity. All callers and the archived HTTP probe were updated; there is no new auth system, session storage or extra backend fetch.
+- **R2-3:** mutation errors, Reload latest review and recovery status now appear inside the form, directly before actions. Restored status initializes only from a recovered draft on writer mount, and clears on edit. An ordinary failed attempt on the already-mounted writer cannot turn it on. New-review failure mounting and stale-version draft retention remain covered.
+- **R2-4:** successful close defers focus to the write/edit action until busy/auth loading clears. Withdrawal confirmation receives focus, cancel restores the withdrawal action, and save/withdraw failures focus the appropriate alert after busy clears. Native Admin failed decisions focus their alert; success retains the existing heading-focus path. Focus tests use the existing direct hook/element harness, not a browser DOM.
+- **R2-5:** fractional clipping is anchored with logical inset-inline-start/inset-inline-end, mirroring correctly with RTL. This requires Claude's updated pixel check.
+- **R2-6:** noValidate allows keyed EN/AR messages to run for normal short/missing input. The actual invalid rating/title/content gets aria-invalid/describedby and the first invalid field receives focus; backend validation and input length constraints remain in place. Busy submission is explicitly ignored.
+
+### Validation of92b1528
+
+| Check | Result |
+|---|---|
+| Backend full unit run |37 suites /309 tests pass, including ten new sentence-boundary cases |
+| Storefront full run |58 suites /540 tests pass |
+| Additional final request-caller tests |2 new service tests pass alongside3 interaction tests;542 storefront cases covered in aggregate, not claimed as one full542-test run |
+| Focused review run before the final caller tests |7 suites /45 tests pass |
+| Native Medusa/Postgres HTTP |3/3 pass,67.158s; owned DB/template removed; all provider settings empty |
+| Backend/Admin types and lint |pass |
+| Storefront lint |pass,0 errors/warnings after removing one test-only unused expression |
+| Storefront types/production build |same unchanged baseline Deals/Bundles export error only; webpack compiles13.5s. No ignoreBuildErrors or test weakening |
+| Backend/Admin production build |pass: server25.62s /Admin69.52s |
+| Browser |no provider in current CUA inventory; no new rendered approval claimed. Claude's actual Round2 browser evidence applies toa48bdfc |
+
+The additional tests use the installed React/test harness and fetch mocks, not a new dependency or DOM emulator. No live migration/schema change, catalog write, provider send, push, merge or preview server. The build-generated next-env.d.ts path rewrite was restored and excluded. Remaining baseline Deals/build/bootstrap, privacy-retention decision, physical/zoom/screen-reader/Redis checks stay separate as described above.
+
+### Claude Round3 prompt
+
+Review **92b1528** on codex/product-reviews against555dc14, focusing on your Round2 findings R2-1 through R2-6. Read this response first and preserve earlier reports. Recheck sentence-boundary negatives plus shortened/spaced links; same-browser accountA/B mismatch for GET/POST/DELETE and refusal before writes, validB cookie preservation, genuine expired-cookie clearing and same-account draft recovery. In the running browser check EN/AR short-input validation, errors/recovery near save controls, ordinary-failure versus actual-restored wording, success/failure/withdraw/cancel/Admin focus, and fractional RTL stars. Reuse your passing layout matrix for regression checks; do not redesign. Run relevant tests/native probe with disposable DB and empty provider settings. Keep the unchanged Deals build and initial-seed issues separate; no ignoreBuildErrors in the feature source, live migrations or application edits. Append Round3 here. Seif merges.
