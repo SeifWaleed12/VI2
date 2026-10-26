@@ -4,6 +4,7 @@ import { BRAND_MODULE } from "../../../../modules/brand"
 import BrandModuleService from "../../../../modules/brand/service"
 import { deleteBrandWorkflow, updateBrandWorkflow } from "../../../../workflows/brand"
 import { brandErrorResponse } from "../errors"
+import { deleteBrandLogoFile } from "../../../../lib/brand-logo"
 
 // GET /admin/brands/:id
 export async function GET(req: MedusaRequest, res: MedusaResponse) {
@@ -50,7 +51,10 @@ export async function PUT(req: MedusaRequest, res: MedusaResponse) {
 export async function DELETE(req: MedusaRequest, res: MedusaResponse) {
   const { id } = req.params
   try {
+    const { logo_file_id } = await req.scope.resolve<BrandModuleService>(BRAND_MODULE).retrieveBrand(id)
     await deleteBrandWorkflow(req.scope).run({ input: { id } })
+    // The logo is public; once its brand is gone nothing points to it.
+    await deleteBrandLogoFile(req.scope, logo_file_id)
     res.json({ id, deleted: true })
   } catch (error) {
     const { status, message } = brandErrorResponse(error, "Failed to delete brand")

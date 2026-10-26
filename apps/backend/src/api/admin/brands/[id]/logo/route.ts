@@ -4,7 +4,7 @@ import { brandLogoSchema } from "../../../../validators"
 import { BRAND_MODULE } from "../../../../../modules/brand"
 import BrandModuleService from "../../../../../modules/brand/service"
 import { updateBrandWorkflow } from "../../../../../workflows/brand"
-import { logoImage } from "../../../../../lib/brand-logo"
+import { deleteBrandLogoFile, logoImage } from "../../../../../lib/brand-logo"
 import { brandErrorResponse } from "../../errors"
 
 const NOT_AN_IMAGE = "The logo must be a PNG, JPG or WebP image."
@@ -43,10 +43,10 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
 
   try {
     const { result: brand } = await updateBrandWorkflow(req.scope).run({ input: { id, logo: file.url, logo_file_id: file.id } })
-    await deleteLogoFile(req, previous.logo_file_id)
+    await deleteBrandLogoFile(req.scope, previous.logo_file_id)
     res.json({ brand })
   } catch (error) {
-    await deleteLogoFile(req, file.id)
+    await deleteBrandLogoFile(req.scope, file.id)
     const { status, message } = brandErrorResponse(error, "Failed to update brand")
     res.status(status).json({ message })
   }
@@ -58,20 +58,10 @@ export async function DELETE(req: MedusaRequest, res: MedusaResponse) {
   try {
     const previous = await req.scope.resolve<BrandModuleService>(BRAND_MODULE).retrieveBrand(id)
     const { result: brand } = await updateBrandWorkflow(req.scope).run({ input: { id, logo: null, logo_file_id: null } })
-    await deleteLogoFile(req, previous.logo_file_id)
+    await deleteBrandLogoFile(req.scope, previous.logo_file_id)
     res.json({ brand })
   } catch (error) {
     const { status, message } = brandErrorResponse(error, "Failed to update brand")
     res.status(status).json({ message })
-  }
-}
-
-// An undeleted file only costs storage, so a failure is logged, not returned.
-async function deleteLogoFile(req: MedusaRequest, fileId: string | null | undefined) {
-  if (!fileId) return
-  try {
-    await req.scope.resolve(Modules.FILE).deleteFiles(fileId)
-  } catch {
-    req.scope.resolve(ContainerRegistrationKeys.LOGGER).warn(`Could not delete brand logo file ${fileId}`)
   }
 }
