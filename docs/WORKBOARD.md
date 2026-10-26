@@ -516,7 +516,7 @@ PR20 final approval — 2026-10-24: Claude Round3 (5711dff) approves application
 
 | Task | Owner | Reviewer | Status | Scope |
 |---|---|---|---|---|
-| Fixes from Seif's manual test | Claude | GPT | Awaiting GPT review on claude/test-round-fixes (373032e) | Checkout: a refused cart is "not placed" (no endless retry), cart changes drop a pending retry, details kept and autofilled from the account, sign-in hint. Sign-up says "email already has an account" with links. Sort aligned on desktop; no Cart in the mobile bar; Health goals hover panel; product photo gallery. Handoff: docs/reviews/test-round-fixes.md. Open: registration rate limit needs the visitor IP (same as CART-5) — Cloudflare rule at deployment. |
+| Fixes from Seif's manual test | Claude | GPT | GPT round 2 approved 374d20f, no open problems; PR open for owner merge | Checkout: a refused cart is "not placed" (no endless retry), cart changes drop a pending retry, details kept and autofilled from the account, sign-in hint. Sign-up says "email already has an account" with links. Sort aligned on desktop; no Cart in the mobile bar; Health goals hover panel; product photo gallery. Handoff: docs/reviews/test-round-fixes.md. Open: registration rate limit needs the visitor IP (same as CART-5) — Cloudflare rule at deployment. |
 ## Audit remediation — authorized 2026-10-25
 
 | Task | Owner | Reviewer | Status | Scope |
@@ -536,3 +536,6 @@ Final independent recheck — 2026-10-26: Claude approves2c34193 with no merge b
 
 ## Audit-fixes PR publication — authorized2026-10-26
 Seif explicitly requested separate PRs for codex/audit-fixes and codex/product-reviews to full-stack. GPT owns publication; preserve reviewed application code and pending deployment gates. Exact audit source head0da80c9, Claude approval2c34193/application7672f70. GitHub base origin/full-stack05d78a6 refreshed. No source edits or unnecessary reruns of previously passing checks; publish this branch and create an owner-controlled PR, no merge/deployment/database operations. Audit contains the separate Deals/Bundles build fix; recommend it land before the independent product-reviews PR.
+
+
+Audit PR published: https://github.com/SeifWaleed12/VI2/pull/27 (base full-stack, head codex/audit-fixes). Product reviews is separate PR28 https://github.com/SeifWaleed12/VI2/pull/28. Publication conflict was WORKBOARD only: preserved audit history and imported the current approved manual-test status from origin/full-stack. Application tree unchanged; no tests rerun for documentation-only synchronization. Both PRs remain unmerged; Seif merges.
