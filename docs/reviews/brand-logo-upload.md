@@ -81,3 +81,19 @@ Branch `claude/brand-logo-upload` from `full-stack` `05d78a6`. One commit: `3df5
 - **Checks:** full `admin-access.spec.ts` 20/20. `npm run check`: backend 270, storefront 495; typecheck and lint pass.
 
 Round 2 requested: `b395b34` only.
+
+## GPT review, round 2 (2026-10-26)
+
+- **Round 1 P2 resolved** in the route logic.
+- **[P2] A test upload was committed.** `b395b34` tracked `apps/backend/static/1793037422568-brand-logo-logo-brand.png`, a 68-byte copy of the test pixel, in the publicly served static folder. The 404 check alone also didn't prove the stored object was gone.
+
+## Author response (`89c1b70`)
+
+- **Cause:** a run against the old delete code (to prove the new check catches the bug) left its uploaded file in `static/`, and `git add -A apps` picked it up.
+- **Removed** the file. The branch's total diff against `full-stack` no longer touches `apps/backend/static`.
+- **`apps/backend/.gitignore` now ignores `static/`** (runtime uploads and exports of the local file provider) instead of only the CSV exports, so a leftover upload can't be committed again. `static/1790034014615-R6S_old_icon.webp`, tracked since the first commit, is left as is: it's not part of this change.
+- **The test checks the disk:** `existsSync(static/<logo_file_id>)` is true after upload, and false after replace, after logo removal and after brand deletion. That's Medusa's local provider path (`process.cwd()/static/<file key>`).
+- **No leftover files:** the logo test leaves `static/` unchanged (24 files before and after). Against `3df5ca7`'s delete route it fails (the file was still served), and the file that run left was removed.
+- `npm run check`: backend 270, storefront 495; typecheck and lint pass.
+
+Round 3 requested: `89c1b70` only.

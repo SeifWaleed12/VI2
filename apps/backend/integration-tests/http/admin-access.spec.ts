@@ -1,4 +1,5 @@
 import type BrandModuleService from "../../src/modules/brand/service"
+import { existsSync } from "fs"
 import { dirname, join } from "path"
 import { medusaIntegrationTestRunner } from "@medusajs/test-utils"
 import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
@@ -177,17 +178,21 @@ medusaIntegrationTestRunner({
         const pixel = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII="
         const { data: { brand } } = await api.post("/admin/brands", { name: "Logo Brand", slug: "logo-brand" }, admin)
         const served = async (url: string) => (await api.get(new URL(url).pathname, { validateStatus: () => true })).status
+        // The test storage is Medusa's local provider: public files live in static/<file id>.
+        const stored = (fileId: string) => existsSync(join(process.cwd(), "static", fileId))
 
         const first = await api.post(`/admin/brands/${brand.id}/logo`, { content: pixel }, manager)
         expect(first.status).toBe(200)
         expect(first.data.brand.logo).toMatch(/brand-logo-logo-brand.*\.png$/)
         expect(await served(first.data.brand.logo)).toBe(200)
+        expect(stored(first.data.brand.logo_file_id)).toBe(true)
 
         // Replacing deletes the old file once the brand points to the new one.
         const second = await api.post(`/admin/brands/${brand.id}/logo`, { content: pixel }, admin)
         expect(second.status).toBe(200)
         expect(second.data.brand.logo).not.toBe(first.data.brand.logo)
         expect(await served(first.data.brand.logo)).toBe(404)
+        expect(stored(first.data.brand.logo_file_id)).toBe(false)
 
         const svg = Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>').toString("base64")
         const big = Buffer.concat([Buffer.from(pixel, "base64"), Buffer.alloc(1024 * 1024)]).toString("base64")
@@ -201,12 +206,14 @@ medusaIntegrationTestRunner({
         const removed = await api.delete(`/admin/brands/${brand.id}/logo`, admin)
         expect([removed.status, removed.data.brand.logo, removed.data.brand.logo_file_id]).toEqual([200, null, null])
         expect(await served(second.data.brand.logo)).toBe(404)
+        expect(stored(second.data.brand.logo_file_id)).toBe(false)
 
         // Deleting the brand deletes its logo file too; nothing points to it any more.
         const third = await api.post(`/admin/brands/${brand.id}/logo`, { content: pixel }, admin)
         expect(await served(third.data.brand.logo)).toBe(200)
         expect((await api.delete(`/admin/brands/${brand.id}`, admin)).status).toBe(200)
         expect(await served(third.data.brand.logo)).toBe(404)
+        expect(stored(third.data.brand.logo_file_id)).toBe(false)
         expect((await api.delete("/admin/brands/brand_missing", admin)).status).toBe(404)
       })
 
