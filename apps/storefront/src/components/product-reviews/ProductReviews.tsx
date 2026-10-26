@@ -30,6 +30,14 @@ export default function ProductReviews({ productId, locale, initial }: Props) {
   const writeButton = useRef<HTMLButtonElement>(null);
   const heading = useRef<HTMLHeadingElement>(null);
   const restoreWriteFocus = useRef(false);
+  const accountNotice = useRef<HTMLParagraphElement>(null);
+  useEffect(() => {
+    // Wait for the replacement form's initial focus before revealing the account change.
+    if (account.changed && own.loaded) {
+      accountNotice.current?.focus({ preventScroll: true });
+      accountNotice.current?.scrollIntoView({ block: "center", behavior: "instant" });
+    }
+  }, [account.changed, account.id, own.loaded]);
   useEffect(() => {
     if (restoreWriteFocus.current && !own.busy && !authLoading) {
       restoreWriteFocus.current = false;
@@ -57,7 +65,7 @@ export default function ProductReviews({ productId, locale, initial }: Props) {
         {authLoading ? copy.accountLoading : !customer ? copy.signIn : own.review && own.review.status !== "withdrawn" ? copy.edit : copy.write}
       </button>
     </header>
-    {account.changed && customer && <p className={styles.accountNotice} role="status">{copy.accountChanged}</p>}
+    {account.changed && customer && <p ref={accountNotice} tabIndex={-1} className={styles.accountNotice} role="status">{copy.accountChanged}</p>}
     {!customer && own.sessionExpired && <p role="alert">{copy.session}</p>}
     {customer && <ReviewWriter key={customer.id} own={own} copy={copy} open={writing === "open" || (writing === "auto" && !!recovery)} draft={recovery} onDraft={draft => keepReviewDraft(productId, customer.id, draft)} onClose={close} onSaved={saved} onSignIn={signIn} />}
     <div className={styles.grid}>

@@ -5,9 +5,9 @@ import type { OwnReview } from "@/types/review";
 const states: unknown[] = [];
 let index = 0;
 let refIndex = 0;
-const refs: {current: {focus: () => void} | null}[] = [];
+const refs: {current: {focus: () => void;scrollIntoView: () => void} | null}[] = [];
 const effects: (() => void)[] = [];
-jest.mock("react", () => ({ ...jest.requireActual("react"), useId: () => "review-form", useRef: () => refs[refIndex++] ?? (refs[refIndex-1]={current:{focus:jest.fn()}}), useEffect: (effect:()=>void) => effects.push(effect),
+jest.mock("react", () => ({ ...jest.requireActual("react"), useId: () => "review-form", useRef: () => refs[refIndex++] ?? (refs[refIndex-1]={current:{focus:jest.fn(),scrollIntoView:jest.fn()}}), useEffect: (effect:()=>void) => effects.push(effect),
  useState: (initial: unknown) => { const key=index++; if (!(key in states)) states[key]=initial; return [states[key],(next:unknown)=>{states[key]=next}]; },
 }));
 jest.mock("../Reviews.module.css", () => ({}));
@@ -43,7 +43,8 @@ it.each(["en", "ar"] as const)("uses localized validation and focuses short feed
  tree.find(node=>node.type==="textarea")!.props.onChange!({target:{value:"Too short"}});
  tree=render(review,{copy:REVIEW_COPY[locale]});
  await tree.find(node=>node.type==="form")!.props.onSubmit!({preventDefault:jest.fn()});
- expect(refs[2].current!.focus).toHaveBeenCalledTimes(1);
+ expect(refs[2].current!.focus).toHaveBeenCalledWith({preventScroll:true});
+ expect(refs[2].current!.scrollIntoView).toHaveBeenCalledWith({block:"center",behavior:"instant"});
  tree=render(review,{copy:REVIEW_COPY[locale]});
  expect(tree.find(node=>node.props.role==="alert")!.props.children).toBe(REVIEW_COPY[locale].invalid);
  expect(tree.find(node=>node.type==="textarea")!.props["aria-invalid"]).toBe(true);

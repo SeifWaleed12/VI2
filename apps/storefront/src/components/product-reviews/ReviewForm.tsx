@@ -28,7 +28,9 @@ export default function ReviewForm({ review, draft, copy, busy, error, feedback,
     if (busy) return;
     if (!rating || content.trim().length < 20 || content.trim().length > 3000 || title.trim().length > 120) {
       setInvalid(true);
-      (!rating ? firstRating : title.trim().length > 120 ? titleInput : contentInput).current?.focus();
+      const field = (!rating ? firstRating : title.trim().length > 120 ? titleInput : contentInput).current;
+      field?.focus({ preventScroll: true });
+      field?.scrollIntoView({ block: "center", behavior: "instant" });
       return;
     }
     setInvalid(false);
