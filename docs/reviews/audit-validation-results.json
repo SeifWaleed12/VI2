@@ -11,7 +11,20 @@
   "claude": {
     "verdict": "approve",
     "reviewedApplication": "7672f70",
-    "method": "read-only source review; did not run tests"
+    "method": "read-only source review; did not run tests",
+    "finalRecheck": {
+      "date": "2026-10-26",
+      "reviewedHead": "2c34193",
+      "verdict": "approve",
+      "report": "claude-audit-final-recheck.md",
+      "evidenceSource": "Claude report; not rerun by GPT during this documentation closure",
+      "backendUnitTests": 294,
+      "storefrontUnitTests": 510,
+      "httpSpecs": 14,
+      "httpTests": 109,
+      "productionBuildsRerun": false,
+      "ownRedisAndJobContentionProbes": true
+    }
   },
   "checks": {
     "backendAndAdminBuild": "pass",
