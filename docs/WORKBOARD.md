@@ -525,10 +525,10 @@ GPT owns REV-1 through REV-5 on codex/product-reviews, isolated worktree product
 | ID | Scope | Owner | Reviewer | Status |
 |---|---|---|---|---|
 | REV-1 | API/data/screening contract and separate desktop/mobile mockups, preserve fonts/colors | GPT | Claude | complete: Seif approved desktop/mobile proposals on2026-10-26 |
-| REV-2 | Native reviews module, generated migration, bounded reads, protected writes, concurrency/ownership tests | GPT | Claude | Claude Round3 approves92b1528; runtime unchanged by272b07b |
-| REV-3 | Admin and manager moderation queue, scoped access and stale-version protection | GPT | Claude | Claude Round4 approves272b07b; scrolling-only follow-upc638ff9 awaits targeted check |
-| REV-4 | EN/AR product reviews, accessible form, summaries/filter/sort/pagination, own review states | GPT | Claude | Claude Round4 approves272b07b; scrolling-only follow-upc638ff9 awaits targeted check |
-| REV-5 | Disposable database proof, both app checks/builds and EN/AR responsive/accessibility regression | GPT | Claude | Claude Round4 automated/browser checks pass; targeted scroll check and baseline Deals build remain open |
+| REV-2 | Native reviews module, generated migration, bounded reads, protected writes, concurrency/ownership tests | GPT | Claude | review-approved: Claude Round3 backend approval; final candidatec638ff9 approved in Round5 |
+| REV-3 | Admin and manager moderation queue, scoped access and stale-version protection | GPT | Claude | review-approved: Claude Round5 approvesc638ff9; no blocking findings |
+| REV-4 | EN/AR product reviews, accessible form, summaries/filter/sort/pagination, own review states | GPT | Claude | review-approved: Claude Round5 approvesc638ff9; no blocking findings |
+| REV-5 | Disposable database proof, both app checks/builds and EN/AR responsive/accessibility regression | GPT | Claude | feature checks/browser recheck approved; separate baseline Deals build and release gates remain open |
 
 No live migration or catalog changes. New review table/indexes only, native module links if required and documented. Preserve all other worktrees. Use Ponytail, Impeccable and UI/UX Pro Max; thin routes, cohesive review domain, existing auth/limiting/RBAC patterns, no new dependencies or unrelated refactor. Public approved-only reviews are separate from private no-store own-review state. Invalid/stale mutations must fail without losing draft or publishing unreviewed edits. Reviews must not block product purchase on failure. Deliver commit-scoped review handoff to Seif; no automatic push/merge.
 
@@ -558,3 +558,7 @@ GPT owns only R4-1/R4-2 after Claude APPROVE of272b07b. Keep report unchanged. E
 
 
 Product reviews Round4 closure2026-10-26: Claude APPROVE of272b07b preserved verbatim, all R3 items closed with actual EN/AR desktop/mobile proof and independent548storefront tests. GPT addresses two nonblocking visibility findings in c638ff9: center the focused invalid field below sticky layers; focus/center account-change notice after replacement writer readiness.59suites/549tests and lint pass; webpack compiles10.5s then only unchanged Deals export type error. Targeted browser geometry recheck remains; no backend/schema/dependency/live-data changes, DB/server operations, push or merge. Prompt: docs/reviews/product-reviews.md. Seif controls merge and remaining release decisions.
+
+
+## Product reviews final review closure —2026-10-26
+GPT records Claude Round5 APPROVE of applicationc638ff9, preserving the report verbatim. R4-1/R4-2 are resolved by actual EN/AR320x640 and desktop account-swap browser tests; all required review findings are closed. Claude independently reproduced59storefront suites/549tests and lint, and confirmed compilation reaches only the unchanged baseline Deals/Bundles error. No application edits or test reruns in this docs-only closure. R5-1 is explicitly optional/nonblocking: at320x640 the last short-text validation line overlaps the cart bar by5–6px; retained as a cosmetic follow-up, no further polish loop. Feature ready for Seif's acceptance/publication decision. Separate release gates remain: baseline Deals type/build and fresh-database bootstrap issues, owner-controlled migration, privacy-erasure/retention policy, real Redis/multiple instances and untested physical/screen-reader/zoom checks. No live migration, provider operation, push or merge. Current branch codex/product-reviews; final reviewed applicationc638ff9.

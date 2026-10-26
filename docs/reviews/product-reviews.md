@@ -506,3 +506,61 @@ Verification: **59 storefront suites /549 tests pass** in one full run; focused 
 ### Claude targeted recheck prompt
 
 Recheck **c638ff9** against **e0d2395** on codex/product-reviews. Your Round4 approved272b07b; only R4-1/R4-2 need confirmation. In EN/AR320x640, short-text Submit should center the focused textarea clear of sticky header/cart while its error stays reachable. On desktop, repeat same-browser accountA/B switching while scrolled to Submit: refusal/private-draft protection stays intact, and after the replacement writer loads the account-change status receives focus and becomes visible. Check that normal typing/validation does not repeatedly steal focus. Append a short result here; review only, no application edits, full backend re-audit or live migration. Keep known Deals/build/bootstrap limits separate. Seif merges.
+
+## Round 5 — Claude targeted recheck of c638ff9 (2026-10-26)
+
+Scope: R4-1 and R4-2 only, on `c638ff9` against `e0d2395`. The later commit `2a86603` is documentation only. Review only: no application edits, no live migration. I worked in a throwaway worktree (removed) and a disposable database (`vi2_claude_rev5_20261026`, created and dropped by me, empty provider settings), with the storefront production build; as before, `typescript.ignoreBuildErrors` was switched on in my scratch copy only to get past the known Deals error.
+
+**Verdict: APPROVE. R4-1 and R4-2 are resolved.** I found one cosmetic edge (R5-1) at the smallest phone size, not blocking. Merge approval is Seif's.
+
+### What I ran
+
+| Check | Result |
+|---|---|
+| Storefront unit, full run | **59 suites / 549 pass** (reported 59 / 549) |
+| `tsc --noEmit` and ESLint `--quiet`, storefront | clean |
+| `next build --webpack` (source as committed) | compiles, then fails only on the Deals/Bundles export (unchanged baseline) |
+| Real browser: 320×640 English and Arabic; desktop account A/B switch | **run by me** (below) |
+
+### R4-1 — text field at 320×640: resolved
+
+Same steps as Round 4 (open the form, choose a star, type a too-short text, press Submit), in a real browser:
+
+| | Header bottom | Cart bar top | Text area (top–bottom) | Message |
+|---|---|---|---|---|
+| English before (`272b07b`) | 75 | 567 | 11–165 (first lines under the header) | in view |
+| **English now** | 75 | 567 | **229–383** (clear of both) | 499–576 |
+| **Arabic now** | 75 | 565 | **223–389** (clear of both) | 484–570 |
+
+The text area is centered and fully visible in both languages, focus stays in it, and the page has no horizontal overflow. The missing-star case still works at 320×640 (message at y 290–315, stars at 327–375, both clear of the header and the bar, focus on the first star). At 390×844 (checked in Round 4) the layout was already fine.
+
+#### R5-1 (Low, cosmetic) — the last line of the short-text message touches the cart bar at 320×640
+**Trigger (reproduced):** the same short-text steps at 320×640. The three-line message ends 6 px (English, last line 554–573 against a bar starting at 567) and 5 px (Arabic, last line 540–570 against 565) below the top of the opaque cart bar, so the bottom of the last line is clipped. The words are still readable and the Submit button is reachable by scrolling. It follows from centering the text area on a very short screen.
+**Smallest fix (optional):** center the whole message-plus-field group, or add a few pixels of bottom scroll margin on the alert.
+
+### R4-2 — account-change notice on desktop: resolved
+
+Same-browser switch with the form open and the page scrolled to Submit: the first account's tab had a draft typed, a second tab signed in as the other account (shared cookie), then Submit was pressed in the first tab.
+
+- Nothing was written under either account: the second account's own review state stayed empty, the list stayed empty, the header changed to the second account, and the first account's text appears nowhere on the page (the replacement form is blank).
+- The notice "Your account changed. Check the signed-in account before submitting a review." now sits at y 358–383 in a 768 px viewport, below the sticky header (ending at 73), directly above the new blank form, and it holds keyboard focus.
+- No focus theft: I then clicked into the title field and typed; focus stayed in the title field, the notice was not re-focused, and the text was kept. Validation and typing behaved as in Round 4 (the focus step only runs on the account change).
+
+The unchanged privacy checks from Round 4 still hold (no account name in the notice, the cookie assertion refuses the write before Medusa is called).
+
+### Not re-run / unchanged
+
+Not repeated here: the same-account expiry recovery and the phone-width notice order (unchanged code paths, covered in Round 4), the full backend and native audits (no backend change), physical phones, screen-reader speech, 200% zoom, real Redis.
+
+### Baseline items kept separate
+
+Unchanged: the Deals/Bundles build error and the fresh-database bootstrap stop in `initial-data-seed` ("No store exists", worked around with `db:migrate --skip-scripts`).
+
+
+## Author closure after Round5 —2026-10-26
+
+Claude's **APPROVE ofc638ff9** above is preserved unchanged. Both requested geometry checks R4-1/R4-2 pass in his running browser; no blocking findings remain. The reviewed application has not changed. This turn only imports the final report and updates the workboard/finish status; no unnecessary test/build reruns or additional polish.
+
+**R5-1 is retained as an optional cosmetic follow-up:** at320x640 the last line of the short-text validation message overlaps the cart bar by5–6px. The textarea is fully visible, the feedback remains readable and Submit is reachable by scrolling per Claude's evidence. No fix or owner acceptance of that edge is claimed; it does not overturn his approval.
+
+Feature review is closed for candidatec638ff9. Publication/merge/live migration remain Seif-controlled and have not happened. The separate Deals/Bundles build failure and fresh-database initial-seed issue remain unchanged; do not describe the branch as having a passing production storefront build. Previous privacy-retention, real Redis/multiple-instance and physical/accessibility/manual limits remain recorded. No further reviewer prompt is required for this documentation-only closure.

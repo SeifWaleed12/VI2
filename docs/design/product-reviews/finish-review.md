@@ -1,5 +1,7 @@
 # Product review UI finish disposition
 
+**Latest candidate: c638ff9 — disposition: ship (feature review approved, owner release pending).** Claude Round5 confirms the remaining geometry checks. The storefront production build still has the unrelated Deals/Bundles blocker; no deployment, merge or live migration is authorized by this disposition. Historical per-candidate evidence follows.
+
 2026-10-26. Candidate UI a48bdfc; API follow-ups6a35033.
 
 **disposition: recapture** — source fixes verified, rendered acceptance remains open.
@@ -29,3 +31,9 @@ Small new findings R3-1/2/3 were addressed in272b07b: short inline rating error 
 
 ## Round4 approval and scrolling-only follow-up —2026-10-26
 Claude **APPROVE of272b07b**, with real EN/AR desktop/mobile proof of inline star errors, visible styling, cleared validation, account-change notice/privacy and same-account recovery. All R3 findings closed. New low visibility observations on320x640 textarea focus and desktop notice scrolling were addressed in c638ff9, without design changes.549 storefront tests and lint pass; updated candidate awaits only those two geometry checks. Browser calls are covered by the existing source harness; actual new pixel geometry is not claimed. No repeat broad polish/detector loop or backend work. Full report and narrow recheck prompt: docs/reviews/product-reviews.md.
+
+
+## Final Round5 disposition —2026-10-26
+**disposition: ship**, scoped to review-approved featurec638ff9 and owner acceptance, not a claim that release gates pass. Claude APPROVE closes R4-1/R4-2 using actual EN/AR320x640 textarea geometry and desktop account-change focus/visibility tests; privacy and no repeated focus theft confirmed. Independently59suites/549tests and storefront lint pass. His measured/browser evidence is in docs/reviews/product-reviews.md and is not represented as new author capture files. The earlier recapture dispositions are historical and superseded for this candidate.
+
+Optional R5-1 remains recorded:5–6px of the last short-text validation line overlaps the cart bar on320x640; no extra polish pass. Separate Deals build/bootstrap, owner migration/privacy policy and unverified real Redis/physical/zoom/screen-reader limits remain. No application changes, new tests or detector runs during this closure. Seif controls publication and merge.
