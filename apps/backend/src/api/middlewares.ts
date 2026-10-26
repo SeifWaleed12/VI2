@@ -57,6 +57,7 @@ const customerIfSignedIn = authenticate("customer", ["session", "bearer"], { all
 export default defineMiddlewares({
   routes: [
     ...emailPassRoutes,
+    { matcher: "/store/products/:id/reviews/me", middlewares: [authenticate("customer", ["session", "bearer"])] },
     ...cachedCatalogRoutes,
     { matcher: "/store/catalog-products", middlewares: [allowFields(...STORE_PRODUCT_EXTRA_FIELDS)] },
     {

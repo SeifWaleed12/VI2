@@ -41,6 +41,12 @@ export function managerAction(method: string, path: string, body?: unknown): Sta
   const segments = path.replace(/^\/admin\/?/, "").split("/").filter(Boolean)
   const own = ownAccountAction(method, segments, body)
   if (own !== undefined) return own
+  // Review moderation is a catalog task; reuse existing product grants without adding a role.
+  if (segments[0] === "product-reviews") {
+    if (method === "GET" && segments.length === 1) return OWN
+    if (method === "POST" && segments.length === 2) return { resource: "product", operation: "update" }
+    return null
+  }
   const area = MANAGER_AREAS[segments[0]]
   if (!area || !["GET", "POST", "PUT", "DELETE"].includes(method)) return null
   // Medusa starts an export with POST, but an export only reads, so it is
