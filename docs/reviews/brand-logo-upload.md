@@ -97,3 +97,14 @@ Round 2 requested: `b395b34` only.
 - `npm run check`: backend 270, storefront 495; typecheck and lint pass.
 
 Round 3 requested: `89c1b70` only.
+
+## GPT review, round 3 (2026-10-26)
+
+**Approved `89c1b70`. Round 2 P2 resolved; no new findings.** Recorded by GPT in its review worktree (`codex/review-brand-logo-r3`, `c57e80b`).
+- The committed pixel is gone; the branch's total diff against `full-stack` doesn't touch `apps/backend/static`.
+- The ignore rule covers new uploads and the old CSV exports.
+- **Logo HTTP test: 1 passed.** Real Medusa, Postgres and local file storage; the static folder is unchanged afterwards.
+- **Negative control:** with file deletion suppressed and the URL forced to 404, the test fails at the on-disk check. So it catches a leaked file even when the HTTP check passes.
+- Unit suite 4/4; backend and Admin typechecks and lint pass.
+
+`f74b819` (after round 3) removes `static/1790034014615-R6S_old_icon.webp`, which was tracked since the first commit and used by nothing. Seif asked for it; it's a single-file deletion and was not reviewed.
