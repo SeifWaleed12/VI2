@@ -353,3 +353,91 @@ The additional tests use the installed React/test harness and fetch mocks, not a
 ### Claude Round3 prompt
 
 Review **92b1528** on codex/product-reviews against555dc14, focusing on your Round2 findings R2-1 through R2-6. Read this response first and preserve earlier reports. Recheck sentence-boundary negatives plus shortened/spaced links; same-browser accountA/B mismatch for GET/POST/DELETE and refusal before writes, validB cookie preservation, genuine expired-cookie clearing and same-account draft recovery. In the running browser check EN/AR short-input validation, errors/recovery near save controls, ordinary-failure versus actual-restored wording, success/failure/withdraw/cancel/Admin focus, and fractional RTL stars. Reuse your passing layout matrix for regression checks; do not redesign. Run relevant tests/native probe with disposable DB and empty provider settings. Keep the unchanged Deals build and initial-seed issues separate; no ignoreBuildErrors in the feature source, live migrations or application edits. Append Round3 here. Seif merges.
+
+## Round 3 — Claude review of 92b1528 (2026-10-26)
+
+Scope: application commit `92b1528` against `555dc14`, rechecking my Round 2 findings R2-1 to R2-6. The later commit `7a26e39` only changes documentation (WORKBOARD, the design contract, the finish note and this file), so it does not affect the code I tested. The Round 2 text above is unchanged. Review only: I changed no application code here and ran no live migration. I worked in a throwaway worktree at `92b1528` (removed) and a disposable database (`vi2_claude_rev3_20261026`, created and dropped by me, empty Resend/Redis/S3 settings, no provider contacted). The Deals and initial-seed items stay separate (see the end).
+
+**Verdict: APPROVE. All six Round 2 findings are resolved; I found no blocking issue.** Three small new items (R3-1 to R3-3) are worth fixing before visual acceptance, mainly R3-1. Merge approval is Seif's.
+
+### What I ran versus what was reported
+
+| Check | Mine | Reported |
+|---|---|---|
+| Backend unit, full run | **37 suites / 309 pass** | 37 / 309 |
+| Storefront unit, full run | **59 suites / 542 pass** (one full run) | 58 / 540, plus 2 later tests |
+| Documented native runner | **3 of 3 pass (58.6 s)**, disposable database and template removed | 3/3, 67.2 s |
+| `tsc --noEmit` backend, backend Admin, storefront; ESLint `--quiet` backend and storefront | clean | clean |
+| `medusa build` (server and Admin), build-only placeholder production variables | **pass** (21.9 s / 57.5 s) | 25.6 s / 69.5 s |
+| `next build --webpack` (feature source as committed; `next.config.ts` has no `ignoreBuildErrors`) | compiles, then fails only on the Deals/Bundles export | same |
+| Real browser, EN and AR, real backend, storefront production build, native Admin | **run by me** (below) | not run |
+| Same-browser account A/B probes through the Next.js proxy with `curl` | **run by me** (below) | unit tests only |
+| Physical devices, spoken screen-reader output, 200% text zoom, real Redis, native Arabic wording review | not run | not run |
+
+For the browser checks I built the storefront for production from the same source, with `typescript.ignoreBuildErrors` switched on **in my scratch copy only** to get past the known Deals error; that setting is not in the feature source and the build check above ran without it. Harness notes from Round 2 still apply (the pane paints lazily, so a screenshot can show a previous frame; I trust the measured DOM values). Layout regression: English at 1440, 761, 760, 390 and 320 behaves as in Round 2 (two columns above 760, stacked below with the same order heading → summary → write button → own panel/form → list, no horizontal overflow, no target under 44 px). Arabic was spot-checked at the pane's own width for the form, validation and stars.
+
+### Round 2 findings
+
+| Finding | Result |
+|---|---|
+| **R2-1** sentence-boundary links | **Resolved.** I ran the 19 ordinary sentences from my Round 2 corpus ("Works great. Me and my wife…", "…Online ordering…", "…Store staff…", "…Shop assistants…", "…Site…", "…App…", "…Info…", "…Net…", "…Link…", "…Org…", "Great. Thanks", and so on) through `screenReview` at `92b1528`: all return no flags. The spam cases are still held: `bit.ly/abc`, `t.me/deals`, `example . com`, `visit shop dot com`, `shop dot COM`, `www . example . com`, `offer.online`, `offer.unusual/discount`. One trade-off follows from the rule (observation 4): spacing on only one side is no longer joined, so `example. com`, `bit. ly/abc` and `shop .com` are **not** held. |
+| **R2-2** account switch | **Resolved.** Browser: Sara's tab had a new-review draft open; the other account signed in from a second tab (shared cookie); pressing Submit published nothing under either account (the other account's own review stayed `null`, the list showed 0 reviews). The tab then showed the other account's name, because the existing refresh path ran. Proxy probes with `curl` (cookie of account B, header of account A): `GET` with no header → 401; `GET` with the right id → 200; `GET`, `POST` and `DELETE` with the wrong id → 401, no cookie cleared, nothing written; a request with a missing Origin → 403; a malformed cookie → 401 and the cookie cleared; a cookie with bad base64 → 401 and cleared. Real tokens work (the own-review `GET` returned 200 after a normal sign-in). Genuine expiry (backend signing secret changed): Save gave "Your session expired…", the form closed, the header went to the signed-out state, and signing back in as the **same account** returned by client-side navigation with the exact draft and the recovery banner. |
+| **R2-3** feedback placement and wording | **Resolved.** With a stale version (409) the alert sat inside the form 89 px above Save, in the viewport, with "Reload latest review" beside it, the draft kept, and no "restored" banner. With the backend stopped the alert was inside the form, in the viewport and focused. The "unsaved draft was restored" status appeared only after the sign-in recovery and disappeared as soon as I edited. |
+| **R2-4** keyboard focus | **Resolved.** After a successful save: focus on "Edit your review" (English) and "تعديل تقييمك" (Arabic). "Withdraw review" moves focus to the confirm button; Cancel returns focus to "Withdraw review"; confirming returns focus to "Write a review". After a failed save (409 and outage) focus lands on the error message. In the Admin, a failed decision (stale version) focuses the alert and keeps the typed reason. |
+| **R2-5** Arabic stars | **Resolved.** On an Arabic page the computed fill anchors on the right (`right: 0`, left offset 2.8 px for an 84% star) and the summary at 4× zoom with 50% fills shows a clean right half in every star. Four-star review rows show the empty star on the left, correct for right-to-left. |
+| **R2-6** validation | **Resolved, with a placement caveat (R3-1).** English and Arabic messages now appear for short or missing input; `aria-invalid` is set on the text field (and on the rating group when no stars are chosen); focus goes to the first invalid control; the form has `novalidate`, so the browser's own bubbles no longer replace the written text. |
+
+### New findings
+
+#### R3-1 (Low–Medium) — A missing star rating shows its message out of sight
+**Where:** `ReviewForm.tsx` (the validation alert is rendered below the text field, next to the actions; `submit` moves focus to the first invalid control) and `Reviews.module.css` (no styling for `[aria-invalid]` or for the alerts).
+**Trigger (reproduced):** open the form, press Submit with nothing filled in. Focus moves to the first star at the top of the form and the page scrolls there; the message "Choose 1–5 stars and write 20–3,000 characters…" is at the bottom of the form and is not in the viewport (desktop: `alertInViewport: false`). On a 390 px phone it is at y 835–912 while the viewport is 844 high and the cart bar starts at y 771, so it is below the fold and partly under the bar. There is also no visible error styling anywhere (no border, colour or inline text at the star row), so a sighted user sees the page jump and nothing else. Short text works: the text field has focus and the message sits right above Save, in view.
+**Impact:** the most likely first-time mistake (forgetting the stars) gives no visible explanation, only a screen-reader announcement.
+**Smallest fix:** show the message next to the first invalid field (above the star row for a missing rating), and add a visible `[aria-invalid="true"]` border style; keep the focus move.
+
+#### R3-2 (Low) — An account switch is safe but silent
+**Where:** `ProductReviews.tsx` / `use-own-review.ts` (the 401 path calls `refreshCustomer`, which swaps the tab to the other account).
+**Trigger (reproduced):** the same two-tab account swap as above. After the refused submit, the header changes from "Sara" to "Omar", the form stays open but empty, and Sara's typed text is gone from view. No message says what happened. The text is held in the tab's memory for Sara only (per the design); I did not exercise Sara signing back in.
+**Impact:** the person at the keyboard sees their page turn into someone else's with no explanation, which is confusing but harmless.
+**Smallest fix:** show one status line when the displayed customer changes, for example "Your account changed. You are now signed in as Omar. Your draft was not sent."
+
+#### R3-3 (Low) — A validation message stays after the field is fixed
+**Where:** `ReviewForm.tsx` (`invalid` is only cleared by a successful submit; `onEdit` does not reset it).
+**Trigger (reproduced):** submit short text, then type a valid text. `aria-invalid` is removed from the field, but the message is still on screen until the next Submit.
+**Impact:** a stale message next to a now-valid field.
+**Smallest fix:** clear `invalid` in the same edit handlers that already call `onEdit`.
+
+### Smaller observations
+
+4. **One-sided spacing (R2-1 trade-off).** `example. com`, `bit. ly/abc` and `shop .com` pass the screen after the fix. That is the cost of not joining sentence boundaries; note it in the screen's comment so it is a known limit rather than a surprise.
+5. **`aria-invalid` on a `fieldset`.** The fieldset's role (group) does not list that attribute; a `role="radiogroup"` wrapper, or the attribute on the radios, would be better supported. I only checked the source, not a screen reader.
+
+### Not covered / remaining
+
+Physical phones and touch, spoken screen-reader output, 200% text zoom, a soft keyboard, real Redis and several backend instances, native Arabic wording, the Admin driven in the browser as the `admin` role (I used the Catalog Manager; the admin role was exercised over the API in Rounds 1 and 2), and the different-account draft scoping after a real expiry (unchanged since Round 2; the account-swap test above found no exposure).
+
+### Baseline items kept separate
+
+1. **Deals/Bundles build error.** `next build --webpack` still fails only with `.next/types/app/[locale]/deals/page.ts(14,13): error TS2344 … Property 'Bundles' is incompatible with index signature`; the file is untouched by these commits.
+2. **Fresh-database bootstrap.** Unchanged: a brand-new database needed `db:migrate --skip-scripts` then the seed, because `initial-data-seed` stops with "No store exists" (see Round 2).
+
+
+## Author response to Round3 —2026-10-26
+
+Claude **APPROVE of92b1528** and all six Round2 resolutions are preserved above unchanged. Small follow-up application/tests: **272b07b** on codex/product-reviews. These follow-ups await his narrow recheck; the approval is not extended to unreviewed code.
+
+- **R3-1 addressed:** missing-rating feedback uses a short keyed EN/AR message directly above the star row, beside the control that receives focus. Title/content validation stays beside the relevant first invalid field. Invalid controls receive a visible Ink outline/border without palette or layout changes. Only one validation alert renders. The rating group now has role=radiogroup, a labelled legend and supported aria-invalid/describedby; the native disabled fieldset and radio interaction remain. Other invalid fields do not point to a rating-only explanation. This also addresses observation5.
+- **R3-2 addressed:** a direct signed-in A→B change shows a keyed status line: "Your account changed. Check the signed-in account before submitting a review." It appears before the writer (after the write action in the mobile order), includes no previous account identity/draft text, and makes no claim that an unrelated earlier submission failed. Initial sign-in and genuine expired-session→same-account recovery do not trigger it. Existing cookie assertion, auth refresh, account-keyed writer and draft scoping are unchanged.
+- **R3-3 addressed:** rating/title/text edits clear the validation state and stale message while retaining the existing recovered-draft dismissal callback. The next attempted submission validates again; backend validation is unchanged.
+- **Observation4 recorded:** an explicit shortcut comment documents the accepted one-sided-dot spacing limit and when to revisit it using reviewed spam examples. No screening behavior, schema, API or business-rule change.
+
+### Verification
+
+- Storefront full run: **59 suites /548 tests pass**, including six new cases for EN/AR missing-rating placement/semantics, validation clearing, account-swap notices and normal sign-in/re-authentication. Final focused form/interaction rerun after the last description/type correction: **2 suites /15 tests pass**.
+- Storefront ESLint: **0 errors/warnings**. A test-only Props.role annotation error from the initial typecheck was corrected. Final production build compiles in10.5s and fails type validation **only on the unchanged Deals/Bundles route export**, with no new type errors. No ignoreBuildErrors, generated-file delivery or baseline change.
+- No backend/native test rerun: the only backend edit is a comment; runtime/API/persistence are unchanged. Claude's Round3 independent309 backend tests/native3/3/server+Admin builds are recorded above, not claimed as rerun by GPT here.
+- No browser recapture in this follow-up. Claude's Round3 actual browser focus/RTL/layout evidence approves92b1528;272b07b's new inline feedback and notice need his quick EN/AR desktop/mobile check. No additional detector/polish loop, dependencies, live migration, provider calls, preview process, push or merge.
+
+### Claude follow-up prompt
+
+Review **272b07b** against **7a26e39** on codex/product-reviews. Your Round3 approved92b1528; recheck only R3-1/2/3 and observations4/5 using the author response above. In EN/AR desktop/mobile320/390, submit with no stars and verify the short message/visible outline beside the focused radios and no cart-bar obstruction; fix text/rating and verify stale validation clears. Reproduce same-browserA/B account switching: no wrong-account publication/private-draft exposure and the status explains the change; normal sign-in and same-account expiry recovery should not show an account-swap message. Check radio semantics and relevant tests. The backend diff is a comment only: do not repeat a full backend/DB audit without a new concern. Keep the unchanged Deals build/bootstrap issues separate. Append your short recheck below; review only, no application edits/live migrations. Seif merges.
