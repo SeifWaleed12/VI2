@@ -91,7 +91,7 @@ Round 2 requested: `b395b34` only.
 
 - **Cause:** a run against the old delete code (to prove the new check catches the bug) left its uploaded file in `static/`, and `git add -A apps` picked it up.
 - **Removed** the file. The branch's total diff against `full-stack` no longer touches `apps/backend/static`.
-- **`apps/backend/.gitignore` now ignores `static/`** (runtime uploads and exports of the local file provider) instead of only the CSV exports, so a leftover upload can't be committed again. `static/1790034014615-R6S_old_icon.webp`, tracked since the first commit, is left as is: it's not part of this change.
+- **`apps/backend/.gitignore` now ignores `static/`** (runtime uploads and exports of the local file provider) instead of only the CSV exports, so a leftover upload can't be committed again. `static/1790034014615-R6S_old_icon.webp`, tracked since the first commit and used by nothing (no code, product image, thumbnail or brand logo), is removed at Seif's request (2026-10-26).
 - **The test checks the disk:** `existsSync(static/<logo_file_id>)` is true after upload, and false after replace, after logo removal and after brand deletion. That's Medusa's local provider path (`process.cwd()/static/<file key>`).
 - **No leftover files:** the logo test leaves `static/` unchanged (24 files before and after). Against `3df5ca7`'s delete route it fails (the file was still served), and the file that run left was removed.
 - `npm run check`: backend 270, storefront 495; typecheck and lint pass.
