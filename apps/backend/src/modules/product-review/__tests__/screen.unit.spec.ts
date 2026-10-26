@@ -35,3 +35,13 @@ it("hides database errors and preserves conflict status at the review boundary",
   reviewErrorResponse(new MedusaError(MedusaError.Types.CONFLICT, "private"), response as never)
   expect(response.status).toHaveBeenLastCalledWith(409)
 })
+
+it.each(["bit.ly/abc", "t.me/deals", "example . com", "visit shop dot com", "offer.unusual/discount", "offer.online"])("holds common shortened or spaced spam links: %s", content => {
+  expect(screenReview(content)).toContain("external_link")
+})
+it.each(["Great.Thanks for the quick service", "Contains 100.eg capsules", "No change after a week. Still disappointed."])("does not treat ordinary punctuation or numbers as domains: %s", content => {
+  expect(screenReview(content)).not.toContain("external_link")
+})
+it.each(["title", "content"])("rejects NUL in %s before persistence", field => {
+  expect(reviewInput.safeParse({ rating: 3, title: "Good", content: "A sufficiently detailed review.", [field]: "Text with a NUL \u0000 character inside" }).success).toBe(false)
+})

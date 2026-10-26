@@ -2,8 +2,8 @@ import { z } from "@medusajs/framework/zod"
 
 export const reviewInput = z.object({
   rating: z.number().int().min(1).max(5),
-  title: z.string().trim().max(120).optional(),
-  content: z.string().trim().min(20).max(3000),
+  title: z.string().trim().max(120).refine(value => !value.includes("\u0000")).optional(),
+  content: z.string().trim().min(20).max(3000).refine(value => !value.includes("\u0000")),
   version: z.number().int().positive().optional(),
 }).strict()
 export const reviewVersion = z.object({ version: z.number().int().positive() }).strict()

@@ -8,7 +8,6 @@ type Request = AuthenticatedMedusaRequest & MedusaStoreRequest
 export async function GET(req: Request, res: MedusaResponse) {
   try {
     res.setHeader("Cache-Control", "no-store")
-    await requireReviewProduct(req)
     const customer = await reviewCustomer(req)
     return res.json({ review: ownReview(await reviewsFrom(req).own(req.params.id, customer.id)) })
   } catch (error) {
@@ -37,7 +36,6 @@ export async function DELETE(req: Request, res: MedusaResponse) {
     res.setHeader("Cache-Control", "no-store")
     const parsed = reviewVersion.safeParse(req.body)
     if (!parsed.success) return res.status(400).json({ message: "Current review version required" })
-    await requireReviewProduct(req)
     const customer = await reviewCustomer(req)
     const review = await reviewsFrom(req).withdraw(req.params.id, customer.id, parsed.data.version)
     return res.json({ review: ownReview(review) })

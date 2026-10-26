@@ -1,7 +1,7 @@
 import { dirname, join } from "node:path"
 import { medusaIntegrationTestRunner } from "@medusajs/test-utils"
 import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
-import { createProductsWorkflow, createUsersWorkflow } from "@medusajs/medusa/core-flows"
+import { createProductsWorkflow, createUsersWorkflow, createSalesChannelsWorkflow } from "@medusajs/medusa/core-flows"
 import { setupEgyptStore } from "../../src/scripts/setup-egypt-store"
 import { readCatalogState } from "../../src/lib/catalog-ranking"
 import setupCatalogManager from "../../src/scripts/setup-catalog-manager"
@@ -21,6 +21,7 @@ medusaIntegrationTestRunner({
     let productId: string
     let draftId: string
     let hiddenId: string
+    let otherChannelProductId: string
     let publishableKey: string
     const store = (token?: string) => ({ headers: { "x-publishable-api-key": publishableKey, ...(token ? { authorization: `Bearer ${token}` } : {}) }, validateStatus: () => true })
     const endpoint = () => `/store/products/${productId}/reviews`
@@ -47,12 +48,14 @@ medusaIntegrationTestRunner({
       const { data: [settings] } = await query.graph({ entity: "store", fields: ["default_sales_channel_id"] })
       const { data: [key] } = await query.graph({ entity: "api_key", fields: ["token"], filters: { type: "publishable" } })
       publishableKey = key.token as string
+      const { result: [otherChannel] } = await createSalesChannelsWorkflow(container).run({ input: { salesChannelsData: [{ name: "Reviews hidden channel" }] } })
       const { result: products } = await createProductsWorkflow(container).run({ input: { products: [
         { title: "Reviewable product", status: "published" as const, sales_channels: [{ id: settings.default_sales_channel_id as string }] },
         { title: "Draft product", status: "draft" as const, sales_channels: [{ id: settings.default_sales_channel_id as string }] },
-        { title: "Another channel product", status: "published" as const, sales_channels: [] },
+        { title: "No channel product", status: "published" as const, sales_channels: [] },
+        { title: "Another channel product", status: "published" as const, sales_channels: [{ id: otherChannel.id }] },
       ].map(product => ({ ...product, options: [{ title: "Size", values: ["Single"] }] })) } })
-      ;[productId, draftId, hiddenId] = products.map(product => product.id)
+      ;[productId, draftId, hiddenId, otherChannelProductId] = products.map(product => product.id)
     })
 
     it("opens reviews to signed-in non-buyers, screens locally, protects identity and permits withdrawal", async () => {
@@ -61,11 +64,14 @@ medusaIntegrationTestRunner({
       expect((await api.post(endpoint() + "/me", clean, store())).status).toBe(401)
       expect((await api.get(endpoint() + "/me", store())).status).toBe(401)
       expect((await api.post(endpoint() + "/me", { ...clean, customer_id: other.id }, store(sara.token))).status).toBe(400)
-      for (const id of [draftId, hiddenId, "prod_missing"]) {
+      for (const id of [draftId, hiddenId, otherChannelProductId, "prod_missing"]) {
         expect((await api.get(`/store/products/${id}/reviews`, store())).status).toBe(404)
         expect((await api.post(`/store/products/${id}/reviews/me`, clean, store(sara.token))).status).toBe(404)
       }
       expect((await api.get(endpoint() + "?limit=21", store())).status).toBe(400)
+      for (const field of ["title", "content"]) {
+        expect((await api.post(endpoint() + "/me", { ...clean, [field]: "Invalid NUL \u0000 review content here." }, store(sara.token))).status).toBe(400)
+      }
       const parallel = await Promise.all([api.post(endpoint() + "/me", clean, store(sara.token)), api.post(endpoint() + "/me", clean, store(sara.token))])
       expect(parallel.map(response => response.status)).toEqual([200, 200])
       expect(new Set(parallel.map(response => response.data.review.id)).size).toBe(1)
@@ -89,6 +95,10 @@ medusaIntegrationTestRunner({
       const recreated = await api.post(endpoint() + "/me", { ...clean, version: withdrawn.data.review.version }, store(sara.token))
       expect(recreated.data.review.id).toBe(initial.id)
       expect(recreated.data.review.status).toBe("approved")
+      await getContainer().resolve(Modules.PRODUCT).updateProducts(productId, { status: "draft" })
+      expect((await api.get(endpoint() + "/me", store(sara.token))).data.review.id).toBe(initial.id)
+      expect((await api.delete(endpoint() + "/me", { ...store(sara.token), data: { version: recreated.data.review.version } })).status).toBe(200)
+      expect((await api.get(endpoint(), store())).status).toBe(404)
     })
 
     it("counts and orders approved reviews before pagination, excludes private states, and bounds writes", async () => {
