@@ -524,10 +524,14 @@ GPT owns REV-1 through REV-5 on codex/product-reviews, isolated worktree product
 
 | ID | Scope | Owner | Reviewer | Status |
 |---|---|---|---|---|
-| REV-1 | API/data/screening contract and separate desktop/mobile mockups, preserve fonts/colors | GPT | Claude | in progress; images before UI edits |
-| REV-2 | Native reviews module, generated migration, bounded reads, protected writes, concurrency/ownership tests | GPT | Claude | queued |
+| REV-1 | API/data/screening contract and separate desktop/mobile mockups, preserve fonts/colors | GPT | Claude | contract/proposals committed642e3bd; awaiting visual approval |
+| REV-2 | Native reviews module, generated migration, bounded reads, protected writes, concurrency/ownership tests | GPT | Claude | in review: application136a67c; native HTTP3/3 passes |
 | REV-3 | Admin and manager moderation queue, scoped access and stale-version protection | GPT | Claude | queued |
 | REV-4 | EN/AR product reviews, accessible form, summaries/filter/sort/pagination, own review states | GPT | Claude | queued; mockup approval before UI implementation |
 | REV-5 | Disposable database proof, both app checks/builds and EN/AR responsive/accessibility regression | GPT | Claude | queued |
 
 No live migration or catalog changes. New review table/indexes only, native module links if required and documented. Preserve all other worktrees. Use Ponytail, Impeccable and UI/UX Pro Max; thin routes, cohesive review domain, existing auth/limiting/RBAC patterns, no new dependencies or unrelated refactor. Public approved-only reviews are separate from private no-store own-review state. Invalid/stale mutations must fail without losing draft or publishing unreviewed edits. Reviews must not block product purchase on failure. Deliver commit-scoped review handoff to Seif; no automatic push/merge.
+
+Reviews foundation verification2026-10-26: one generated product_review table (no link tables), local screening, public/private/admin APIs, scoped existing manager grants, per-account limiting, atomic version writes and persisted-row duplicate reconciliation. Native disposable-DB HTTP3/3 scenarios pass including zero-order customer publication, ownership/channel boundaries, global review paging/summary, actual admin+manager decisions, stale/concurrent rejection and rejection-resubmission protection. DB/template removed, Resend/provider settings empty. Backend35suites/280unit tests pass; storefront52suites/502tests, pre-build types and lint pass. Backend types/lint/build pass; final static checks also pass after the retry adjustment. Storefront webpack compiles but production type validation fails on unchanged Deals page export Bundles (present in baseline05d78a6), reported separately. No UI implementation or live migration, push or merge. Seif's desktop/mobile proposal approval remains pending. Handoff docs/reviews/product-reviews.md.
+
+REV-2 review handoff: application136a67c, plan642e3bd, baseline05d78a6. Final native HTTP3/3 passes48.8s and DB/template removed. Exact committed backend production server/Admin build passes21.59s/58.15s; types/lint pass. Full feature is not complete: REV-1 visual approval and REV-3/REV-4/remaining REV-5 stay open. Copyable Claude prompt in docs/reviews/product-reviews.md. No task-owned preview server, live migration, push or merge.
