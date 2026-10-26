@@ -570,3 +570,6 @@ Running storefront http://localhost:3000 (webpack dev, listenerPID21820, exec se
 
 Manual test stopped at Seif's request2026-10-26: GPT terminated only the owned storefront/backend wrapper, watcher and server process trees. Verified ports3000/9000 have no listeners. Database, Redis and local review data/schema preserved; no other services stopped.
 
+
+## Product-reviews PR publication — authorized2026-10-26
+Seif explicitly requested separate PRs for codex/product-reviews and codex/audit-fixes to full-stack. GPT owns publication; source remains Claude-approved c638ff9, subsequent commits documentation only. GitHub base origin/full-stack05d78a6 refreshed. Publish the complete reviews feature and create a separate PR; no automatic merge or deployment. Audit PR27 https://github.com/SeifWaleed12/VI2/pull/27 contains the separate Deals/Bundles production-build fix and should land first. Preserve the local-only migration/test shutdown history; production migration/privacy-retention and deployment checks remain pending. Existing checks/reviews are reported accurately without rerunning unchanged application code.
