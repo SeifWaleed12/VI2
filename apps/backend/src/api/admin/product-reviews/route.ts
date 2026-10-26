@@ -11,7 +11,7 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
     if (!parsed.success) return res.status(400).json({ message: "Invalid moderation filters" })
     const { status, limit, offset } = parsed.data
     const [reviews, count] = await req.scope.resolve<ProductReviewModuleService>(PRODUCT_REVIEW_MODULE)
-      .listAndCountProductReviews({ status }, { take: limit, skip: offset, order: { updated_at: "DESC", id: "ASC" } })
+      .listAndCountProductReviews({ status }, { take: limit, skip: offset, order: { updated_at: status === "pending" ? "ASC" : "DESC", id: "ASC" } })
     return res.json({ reviews, count, limit, offset })
   } catch (error) {
     return reviewErrorResponse(error, res)
