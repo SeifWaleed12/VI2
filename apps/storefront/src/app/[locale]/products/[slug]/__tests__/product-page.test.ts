@@ -1,7 +1,10 @@
+import { listReviews } from "@/lib/medusa/services/reviews";
 import ProductPage from "../page";
 import { getProductByHandle, listProducts } from "@/lib/medusa";
 import { notFound } from "next/navigation";
 
+jest.mock("@/lib/medusa/services/reviews", () => ({ listReviews: jest.fn() }));
+jest.mock("@/components/product-reviews/ProductReviewSection", () => ({ ProductReviewSection: () => null, ProductReviewLink: () => null, ProductReviewLoading: () => null }));
 jest.mock("@/lib/medusa", () => ({ getProductByHandle: jest.fn(), listProducts: jest.fn() }));
 jest.mock("next/navigation", () => ({ notFound: jest.fn() }));
 jest.mock("../ProductDetailClient", () => ({ __esModule: true, default: () => null }));
@@ -11,7 +14,7 @@ const product = (id: string, categories?: { id: string; name: string; handle: st
 const render = async (slug = "whey", locale = "ar") =>
   (await ProductPage({ params: Promise.resolve({ slug, locale }) })) as unknown as { props: { product: { id: string }; similar: { id: string }[] } };
 
-beforeEach(() => jest.resetAllMocks());
+beforeEach(() => { jest.resetAllMocks(); jest.mocked(listReviews).mockResolvedValue(null as never); });
 
 it("shows up to four similar products from the product's categories, never the product itself", async () => {
   jest.mocked(getProductByHandle).mockResolvedValue(product("p0", [{ id: "pcat_1", name: "Protein", handle: "protein" }, { id: "pcat_2", name: "Whey", handle: "whey" }]));
@@ -39,4 +42,13 @@ it("answers 404 for an unknown product", async () => {
   jest.mocked(notFound).mockImplementation(() => { throw new Error("NOT_FOUND"); });
   await expect(render("missing")).rejects.toThrow("NOT_FOUND");
   expect(notFound).toHaveBeenCalled();
+});
+
+it("streams one shared review read without blocking the product on a slow review service", async () => {
+  jest.mocked(getProductByHandle).mockResolvedValue(product("p0"));
+  jest.mocked(listReviews).mockReturnValue(new Promise(() => {}));
+  const page = await render("whey", "ar");
+  expect(page.props.product.id).toBe("p0");
+  expect(listReviews).toHaveBeenCalledTimes(1);
+  expect(listReviews).toHaveBeenCalledWith("p0", "ar");
 });

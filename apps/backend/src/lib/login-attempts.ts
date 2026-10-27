@@ -19,7 +19,7 @@ export const RESET_REQUEST_POLICY: LoginAttemptPolicy = { maxAttempts: 5, window
 // account keeps that from being used to flood either.
 export const EMAIL_CHANGE_POLICY: LoginAttemptPolicy = { maxAttempts: 3, windowSeconds: 60 * 60 }
 
-export type AttemptPurpose = "login-attempts" | "reset-requests" | "email-change-requests"
+export type AttemptPurpose = "login-attempts" | "reset-requests" | "email-change-requests" | "review-writes"
 
 // The key is hashed so the cache never holds email addresses, and so characters
 // the cache treats specially ("*" is a wildcard) are harmless.

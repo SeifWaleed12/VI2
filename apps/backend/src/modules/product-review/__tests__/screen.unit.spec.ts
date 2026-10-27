@@ -1,0 +1,57 @@
+import { reviewErrorResponse } from "../../../lib/product-review-errors"
+import { MedusaError } from "@medusajs/framework/utils"
+import { screenReview } from "../screen"
+import { moderationInput, reviewInput, reviewListInput } from "../validation"
+
+describe("local review screening", () => {
+  it.each([
+    "This product did not help me. One star.", "It made me feel sick. I stopped taking it.",
+    "المنتج مش كويس ومش هشتريه تاني", "سبب لي ألم في المعدة", "The classic packaging is fine",
+  ])("does not suppress criticism or medical words: %s", text => expect(screenReview(text)).toEqual([]))
+  it.each(["This is fucking awful", "This is fuc\u200bking awful", "كـسـمـك", "كُسْمَك"]) ("holds exact abuse including normalizable disguises: %s", text => expect(screenReview(text)).toContain("profanity"))
+  it("does not match substrings inside innocent words", () => expect(screenReview("Scunthorpe class assignment can be reviewed")).toEqual([]))
+  it("holds external links and repeated characters", () => {
+    expect(screenReview("Visit https://spam.example/offer")).toContain("external_link")
+    expect(screenReview("www.example.com")).toContain("external_link")
+    expect(screenReview("a".repeat(20))).toContain("repeated_characters")
+  })
+})
+it("rejects forged identity, fractional ratings, unbounded text and unsupported sorting", () => {
+  const input = { rating: 1, content: "This did not work for me at all." }
+  expect(reviewInput.safeParse(input).success).toBe(true)
+  expect(reviewInput.safeParse({ ...input, customer_id: "someone" }).success).toBe(false)
+  expect(reviewInput.safeParse({ ...input, rating: 1.5 }).success).toBe(false)
+  expect(reviewInput.safeParse({ ...input, content: "x".repeat(3001) }).success).toBe(false)
+  expect(reviewListInput.safeParse({ limit: 21 }).success).toBe(false)
+  expect(reviewListInput.safeParse({ sort: "rating;drop" }).success).toBe(false)
+  expect(moderationInput.safeParse({ status: "approved", version: 1, reason: "" }).success).toBe(false)
+})
+
+it("hides database errors and preserves conflict status at the review boundary", () => {
+  const response = { status: jest.fn().mockReturnThis(), json: jest.fn().mockReturnThis() }
+  reviewErrorResponse(new Error("secret database connection string"), response as never)
+  expect(response.status).toHaveBeenLastCalledWith(503)
+  expect(response.json).toHaveBeenLastCalledWith({ message: "Reviews temporarily unavailable. Try again." })
+  reviewErrorResponse(new MedusaError(MedusaError.Types.CONFLICT, "private"), response as never)
+  expect(response.status).toHaveBeenLastCalledWith(409)
+})
+
+it.each(["bit.ly/abc", "t.me/deals", "example . com", "visit shop dot com", "offer.unusual/discount", "offer.online"])("holds common shortened or spaced spam links: %s", content => {
+  expect(screenReview(content)).toContain("external_link")
+})
+it.each(["Great.Thanks for the quick service", "Contains 100.eg capsules", "No change after a week. Still disappointed."])("does not treat ordinary punctuation or numbers as domains: %s", content => {
+  expect(screenReview(content)).not.toContain("external_link")
+})
+it.each(["title", "content"])("rejects NUL in %s before persistence", field => {
+  expect(reviewInput.safeParse({ rating: 3, title: "Good", content: "A sufficiently detailed review.", [field]: "Text with a NUL \u0000 character inside" }).success).toBe(false)
+})
+
+it.each([
+  "Works great. Me and my wife both use it daily.", "Arrived quickly. Online ordering was easy.",
+  "Good price. Store staff were helpful.", "Good price. Shop assistants were polite.",
+  "Good price. Site was easy to use.", "I like it. App tracking worked well.",
+  "I like it. Info on the label is clear.", "I like it. Net weight matches the label.",
+  "I like it. Link between sleep and rest is clearer.", "I like it. Org was easy to deal with.",
+])("keeps sentence boundaries separate from domain names: %s", text => {
+  expect(screenReview(text)).not.toContain("external_link")
+})

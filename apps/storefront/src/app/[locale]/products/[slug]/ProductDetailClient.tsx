@@ -121,9 +121,13 @@ const shopHref = (category?: { id: string; handle: string }) => category ? categ
 export default function ProductDetailClient({
   product,
   similar,
+  reviewContent,
+  reviewSummary,
 }: {
   product: Product;
   similar: Product[];
+  reviewContent?: ReactNode;
+  reviewSummary?: ReactNode;
 }) {
   const router = useLocaleRouter();
   const { addItem, items, openCart } = useCart();
@@ -312,6 +316,7 @@ export default function ProductDetailClient({
             <div className={styles.head}>
               {product.brand && <p className={styles.brand}>{copy.by} <strong>{product.brand}</strong></p>}
               <h1 className={styles.title}>{product.name}</h1>
+              {reviewSummary}
             </div>
 
             <div className={styles.gallery}>
@@ -417,6 +422,8 @@ export default function ProductDetailClient({
             </div>
 
           </section>
+
+          {reviewContent}
 
           {similar.length > 0 && (
             <section className={styles.similar} aria-labelledby="similar-products">
