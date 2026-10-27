@@ -564,3 +564,21 @@ Claude's **APPROVE ofc638ff9** above is preserved unchanged. Both requested geom
 **R5-1 is retained as an optional cosmetic follow-up:** at320x640 the last line of the short-text validation message overlaps the cart bar by5–6px. The textarea is fully visible, the feedback remains readable and Submit is reachable by scrolling per Claude's evidence. No fix or owner acceptance of that edge is claimed; it does not overturn his approval.
 
 Feature review is closed for candidatec638ff9. Publication/merge/live migration remain Seif-controlled and have not happened. The separate Deals/Bundles build failure and fresh-database initial-seed issue remain unchanged; do not describe the branch as having a passing production storefront build. Previous privacy-retention, real Redis/multiple-instance and physical/accessibility/manual limits remain recorded. No further reviewer prompt is required for this documentation-only closure.
+
+
+## Streamed account hydration fix —2026-10-27
+
+Seif requested the mismatch reported in `docs/reviews/stock-limits.md` on PR28. Source **4afa837**, based on the owner-integrated PR head1534801 (audit/logo/stock changes already merged into that head).
+
+Cause: ProductReviews can stream inside Suspense and hydrate after CustomerProvider has already resolved. Reading that ready context immediately changed the initial disabled "Checking your account…" server button into the guest action, or introduced signed-in private UI, during hydration.
+
+Fix: a component-local React useSyncExternalStore snapshot returns false for the server/first hydration pass and true after hydration. Until then authLoading is true and customer is null. This stabilizes the entire account-dependent subtree, including writer/draft branches, rather than only the button text. After hydration normal provider state drives the existing UI. No suppressHydrationWarning, provider rewrite, store duplication, polling, dependency, backend/schema/auth contract or design change.
+
+Evidence:
+- Before the runtime fix, the targeted regression run failed7 cases (5 new cases plus the2 intentionally updated SSR expectations); after the fix both suites pass18/18. New EN/AR tests compare actual React server-rendered markup across loading, already-resolved guest and already-resolved customer contexts. Existing hook harness verifies the initial hydration snapshot stays disabled/loading, then resolves to the normal enabled guest action or signed-in writer without a false account-change notice. This harness is not claimed as a browser hydration engine.
+- Current integrated storefront full run: **63 suites /579 tests pass**. Typecheck and lint pass. **Production webpack build passes**, now that the prior Deals/Bundles fix is integrated. No backend checks rerun for this frontend-only change.
+- Real IAB browser, temporary production server3100 and existing Medusa9000: EN/AR `/products/whey#customer-reviews` both resolve to enabled localized sign-in controls, with no React hydration/recoverable mismatch errors in the captured error logs. English initial server shell was visibly the disabled loading action before it resolved. No sign-in or review submission performed; signed-in timing variants are covered by the automated regressions, not claimed as live tested.
+- Separate region/cart initialization errors occurred in this temporary-port preview because its direct Medusa browser requests could not fetch regions (3100 differs from the existing dev origin). These are not silently presented as a clean console or passing cart flow; no backend CORS/region configuration was changed for this check.
+- Temporary browser tab and only the owned3100 server were closed. Existing user3000/9000 listeners preserved. Build-generated next-env.d.ts rewrites excluded. No migration/provider change or merge.
+
+Claude narrow recheck: review **4afa837** on codex/product-reviews for stable EN/AR first hydration with a provider that resolves before the streamed section, for both guest and signed-in state. Confirm the action becomes enabled afterward, own-review/draft gating still works and no spurious account-change notice appears. Check the regression cases and running browser console; do not expand into a backend/database audit. Seif merges PR28.
