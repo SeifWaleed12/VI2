@@ -522,4 +522,4 @@ PR20 final approval — 2026-10-24: Claude Round3 (5711dff) approves application
 
 | Task | Owner | Reviewer | Status | Scope |
 |---|---|---|---|---|
-| Stop at the stock limit and say why | Claude | GPT | GPT round 1: one P2 (drawer limit after a refusal) fixed in cee1c5b; round 2 requested; update after #27 lands | Product page subtracts what the cart holds and explains "last one already in your cart" / "just sold out" instead of "try again"; drawer + stops at the limit with notes; stock refusals no longer logged as errors. EN/AR. Merges cleanly with #26-#28 (914 tests). Handoff: docs/reviews/stock-limits.md (also notes a #28 hydration mismatch). |
+| Stop at the stock limit and say why | Claude | GPT | GPT round 2 approved cee1c5b, no open findings; PR open; update after #27 lands, then owner merge | Product page subtracts what the cart holds and explains "last one already in your cart" / "just sold out" instead of "try again"; drawer + stops at the limit with notes; stock refusals no longer logged as errors. EN/AR. Merges cleanly with #26-#28 (914 tests). Handoff: docs/reviews/stock-limits.md (also notes a #28 hydration mismatch). |
