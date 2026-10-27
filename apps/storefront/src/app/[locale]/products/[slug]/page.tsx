@@ -1,3 +1,6 @@
+import { Suspense } from "react";
+import { listReviews } from "@/lib/medusa/services/reviews";
+import { ProductReviewSection, ProductReviewLink, ProductReviewLoading } from "@/components/product-reviews/ProductReviewSection";
 import { isLocale } from "@/lib/i18n";
 import { notFound } from "next/navigation";
 
@@ -22,6 +25,8 @@ export default async function ProductPage({
     notFound();
   }
 
+  const reviews = listReviews(product.id, locale).catch(() => null);
+
   // Similar products share a category. Optional: without them the page still sells.
   const categoryIds = product.categories?.map((category) => category.id) ?? [];
   let similar: Product[] = [];
@@ -34,5 +39,8 @@ export default async function ProductPage({
     }
   }
 
-  return <ProductDetailClient product={product} similar={similar} />;
+  return <ProductDetailClient product={product} similar={similar}
+    reviewSummary={<Suspense fallback={null}><ProductReviewLink locale={locale} data={reviews} /></Suspense>}
+    reviewContent={<Suspense fallback={<ProductReviewLoading locale={locale} />}><ProductReviewSection productId={product.id} locale={locale} data={reviews} /></Suspense>}
+  />;
 }

@@ -24,6 +24,7 @@ module.exports = defineConfig({
   },
   modules: [
     { resolve: "@medusajs/medusa/translation" },
+    { resolve: "./src/modules/product-review" },
     {
       resolve: "./src/modules/brand",
     },

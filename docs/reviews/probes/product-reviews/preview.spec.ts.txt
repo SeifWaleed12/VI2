@@ -1,0 +1,41 @@
+import fs from "node:fs"
+import { dirname, join } from "node:path"
+import { medusaIntegrationTestRunner } from "@medusajs/test-utils"
+import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
+import { createProductsWorkflow, createUsersWorkflow } from "@medusajs/medusa/core-flows"
+import { setupEgyptStore } from "../../src/scripts/setup-egypt-store"
+import setupCatalogManager from "../../src/scripts/setup-catalog-manager"
+import { readCatalogState } from "../../src/lib/catalog-ranking"
+import { PRODUCT_REVIEW_MODULE } from "../../src/modules/product-review"
+import type ProductReviewModuleService from "../../src/modules/product-review/service"
+const medusaDist = dirname(require.resolve("@medusajs/medusa"))
+const createSuperAdminRole = require(join(medusaDist, "migration-scripts", "create-super-admin-role")).default
+jest.setTimeout(1_800_000)
+medusaIntegrationTestRunner({ dbName: "vi2_reviews_preview_20261026", testSuite: ({ api, getContainer }) => {
+ beforeAll(async () => {
+  for(let n=0;n<120;n++) { if((await readCatalogState(getContainer()).catch(()=>undefined))?.ready===1) return; await new Promise(r=>setTimeout(r,250)) }
+  throw new Error("Index not ready")
+ })
+ it("holds an isolated real review API for browser acceptance", async () => {
+  const container=getContainer(); await setupEgyptStore(container)
+  const query=container.resolve(ContainerRegistrationKeys.QUERY)
+  const {data:[settings]}=await query.graph({entity:"store",fields:["default_sales_channel_id"]})
+  const {data:[key]}=await query.graph({entity:"api_key",fields:["token"],filters:{type:"publishable"}})
+  const {result:[product,empty]}=await createProductsWorkflow(container).run({input:{products:[
+   {title:"Review preview product",handle:"review-preview",description:"Illustrative product for isolated review acceptance. Not a live catalog item.",status:"published",sales_channels:[{id:settings.default_sales_channel_id as string}],options:[{title:"Size",values:["Single"]}],variants:[{title:"Single",options:{Size:"Single"},manage_inventory:false,prices:[{currency_code:"egp",amount:300}]}]},
+   {title:"Review empty state",handle:"review-empty",status:"published",sales_channels:[{id:settings.default_sales_channel_id as string}],options:[{title:"Size",values:["Single"]}],variants:[{title:"Single",options:{Size:"Single"},manage_inventory:false,prices:[{currency_code:"egp",amount:200}]}]},
+  ]}})
+  const reviews=container.resolve<ProductReviewModuleService>(PRODUCT_REVIEW_MODULE)
+  await reviews.createProductReviews(Array.from({length:31},(_,i)=>({product_id:product.id,customer_id:`cus_review_preview_${i}`,first_name:i%2?"عمر":"Mariam",rating:i%5+1,title:i%2?"تجربة توضيحية":"Illustrative experience",content:i%2?"هذا تقييم تجريبي لاختبار وضوح النص وعرضه في صفحة المنتج.":"This is illustrative review feedback for interface acceptance, not a real customer endorsement.",status:"approved" as const,created_at:new Date(Date.now()-i*3600000)})))
+  const store={headers:{"x-publishable-api-key":key.token}}
+  await api.post("/store/auth/register",{email:"customer@reviews.test",password:"review-preview-password",first_name:"Sara",last_name:"Private"},store)
+  const {result:[staff]}=await createUsersWorkflow(container).run({input:{users:[{email:"admin@reviews.test"}]}})
+  const auth=container.resolve(Modules.AUTH)
+  const {authIdentity}=await auth.register("emailpass",{body:{email:"admin@reviews.test",password:"review-preview-password"}})
+  await auth.updateAuthIdentities({id:authIdentity!.id,app_metadata:{user_id:staff.id}})
+  await createSuperAdminRole({container}); await setupCatalogManager({container,args:[staff.id]} as never)
+  await reviews.createProductReviews({product_id:product.id,customer_id:"cus_pending_example",first_name:"Omar",rating:1,title:"Needs checking",content:"Read www.example.com for the rest of this illustrative review.",status:"pending",flags:{reasons:["external_link"]}})
+  fs.writeFileSync(process.env.VI2_REVIEW_PREVIEW_META!,JSON.stringify({backend:api.defaults.baseURL,key:key.token,productId:product.id,emptyId:empty.id}))
+  while(!fs.existsSync(process.env.VI2_REVIEW_PREVIEW_STOP!)) await new Promise(r=>setTimeout(r,500))
+ })
+}})

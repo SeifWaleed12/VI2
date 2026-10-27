@@ -116,3 +116,11 @@ describe("existingVariantStockSettings", () => {
     expect(existingVariantStockSettings("/admin/orders/order_1", { id: "x", manage_inventory: false })).toEqual([])
   })
 })
+
+ it("allows only scoped manager review reads and moderation", () => {
+  expect(managerAction("GET", "/admin/product-reviews")).toEqual({ resource: "product", operation: "read" })
+  expect(managerAction("POST", "/admin/product-reviews/rev_1")).toEqual({ resource: "product", operation: "update" })
+  expect(managerAction("DELETE", "/admin/product-reviews/rev_1")).toBeNull()
+  expect(managerAction("POST", "/admin/product-reviews")).toBeNull()
+  expect(managerAction("POST", "/admin/product-reviews/rev_1/extra")).toBeNull()
+})
