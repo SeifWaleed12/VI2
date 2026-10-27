@@ -13,6 +13,7 @@ export type CreateBrandInput = {
   slug: string
   description: string | null
   logo: string | null
+  logo_file_id?: string | null
   country: string | null
   status: string
 }
@@ -44,8 +45,8 @@ const updateBrandStep = createStep(
   async (previous, { container }) => {
     if (!previous) return
     const service: BrandModuleService = container.resolve(BRAND_MODULE)
-    const { id, name, slug, description, logo, country, status } = previous
-    await service.updateBrands({ id, name, slug, description, logo, country, status })
+    const { id, name, slug, description, logo, logo_file_id, country, status } = previous
+    await service.updateBrands({ id, name, slug, description, logo, logo_file_id, country, status })
   }
 )
 

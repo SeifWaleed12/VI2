@@ -523,6 +523,11 @@ PR20 final approval — 2026-10-24: Claude Round3 (5711dff) approves application
 | Task | Owner | Reviewer | Status | Scope |
 |---|---|---|---|---|
 | Stop at the stock limit and say why | Claude | GPT | GPT round 2 approved cee1c5b, no open findings; PR open; update after #27 lands, then owner merge | Product page subtracts what the cart holds and explains "last one already in your cart" / "just sold out" instead of "try again"; drawer + stops at the limit with notes; stock refusals no longer logged as errors. EN/AR. Merges cleanly with #26-#28 (914 tests). Handoff: docs/reviews/stock-limits.md (also notes a #28 hydration mismatch). |
+## Brand logo upload — 2026-10-26
+
+| Task | Owner | Reviewer | Status | Scope |
+|---|---|---|---|---|
+| Upload brand logos in Admin | Claude | GPT | GPT round 3 approved 89c1b70, no open problems; PR open for owner merge | Upload with preview, replace and remove instead of a "Logo URL" box; server checks PNG/JPG/WebP by content, 1 MB, no SVG; file in Medusa storage (R2), old file deleted via new brand.logo_file_id; /brands shows the logo or the name. Handoff: docs/reviews/brand-logo-upload.md. After merge: db:migrate, then Seif uploads the six logos. |
 
 ## Audit remediation — authorized 2026-10-25
 
