@@ -37,7 +37,7 @@ export default function CartDrawer() {
   const drawerRef = useRef<HTMLElement>(null);
   const { msg, language } = useLanguage();
   // Read fresh each time the drawer opens, so + stops where stock does.
-  const limits = useStockLimits(isCartOpen ? items.map((item) => item.product.id) : [], language);
+  const { limits, refresh: refreshLimits } = useStockLimits(isCartOpen ? items.map((item) => item.product.id) : [], language);
   const limitOf = (variantId?: string) => (variantId ? limits[variantId] : undefined);
   useDrawerFocus(drawerRef, isCartOpen, closeCart);
 
@@ -220,14 +220,10 @@ export default function CartDrawer() {
                           type="button"
                           aria-label="Increase quantity"
                           disabled={item.quantity >= (limitOf(item.product.variantId) ?? Infinity)}
-                          onClick={() =>
-                            updateQuantity(
-                              item.id ??
-                                item.product.id,
-                              item.quantity +
-                                1,
-                            )
-                          }
+                          // A refusal means stock dropped while the drawer was open: read it again so + and the note match.
+                          onClick={async () => {
+                            if (!(await updateQuantity(item.id ?? item.product.id, item.quantity + 1))) refreshLimits();
+                          }}
                         >
                           <Plus
                             size={13}

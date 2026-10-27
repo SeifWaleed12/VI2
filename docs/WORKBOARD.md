@@ -605,3 +605,8 @@ Seif explicitly requested separate PRs for codex/product-reviews and codex/audit
 
 Product reviews PR published: https://github.com/SeifWaleed12/VI2/pull/28 (base full-stack, head codex/product-reviews). Separate audit PR27 https://github.com/SeifWaleed12/VI2/pull/27 contains the Deals build fix; recommended merge order audit first, reviews second. Both PRs created at Seif's request; neither merged. Publication changes only documentation; reviewed application c638ff9 remains unchanged.
 
+## Stock limits — 2026-10-27
+
+| Task | Owner | Reviewer | Status | Scope |
+|---|---|---|---|---|
+| Stop at the stock limit and say why | Claude | GPT | GPT round 1: one P2 (drawer limit after a refusal) fixed in cee1c5b; round 2 requested; update after #27 lands | Product page subtracts what the cart holds and explains "last one already in your cart" / "just sold out" instead of "try again"; drawer + stops at the limit with notes; stock refusals no longer logged as errors. EN/AR. Merges cleanly with #26-#28 (914 tests). Handoff: docs/reviews/stock-limits.md (also notes a #28 hydration mismatch). |

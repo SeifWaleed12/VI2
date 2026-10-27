@@ -58,10 +58,12 @@ export type CartContextValue = {
   toggleCart: () => void;
   addItem: (product: Product, quantity?: number, options?: { quiet?: boolean }) => Promise<boolean>;
   removeItem: (productIdOrLineId: string) => Promise<void>;
+  // False when Medusa refused the change (for example not enough stock) or it
+  // could not be sent; the line is back at its last confirmed quantity.
   updateQuantity: (
     productIdOrLineId: string,
     quantity: number,
-  ) => Promise<void>;
+  ) => Promise<boolean>;
   applyPromotion: (code: string) => Promise<PromoResult>;
   removePromotion: (code: string) => Promise<void>;
   clearCart: () => Promise<void>;
@@ -327,7 +329,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       if (!queue.canAccept()) { setMutationError("Cart is busy. Wait for the current changes to finish."); return; }
       if (quantity <= 0) {
         await removeItem(productIdOrLineId);
-        return;
+        return true;
       }
 
       setMutationError(null);
@@ -357,18 +359,17 @@ export function CartProvider({ children }: { children: ReactNode }) {
         }),
       );
 
-      if (cart || target) {
-        await sendChange(
-          async () => {
-            const active = queue.getConfirmed() ?? cart;
-            const line = active && queuedLine(active, target, productIdOrLineId);
-            if (!active || !line?.id) throw new Error("Cart item is unavailable. Refresh and try again.");
-            return updateCartItem(active.id, line.id, quantity);
-          },
-          () => { setItems(prevItems); setCart(prevCart); },
-          "Failed to update quantity. Reverting changes.",
-        );
-      }
+      if (!cart && !target) return false;
+      return sendChange(
+        async () => {
+          const active = queue.getConfirmed() ?? cart;
+          const line = active && queuedLine(active, target, productIdOrLineId);
+          if (!active || !line?.id) throw new Error("Cart item is unavailable. Refresh and try again.");
+          return updateCartItem(active.id, line.id, quantity);
+        },
+        () => { setItems(prevItems); setCart(prevCart); },
+        "Failed to update quantity. Reverting changes.",
+      );
     },
     [cart, items, removeItem, sendChange, queue, sessionVersion],
   );
