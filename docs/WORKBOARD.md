@@ -517,6 +517,13 @@ PR20 final approval — 2026-10-24: Claude Round3 (5711dff) approves application
 | Task | Owner | Reviewer | Status | Scope |
 |---|---|---|---|---|
 | Fixes from Seif's manual test | Claude | GPT | GPT round 2 approved 374d20f, no open problems; PR open for owner merge | Checkout: a refused cart is "not placed" (no endless retry), cart changes drop a pending retry, details kept and autofilled from the account, sign-in hint. Sign-up says "email already has an account" with links. Sort aligned on desktop; no Cart in the mobile bar; Health goals hover panel; product photo gallery. Handoff: docs/reviews/test-round-fixes.md. Open: registration rate limit needs the visitor IP (same as CART-5) — Cloudflare rule at deployment. |
+
+## Brand logo upload — 2026-10-26
+
+| Task | Owner | Reviewer | Status | Scope |
+|---|---|---|---|---|
+| Upload brand logos in Admin | Claude | GPT | GPT round 3 approved 89c1b70, no open problems; PR open for owner merge | Upload with preview, replace and remove instead of a "Logo URL" box; server checks PNG/JPG/WebP by content, 1 MB, no SVG; file in Medusa storage (R2), old file deleted via new brand.logo_file_id; /brands shows the logo or the name. Handoff: docs/reviews/brand-logo-upload.md. After merge: db:migrate, then Seif uploads the six logos. |
+
 ## Audit remediation — authorized 2026-10-25
 
 | Task | Owner | Reviewer | Status | Scope |
