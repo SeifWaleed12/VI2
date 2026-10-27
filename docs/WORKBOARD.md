@@ -517,3 +517,9 @@ PR20 final approval — 2026-10-24: Claude Round3 (5711dff) approves application
 | Task | Owner | Reviewer | Status | Scope |
 |---|---|---|---|---|
 | Fixes from Seif's manual test | Claude | GPT | GPT round 2 approved 374d20f, no open problems; PR open for owner merge | Checkout: a refused cart is "not placed" (no endless retry), cart changes drop a pending retry, details kept and autofilled from the account, sign-in hint. Sign-up says "email already has an account" with links. Sort aligned on desktop; no Cart in the mobile bar; Health goals hover panel; product photo gallery. Handoff: docs/reviews/test-round-fixes.md. Open: registration rate limit needs the visitor IP (same as CART-5) — Cloudflare rule at deployment. |
+
+## Stock limits — 2026-10-27
+
+| Task | Owner | Reviewer | Status | Scope |
+|---|---|---|---|---|
+| Stop at the stock limit and say why | Claude | GPT | Awaiting GPT review on claude/stock-limits (c60349a); update after #27 lands | Product page subtracts what the cart holds and explains "last one already in your cart" / "just sold out" instead of "try again"; drawer + stops at the limit with notes; stock refusals no longer logged as errors. EN/AR. Merges cleanly with #26-#28 (914 tests). Handoff: docs/reviews/stock-limits.md (also notes a #28 hydration mismatch). |
