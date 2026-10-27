@@ -325,8 +325,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const updateQuantity = useCallback(
     async (productIdOrLineId: string, quantity: number) => {
-      if (sessionVersion !== queue.version) return;
-      if (!queue.canAccept()) { setMutationError("Cart is busy. Wait for the current changes to finish."); return; }
+      if (sessionVersion !== queue.version) return false;
+      if (!queue.canAccept()) { setMutationError("Cart is busy. Wait for the current changes to finish."); return false; }
       if (quantity <= 0) {
         await removeItem(productIdOrLineId);
         return true;
