@@ -1,6 +1,7 @@
 import { createElement, type ReactElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import DealsPage, { Bundles } from "../page";
+import DealsPage from "../page";
+import { Bundles } from "../Bundles";
 import ShopView from "../../shop/ShopView";
 import { getBundles } from "@/lib/medusa";
 
