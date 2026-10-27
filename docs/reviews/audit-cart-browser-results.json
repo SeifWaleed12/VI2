@@ -1,0 +1,11 @@
+{
+  "boundary": "Actual React 19 cart provider and queue, rendered in IAB, controlled service promises",
+  "checks": {
+    "lateLoadAfterClear": "cartId/email/stored remained null",
+    "freshLoadAfterClear": "cart_new loaded normally",
+    "promotionSerialization": "promotion waited for quantity; final total 180",
+    "editBeforeLineId": "quantity 3 sent to assigned line_2 after delayed add",
+    "clearDuringMutation": "late quantity ignored; queued promotion skipped; cartId/email/stored null"
+  },
+  "limitations": "Controlled service responses; real backend behavior tested separately"
+}

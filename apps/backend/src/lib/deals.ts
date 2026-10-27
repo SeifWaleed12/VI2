@@ -1,34 +1,27 @@
 import type { MedusaContainer } from "@medusajs/framework/types"
-import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
+import { ContainerRegistrationKeys, MedusaError, Modules } from "@medusajs/framework/utils"
+import { catalogContext, catalogPriceVersion, readCatalogState } from "./catalog-ranking"
+import { MAX_BUNDLE_PRODUCTS } from "./bundle-product-ids"
+import { requestCatalogRefresh } from "./catalog-refresh-request"
+export { kitProductIds, MAX_BUNDLE_PRODUCTS, type StockLink } from "./bundle-product-ids"
 
-// shortcut: at most 100 bundle products, raise when the store sells more bundles.
-export const MAX_BUNDLE_PRODUCTS = 100
-
-// A bundle is a product with an inventory-kit variant (Admin → product →
-// variant → Inventory kit) made of two or more different stock items. A single
-// item with a quantity above 1 is not counted: in practice it was a mistyped
-// quantity, not a pack. No tag or category needed.
-export type StockLink = { variant_id?: string | null, required_quantity?: number | null, variant?: { product_id?: string | null } | null }
-
-export function kitProductIds(links: StockLink[]) {
-  const byVariant = new Map<string, StockLink[]>()
-  for (const link of links) {
-    if (link.variant_id) byVariant.set(link.variant_id, [...(byVariant.get(link.variant_id) ?? []), link])
+// Reuse the existing projection; request work does not scan variant/stock links.
+export async function bundleProductIds(container: MedusaContainer, channels?: string[]) {
+  const query = container.resolve(ContainerRegistrationKeys.QUERY)
+  const context = await catalogContext(query)
+  if (channels && (channels.length !== 1 || channels[0] !== context.channelId)) throw new MedusaError(MedusaError.Types.INVALID_DATA, "Unsupported catalog channel")
+  const before = await readCatalogState(container)
+  if (before?.ready !== 1 || (before.valid_until ?? 0) <= Date.now() || before.price_version !== await catalogPriceVersion(query)) {
+    void requestCatalogRefresh(container)
+    throw new MedusaError(MedusaError.Types.UNEXPECTED_STATE, "Bundle discovery is refreshing")
   }
-  const ids = new Set<string>()
-  for (const parts of byVariant.values()) {
-    const productId = parts[0].variant?.product_id
-    if (productId && parts.length > 1) ids.add(productId)
+  const result = await container.resolve(Modules.SEARCH).search({ entity: "product", filters: {
+    record_type: "product", bundle: 1, region_id: context.regionId, channel_id: context.channelId,
+    sales_channel_ids: [context.channelId],
+  }, pagination: { take: MAX_BUNDLE_PRODUCTS, order: { id: "ASC" } } })
+  const after = await readCatalogState(container)
+  if (after?.ready !== 1 || after.revision !== before.revision || (after.valid_until ?? 0) <= Date.now() || after.price_version !== await catalogPriceVersion(query)) {
+    throw new MedusaError(MedusaError.Types.UNEXPECTED_STATE, "Bundle discovery changed. Retry.")
   }
-  return [...ids].slice(0, MAX_BUNDLE_PRODUCTS)
-}
-
-// shortcut: reads every variant↔stock link per request (cached 60 s); move to a
-// SQL query when the catalog has tens of thousands of variants.
-export async function bundleProductIds(container: MedusaContainer) {
-  const { data } = await container.resolve(ContainerRegistrationKeys.QUERY).graph({
-    entity: "product_variant_inventory_item",
-    fields: ["variant_id", "required_quantity", "variant.product_id"],
-  })
-  return kitProductIds(data as StockLink[])
+  return result.hits.map(hit => hit.id)
 }

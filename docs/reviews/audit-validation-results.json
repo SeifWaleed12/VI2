@@ -1,0 +1,51 @@
+{
+  "date": "2026-10-25",
+  "branch": "codex/audit-fixes",
+  "base": "56df776",
+  "applicationCommits": [
+    "2c5c1a3",
+    "2dd10dd",
+    "7672f70"
+  ],
+  "testFollowup": "599ec7e",
+  "claude": {
+    "verdict": "approve",
+    "reviewedApplication": "7672f70",
+    "method": "read-only source review; did not run tests",
+    "finalRecheck": {
+      "date": "2026-10-26",
+      "reviewedHead": "2c34193",
+      "verdict": "approve",
+      "report": "claude-audit-final-recheck.md",
+      "evidenceSource": "Claude report; not rerun by GPT during this documentation closure",
+      "backendUnitTests": 294,
+      "storefrontUnitTests": 510,
+      "httpSpecs": 14,
+      "httpTests": 109,
+      "productionBuildsRerun": false,
+      "ownRedisAndJobContentionProbes": true
+    }
+  },
+  "checks": {
+    "backendAndAdminBuild": "pass",
+    "backendFinalFocusedTests": 29,
+    "storefrontProductionBuild": "pass",
+    "storefrontFullTests": 507,
+    "backendLint": "pass",
+    "storefrontTypes": "pass",
+    "postgresHttpTests": 109,
+    "backendTypes": "pass",
+    "storefrontLint": "pass",
+    "storefrontFinalFocusedTests": 12,
+    "backendSourceTests": 292,
+    "postgresHttpSpecs": 14
+  },
+  "limits": [
+    "Full14 HTTP specs passed after independent review corrections; 2 backend and 3 storefront tests added after full unit runs passed in focused reruns",
+    "Cloudflare/trusted visitor IP rate policy remains deployment gate",
+    "Production pool/memory and larger/longer soak measurement remains",
+    "Bundle index migration/reseed requires rollout approval"
+  ],
+  "resources": "Task-owned disposable PostgreSQL and Redis stopped; controlled browser fixture closed",
+  "publication": "No push, merge, deployment or live migration"
+}
