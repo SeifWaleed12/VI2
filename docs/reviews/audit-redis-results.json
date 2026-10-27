@@ -1,0 +1,39 @@
+{
+  "cacheOptions": {
+    "enableOfflineQueue": false,
+    "maxRetriesPerRequest": 0,
+    "commandTimeout": 1500,
+    "socketTimeout": 2000,
+    "autoResendUnfulfilledCommands": false
+  },
+  "slowRead": {
+    "pauseMs": 500,
+    "keyPreserved": true
+  },
+  "invalidationRecovery": {
+    "pauseMs": 1800,
+    "staleKeyRemoved": true
+  },
+  "stalledCache": {
+    "requests": 150,
+    "fallback": 150,
+    "pendingCommandsAfter2500ms": 2
+  },
+  "disconnectedCache": {
+    "requests": 150,
+    "offlineQueue": 0
+  },
+  "sharedLock": {
+    "workers": 2,
+    "maxActive": 1
+  },
+  "renewal": {
+    "initialLeaseSeconds": 1,
+    "handlerMs": 2600,
+    "competitorTimedOut": true
+  },
+  "processCrash": {
+    "childTerminated": true,
+    "reacquiredMs": 1471
+  }
+}

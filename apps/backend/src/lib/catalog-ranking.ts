@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto"
 import type { MedusaContainer, SearchContainer, SearchDocument } from "@medusajs/framework/types"
 import { ContainerRegistrationKeys, getVariantAvailability, Modules, MedusaError, QueryContext } from "@medusajs/framework/utils"
 import { ARABIC_FIELDS, ARABIC_LOCALE, SOURCE_FIELDS, toSearchDocument, type ArabicSource, type SearchSource } from "./product-search"
+import { kitProductIds } from "./bundle-product-ids"
 
 export const CATALOG_STATE = "__catalog_state"
 export const CATALOG_LOCK = "search:seed:product"
@@ -79,7 +80,11 @@ export async function catalogDocuments(query: Query, rows: SearchSource[]): Prom
   const translated = new Map((ar as ArabicSource[]).map(row => [row.id, row]))
   const products = native as unknown as { id: string, created_at: string, variants?: (NativeVariant & { variant_rank?: number, created_at?: string })[] }[]
   const variants = products.flatMap(p => p.variants ?? [])
-  const availability = variants.length ? await getVariantAvailability(query, { variant_ids: variants.map(v => v.id), sales_channel_id: channelId }) : {}
+  const managed = variants.filter(v => v.manage_inventory !== false && v.allow_backorder !== true)
+  const availability: Awaited<ReturnType<typeof getVariantAvailability>> = {}
+  for (let start = 0; start < managed.length; start += 100) {
+    Object.assign(availability, await getVariantAvailability(query, { variant_ids: managed.slice(start, start + 100).map(v => v.id), sales_channel_id: channelId }))
+  }
   const buyable = (v?: NativeVariant) => !!v && priced(v) && (v.allow_backorder === true || v.manage_inventory === false || (availability[v.id]?.availability ?? 0) > 0)
   const nativeById = new Map(products.map(p => [p.id, p]))
   return rows.flatMap(row => {
@@ -91,7 +96,9 @@ export async function catalogDocuments(query: Query, rows: SearchSource[]): Prom
       || String(a.created_at ?? "").localeCompare(String(b.created_at ?? "")) || a.id.localeCompare(b.id))
     const first = ordered.find(buyable) ?? ordered[0]
     const deal = dealVariant(ordered)
+    const bundle = kitProductIds(ordered.flatMap(variant => (variant.inventory_items ?? []).map(() => ({ variant_id: variant.id, variant: { product_id: row.id } })))).length > 0
     return [{ ...base, record_type: "product", region_id: regionId, channel_id: channelId,
+      bundle: bundle ? 1 : 0,
       catalog_price: priced(first) ? amountOf(first) : 0, catalog_priced: priced(first) ? 1 : 0,
       catalog_available: buyable(first) ? 1 : 0, created: new Date(p.created_at).getTime(),
       deal: deal ? 1 : 0, deal_price: deal ? amountOf(deal) : 0, deal_available: buyable(deal) ? 1 : 0,

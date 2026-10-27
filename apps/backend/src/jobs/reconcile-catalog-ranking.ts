@@ -9,7 +9,7 @@ export default async function reconcileCatalogRanking(container: MedusaContainer
   const state = await readCatalogState(container).catch(() => null)
   if (state === null) return
   if (state?.ready === 1 && (state.valid_until ?? 0) > Date.now() + 60_000 && state.price_version === await catalogPriceVersion(container.resolve(ContainerRegistrationKeys.QUERY))) return
-  await refreshCatalog(container)
+  await refreshCatalog(container, undefined, { name: "catalog-ranking.reconcile", data: {} })
   container.resolve(ContainerRegistrationKeys.LOGGER).info("Catalog ranking reconciled")
 }
 export const config = { name: "reconcile-catalog-ranking", schedule: "* * * * *" }

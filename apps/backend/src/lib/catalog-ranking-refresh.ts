@@ -5,24 +5,83 @@ import { invalidateStoreCache } from "./store-cache"
 
 type Event = { name: string, data: { id?: string | string[], ids?: string[] } }
 const stopped = (signal?: AbortSignal) => { if (signal?.aborted) throw new MedusaError(MedusaError.Types.CONFLICT, "Catalog refresh lost its lock") }
+type PendingRefresh = { ids: Set<string>, events: Map<string, Set<string>>, full: boolean, promise: Promise<void> }
+const pending = new WeakMap<MedusaContainer, PendingRefresh>()
+
+// Callers remain attached to this work: failed durable events are still retried.
+// Bound retained ids; a larger batch becomes one full reconciliation.
+export function refreshCatalog(container: MedusaContainer, productIds?: string[], event?: Event): Promise<void> {
+  let batch = pending.get(container)
+  if (!batch) {
+    batch = { ids: new Set(), events: new Map(), full: false, promise: Promise.resolve() }
+    const work = batch
+    pending.set(container, work)
+    work.promise = Promise.resolve().then(async () => {
+      try {
+        while (work.full || work.ids.size || work.events.size) {
+          const ids = work.full ? undefined : [...work.ids]
+          const events = work.full ? [] : [...work.events].map(([name, values]) => ({ name, data: { ids: [...values] } }))
+          work.full = false
+          work.ids.clear()
+          work.events.clear()
+          const started = Date.now()
+          await runRefresh(container, ids, events)
+          container.resolve(ContainerRegistrationKeys.LOGGER).info?.(`Catalog refresh completed in ${Date.now() - started}ms; explicit products=${ids?.length ?? "full"}; event groups=${events.length}`)
+        }
+        pending.delete(container)
+      } catch (error) {
+        pending.delete(container)
+        throw error
+      }
+    })
+  }
+  if (!productIds && !event) batch.full = true
+  for (const id of productIds ?? []) batch.ids.add(id)
+  if (event) {
+    const ids = batch.events.get(event.name) ?? new Set<string>()
+    for (const id of event.data.ids ?? (event.data.id ? [event.data.id].flat() : [])) ids.add(id)
+    batch.events.set(event.name, ids)
+  }
+  if (batch.ids.size + [...batch.events.values()].reduce((n, ids) => n + ids.size, 0) > 1000) {
+    batch.full = true
+    batch.ids.clear()
+    batch.events.clear()
+  }
+  return batch.promise
+}
 
 // The same renewable native lock protects seed and every refresh through the final write.
 // A full reconciliation also removes orphaned/deleted documents, without loading the catalog.
-export async function refreshCatalog(container: MedusaContainer, productIds?: string[], event?: Event) {
+async function runRefresh(container: MedusaContainer, productIds?: string[], events: Event[] = []) {
   return container.resolve(Modules.LOCKING).execute(CATALOG_LOCK, async signal => {
     stopped(signal)
     const query = container.resolve(ContainerRegistrationKeys.QUERY)
-    if (event?.name === "catalog-ranking.refresh") {
-      const state = await readCatalogState(container)
-      if (state?.ready === 1 && (state.valid_until ?? 0) > Date.now() && state.price_version === await catalogPriceVersion(query)) return
-    } else if (event) productIds = await affectedCatalogProducts(container, event)
+    const previous = await readCatalogState(container)
+    const priceVersion = await catalogPriceVersion(query)
+    const routines = events.filter(event => ["catalog-ranking.refresh", "catalog-ranking.reconcile"].includes(event.name))
+    const mutations = events.filter(event => !routines.includes(event))
+    const margin = routines.some(event => event.name === "catalog-ranking.reconcile") ? 60_000 : 0
+    const routineNeedsFull = routines.length > 0 && !(previous?.ready === 1 && (previous.valid_until ?? 0) > Date.now() + margin && previous.price_version === priceVersion)
+    let broadMutation = false
+    if (mutations.length) {
+      const ids = new Set(productIds)
+      for (const event of mutations) {
+        const affected = await affectedCatalogProducts(container, event)
+        if (!affected) { productIds = undefined; broadMutation = true; break }
+        affected.forEach(id => ids.add(id))
+        productIds = [...ids]
+      }
+    }
+    if (routineNeedsFull) productIds = undefined
     if (productIds?.length === 0) return
     const search = container.resolve(Modules.SEARCH)
-    const previous = await readCatalogState(container)
+    // Routine reconciliation may use the still-valid projection, just as
+    // incremental refresh does. Known broad mutations and expired state fail closed.
+    const keepReadable = !productIds && routines.length > 0 && !broadMutation && previous?.ready === 1
+      && (previous.valid_until ?? 0) > Date.now() && previous.price_version === priceVersion
     stopped(signal)
-    if (!productIds) await writeCatalogState(container, 0, 0)
+    if (!productIds && !keepReadable) await writeCatalogState(container, 0, 0)
     try {
-      const priceVersion = await catalogPriceVersion(query)
       const validUntil = await catalogValidUntil(query)
       if (productIds) {
         for (let index = 0; index < productIds.length; index += CATALOG_BATCH) {
@@ -68,7 +127,7 @@ export async function refreshCatalog(container: MedusaContainer, productIds?: st
       void invalidateStoreCache(container)
     } catch (error) {
       // Never write after losing ownership: another worker may already hold the lock.
-      if (!signal?.aborted) await writeCatalogState(container, 0, 0)
+      if (!signal?.aborted && !keepReadable) await writeCatalogState(container, 0, 0)
       throw error
     }
   }, { timeout: 30, expire: 60 })
