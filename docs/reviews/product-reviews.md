@@ -582,3 +582,28 @@ Evidence:
 - Temporary browser tab and only the owned3100 server were closed. Existing user3000/9000 listeners preserved. Build-generated next-env.d.ts rewrites excluded. No migration/provider change or merge.
 
 Claude narrow recheck: review **4afa837** on codex/product-reviews for stable EN/AR first hydration with a provider that resolves before the streamed section, for both guest and signed-in state. Confirm the action becomes enabled afterward, own-review/draft gating still works and no spurious account-change notice appears. Check the regression cases and running browser console; do not expand into a backend/database audit. Seif merges PR28.
+
+
+## Claude hydration recheck — owner-supplied report, 2026-10-27
+
+Seif supplied the following Claude review of hydration correction `4afa837`. Preserved verbatim; this is not an additional author-run verification.
+
+### Should fix
+
+1. **The client half of the fix is only tested against a mock** (`review-interaction.test.ts:13`)
+   - **What this is:** The unit tests replace `useSyncExternalStore` with a function that returns either the client or server value.
+   - **Problem:** That proves the component’s branching, but not that React really hydrates without a mismatch. Only the `renderToString` test in `reviews-render.test.ts` touches real React, and it covers the server side only. Jest runs in the `node` environment and no jsdom is installed, so a real hydration test would need a new dev dependency.
+   - **Fix:** Don’t add jsdom just for this. Keep the `renderToString` test, which would fail if the server markup started depending on the provider again.
+   - **If we skip it:** A later change that reads auth in a way that breaks hydration could pass the unit tests. Today’s behaviour is confirmed by my run.
+
+### Nice to have
+
+2. **Other late-hydrating sections may have the same problem** (not checked). Any other streamed client component that reads `useAuth()` directly could mismatch the same way; if it exists, the same hook pattern applies. Not checked because it is outside this commit.
+
+**Verdict: Ship.**\
+Lean: none.\
+Not checked: a real Next.js streamed page against the live backend, other `useAuth` users in streamed sections, and sign-out then sign-in as another user after hydration (that logic is unchanged by this commit).
+
+### Author closure
+
+Accepted the Ship verdict and its stated limits. Retained the real React `renderToString` regression and the existing mocked interaction checks; no jsdom or other dependency added. The mocked checks prove branching, not actual React client hydration. Other streamed auth consumers remain outside this fix. The author's earlier EN/AR guest browser evidence and temporary-port region/CORS limitation remain separate from Claude's report; no live signed-in or account-switch recheck is claimed here. Review is closed for `4afa837`; this closure changes documentation only, so no application tests were rerun. Seif still controls merge of PR28.
