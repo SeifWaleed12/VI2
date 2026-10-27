@@ -29,6 +29,10 @@ import {
 import { cartQueue } from "@/lib/medusa/cart-queue";
 import { forgetPendingCart } from "@/lib/pending-checkout";
 
+// Medusa's answer when a cart would hold more of a variant than its stock.
+export const isStockRefusal = (error: unknown) =>
+  /required inventory/i.test(error instanceof Error ? error.message : String((error as { message?: unknown } | null)?.message ?? ""));
+
 export type CartItem = {
   id?: string;
   product: Product;
@@ -54,10 +58,12 @@ export type CartContextValue = {
   toggleCart: () => void;
   addItem: (product: Product, quantity?: number, options?: { quiet?: boolean }) => Promise<boolean>;
   removeItem: (productIdOrLineId: string) => Promise<void>;
+  // False when Medusa refused the change (for example not enough stock) or it
+  // could not be sent; the line is back at its last confirmed quantity.
   updateQuantity: (
     productIdOrLineId: string,
     quantity: number,
-  ) => Promise<void>;
+  ) => Promise<boolean>;
   applyPromotion: (code: string) => Promise<PromoResult>;
   removePromotion: (code: string) => Promise<void>;
   clearCart: () => Promise<void>;
@@ -219,7 +225,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
       if (show) syncFromMedusaCart(show);
       else if (error && (latest || rejected)) rollback();
       if (error === undefined) { forgetPendingCart(); return true; }
-      console.error(failure, error);
+      // Medusa refusing more than is in stock is expected, not a fault: the
+      // product page and cart explain it, so it is not logged as an error.
+      if (!isStockRefusal(error)) console.error(failure, error);
       setMutationError(error instanceof Error ? error.message : failure);
       return false;
     },
@@ -317,11 +325,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const updateQuantity = useCallback(
     async (productIdOrLineId: string, quantity: number) => {
-      if (sessionVersion !== queue.version) return;
-      if (!queue.canAccept()) { setMutationError("Cart is busy. Wait for the current changes to finish."); return; }
+      if (sessionVersion !== queue.version) return false;
+      if (!queue.canAccept()) { setMutationError("Cart is busy. Wait for the current changes to finish."); return false; }
       if (quantity <= 0) {
         await removeItem(productIdOrLineId);
-        return;
+        return true;
       }
 
       setMutationError(null);
@@ -351,18 +359,17 @@ export function CartProvider({ children }: { children: ReactNode }) {
         }),
       );
 
-      if (cart || target) {
-        await sendChange(
-          async () => {
-            const active = queue.getConfirmed() ?? cart;
-            const line = active && queuedLine(active, target, productIdOrLineId);
-            if (!active || !line?.id) throw new Error("Cart item is unavailable. Refresh and try again.");
-            return updateCartItem(active.id, line.id, quantity);
-          },
-          () => { setItems(prevItems); setCart(prevCart); },
-          "Failed to update quantity. Reverting changes.",
-        );
-      }
+      if (!cart && !target) return false;
+      return sendChange(
+        async () => {
+          const active = queue.getConfirmed() ?? cart;
+          const line = active && queuedLine(active, target, productIdOrLineId);
+          if (!active || !line?.id) throw new Error("Cart item is unavailable. Refresh and try again.");
+          return updateCartItem(active.id, line.id, quantity);
+        },
+        () => { setItems(prevItems); setCart(prevCart); },
+        "Failed to update quantity. Reverting changes.",
+      );
     },
     [cart, items, removeItem, sendChange, queue, sessionVersion],
   );

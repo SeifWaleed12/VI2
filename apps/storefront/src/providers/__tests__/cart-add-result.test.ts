@@ -32,3 +32,11 @@ it("returns false on provider failure instead of resolving as success", async ()
   expect(forgetPendingCart).not.toHaveBeenCalled()
   log.mockRestore()
 })
+
+it("treats Medusa's stock refusal as expected: false, with no error logged", async () => {
+  const log = jest.spyOn(console, "error").mockImplementation(() => {})
+  jest.mocked(addCartItem).mockRejectedValue(new Error("Some variant does not have the required inventory"))
+  await expect(capture.mock.calls[0][0].addItem({ id: "prod_1", variantId: "variant_1" } as Product)).resolves.toBe(false)
+  expect(log).not.toHaveBeenCalled()
+  log.mockRestore()
+})

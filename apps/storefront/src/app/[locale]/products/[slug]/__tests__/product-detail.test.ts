@@ -9,7 +9,9 @@ jest.mock("../ProductDetail.module.css", () => ({ __esModule: true, default: new
 jest.mock("lucide-react", () => new Proxy({}, { get: () => () => null }));
 jest.mock("@/components/VariantSelector", () => ({ __esModule: true, default: () => null }));
 jest.mock("@/components/LocaleLink", () => ({ __esModule: true, default: ({ href, children }: { href: string; children: ReactNode }) => createElement("a", { href }, children) }));
-jest.mock("@/context/CartContext", () => ({ useCart: () => ({ addItem: jest.fn() }) }));
+let cartItems: { product: { variantId?: string }; quantity: number }[] = [];
+jest.mock("@/context/CartContext", () => ({ useCart: () => ({ addItem: jest.fn(), items: cartItems, openCart: jest.fn() }) }));
+jest.mock("@/lib/medusa/services/products", () => ({ listProducts: jest.fn() }));
 jest.mock("@/context/LanguageContext", () => ({ useLanguage: () => ({ language }) }));
 jest.mock("@/hooks/use-locale-router", () => ({ useLocaleRouter: () => ({ push: jest.fn() }) }));
 
@@ -20,7 +22,7 @@ const base: Product = {
 const render = (product: Partial<Product>) =>
   renderToString(createElement(ProductDetailClient, { product: { ...base, ...product }, similar: [] }));
 
-beforeEach(() => { language = "en"; });
+beforeEach(() => { language = "en"; cartItems = []; });
 
 it("shows only real product facts, with no serving, form or delivery-threshold claims", () => {
   const html = render({ servings: 30, size: "2kg", flavor: "Vanilla" });
@@ -116,4 +118,17 @@ it("offers every photo as a labelled thumbnail, and none for a single photo", ()
   expect(html).toContain('aria-pressed="true" aria-label="Show photo 1 / 3"');
   expect(html).toContain("https://cdn.test/c.jpg");
   expect(render({ image: "https://cdn.test/a.jpg" })).not.toContain("aria-pressed=");
+});
+
+it("says the last one is already in the cart, offers the cart, and limits nothing it doesn't know", () => {
+  cartItems = [{ product: { variantId: "v1" }, quantity: 1 }];
+  const html = render({ variantId: "v1", stock: 1, maxQuantity: 1 });
+  expect(html).toContain("You already have the last one in your cart.");
+  expect(html).toContain("View cart");
+  expect(html).toMatch(/class="addButton" disabled=""/);
+  language = "ar";
+  expect(render({ variantId: "v1", stock: 1, maxQuantity: 1 })).toContain("آخر قطعة موجودة في سلتك بالفعل.");
+  language = "en";
+  // Untracked stock or backorders: no limit, so nothing is blocked.
+  expect(render({ variantId: "v1", stock: 0 })).not.toContain("already have");
 });
