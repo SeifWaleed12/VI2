@@ -34,8 +34,15 @@ async function guestCustomerId(req: Request, email: string) {
 // Medusa's cart workflows and the abandoned-cart job (jobs/remove-abandoned-carts.ts)
 // lock a cart by its id; the owner changes here take the same lock, so a cart
 // can't be claimed between the job's last check and its deletion.
-const withCartLock = (req: Request, cartId: string, job: () => Promise<unknown>) =>
-  req.scope.resolve(Modules.LOCKING).execute(cartId, job, { timeout: 5 })
+const withCartLock = (req: Request, cartId: string, job: (signal?: AbortSignal) => Promise<unknown>) =>
+  req.scope.resolve(Modules.LOCKING).execute(cartId, async (signal?: AbortSignal) => {
+    signal?.throwIfAborted()
+    await ownedCart(req, cartId)
+    signal?.throwIfAborted()
+    const result = await job(signal)
+    signal?.throwIfAborted()
+    return result
+  }, { timeout: 5 })
 
 async function cartIdOf(req: Request) {
   const [, , area, id] = requestPath(req).split("/")
@@ -56,8 +63,11 @@ export async function cartOwnerOnly(req: Request, _res: MedusaResponse, next: Me
     // Medusa keeps the cart's current guest when its email matches, so it
     // does not look the email up among accounts.
     const email = (req.body!.email as string).trim().toLowerCase()
-    const guestId = await guestCustomerId(req, email)
-    await withCartLock(req, cart.id, () => req.scope.resolve(Modules.CART).updateCarts(cart.id, { customer_id: guestId }))
+    await withCartLock(req, cart.id, async signal => {
+      const guestId = await guestCustomerId(req, email)
+      signal?.throwIfAborted()
+      return req.scope.resolve(Modules.CART).updateCarts(cart.id, { customer_id: guestId })
+    })
   }
   return next()
 }

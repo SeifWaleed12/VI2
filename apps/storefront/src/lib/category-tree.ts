@@ -19,17 +19,18 @@ export function buildCategoryTree(categories: Omit<Category, "children">[]) {
     } else roots.push(node);
   }
   const visited = new Set<string>();
-  function order(items: Category[]) {
+  const pending = [roots];
+  while (pending.length) {
+    const items = pending.pop()!;
     items.sort(
       (a, b) => (a.rank ?? 0) - (b.rank ?? 0) || a.id.localeCompare(b.id),
     );
     for (const item of items) {
       if (visited.has(item.id)) throw new Error("Invalid category hierarchy");
       visited.add(item.id);
-      order(item.children);
+      pending.push(item.children);
     }
   }
-  order(roots);
   if (
     visited.size !== nodes.size &&
     categories.every(
@@ -40,7 +41,17 @@ export function buildCategoryTree(categories: Omit<Category, "children">[]) {
   return roots;
 }
 export function flattenCategories(roots: Category[]): Category[] {
-  return roots.flatMap((c) => [c, ...flattenCategories(c.children)]);
+  const result: Category[] = [];
+  const pending = [...roots].reverse();
+  const visited = new Set<string>();
+  while (pending.length) {
+    const category = pending.pop()!;
+    if (visited.has(category.id)) throw new Error("Invalid category hierarchy");
+    visited.add(category.id);
+    result.push(category);
+    for (let i = category.children.length - 1; i >= 0; i--) pending.push(category.children[i]);
+  }
+  return result;
 }
 export function categoryScope(roots: Category[], id: string) {
   const category = flattenCategories(roots).find((c) => c.id === id);

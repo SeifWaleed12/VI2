@@ -68,6 +68,13 @@ const CartContext = createContext<CartContextValue | null>(null);
 
 const CART_ID_KEY = "vi2-medusa-cart-id";
 
+function queuedLine(active: Cart, target: CartItem | undefined, key: string) {
+  if (target?.id) return active.items.find(line => line.id === target.id);
+  return active.items.find(line => line.id === key || (target
+    ? line.variantId === (target.product.variantId || target.product.id)
+    : line.productId === key || line.slug === key));
+}
+
 export function CartProvider({ children }: { children: ReactNode }) {
   const { regionId } = useRegion();
 
@@ -78,9 +85,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [mutationError, setMutationError] = useState<string | null>(null);
   const [queue] = useState(cartQueue<Cart>);
+  const sessionVersion = queue.version;
 
   // Sync internal state directly from the authoritative Medusa cart
-  const syncFromMedusaCart = useCallback((medusaCart: Cart | null) => {
+  const syncFromMedusaCart = useCallback((medusaCart: Cart | null, version = queue.version) => {
+    if (version !== queue.version) return;
     if (!medusaCart) {
       setCart(null);
       setCartIdState(null);
@@ -126,40 +135,52 @@ export function CartProvider({ children }: { children: ReactNode }) {
   // creates its own cart and all but one are orphaned.
   const pendingCart = useRef<Promise<Cart> | null>(null);
   const loadOrCreateCart = useCallback((): Promise<Cart> => {
-    pendingCart.current ??= (async () => {
+    if (pendingCart.current) return pendingCart.current;
+    const version = queue.version;
+    const pending = (async () => {
       let storedId: string | null = null;
       try {
         storedId = window.localStorage.getItem(CART_ID_KEY);
       } catch {}
       // getCart throws on outages, so only a gone or foreign cart is replaced.
       const existing = storedId ? await getCart(storedId) : null;
+      if (version !== queue.version) throw new Error("Cart session changed");
       return existing ?? (await createCart(regionId));
     })().finally(() => {
-      pendingCart.current = null;
+      if (pendingCart.current === pending) pendingCart.current = null;
     });
-    return pendingCart.current;
-  }, [regionId]);
+    pendingCart.current = pending;
+    return pending;
+  }, [regionId, queue]);
 
   // Ensure an active cart exists in Medusa associated with the region
   const getOrCreateCart = useCallback(async (): Promise<Cart> => {
+    if (sessionVersion !== queue.version) throw new Error("Cart session changed");
+    const version = queue.version;
+    const confirmed = queue.getConfirmed();
+    if (confirmed) return confirmed;
     if (cart) return cart;
     const active = await loadOrCreateCart();
-    syncFromMedusaCart(active);
+    if (version !== queue.version) throw new Error("Cart session changed");
+    syncFromMedusaCart(active, version);
     return active;
-  }, [cart, loadOrCreateCart, syncFromMedusaCart]);
+  }, [cart, loadOrCreateCart, syncFromMedusaCart, queue, sessionVersion]);
 
   // Initial load
   const refreshCart = useCallback(async () => {
+    const version = queue.version;
     setLoading(true);
     setMutationError(null);
     try {
-      syncFromMedusaCart(await loadOrCreateCart());
+      const result = await queue.run(loadOrCreateCart);
+      if (result.show) syncFromMedusaCart(result.show, version);
+      if (result.error) throw result.error;
     } catch (err) {
       console.error("CartProvider initialization error:", err);
     } finally {
-      setLoading(false);
+      if (version === queue.version) setLoading(false);
     }
-  }, [loadOrCreateCart, syncFromMedusaCart]);
+  }, [loadOrCreateCart, syncFromMedusaCart, queue]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- loads the saved cart on mount
@@ -192,11 +213,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
   // cart (see cart-queue.ts), or the snapshot when there never was one.
   const sendChange = useCallback(
     async (task: () => Promise<Cart>, rollback: () => void, failure: string) => {
-      const { show, latest, error } = await queue.run(task);
+      const version = queue.version;
+      const { show, latest, error, stale, rejected } = await queue.run(task);
+      if (stale || version !== queue.version) return false;
       if (show) syncFromMedusaCart(show);
-      else if (error && latest) rollback();
-      // A confirmed item change is a new checkout: an unconfirmed old order is
-      // no longer retried. A failed change keeps that retry.
+      else if (error && (latest || rejected)) rollback();
       if (error === undefined) { forgetPendingCart(); return true; }
       console.error(failure, error);
       setMutationError(error instanceof Error ? error.message : failure);
@@ -207,6 +228,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const addItem = useCallback(
     async (product: Product, quantity = 1, options?: { quiet?: boolean }) => {
+      if (sessionVersion !== queue.version) return false;
+      if (!queue.canAccept()) { setMutationError("Cart is busy. Wait for the current changes to finish."); return false; }
+      const version = queue.version;
       if (!options?.quiet) openCart();
       setMutationError(null);
 
@@ -235,26 +259,23 @@ export function CartProvider({ children }: { children: ReactNode }) {
         setItems(prevItems);
         setCart(prevCart);
       };
-      let activeCart: Cart;
-      try {
-        activeCart = await getOrCreateCart();
-      } catch (err: unknown) {
-        console.error("Failed to add item to Medusa cart, rolling back:", err);
-        rollback();
-        setMutationError(err instanceof Error ? err.message : "Failed to add item. Reverting changes.");
-        return false;
-      }
       return sendChange(
-        () => addCartItem(activeCart.id, variantOf(product), quantity),
+        async () => {
+          const activeCart = await getOrCreateCart();
+          if (version !== queue.version) throw new Error("Cart session changed");
+          return addCartItem(activeCart.id, variantOf(product), quantity);
+        },
         rollback,
         "Failed to add item. Reverting changes.",
       );
     },
-    [cart, getOrCreateCart, items, openCart, sendChange],
+    [cart, getOrCreateCart, items, openCart, sendChange, queue, sessionVersion],
   );
 
   const removeItem = useCallback(
     async (productIdOrLineId: string) => {
+      if (sessionVersion !== queue.version) return;
+      if (!queue.canAccept()) { setMutationError("Cart is busy. Wait for the current changes to finish."); return; }
       setMutationError(null);
 
       // Snapshot previous state for rollback
@@ -278,20 +299,26 @@ export function CartProvider({ children }: { children: ReactNode }) {
         ),
       );
 
-      const lineId = itemToRemove?.id;
-      if (cart && lineId) {
+      if (cart || itemToRemove) {
         await sendChange(
-          () => removeCartItem(cart.id, lineId),
+          async () => {
+            const active = queue.getConfirmed() ?? cart;
+            if (!active) throw new Error("Cart is still loading. Try again.");
+            const line = queuedLine(active, itemToRemove, productIdOrLineId);
+            return line?.id ? removeCartItem(active.id, line.id) : active;
+          },
           () => { setItems(prevItems); setCart(prevCart); },
           "Failed to remove item. Reverting changes.",
         );
       }
     },
-    [cart, items, sendChange],
+    [cart, items, sendChange, queue, sessionVersion],
   );
 
   const updateQuantity = useCallback(
     async (productIdOrLineId: string, quantity: number) => {
+      if (sessionVersion !== queue.version) return;
+      if (!queue.canAccept()) { setMutationError("Cart is busy. Wait for the current changes to finish."); return; }
       if (quantity <= 0) {
         await removeItem(productIdOrLineId);
         return;
@@ -324,53 +351,64 @@ export function CartProvider({ children }: { children: ReactNode }) {
         }),
       );
 
-      const lineId = target?.id;
-      if (cart && lineId) {
+      if (cart || target) {
         await sendChange(
-          () => updateCartItem(cart.id, lineId, quantity),
+          async () => {
+            const active = queue.getConfirmed() ?? cart;
+            const line = active && queuedLine(active, target, productIdOrLineId);
+            if (!active || !line?.id) throw new Error("Cart item is unavailable. Refresh and try again.");
+            return updateCartItem(active.id, line.id, quantity);
+          },
           () => { setItems(prevItems); setCart(prevCart); },
           "Failed to update quantity. Reverting changes.",
         );
       }
     },
-    [cart, items, removeItem, sendChange],
+    [cart, items, removeItem, sendChange, queue, sessionVersion],
   );
 
   const applyPromotion = useCallback(
     async (code: string): Promise<PromoResult> => {
-      if (!cart) return { ok: false, reason: "loading" };
+      if (!cart || sessionVersion !== queue.version) return { ok: false, reason: "loading" };
+      const version = queue.version;
       try {
-        const updated = await applyCartPromotion(cart.id, code.trim());
-        const outcome = promoOutcome(updated, code);
-        let synced = updated;
-        if (!outcome.ok && outcome.reason === "not_eligible") {
-          // A code that takes nothing off is removed. If that fails, the cart
-          // still matches Medusa and PromoCode marks the code as not applying.
-          synced = await removeCartPromotion(cart.id, code.trim()).catch(() => updated);
-        }
-        syncFromMedusaCart(synced);
+        let outcome: PromoResult = { ok: false, reason: "loading" };
+        const result = await queue.run(async () => {
+          const updated = await applyCartPromotion(cart.id, code.trim());
+          if (version !== queue.version) return updated;
+          outcome = promoOutcome(updated, code);
+          queue.confirm(updated);
+          return !outcome.ok && outcome.reason === "not_eligible"
+            ? await removeCartPromotion(cart.id, code.trim()) : updated;
+        });
+        if (result.stale || version !== queue.version) return { ok: false, reason: "loading" };
+        if (result.show) syncFromMedusaCart(result.show, version);
+        if (result.error) throw result.error;
+        forgetPendingCart();
         return outcome;
       } catch (err: unknown) {
+        if (version !== queue.version) return { ok: false, reason: "loading" };
+        setMutationError(err instanceof Error ? err.message : "Could not apply promotion.");
         return promoFailure(err);
       }
     },
-    [cart, syncFromMedusaCart],
+    [cart, syncFromMedusaCart, queue, sessionVersion],
   );
 
   const removePromotion = useCallback(
     async (code: string): Promise<void> => {
-      if (!cart) return;
-      try {
-        const updated = await removeCartPromotion(cart.id, code.trim());
-        syncFromMedusaCart(updated);
-      } catch (err) {
-        console.error("Failed to remove promotion code:", err);
-      }
+      if (!cart || sessionVersion !== queue.version) return;
+      await sendChange(() => removeCartPromotion(cart.id, code.trim()), () => {}, "Could not remove promotion. Try again.");
     },
-    [cart, syncFromMedusaCart],
+    [cart, sendChange, queue, sessionVersion],
   );
 
   const clearCart = useCallback(async () => {
+    queue.reset();
+    pendingCart.current = null;
+    setLoading(false);
+    setMutationError(null);
+    setIsCartOpen(false);
     setItems([]);
     setCart(null);
     setCartIdState(null);
@@ -379,7 +417,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         window.localStorage.removeItem(CART_ID_KEY);
       } catch {}
     }
-  }, []);
+  }, [queue]);
 
   // Signing out leaves no cart (items, email, address) for the next person on
   // this browser.

@@ -14,7 +14,8 @@ export async function POST(req: MedusaRequest<{ token?: unknown }>, res: MedusaR
   const change = verifyEmailChange(req.body?.token, http.jwtSecret as string)
   if (!change) return invalidLink(res)
   // One change per customer at a time, so two clicks cannot both pass the checks.
-  return req.scope.resolve(Modules.LOCKING).execute(`email-change:${change.customer_id}`, async () => {
+  return req.scope.resolve(Modules.LOCKING).execute(`email-change:${change.customer_id}`, async (signal?: AbortSignal) => {
+    signal?.throwIfAborted()
     const query = req.scope.resolve(ContainerRegistrationKeys.QUERY)
     const { data: [customer] } = await query.graph({ entity: "customer", fields: ["id", "email", "has_account"], filters: { id: change.customer_id } })
     if (!customer?.has_account || customer.email !== change.from) return invalidLink(res)
@@ -32,9 +33,11 @@ export async function POST(req: MedusaRequest<{ token?: unknown }>, res: MedusaR
     if ((await auth.listProviderIdentities({ provider: "emailpass", entity_id: change.to })).length) {
       return res.status(409).json({ code: "email_taken", message: "Another account already uses this email." })
     }
+    signal?.throwIfAborted()
     await changeCustomerEmailWorkflow(req.scope).run({
       input: { login_id: login.id, auth_identity_id: login.auth_identity_id as string, app_metadata: app, customer_id: customer.id, from: change.from, to: change.to },
     })
+    signal?.throwIfAborted()
     return res.status(200).json({ success: true, email: change.to })
   }, { timeout: 5 })
 }

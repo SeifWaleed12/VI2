@@ -1,5 +1,5 @@
 import type { FilterableCartProps, MedusaContainer } from "@medusajs/framework/types"
-import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
+import { ContainerRegistrationKeys, MedusaError, Modules } from "@medusajs/framework/utils"
 
 // Seif (2026-10-19): guest carts nobody has touched for 30 days are deleted.
 // Raise it to 60-90 days if abandoned-cart emails are added.
@@ -15,7 +15,7 @@ const LOCK_TIMEOUT = 5
 // registered customers are kept.
 // shortcut: a deleted cart's unpaid payment collection stays (the system
 // provider only), delete those too once a real payment provider stores data.
-export async function removeAbandonedCarts(container: MedusaContainer, now = new Date()) {
+export async function removeAbandonedCarts(container: MedusaContainer, now = new Date(), signal?: AbortSignal) {
   const carts = container.resolve(Modules.CART)
   const query = container.resolve(ContainerRegistrationKeys.QUERY)
   const locking = container.resolve(Modules.LOCKING)
@@ -58,9 +58,11 @@ export async function removeAbandonedCarts(container: MedusaContainer, now = new
   let removed = 0
   let skip = 0
   for (;;) {
+    signal?.throwIfAborted()
     const page = await carts.listCarts(filters, { select: ["id"], take: BATCH, skip, order: { created_at: "ASC" } })
     let kept = page.length
     for (const { id } of page) {
+      signal?.throwIfAborted()
       // Medusa's cart workflows (add, update, complete, transfer to a
       // customer) lock the cart by its id, so none can change it in between.
       const gone = await locking.execute(id, () => remove(id), { timeout: LOCK_TIMEOUT }).catch((error: Error) => {
@@ -79,7 +81,14 @@ export async function removeAbandonedCarts(container: MedusaContainer, now = new
 }
 
 export default async function removeAbandonedCartsJob(container: MedusaContainer) {
-  const removed = await removeAbandonedCarts(container)
+  let entered = false
+  const removed = await container.resolve(Modules.LOCKING).execute("job:remove-abandoned-carts", (signal?: AbortSignal) => {
+    entered = true
+    return removeAbandonedCarts(container, new Date(), signal)
+  }, { timeout: 1, expire: 300 }).catch((error: unknown) => {
+    if (!entered && error instanceof MedusaError && error.type === MedusaError.Types.CONFLICT && error.message === "Timed-out acquiring lock.") return 0
+    throw error
+  })
   if (removed) container.resolve(ContainerRegistrationKeys.LOGGER).info(`Removed ${removed} abandoned guest carts`)
 }
 

@@ -25,8 +25,10 @@ export async function filterProductsByBrand(req: MedusaRequest, _res: MedusaResp
 
   const brands = await req.scope.resolve<BrandModuleService>(BRAND_MODULE).listBrands({ id: brandIds as string[], status: "active" }, { select: ["id"] })
   const productIds = brands.length
-    ? (await req.scope.resolve(ContainerRegistrationKeys.QUERY).graph({ entity: ProductBrandLink.entryPoint, fields: ["product_id"], filters: { brand_id: brands.map((brand) => brand.id) } })).data.map((link: { product_id: string }) => link.product_id)
+    ? (await req.scope.resolve(ContainerRegistrationKeys.QUERY).graph({ entity: ProductBrandLink.entryPoint, fields: ["product_id"], filters: { brand_id: brands.map((brand) => brand.id) }, pagination: { take: 1001, skip: 0 } })).data.map((link: { product_id: string }) => link.product_id)
     : []
+  // Large brands use the already paginated catalog API, never a giant IN list.
+  if (productIds.length > 1000) throw new MedusaError(MedusaError.Types.INVALID_DATA, "Use /store/catalog for large brand filters")
 
   // An `id` filter already in the request narrows the brand's products further.
   const requested = req.query.id === undefined ? undefined : new Set([req.query.id].flat().map(String))

@@ -1,5 +1,6 @@
-import type { MedusaContainer } from "@medusajs/framework/types"
-import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
+import type { Context, MedusaContainer } from "@medusajs/framework/types"
+import type { EntityManager } from "@medusajs/framework/mikro-orm/postgresql"
+import { ContainerRegistrationKeys, MedusaError, Modules } from "@medusajs/framework/utils"
 import { LOYALTY_MODULE } from "../modules/loyalty"
 import type LoyaltyModuleService from "../modules/loyalty/service"
 
@@ -58,17 +59,14 @@ export function summarize(entries: Entry[]) {
 
 const loyalty = (container: MedusaContainer) => container.resolve<LoyaltyModuleService>(LOYALTY_MODULE)
 
-export async function customerPoints(container: MedusaContainer, customerId: string) {
-  return summarize(await loyalty(container).listPointsEntries({ customer_id: customerId }, { select: ["kind", "points", "created_at"] }))
+export async function customerPoints(container: MedusaContainer, customerId: string, context?: Context<EntityManager>) {
+  const total = await loyalty(container).pointsTotals(customerId, context)
+  return { ...total, expiresAt: total.balance > 0 && total.lastActivity ? expiresAt(total.lastActivity) : null }
 }
 
 // Points the order still holds: earned on delivery minus what its refunds removed (P-8).
-export async function orderPointsLeft(container: MedusaContainer, orderId: string) {
-  const entries = await loyalty(container).listPointsEntries(
-    { $or: [{ kind: "earn", source_id: orderId }, { kind: "refund", source_id: { $like: `${orderId}/%` } }] },
-    { select: ["points"] },
-  )
-  return entries.reduce((sum, entry) => sum + entry.points, 0)
+export async function orderPointsLeft(container: MedusaContainer, orderId: string, context?: Context<EntityManager>) {
+  return loyalty(container).orderPointsTotal(orderId, context)
 }
 
 // The order's refunds, from its payments (where Medusa records them).
@@ -82,14 +80,21 @@ export async function orderRefunds(container: MedusaContainer, orderId: string) 
 // For an order that earns now (call under the customer's lock): refunds made
 // before delivery are taken off what it earns, and marked used, so their
 // events change nothing later (P-8, P-10).
-export async function takeEarlierRefunds(container: MedusaContainer, customerId: string, orderId: string) {
+export async function takeEarlierRefunds(container: MedusaContainer, customerId: string, orderId: string, refunds: Awaited<ReturnType<typeof orderRefunds>>, context?: Context<EntityManager>) {
   const service = loyalty(container)
+  const sources = refunds.map(refund => `${orderId}/${refund.id}`)
+  // Read provider/order data before holding a loyalty DB connection. If a
+  // refund writer won the customer lock after that snapshot, retry the event.
+  const prefix = orderId.replace(/[\\%_]/g, "\\$&") + "/%"
+  if ((await service.listPointsEntries({ kind: "refund", customer_id: customerId, source_id: { $like: prefix, $nin: sources } }, { select: ["id"], take: 1 }, context)).length) {
+    throw new MedusaError(MedusaError.Types.CONFLICT, "Refund state changed during delivery. Retry.")
+  }
   let points = 0
-  for (const refund of await orderRefunds(container, orderId)) {
+  for (const refund of refunds) {
     points += pointsFor(refund.amount)
     const source_id = `${orderId}/${refund.id}`
-    if (!(await service.listPointsEntries({ kind: "refund", source_id }, { select: ["id"] })).length) {
-      await service.createPointsEntries({ customer_id: customerId, kind: "refund", source_id, points: 0 })
+    if (!(await service.listPointsEntries({ kind: "refund", source_id }, { select: ["id"] }, context)).length) {
+      await service.createPointsEntries({ customer_id: customerId, kind: "refund", source_id, points: 0 }, context)
     }
   }
   return points
@@ -105,19 +110,24 @@ type Source = { customer_id: string, kind: PointsKind, source_id: string }
 export async function recordPoints(
   container: MedusaContainer,
   source: Source,
-  amount: () => Promise<number | null> | number | null,
-  limit?: () => Promise<number>,
+  amount: (context?: Context<EntityManager>) => Promise<number | null> | number | null,
+  limit?: (context?: Context<EntityManager>) => Promise<number>,
 ) {
-  return container.resolve(Modules.LOCKING).execute(`points:${source.customer_id}`, async () => {
+  return container.resolve(Modules.LOCKING).execute(`points:${source.customer_id}`, async (signal?: AbortSignal) => {
     const service = loyalty(container)
-    if ((await service.listPointsEntries({ kind: source.kind, source_id: source.source_id }, { select: ["id"] })).length) return 0
-    let points = await amount()
-    if (points === null) return 0
-    if (points < 0) {
-      const { balance } = await customerPoints(container, source.customer_id)
-      points = -cappedRemoval(-points, balance, limit ? await limit() : Infinity)
-    }
-    await service.createPointsEntries({ ...source, points })
-    return points
+    return service.withCustomerTransaction(source.customer_id, async context => {
+      signal?.throwIfAborted()
+      if ((await service.listPointsEntries({ kind: source.kind, source_id: source.source_id }, { select: ["id"] }, context)).length) return 0
+      let points = await amount(context)
+      if (points === null) return 0
+      if (points < 0) {
+        const { balance } = await customerPoints(container, source.customer_id, context)
+        points = -cappedRemoval(-points, balance, limit ? await limit(context) : Infinity)
+      }
+      signal?.throwIfAborted()
+      await service.createPointsEntries({ ...source, points }, context)
+      signal?.throwIfAborted()
+      return points
+    }, { isolationLevel: "read committed" })
   }, { timeout: 10 })
 }

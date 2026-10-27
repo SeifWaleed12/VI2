@@ -1,0 +1,10 @@
+{
+  "products": 1,
+  "variants": 200,
+  "requests": 40,
+  "statuses": {
+    "200": 40
+  },
+  "elapsedMs": 1769,
+  "note": "Explicit 503 with Retry-After is permitted backpressure; request timeouts and unexpected server errors are not."
+}

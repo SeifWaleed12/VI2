@@ -1,4 +1,4 @@
-import { cacheStoreGet, invalidateStoreCacheAfterWrite, storeCacheKey } from "../store-cache"
+import { cacheStoreGet, invalidateStoreCache, invalidateStoreCacheAfterWrite, storeCacheKey } from "../store-cache"
 
 function fakeCache() {
   const store = new Map<string, unknown>()
@@ -23,7 +23,8 @@ function request(cache: unknown, overrides: Record<string, unknown> = {}) {
 }
 
 function response() {
-  const res: any = { statusCode: 200, json: jest.fn((body: unknown) => body), on: jest.fn() }
+  const res: any = { statusCode: 200, json: jest.fn((body: unknown) => body), on: jest.fn(), setHeader: jest.fn() }
+  res.status = jest.fn((code: number) => { res.statusCode = code; return res })
   return res
 }
 
@@ -40,6 +41,48 @@ it("serves the second identical read from the cache", async () => {
   expect(await run(request(cache), res)).not.toHaveBeenCalled()
   expect(res.json).toHaveBeenCalledWith({ products: [1] })
   expect(cache.set).toHaveBeenCalledWith(expect.stringMatching(/^store-cache:/), { products: [1] }, 60)
+})
+
+it("combines concurrent cold reads in one server", async () => {
+  const cache = fakeCache()
+  const middleware = cacheStoreGet(60)
+  let release!: () => void
+  const gate = new Promise<void>(resolve => { release = resolve })
+  const handler = jest.fn(async (res) => { await gate; res.json({ products: [1] }) })
+  const requests = Array.from({ length: 100 }, () => {
+    const res = response()
+    return middleware(request(cache, { originalUrl: "/store/products?limit=7" }), res, () => handler(res))
+  })
+  await new Promise(resolve => setImmediate(resolve))
+  expect(handler).toHaveBeenCalledTimes(1)
+  release()
+  await Promise.all(requests)
+})
+
+it("canonicalizes query ordering while preserving context", () => {
+  expect(storeCacheKey(request(null, { originalUrl: "/store/products?offset=0&limit=7" })))
+    .toBe(storeCacheKey(request(null, { originalUrl: "/store/products?limit=7&offset=0" })))
+})
+
+it("does not create cache entries for arbitrary cache-busting query keys", async () => {
+  const cache = fakeCache()
+  await run(request(cache, { originalUrl: "/store/products?limit=5&random_key=123" }), response())
+  expect(cache.get).not.toHaveBeenCalled()
+  expect(cache.set).not.toHaveBeenCalled()
+})
+
+it("bounds followers when a cold handler never produces a response", async () => {
+  jest.useFakeTimers()
+  try {
+    const cache = fakeCache(), req = request(cache, { originalUrl: "/store/products?limit=13" })
+    const middleware = cacheStoreGet(60), first = response(), second = response()
+    const leader = middleware(req, first, jest.fn())
+    const follower = middleware(req, second, jest.fn())
+    await jest.advanceTimersByTimeAsync(2001)
+    await Promise.all([leader, follower])
+    expect(second.status).toHaveBeenCalledWith(503)
+    expect(second.setHeader).toHaveBeenCalledWith("Retry-After", "1")
+  } finally { jest.useRealTimers() }
 })
 
 it("keeps each locale and each publishable key apart", () => {
@@ -104,4 +147,57 @@ it.each(["/store/products?limit=5", "/store/regions", "/store/product-categories
   const next = await run(request(cache, { originalUrl, headers: { ...request(cache).headers, "cache-control": "no-cache" } }), response())
   expect(next).not.toHaveBeenCalled()
   expect(cache.get).toHaveBeenCalledTimes(2)
+})
+
+it("lets followers receive native validation errors instead of a false outage", async () => {
+  const cache = fakeCache(), req = request(cache, { originalUrl: "/store/products?brand_id=bad" })
+  const middleware = cacheStoreGet(60), first = response(), second = response()
+  await middleware(req, first, jest.fn())
+  const next = jest.fn(() => second.status(400).json({ message: "Invalid brand" }))
+  const follower = middleware(req, second, next)
+  await new Promise(resolve => setImmediate(resolve))
+  expect(next).not.toHaveBeenCalled()
+  first.status(400).json({ message: "Invalid brand" })
+  await follower
+  expect(next).toHaveBeenCalledTimes(1)
+  expect(second.status).toHaveBeenCalledWith(400)
+  expect(second.setHeader).not.toHaveBeenCalled()
+})
+
+it("retries a failed invalidation after recovery and shares bounded retry work", async () => {
+  jest.useFakeTimers()
+  try {
+    const cache = fakeCache(), req = request(cache)
+    cache.store.set("store-cache:old", { products: ["old"] })
+    cache.invalidate.mockRejectedValueOnce(new Error("Redis stalled"))
+
+    const first = invalidateStoreCache(req.scope), second = invalidateStoreCache(req.scope)
+    await jest.advanceTimersByTimeAsync(501)
+    await Promise.all([first, second])
+    expect(cache.invalidate).toHaveBeenCalledTimes(2)
+    expect(cache.store.size).toBe(0)
+  } finally { jest.useRealTimers() }
+})
+
+it("stops invalidation retries after three failures", async () => {
+  jest.useFakeTimers()
+  try {
+    const cache = fakeCache()
+    cache.invalidate.mockRejectedValue(new Error("offline"))
+    const work = invalidateStoreCache(request(cache).scope)
+    await jest.advanceTimersByTimeAsync(2000)
+    await work
+    expect(cache.invalidate).toHaveBeenCalledTimes(3)
+  } finally { jest.useRealTimers() }
+})
+
+it("rescans when a write arrives during an in-flight invalidation", async () => {
+  const cache = fakeCache()
+  let release!: () => void
+  cache.invalidate.mockImplementationOnce(() => new Promise(resolve => { release = resolve }))
+  const scope = request(cache).scope
+  const first = invalidateStoreCache(scope), second = invalidateStoreCache(scope)
+  release()
+  await Promise.all([first, second])
+  expect(cache.invalidate).toHaveBeenCalledTimes(2)
 })

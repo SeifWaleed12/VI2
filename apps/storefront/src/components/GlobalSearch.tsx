@@ -87,13 +87,15 @@ export default function GlobalSearch({
   useEffect(() => {
     if (!searchable) return;
     let active = true;
+    const controller = new AbortController();
     const timer = window.setTimeout(() => {
-      listCatalog({ q: term, locale: language, limit: SUGGESTION_COUNT, sort: "default" })
+      listCatalog({ q: term, locale: language, limit: SUGGESTION_COUNT, sort: "default", signal: controller.signal })
         .then((page) => { if (active) setFound({ key: searchKey, products: page.products, failed: false }); })
         .catch(() => { if (active) setFound({ key: searchKey, products: [], failed: true }); });
     }, SEARCH_DELAY_MS);
     return () => {
       active = false;
+      controller.abort();
       window.clearTimeout(timer);
     };
   }, [searchable, term, language, searchKey]);

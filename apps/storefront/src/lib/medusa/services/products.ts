@@ -171,6 +171,7 @@ export type ListProductsParams = {
   order?: string;
   tag_id?: string[];
   fresh?: boolean;
+  signal?: AbortSignal;
 };
 
 export type ProductPage = {
@@ -209,8 +210,10 @@ export async function listProducts(params: ListProductsParams): Promise<ProductP
 
     const headers = { "x-medusa-locale": medusaLocale(params.locale) };
     const { products, count } = params.fresh
-      ? await medusa.client.fetch<{ products: CatalogProduct[]; count: number }>("/store/catalog-products", { method: "GET", query, headers, cache: "no-store" })
-      : await medusa.store.product.list(query, headers);
+      ? await medusa.client.fetch<{ products: CatalogProduct[]; count: number }>("/store/catalog-products", { method: "GET", query, headers, cache: "no-store", signal: params.signal })
+      : params.signal
+        ? await medusa.client.fetch<{ products: CatalogProduct[]; count: number }>("/store/products", { method: "GET", query, headers, signal: params.signal })
+        : await medusa.store.product.list(query, headers);
     return { products: (products || []).map(mapMedusaProduct), count: count ?? 0, limit, offset };
   } catch (error) {
     if ((error as { status?: unknown } | null)?.status === 400) throw new InvalidCatalogFilterError();

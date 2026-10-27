@@ -1,3 +1,4 @@
+import { readCatalogState } from "../../src/lib/catalog-ranking"
 import { medusaIntegrationTestRunner } from "@medusajs/test-utils"
 import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
 import { createInventoryItemsWorkflow, createProductsWorkflow } from "@medusajs/medusa/core-flows"
@@ -11,6 +12,13 @@ jest.setTimeout(240 * 1000)
 // prices on /deals are the catalog index's job (catalog-sorting.spec.ts).
 medusaIntegrationTestRunner({
   testSuite: ({ api, getContainer }) => {
+    beforeAll(async () => {
+      for (let attempt = 0; attempt < 120; attempt++) {
+        if ((await readCatalogState(getContainer()).catch(() => undefined))?.ready === 1) return
+        await new Promise(resolve => setTimeout(resolve, 250))
+      }
+      throw new Error("Native catalog index did not initialize")
+    })
     describe("bundles and health goal tags", () => {
       let storeApi: { headers: Record<string, string>, validateStatus: () => boolean }
       const ids: Record<string, string> = {}
@@ -58,7 +66,12 @@ medusaIntegrationTestRunner({
           variants: [{ title: "2kg", options: { Size: "2kg" }, manage_inventory: true, prices: [{ amount: 900, currency_code: "egp" }],
             inventory_items: [{ inventory_item_id: parts[2].id, required_quantity: 10000 }] }],
         }] } })
-        const response = await api.get("/store/deals", storeApi)
+        let response = await api.get("/store/deals", storeApi)
+        for (let attempt = 0; attempt < 120 && !response.data.bundle_ids?.includes(bundle.id); attempt++) {
+          await new Promise(resolve => setTimeout(resolve, 250))
+          response = await api.get("/store/deals", storeApi)
+        }
+        expect(response.status).toBe(200)
         expect(response.data.bundle_ids).toEqual([bundle.id])
         expect(response.data.bundle_ids).not.toContain(single.id)
       })
