@@ -10,17 +10,19 @@ const effects: (()=>void)[]=[];
 let stateIndex=0,refIndex=0;
 let own: ReturnType<typeof useOwnReview>;
 let customer: {id:string}|null={id:"a"};
-jest.mock("react",()=>({...jest.requireActual("react"),useId:()=>"test",useEffect:(fn:()=>void)=>effects.push(fn),useRef:(initial:unknown)=>refs[refIndex++]??(refs[refIndex-1]={current:initial}),useState:(initial:unknown)=>{const i=stateIndex++;if(!(i in states))states[i]=typeof initial==="function"?initial():initial;return[states[i],(value:unknown)=>{states[i]=value}];}}));
+let hydrated=true;
+let authLoading=false;
+jest.mock("react",()=>({...jest.requireActual("react"),useId:()=>"test",useSyncExternalStore:(_subscribe:unknown,client:()=>boolean,server:()=>boolean)=>hydrated?client():server(),useEffect:(fn:()=>void)=>effects.push(fn),useRef:(initial:unknown)=>refs[refIndex++]??(refs[refIndex-1]={current:initial}),useState:(initial:unknown)=>{const i=stateIndex++;if(!(i in states))states[i]=typeof initial==="function"?initial():initial;return[states[i],(value:unknown)=>{states[i]=value}];}}));
 jest.mock("../Reviews.module.css",()=>({}));
 jest.mock("next/navigation",()=>({useRouter:()=>({push:jest.fn(),refresh:jest.fn()})}));
-jest.mock("@/context/AuthContext",()=>({useAuth:()=>({customer,isLoading:false,refreshCustomer:jest.fn()})}));
+jest.mock("@/context/AuthContext",()=>({useAuth:()=>({customer,isLoading:authLoading,refreshCustomer:jest.fn()})}));
 jest.mock("../use-own-review",()=>({useOwnReview:()=>own}));
 jest.mock("../use-product-reviews",()=>({useProductReviews:()=>({page:null,query:{offset:0,sort:"newest"},error:false,loading:false,refresh:jest.fn()})}));
-type Props={role?:string;children?:ReactNode;ref?:{current:unknown};onClick?:()=>void;onEdit?:()=>void;recovered?:boolean};
+type Props={disabled?:boolean;role?:string;children?:ReactNode;ref?:{current:unknown};onClick?:()=>void;onEdit?:()=>void;recovered?:boolean};
 function walk(node:ReactNode):ReactElement<Props>[]{if(Array.isArray(node))return node.flatMap(walk);if(!isValidElement<Props>(node))return[];return[node,...walk(node.props.children)]}
 function useRender(fn:()=>ReactNode){stateIndex=0;refIndex=0;effects.length=0;const tree=walk(fn());for(const node of tree){if(node.props.ref)node.props.ref.current={focus:jest.fn(),scrollIntoView:jest.fn()}}return tree}
 const writer=(draft:Parameters<typeof ReviewWriter>[0]["draft"]=null)=>ReviewWriter({own,copy:REVIEW_COPY.en,open:true,draft,onDraft:jest.fn(),onClose:jest.fn(),onSaved:jest.fn(),onSignIn:jest.fn()});
-beforeEach(()=>{customer={id:"a"};states.length=0;refs.length=0;effects.length=0;own={review:{id:"r",rating:4,title:null,content:"Previously saved feedback here.",first_name:"Sara",created_at:"2026-10-20",updated_at:"2026-10-20",status:"approved",version:1,moderation_reason:null},busy:false,loaded:true,readError:false,error:null,sessionExpired:false,reload:jest.fn(),save:jest.fn(),withdraw:jest.fn()}});
+beforeEach(()=>{hydrated=true;authLoading=false;customer={id:"a"};states.length=0;refs.length=0;effects.length=0;own={review:{id:"r",rating:4,title:null,content:"Previously saved feedback here.",first_name:"Sara",created_at:"2026-10-20",updated_at:"2026-10-20",status:"approved",version:1,moderation_reason:null},busy:false,loaded:true,readError:false,error:null,sessionExpired:false,reload:jest.fn(),save:jest.fn(),withdraw:jest.fn()}});
 it("does not call a failed attempt a restored draft, and clears genuine recovery after editing",()=>{
  const draft={rating:4,title:"",content:"A sufficiently detailed retained draft."};
  useRender(()=>writer());
@@ -91,4 +93,33 @@ it("waits for the replacement writer before focusing and centering the account n
  target=tree.find(node=>node.props.children===REVIEW_COPY.en.accountChanged)!.props.ref!.current as {focus:jest.Mock;scrollIntoView:jest.Mock};
  expect(target.focus).toHaveBeenCalledTimes(1);
  expect(target.scrollIntoView).toHaveBeenCalledWith({block:"center",behavior:"instant"});
+});
+
+it.each(["en", "ar"] as const)("keeps the initial hydration action loading even when auth resolved early in %s",locale=>{
+ const page=()=>ProductReviews({productId:"p",locale,initial:null});
+ hydrated=false;customer=null;authLoading=true;
+ let tree=useRender(page);
+ let button=tree.find(node=>node.type==="button")!;
+ expect(button.props.children).toBe(REVIEW_COPY[locale].accountLoading);
+ expect(button.props.disabled).toBe(true);
+ authLoading=false;
+ tree=useRender(page);button=tree.find(node=>node.type==="button")!;
+ expect(button.props.children).toBe(REVIEW_COPY[locale].accountLoading);
+ expect(button.props.disabled).toBe(true);
+ expect(tree.some(node=>node.type===ReviewWriter)).toBe(false);
+ hydrated=true;
+ tree=useRender(page);button=tree.find(node=>node.type==="button")!;
+ expect(button.props.children).toBe(REVIEW_COPY[locale].signIn);
+ expect(button.props.disabled).toBe(false);
+});
+it("defers signed-in review UI until hydration, without reporting an account switch",()=>{
+ const page=()=>ProductReviews({productId:"p",locale:"en",initial:null});
+ hydrated=false;
+ let tree=useRender(page);
+ expect(tree.some(node=>node.type===ReviewWriter)).toBe(false);
+ expect(tree.find(node=>node.type==="button")!.props.children).toBe(REVIEW_COPY.en.accountLoading);
+ hydrated=true;useRender(page);tree=useRender(page);
+ expect(tree.some(node=>node.type===ReviewWriter)).toBe(true);
+ expect(tree.find(node=>node.type==="button")!.props.children).toBe(REVIEW_COPY.en.edit);
+ expect(tree.some(node=>node.props.children===REVIEW_COPY.en.accountChanged)).toBe(false);
 });

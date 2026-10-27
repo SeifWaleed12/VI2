@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { localizedHref, type Locale } from "@/lib/i18n";
@@ -12,11 +12,17 @@ import { useOwnReview } from "./use-own-review";
 import { clearReviewDraft, keepReviewDraft, readReviewDraft } from "./review-draft";
 import styles from "./Reviews.module.css";
 
+const subscribeToHydration = () => () => {};
+
 type Props = { productId: string; locale: Locale; initial: ReviewPage | null };
 export default function ProductReviews({ productId, locale, initial }: Props) {
   const copy = REVIEW_COPY[locale];
   const router = useRouter();
-  const { customer, isLoading: authLoading, refreshCustomer } = useAuth();
+  // A streamed section can hydrate after the surrounding customer provider resolved.
+  const hydrated = useSyncExternalStore(subscribeToHydration, () => true, () => false);
+  const { customer: sessionCustomer, isLoading, refreshCustomer } = useAuth();
+  const customer = hydrated ? sessionCustomer : null;
+  const authLoading = !hydrated || isLoading;
   const customerId = customer?.id ?? null;
   const [account, setAccount] = useState({ id: customerId, changed: false });
   if (account.id !== customerId) {

@@ -65,3 +65,18 @@ On a product page, React reports a hydration mismatch in `ProductReviews`: the s
 - `npm run check`: backend 266, storefront 502; typecheck and lint pass.
 
 Round 2 requested: `cee1c5b` only.
+
+### Combining with #27 (done on the local reviewed baseline, `dc2cec0`)
+
+#27 rewrote `updateQuantity`. When this branch is updated after #27 merges:
+1. **Keep #27's body.** It reads the confirmed line from the queue. Return its `sendChange(...)` result, and return `false` when there is neither a cart nor a target.
+2. **#27's two early exits** (stale session version, busy queue) return `false`, not `undefined`.
+
+With #26, #27 and #28 together: backend 341, storefront 574; typecheck and lint pass.
+
+## GPT review, round 2 (2026-10-27)
+
+**Round 1 P2 resolved. No new findings.**
+- `updateQuantity` returns the `sendChange` result. The drawer re-reads stock after a refused increase, and failed reads clear old limits.
+- The regression test checks that only a refusal triggers a re-read.
+- The #28 hydration mismatch stays separate.

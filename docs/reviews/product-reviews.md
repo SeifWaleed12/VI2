@@ -564,3 +564,46 @@ Claude's **APPROVE ofc638ff9** above is preserved unchanged. Both requested geom
 **R5-1 is retained as an optional cosmetic follow-up:** at320x640 the last line of the short-text validation message overlaps the cart bar by5–6px. The textarea is fully visible, the feedback remains readable and Submit is reachable by scrolling per Claude's evidence. No fix or owner acceptance of that edge is claimed; it does not overturn his approval.
 
 Feature review is closed for candidatec638ff9. Publication/merge/live migration remain Seif-controlled and have not happened. The separate Deals/Bundles build failure and fresh-database initial-seed issue remain unchanged; do not describe the branch as having a passing production storefront build. Previous privacy-retention, real Redis/multiple-instance and physical/accessibility/manual limits remain recorded. No further reviewer prompt is required for this documentation-only closure.
+
+
+## Streamed account hydration fix —2026-10-27
+
+Seif requested the mismatch reported in `docs/reviews/stock-limits.md` on PR28. Source **4afa837**, based on the owner-integrated PR head1534801 (audit/logo/stock changes already merged into that head).
+
+Cause: ProductReviews can stream inside Suspense and hydrate after CustomerProvider has already resolved. Reading that ready context immediately changed the initial disabled "Checking your account…" server button into the guest action, or introduced signed-in private UI, during hydration.
+
+Fix: a component-local React useSyncExternalStore snapshot returns false for the server/first hydration pass and true after hydration. Until then authLoading is true and customer is null. This stabilizes the entire account-dependent subtree, including writer/draft branches, rather than only the button text. After hydration normal provider state drives the existing UI. No suppressHydrationWarning, provider rewrite, store duplication, polling, dependency, backend/schema/auth contract or design change.
+
+Evidence:
+- Before the runtime fix, the targeted regression run failed7 cases (5 new cases plus the2 intentionally updated SSR expectations); after the fix both suites pass18/18. New EN/AR tests compare actual React server-rendered markup across loading, already-resolved guest and already-resolved customer contexts. Existing hook harness verifies the initial hydration snapshot stays disabled/loading, then resolves to the normal enabled guest action or signed-in writer without a false account-change notice. This harness is not claimed as a browser hydration engine.
+- Current integrated storefront full run: **63 suites /579 tests pass**. Typecheck and lint pass. **Production webpack build passes**, now that the prior Deals/Bundles fix is integrated. No backend checks rerun for this frontend-only change.
+- Real IAB browser, temporary production server3100 and existing Medusa9000: EN/AR `/products/whey#customer-reviews` both resolve to enabled localized sign-in controls, with no React hydration/recoverable mismatch errors in the captured error logs. English initial server shell was visibly the disabled loading action before it resolved. No sign-in or review submission performed; signed-in timing variants are covered by the automated regressions, not claimed as live tested.
+- Separate region/cart initialization errors occurred in this temporary-port preview because its direct Medusa browser requests could not fetch regions (3100 differs from the existing dev origin). These are not silently presented as a clean console or passing cart flow; no backend CORS/region configuration was changed for this check.
+- Temporary browser tab and only the owned3100 server were closed. Existing user3000/9000 listeners preserved. Build-generated next-env.d.ts rewrites excluded. No migration/provider change or merge.
+
+Claude narrow recheck: review **4afa837** on codex/product-reviews for stable EN/AR first hydration with a provider that resolves before the streamed section, for both guest and signed-in state. Confirm the action becomes enabled afterward, own-review/draft gating still works and no spurious account-change notice appears. Check the regression cases and running browser console; do not expand into a backend/database audit. Seif merges PR28.
+
+
+## Claude hydration recheck — owner-supplied report, 2026-10-27
+
+Seif supplied the following Claude review of hydration correction `4afa837`. Preserved verbatim; this is not an additional author-run verification.
+
+### Should fix
+
+1. **The client half of the fix is only tested against a mock** (`review-interaction.test.ts:13`)
+   - **What this is:** The unit tests replace `useSyncExternalStore` with a function that returns either the client or server value.
+   - **Problem:** That proves the component’s branching, but not that React really hydrates without a mismatch. Only the `renderToString` test in `reviews-render.test.ts` touches real React, and it covers the server side only. Jest runs in the `node` environment and no jsdom is installed, so a real hydration test would need a new dev dependency.
+   - **Fix:** Don’t add jsdom just for this. Keep the `renderToString` test, which would fail if the server markup started depending on the provider again.
+   - **If we skip it:** A later change that reads auth in a way that breaks hydration could pass the unit tests. Today’s behaviour is confirmed by my run.
+
+### Nice to have
+
+2. **Other late-hydrating sections may have the same problem** (not checked). Any other streamed client component that reads `useAuth()` directly could mismatch the same way; if it exists, the same hook pattern applies. Not checked because it is outside this commit.
+
+**Verdict: Ship.**\
+Lean: none.\
+Not checked: a real Next.js streamed page against the live backend, other `useAuth` users in streamed sections, and sign-out then sign-in as another user after hydration (that logic is unchanged by this commit).
+
+### Author closure
+
+Accepted the Ship verdict and its stated limits. Retained the real React `renderToString` regression and the existing mocked interaction checks; no jsdom or other dependency added. The mocked checks prove branching, not actual React client hydration. Other streamed auth consumers remain outside this fix. The author's earlier EN/AR guest browser evidence and temporary-port region/CORS limitation remain separate from Claude's report; no live signed-in or account-switch recheck is claimed here. Review is closed for `4afa837`; this closure changes documentation only, so no application tests were rerun. Seif still controls merge of PR28.

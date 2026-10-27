@@ -518,35 +518,6 @@ PR20 final approval — 2026-10-24: Claude Round3 (5711dff) approves application
 |---|---|---|---|---|
 | Fixes from Seif's manual test | Claude | GPT | GPT round 2 approved 374d20f, no open problems; PR open for owner merge | Checkout: a refused cart is "not placed" (no endless retry), cart changes drop a pending retry, details kept and autofilled from the account, sign-in hint. Sign-up says "email already has an account" with links. Sort aligned on desktop; no Cart in the mobile bar; Health goals hover panel; product photo gallery. Handoff: docs/reviews/test-round-fixes.md. Open: registration rate limit needs the visitor IP (same as CART-5) — Cloudflare rule at deployment. |
 
-## Brand logo upload — 2026-10-26
-
-| Task | Owner | Reviewer | Status | Scope |
-|---|---|---|---|---|
-| Upload brand logos in Admin | Claude | GPT | GPT round 3 approved 89c1b70, no open problems; PR open for owner merge | Upload with preview, replace and remove instead of a "Logo URL" box; server checks PNG/JPG/WebP by content, 1 MB, no SVG; file in Medusa storage (R2), old file deleted via new brand.logo_file_id; /brands shows the logo or the name. Handoff: docs/reviews/brand-logo-upload.md. After merge: db:migrate, then Seif uploads the six logos. |
-
-## Audit remediation — authorized 2026-10-25
-
-| Task | Owner | Reviewer | Status | Scope |
-|---|---|---|---|---|
-| Resolve architecture audit A01–A18 and verify launch edges | GPT | Claude | Claude final independent recheck approved 2c34193; owner acceptance pending | Seif authorized a new fix branch and Claude review. Branch codex/audit-fixes, isolated audit-fixes checkout started at full-stack 7405cc8 and rebased onto 56df776, preserving manual-test changes. Fix reproducible application defects with native primitives and focused tests; investigate conditional items, record deployment-only decisions rather than inventing them. No merge/deployment; owner merges after Claude review. |
-A11 owner decision: Seif chose latest successful save wins for competing ordinary admin edits; document and test native same-field/different-field behavior. This does not relax stock/order/points invariants.
-
-Audit remediation handoff: docs/reviews/audit-remediation-2026-10-25.md. Latest successful same-field admin save wins; independent fields persist. Source tests 287 backend / 503 storefront, 29 disposable PostgreSQL HTTP checks, real Redis renewal/crash recovery and React browser race checks. Cloudflare/trusted IP policy, production sizing/soak and native bundle-index migration/reseed remain release gates. No merge/push/deployment. Claude source-only Round2 approval at docs/reviews/claude-audit-round2.md.
-
-Final audit checks: both production builds, both app typechecks/lints pass. Test-only follow-up3d465c1 addresses deterministic cache-follower synchronization and fixture typing; focused32backend/7storefront regressions pass. Disposable test containers stopped; browser fixture stopped/closed. Await Seif; no push/merge/deployment.
-
-GPT owns independent Claude review findings1–7 on codex/audit-fixes: repair bundle seed/read test and startup503; restore bounded native default-brand outage fallback; retry cache invalidation and separate cache command/socket deadlines from middleware wait; keep measured2second follower backpressure explicit; remove tracked test output; skip only expected scheduled-lock contention. Preserve independent review verbatim. No merge/push/deployment.
-
-Independent Claude review of2c685a0 requested changes; GPT implemented7672f70 and Claude source recheck approves it. Test/comment follow-up599ec7e only. Full14 HTTP specs/109 tests now pass (merchandising fixed, quick-variant passes first run); backend292/storefront507 full unit runs plus final focused29/12 pass, both types/lints/production builds pass; real Redis slow-read/invalidation-recovery diagnostics pass. Preserve review reports in docs/reviews/claude-audit-independent-review.md and claude-audit-independent-followup.md. Deployment gates remain open; owner acceptance pending; no push/merge/deployment.
-
-Final independent recheck — 2026-10-26: Claude approves2c34193 with no merge blockers; independently reports backend294/storefront510 unit tests and14 HTTP specs/109 tests passing, own real Redis/job-contention probes. GPT closes L1 documentation overclaim and spacing only; application unchanged, report preserved verbatim at docs/reviews/claude-audit-final-recheck.md. Remaining low-severity limits and deployment gates documented; no unknown databases deleted, no push/merge/deployment. Await Seif.
-
-## Audit-fixes PR publication — authorized2026-10-26
-Seif explicitly requested separate PRs for codex/audit-fixes and codex/product-reviews to full-stack. GPT owns publication; preserve reviewed application code and pending deployment gates. Exact audit source head0da80c9, Claude approval2c34193/application7672f70. GitHub base origin/full-stack05d78a6 refreshed. No source edits or unnecessary reruns of previously passing checks; publish this branch and create an owner-controlled PR, no merge/deployment/database operations. Audit contains the separate Deals/Bundles build fix; recommend it land before the independent product-reviews PR.
-
-
-Audit PR published: https://github.com/SeifWaleed12/VI2/pull/27 (base full-stack, head codex/audit-fixes). Product reviews is separate PR28 https://github.com/SeifWaleed12/VI2/pull/28. Publication conflict was WORKBOARD only: preserved audit history and imported the current approved manual-test status from origin/full-stack. Application tree unchanged; no tests rerun for documentation-only synchronization. Both PRs remain unmerged; Seif merges.
-
 ## Product reviews — authorized 2026-10-26
 
 GPT owns REV-1 through REV-5 on codex/product-reviews, isolated worktree product-reviews/vi2, baseline origin/full-stack 05d78a6. Claude reviews only; Seif merges. Any signed-in customer may review without an order. One review per customer/product; stars 1–5 and written content, optional title; own edit/withdraw. Owner selected local screening only: English/Arabic profanity and spam checks, clean submissions auto-publish, flagged submissions remain pending for admin OR manager review; no AI/external service, purchase check or verified badge. Negative ratings and ordinary product/side-effect criticism are not screening grounds.
@@ -609,4 +580,41 @@ Product reviews PR published: https://github.com/SeifWaleed12/VI2/pull/28 (base 
 
 | Task | Owner | Reviewer | Status | Scope |
 |---|---|---|---|---|
-| Stop at the stock limit and say why | Claude | GPT | GPT round 1: one P2 (drawer limit after a refusal) fixed in cee1c5b; round 2 requested; update after #27 lands | Product page subtracts what the cart holds and explains "last one already in your cart" / "just sold out" instead of "try again"; drawer + stops at the limit with notes; stock refusals no longer logged as errors. EN/AR. Merges cleanly with #26-#28 (914 tests). Handoff: docs/reviews/stock-limits.md (also notes a #28 hydration mismatch). |
+| Stop at the stock limit and say why | Claude | GPT | GPT round 2 approved cee1c5b, no open findings; PR open; update after #27 lands, then owner merge | Product page subtracts what the cart holds and explains "last one already in your cart" / "just sold out" instead of "try again"; drawer + stops at the limit with notes; stock refusals no longer logged as errors. EN/AR. Merges cleanly with #26-#28 (914 tests). Handoff: docs/reviews/stock-limits.md (also notes a #28 hydration mismatch). |
+## Brand logo upload — 2026-10-26
+
+| Task | Owner | Reviewer | Status | Scope |
+|---|---|---|---|---|
+| Upload brand logos in Admin | Claude | GPT | GPT round 3 approved 89c1b70, no open problems; PR open for owner merge | Upload with preview, replace and remove instead of a "Logo URL" box; server checks PNG/JPG/WebP by content, 1 MB, no SVG; file in Medusa storage (R2), old file deleted via new brand.logo_file_id; /brands shows the logo or the name. Handoff: docs/reviews/brand-logo-upload.md. After merge: db:migrate, then Seif uploads the six logos. |
+
+## Audit remediation — authorized 2026-10-25
+
+| Task | Owner | Reviewer | Status | Scope |
+|---|---|---|---|---|
+| Resolve architecture audit A01–A18 and verify launch edges | GPT | Claude | Claude final independent recheck approved 2c34193; owner acceptance pending | Seif authorized a new fix branch and Claude review. Branch codex/audit-fixes, isolated audit-fixes checkout started at full-stack 7405cc8 and rebased onto 56df776, preserving manual-test changes. Fix reproducible application defects with native primitives and focused tests; investigate conditional items, record deployment-only decisions rather than inventing them. No merge/deployment; owner merges after Claude review. |
+A11 owner decision: Seif chose latest successful save wins for competing ordinary admin edits; document and test native same-field/different-field behavior. This does not relax stock/order/points invariants.
+
+Audit remediation handoff: docs/reviews/audit-remediation-2026-10-25.md. Latest successful same-field admin save wins; independent fields persist. Source tests 287 backend / 503 storefront, 29 disposable PostgreSQL HTTP checks, real Redis renewal/crash recovery and React browser race checks. Cloudflare/trusted IP policy, production sizing/soak and native bundle-index migration/reseed remain release gates. No merge/push/deployment. Claude source-only Round2 approval at docs/reviews/claude-audit-round2.md.
+
+Final audit checks: both production builds, both app typechecks/lints pass. Test-only follow-up3d465c1 addresses deterministic cache-follower synchronization and fixture typing; focused32backend/7storefront regressions pass. Disposable test containers stopped; browser fixture stopped/closed. Await Seif; no push/merge/deployment.
+
+GPT owns independent Claude review findings1–7 on codex/audit-fixes: repair bundle seed/read test and startup503; restore bounded native default-brand outage fallback; retry cache invalidation and separate cache command/socket deadlines from middleware wait; keep measured2second follower backpressure explicit; remove tracked test output; skip only expected scheduled-lock contention. Preserve independent review verbatim. No merge/push/deployment.
+
+Independent Claude review of2c685a0 requested changes; GPT implemented7672f70 and Claude source recheck approves it. Test/comment follow-up599ec7e only. Full14 HTTP specs/109 tests now pass (merchandising fixed, quick-variant passes first run); backend292/storefront507 full unit runs plus final focused29/12 pass, both types/lints/production builds pass; real Redis slow-read/invalidation-recovery diagnostics pass. Preserve review reports in docs/reviews/claude-audit-independent-review.md and claude-audit-independent-followup.md. Deployment gates remain open; owner acceptance pending; no push/merge/deployment.
+
+Final independent recheck — 2026-10-26: Claude approves2c34193 with no merge blockers; independently reports backend294/storefront510 unit tests and14 HTTP specs/109 tests passing, own real Redis/job-contention probes. GPT closes L1 documentation overclaim and spacing only; application unchanged, report preserved verbatim at docs/reviews/claude-audit-final-recheck.md. Remaining low-severity limits and deployment gates documented; no unknown databases deleted, no push/merge/deployment. Await Seif.
+
+## Audit-fixes PR publication — authorized2026-10-26
+Seif explicitly requested separate PRs for codex/audit-fixes and codex/product-reviews to full-stack. GPT owns publication; preserve reviewed application code and pending deployment gates. Exact audit source head0da80c9, Claude approval2c34193/application7672f70. GitHub base origin/full-stack05d78a6 refreshed. No source edits or unnecessary reruns of previously passing checks; publish this branch and create an owner-controlled PR, no merge/deployment/database operations. Audit contains the separate Deals/Bundles build fix; recommend it land before the independent product-reviews PR.
+
+
+Audit PR published: https://github.com/SeifWaleed12/VI2/pull/27 (base full-stack, head codex/audit-fixes). Product reviews is separate PR28 https://github.com/SeifWaleed12/VI2/pull/28. Publication conflict was WORKBOARD only: preserved audit history and imported the current approved manual-test status from origin/full-stack. Application tree unchanged; no tests rerun for documentation-only synchronization. Both PRs remain unmerged; Seif merges.
+
+## PR28 streamed reviews hydration fix — claimed2026-10-27
+GPT owns Seif's requested ProductReviews hydration mismatch reported in docs/reviews/stock-limits.md. Synced clean codex/product-reviews to remote1534801 (owner's full-stack integration); preserve all inherited stock/audit/logo behavior. Make server and first hydration render show the same disabled account-loading state even if CustomerProvider already resolved, including signed-in own-review/draft branches; resume normal UI after hydration. Add focused EN/AR server/initial-client/resolved-session regression coverage. No backend/provider/database/dependency changes. Commit and update existing PR28; Seif merges.
+
+
+PR28 hydration fix delivered2026-10-27: GPT commits4afa837 on codex/product-reviews, after fast-forward to owner-integrated1534801. React hydration snapshot keeps server/initial client account shell identical, masking account-dependent writer/draft UI until hydrated; no provider/backend/schema/design change. Regression reproduced7 failures before fix, targeted18/18 after; current integrated storefront63suites/579tests, types/lint/production webpack build all pass. Actual EN/AR production browser check sees localized enabled guest controls and no hydration errors; separate temporary3100 region/CORS errors are documented, not a cart-flow pass. Tab/owned3100 server stopped; user3000/9000 preserved. Updating existing PR28; Claude narrow recheck pending; no merge/migration/provider operations. Evidence/prompt: docs/reviews/product-reviews.md (last section); original report docs/reviews/stock-limits.md preserved.
+
+
+PR28 hydration recheck closed2026-10-27: Seif supplied Claude verdict **Ship** for4afa837. Full report preserved in docs/reviews/product-reviews.md. Retain real React SSR regression; client interaction harness remains a mock, not an automated hydration engine. No jsdom/dependency or application change; other streamed auth users remain out of scope. Documentation-only closure, no test rerun. Update existing PR28; ready for Seif-controlled merge, not merged by GPT.
