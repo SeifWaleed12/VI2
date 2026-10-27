@@ -2026,6 +2026,20 @@ img {
   height: 33px;
 }
 
+.quantity-control button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.cart-item-stock {
+  margin: 8px 0 0;
+
+  color: #8e3327;
+
+  font-size: var(--text-ui);
+  line-height: 1.4;
+}
+
 .quantity-control-small button {
   width: 29px;
 }

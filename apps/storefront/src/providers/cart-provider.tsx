@@ -29,6 +29,10 @@ import {
 import { cartQueue } from "@/lib/medusa/cart-queue";
 import { forgetPendingCart } from "@/lib/pending-checkout";
 
+// Medusa's answer when a cart would hold more of a variant than its stock.
+export const isStockRefusal = (error: unknown) =>
+  /required inventory/i.test(error instanceof Error ? error.message : String((error as { message?: unknown } | null)?.message ?? ""));
+
 export type CartItem = {
   id?: string;
   product: Product;
@@ -219,7 +223,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
       if (show) syncFromMedusaCart(show);
       else if (error && (latest || rejected)) rollback();
       if (error === undefined) { forgetPendingCart(); return true; }
-      console.error(failure, error);
+      // Medusa refusing more than is in stock is expected, not a fault: the
+      // product page and cart explain it, so it is not logged as an error.
+      if (!isStockRefusal(error)) console.error(failure, error);
       setMutationError(error instanceof Error ? error.message : failure);
       return false;
     },

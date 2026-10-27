@@ -181,3 +181,12 @@ it("keeps every product photo once, the main one first, and lists them only when
   expect(photos(null, ["a.jpg", "b.jpg"]).images).toEqual(["a.jpg", "b.jpg"]);
   expect(photos("t.jpg", ["t.jpg"]).images).toBeUndefined();
 });
+
+it("limits a variant to its tracked stock, and leaves untracked or backorder stock unlimited", () => {
+  const limitOf = (variant: Record<string, unknown>) => mapMedusaProduct({ id: "p", variants: [{ id: "v", calculated_price: { calculated_amount: 100 }, ...variant }] } as never).variants?.[0].maxQuantity;
+  expect(limitOf({ manage_inventory: true, inventory_quantity: 2 })).toBe(2);
+  expect(limitOf({ manage_inventory: true, inventory_quantity: -1 })).toBe(0);
+  expect(limitOf({ manage_inventory: false, inventory_quantity: 2 })).toBeUndefined();
+  expect(limitOf({ manage_inventory: true, allow_backorder: true, inventory_quantity: 0 })).toBeUndefined();
+  expect(limitOf({ manage_inventory: true })).toBeUndefined();
+});

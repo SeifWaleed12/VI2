@@ -8,6 +8,9 @@ export type ProductVariant = {
   stock: number;
   inventoryKnown?: boolean;
   inStock?: boolean;
+  // The most one cart may hold; unset when Medusa sets no limit (stock not
+  // tracked, or backorders allowed). Medusa still refuses what it can't fulfil.
+  maxQuantity?: number;
   options?: Record<string, string>; // e.g. { "Flavor": "Caramel", "Size": "2.27 KG" }
   image?: string;
 };
@@ -67,6 +70,8 @@ export type Product = {
   inventoryKnown?: boolean;
 
   inStock?: boolean;
+  // The default variant's limit; see ProductVariant.maxQuantity.
+  maxQuantity?: number;
   badge?: string;
 
   eda?: EdaRegistration;

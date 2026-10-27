@@ -743,3 +743,27 @@
     transition: none;
   }
 }
+
+/* Why the cart can't take more of this variant; links to the cart when it holds some. */
+.stockNote {
+  margin: 8px 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  color: var(--ink);
+  font-size: var(--text-body);
+}
+
+.stockNote button {
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}

@@ -18,6 +18,9 @@ export function mapMedusaProduct(p: CatalogProduct): Product {
   const nativeVariants = [...(p.variants ?? [])].sort((a, b) => (a.variant_rank ?? 0) - (b.variant_rank ?? 0)
     || String(a.created_at ?? "").localeCompare(String(b.created_at ?? "")) || a.id.localeCompare(b.id));
   const available = (v: HttpTypes.StoreProductVariant) => v.allow_backorder === true || v.manage_inventory === false || Number(v.inventory_quantity ?? 0) > 0;
+  // Tracked stock without backorders is the most one cart may hold.
+  const limitOf = (v: HttpTypes.StoreProductVariant) =>
+    v.manage_inventory !== false && v.allow_backorder !== true && typeof v.inventory_quantity === "number" ? Math.max(0, v.inventory_quantity) : undefined;
   const variant = nativeVariants.find(v => {
     const amount = Number(v.calculated_price?.calculated_amount ?? 0);
     return Number.isFinite(amount) && amount > 0 && available(v);
@@ -117,6 +120,7 @@ export function mapMedusaProduct(p: CatalogProduct): Product {
           stock: vStock,
           inventoryKnown: typeof v.inventory_quantity === "number",
           inStock,
+          ...(limitOf(v) !== undefined ? { maxQuantity: limitOf(v) } : {}),
           options: optMap,
           image: v.thumbnail || undefined,
         };
@@ -147,6 +151,7 @@ export function mapMedusaProduct(p: CatalogProduct): Product {
     stock: Number(variant?.inventory_quantity ?? 0),
     inventoryKnown: typeof variant?.inventory_quantity === "number",
     inStock: !!variant && available(variant) && Number.isFinite(price) && price > 0,
+    ...(variant && limitOf(variant) !== undefined ? { maxQuantity: limitOf(variant) } : {}),
     ...(meta.badge ? { badge: String(meta.badge) } : {}),
     ...(edaNumber ? { eda: { registrationNumber: edaNumber, approved: p.eda_registration?.is_approved === true } } : {}),
     ...(options.length > 0 ? { options } : {}),
