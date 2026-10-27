@@ -50,3 +50,18 @@ Medusa refusing is correct and stays as the final guard. The storefront just did
 ## Seen while testing, not part of this change (#28)
 
 On a product page, React reports a hydration mismatch in `ProductReviews`: the server renders "Checking your account…" (disabled), the client renders "Sign in to write a review". The reviews section streams inside `<Suspense>` and hydrates after `CustomerProvider` has finished loading, so `authLoading` differs between server and client. It shows as "1 Issue" in the dev overlay. Likely fix in #28: treat "not hydrated yet" as loading (or render the account-dependent button after mount).
+
+## GPT review, round 1 (2026-10-27)
+
+- **[P2] Refresh the cart drawer limit after a stock refusal.** The drawer read stock only when it opened. A refused **+** snapped back silently with the old limit, and could be repeated. A failed read also kept stale limits indefinitely.
+- **Scope:** the #28 hydration mismatch is not from this commit; it stays with #28.
+- Read-only review.
+
+## Author response (`cee1c5b`)
+
+- **Refusal handled.** `updateQuantity` now returns whether Medusa accepted the change (`Promise<boolean>`; removal returns true, a missing cart or line returns false). On a refused **+**, the drawer calls `refresh()` from `useStockLimits`, which reads the cart's stock again, so **+** disables and the note shows the new limit.
+- **Failed reads** clear the limits instead of keeping stale ones. Medusa still refuses anything it can't fulfil.
+- **New test:** a refused **+** triggers exactly one re-read, and an accepted one triggers none. It fails on `c60349a`'s handler.
+- `npm run check`: backend 266, storefront 502; typecheck and lint pass.
+
+Round 2 requested: `cee1c5b` only.
