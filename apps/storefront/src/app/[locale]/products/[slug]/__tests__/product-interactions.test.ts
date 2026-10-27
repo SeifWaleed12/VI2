@@ -9,6 +9,7 @@ let stateIndex = 0;
 let refIndex = 0;
 const addItem = jest.fn();
 const push = jest.fn();
+let cartItems: { product: { variantId?: string }; quantity: number }[] = [];
 jest.mock("react", () => ({
   ...jest.requireActual("react"),
   useMemo: (fn: () => unknown) => fn(),
@@ -25,7 +26,8 @@ jest.mock("@/components/CatalogImage", () => ({ __esModule: true, default: () =>
 jest.mock("@/components/VariantSelector", () => ({ __esModule: true, default: () => null }));
 jest.mock("lucide-react", () => new Proxy({}, { get: () => () => null }));
 jest.mock("@/components/LocaleLink", () => ({ __esModule: true, default: () => null }));
-jest.mock("@/context/CartContext", () => ({ useCart: () => ({ addItem }) }));
+jest.mock("@/context/CartContext", () => ({ useCart: () => ({ addItem, items: cartItems, openCart: jest.fn() }) }));
+jest.mock("@/lib/medusa/services/products", () => ({ listProducts: jest.fn(() => Promise.reject(new Error("offline"))) }));
 jest.mock("@/context/LanguageContext", () => ({ useLanguage: () => ({ language: "en" }) }));
 jest.mock("@/hooks/use-locale-router", () => ({ useLocaleRouter: () => ({ push }) }));
 
@@ -53,7 +55,7 @@ const render = () => {
 };
 const byClass = (tree: ReactElement<Props>[], className: string) => tree.find((element) => element.props.className === className)!;
 const select = (tree: ReactElement<Props>[], title: string, value: string) => tree.find((element) => element.type === VariantSelector)!.props.onSelectOption!(title, value);
-beforeEach(() => { states.length = 0; refs.length = 0; jest.clearAllMocks(); jest.useFakeTimers(); });
+beforeEach(() => { states.length = 0; refs.length = 0; cartItems = []; jest.clearAllMocks(); jest.useFakeTimers(); });
 afterEach(() => { jest.clearAllTimers(); jest.useRealTimers(); });
 
 it("never submits an impossible combination, and sends the exact valid variant and quantity", async () => {
@@ -131,4 +133,35 @@ it("never overrides an explicit sold-out selection with the preferred purchasabl
   } finally {
     first.inStock = wasInStock;
   }
+});
+
+it("explains a refusal from fresh stock instead of asking to try again", async () => {
+  const { listProducts } = jest.requireMock("@/lib/medusa/services/products") as { listProducts: jest.Mock };
+  const limited = { ...product, variants: product.variants!.map((variant) => ({ ...variant, maxQuantity: 4 })) };
+  const draw = () => { stateIndex = 0; refIndex = 0; return elements(ProductDetailClient({ product: limited, similar: [] })); };
+  let tree = draw();
+  select(tree, "Size", "M");
+  select(tree, "Flavor", "Chocolate");
+  tree = draw();
+  // Someone else bought the last ones meanwhile: Medusa refuses, and fresh stock says none are left.
+  addItem.mockResolvedValueOnce(false);
+  listProducts.mockResolvedValueOnce({ products: [{ variants: [{ id: "medium", maxQuantity: 0 }] }] });
+  await elements(byClass(tree, "mobileBar")).find((element) => element.type === "button")!.props.onClick!();
+  tree = draw();
+  expect(JSON.stringify(tree.map((element) => element.props.children))).toContain("Sorry, this just sold out.");
+  expect(JSON.stringify(tree.map((element) => element.props.children))).not.toContain("Could not add to cart");
+  expect(elements(byClass(tree, "mobileBar")).find((element) => element.type === "button")!.props.disabled).toBe(true);
+});
+
+it("counts what the cart already holds, so the last one can't be added twice", () => {
+  cartItems = [{ product: { variantId: "medium" }, quantity: 4 }];
+  const limited = { ...product, variants: product.variants!.map((variant) => ({ ...variant, maxQuantity: 4 })) };
+  const draw = () => { stateIndex = 0; refIndex = 0; return elements(ProductDetailClient({ product: limited, similar: [] })); };
+  let tree = draw();
+  select(tree, "Size", "M");
+  select(tree, "Flavor", "Chocolate");
+  tree = draw();
+  expect(JSON.stringify(tree.map((element) => element.props.children))).toContain("You already have all 4 available in your cart.");
+  expect(elements(byClass(tree, "mobileBar")).find((element) => element.type === "button")!.props.disabled).toBe(true);
+  expect(addItem).not.toHaveBeenCalled();
 });

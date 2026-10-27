@@ -17,6 +17,7 @@ import Link from "@/components/LocaleLink";
 import VariantSelector from "@/components/VariantSelector";
 import { initialSelection, isPurchasableVariant, matchesSelection } from "@/lib/product-variants";
 import { useCart } from "@/context/CartContext";
+import { listProducts } from "@/lib/medusa/services/products";
 import { useLanguage } from "@/context/LanguageContext";
 import { useLocaleRouter } from "@/hooks/use-locale-router";
 import type { Product, ProductOption, ProductVariant } from "@/types/product";
@@ -45,6 +46,10 @@ const COPY = {
     adding: "Adding…",
     added: "Added to cart",
     addFailed: "Could not add to cart. Please try again.",
+    soldOutNow: "Sorry, this just sold out.",
+    allInCart: (count: number) => count === 1 ? "You already have the last one in your cart." : `You already have all ${count} available in your cart.`,
+    onlyMore: (count: number) => `Only ${count} more available.`,
+    viewCart: "View cart",
     buyNow: "Buy now",
     share: "Share product",
     photo: "Show photo",
@@ -82,6 +87,10 @@ const COPY = {
     adding: "جاري الإضافة…",
     added: "اتضاف للسلة",
     addFailed: "مقدرناش نضيف المنتج للسلة. حاول تاني.",
+    soldOutNow: "للأسف الكمية خلصت دلوقتي.",
+    allInCart: (count: number) => count === 1 ? "آخر قطعة موجودة في سلتك بالفعل." : `كل الـ${count} المتاحين موجودين في سلتك بالفعل.`,
+    onlyMore: (count: number) => `متاح ${count} كمان بس.`,
+    viewCart: "عرض السلة",
     buyNow: "اشتري دلوقتي",
     share: "مشاركة المنتج",
     photo: "عرض الصورة",
@@ -117,11 +126,13 @@ export default function ProductDetailClient({
   similar: Product[];
 }) {
   const router = useLocaleRouter();
-  const { addItem } = useCart();
+  const { addItem, items, openCart } = useCart();
   const { language } = useLanguage();
   const copy = COPY[language === "ar" ? "ar" : "en"];
 
-  const [quantity, setQuantity] = useState(1);
+  const [picked, setQuantity] = useState(1);
+  // A variant's limit read fresh after Medusa refused an add.
+  const [fresh, setFresh] = useState<{ variantId?: string; limit?: number }>();
   const [cartState, setCartState] = useState<"idle" | "pending" | "added" | "failed">("idle");
   const [shareCopied, setShareCopied] = useState(false);
   // The first photo slot shows the chosen flavor's own photo when it has one.
@@ -160,9 +171,21 @@ export default function ProductDetailClient({
   const priced = Number.isFinite(price) && price > 0;
   const inStock = !invalidSelection && (selectedVariant ? (selectedVariant.inStock ?? stock > 0) : product.inStock === true);
   const canBuy = priced && inStock;
-  const maxQuantity = Math.max(1, Math.min(stock > 0 ? stock : 10, 10));
+  // What the cart may still take: Medusa's limit (or the fresh one) less what
+  // it already holds of this variant. No limit means up to 10 at a time.
+  const variantId = selectedVariant?.id ?? product.variantId;
+  const limit = fresh && fresh.variantId === variantId ? fresh.limit : (variants.length ? selectedVariant?.maxQuantity : product.maxQuantity);
+  const inCart = items.reduce((sum, item) => (item.product.variantId === variantId ? sum + item.quantity : sum), 0);
+  const addable = limit === undefined ? 10 : Math.max(0, limit - inCart);
+  const soldOut = limit === 0;
+  const allInCart = !soldOut && inCart > 0 && addable === 0;
+  const canAdd = canBuy && !soldOut && addable > 0;
+  const maxQuantity = Math.max(1, Math.min(addable, 10));
+  const quantity = Math.min(picked, maxQuantity);
+  const stockNote = !canBuy ? "" : soldOut ? copy.soldOutNow : allInCart ? copy.allInCart(inCart)
+    : fresh?.variantId === variantId && addable < picked ? copy.onlyMore(addable) : "";
 
-  const availability = invalidSelection ? copy.invalidSelection : !inStock
+  const availability = invalidSelection ? copy.invalidSelection : !inStock || soldOut
     ? (inventoryKnown === false ? copy.unconfirmed : copy.outOfStock)
     : stock > 0 && stock <= 8
       ? copy.lowStock(stock)
@@ -211,7 +234,7 @@ export default function ProductDetailClient({
   // Adds the selected variant; Buy now does it quietly and goes to checkout,
   // so the order, its totals and any promo code all use the one cart.
   async function addSelected(buyNow: boolean) {
-    if (!canBuy || addInFlight.current) return;
+    if (!canAdd || addInFlight.current) return;
     addInFlight.current = true;
     if (resetTimer.current) clearTimeout(resetTimer.current);
     setCartState("pending");
@@ -227,12 +250,26 @@ export default function ProductDetailClient({
       };
       const success = buyNow ? await addItem(selected, quantity, { quiet: true }) : await addItem(selected, quantity);
       if (success && buyNow) return router.push("/checkout");
+      if (!success && await stockChanged()) return setCartState("idle");
       setCartState(success ? "added" : "failed");
       if (success) resetTimer.current = setTimeout(() => setCartState("idle"), 1400);
     } catch {
       setCartState("failed");
     } finally {
       addInFlight.current = false;
+    }
+  }
+
+  // After a refusal, reads this variant's stock fresh: when less is left than
+  // was asked for, the page says so instead of "try again".
+  async function stockChanged() {
+    try {
+      const { products } = await listProducts({ locale: language === "ar" ? "ar" : "en", id: [product.id], limit: 1, fresh: true });
+      const latest = products[0]?.variants?.find((variant) => variant.id === variantId)?.maxQuantity;
+      setFresh({ variantId, limit: latest });
+      return latest !== undefined && latest - inCart < quantity;
+    } catch {
+      return false;
     }
   }
 
@@ -317,28 +354,34 @@ export default function ProductDetailClient({
                   <s className={styles.comparePrice}>{formatPrice(compareAtPrice)} {copy.currency}</s>
                 )}
               </div>
-              <p className={inStock ? styles.stock : styles.stockOut} role="status" aria-atomic="true">
+              <p className={inStock && !soldOut ? styles.stock : styles.stockOut} role="status" aria-atomic="true">
                 <span className={styles.stockDot} aria-hidden="true" />
                 {availability}
               </p>
 
               <div className={styles.buyRow}>
                 <div className={styles.quantity} role="group" aria-label={copy.quantity}>
-                  <button type="button" aria-label={copy.decrease} onClick={() => setQuantity((q) => Math.max(1, q - 1))} disabled={!canBuy || quantity <= 1}>
+                  <button type="button" aria-label={copy.decrease} onClick={() => setQuantity(Math.max(1, quantity - 1))} disabled={!canAdd || quantity <= 1}>
                     <Minus size={16} />
                   </button>
                   <output aria-live="polite">{quantity}</output>
-                  <button type="button" aria-label={copy.increase} onClick={() => setQuantity((q) => Math.min(maxQuantity, q + 1))} disabled={!canBuy || quantity >= maxQuantity}>
+                  <button type="button" aria-label={copy.increase} onClick={() => setQuantity(Math.min(maxQuantity, quantity + 1))} disabled={!canAdd || quantity >= maxQuantity}>
                     <Plus size={16} />
                   </button>
                 </div>
-                <button type="button" className={styles.addButton} disabled={!canBuy || cartState === "pending"} onClick={addToCart}>
+                <button type="button" className={styles.addButton} disabled={!canAdd || cartState === "pending"} onClick={addToCart}>
                   {canBuy && (cartState === "added" ? <Check size={18} /> : <ShoppingBag size={18} />)}
-                  {!canBuy ? unavailableLabel : cartState === "pending" ? copy.adding : cartState === "added" ? copy.added : copy.addToCart}
+                  {!canBuy || soldOut ? unavailableLabel : cartState === "pending" ? copy.adding : cartState === "added" ? copy.added : copy.addToCart}
                 </button>
               </div>
               {cartState === "failed" && <p className={styles.error} role="alert">{copy.addFailed}</p>}
-              <button type="button" className={styles.buyNow} disabled={!canBuy || cartState === "pending"} onClick={buyNow}>
+              {stockNote && (
+                <p className={styles.stockNote} role="status">
+                  {stockNote}
+                  {inCart > 0 && <button type="button" onClick={openCart}>{copy.viewCart}</button>}
+                </p>
+              )}
+              <button type="button" className={styles.buyNow} disabled={!canAdd || cartState === "pending"} onClick={buyNow}>
                 {copy.buyNow}
               </button>
 
@@ -411,10 +454,11 @@ export default function ProductDetailClient({
           <strong>{priced ? `${formatPrice(price * quantity)} ${copy.currency}` : copy.priceUnavailable}</strong>
           {invalidSelection && <span>{copy.unavailable}</span>}
         </div>
-        <button type="button" disabled={!canBuy || cartState === "pending"} onClick={addToCart}>
-          {!canBuy ? unavailableLabel : cartState === "pending" ? copy.adding : cartState === "added" ? copy.added : copy.addToCart}
+        <button type="button" disabled={!canAdd || cartState === "pending"} onClick={addToCart}>
+          {!canBuy || soldOut ? unavailableLabel : cartState === "pending" ? copy.adding : cartState === "added" ? copy.added : copy.addToCart}
         </button>
         {cartState === "failed" && <p className={styles.mobileError} role="alert">{copy.addFailed}</p>}
+        {stockNote && <p className={styles.mobileError} role="status">{stockNote}</p>}
       </div>
     </>
   );
