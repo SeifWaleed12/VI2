@@ -1,12 +1,14 @@
-import { createElement, type ReactNode } from "react";
+import { createElement, isValidElement, type ReactElement, type ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import CartDrawer from "../CartDrawer";
 import { message } from "@/lib/i18n";
 
 let items: { id: string; quantity: number; product: { id: string; variantId: string; name: string; price: number; image: string } }[] = [];
 let limits: Record<string, number> = {};
-jest.mock("@/context/CartContext", () => ({ useCart: () => ({ items, isCartOpen: true, subtotal: 0, closeCart: jest.fn(), updateQuantity: jest.fn(), removeItem: jest.fn() }) }));
-jest.mock("@/hooks/use-stock-limits", () => ({ useStockLimits: () => limits }));
+const updateQuantity = jest.fn();
+const refresh = jest.fn();
+jest.mock("@/context/CartContext", () => ({ useCart: () => ({ items, isCartOpen: true, subtotal: 0, closeCart: jest.fn(), updateQuantity, removeItem: jest.fn() }) }));
+jest.mock("@/hooks/use-stock-limits", () => ({ useStockLimits: () => ({ limits, refresh }) }));
 jest.mock("@/hooks/use-drawer-focus", () => ({ useDrawerFocus: () => undefined }));
 jest.mock("@/context/LanguageContext", () => ({
   LegacyTranslations: ({ children }: { children: ReactNode }) => children,
@@ -37,4 +39,25 @@ it("tells the shopper to lower or remove a line that stock no longer covers", ()
   const html = renderToStaticMarkup(createElement(CartDrawer));
   expect(html).toContain("Only 1 available now. Lower the quantity to check out.");
   expect(html).toContain("Sold out. Remove it to check out.");
+});
+
+type Props = { children?: ReactNode; onClick?: () => Promise<void>; "aria-label"?: string };
+function elements(node: ReactNode): ReactElement<Props>[] {
+  if (Array.isArray(node)) return node.flatMap(elements);
+  if (!isValidElement<Props>(node)) return [];
+  return [node, ...elements(node.props.children)];
+}
+
+it("reads stock again when Medusa refuses +, and only then", async () => {
+  jest.spyOn(jest.requireActual("react"), "useRef").mockReturnValue({ current: null });
+  items = [line("drop", 1)];
+  limits = { drop: 5 };
+  const plus = () => elements((CartDrawer as () => ReactNode)()).find((element) => element.props["aria-label"] === "Increase quantity")!;
+  updateQuantity.mockResolvedValueOnce(false);
+  await plus().props.onClick!();
+  expect(updateQuantity).toHaveBeenCalledWith("line_drop", 2);
+  expect(refresh).toHaveBeenCalledTimes(1);
+  updateQuantity.mockResolvedValueOnce(true);
+  await plus().props.onClick!();
+  expect(refresh).toHaveBeenCalledTimes(1);
 });
