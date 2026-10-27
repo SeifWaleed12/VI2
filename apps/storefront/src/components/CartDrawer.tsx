@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 
 import { useCart } from "@/context/CartContext";
+import { useStockLimits } from "@/hooks/use-stock-limits";
 import CatalogImage from "@/components/CatalogImage";
 
 function formatPrice(
@@ -34,7 +35,10 @@ export default function CartDrawer() {
   } = useCart();
 
   const drawerRef = useRef<HTMLElement>(null);
-  const { msg } = useLanguage();
+  const { msg, language } = useLanguage();
+  // Read fresh each time the drawer opens, so + stops where stock does.
+  const { limits, refresh: refreshLimits } = useStockLimits(isCartOpen ? items.map((item) => item.product.id) : [], language);
+  const limitOf = (variantId?: string) => (variantId ? limits[variantId] : undefined);
   useDrawerFocus(drawerRef, isCartOpen, closeCart);
 
   return (
@@ -215,14 +219,11 @@ export default function CartDrawer() {
                         <button
                           type="button"
                           aria-label="Increase quantity"
-                          onClick={() =>
-                            updateQuantity(
-                              item.id ??
-                                item.product.id,
-                              item.quantity +
-                                1,
-                            )
-                          }
+                          disabled={item.quantity >= (limitOf(item.product.variantId) ?? Infinity)}
+                          // A refusal means stock dropped while the drawer was open: read it again so + and the note match.
+                          onClick={async () => {
+                            if (!(await updateQuantity(item.id ?? item.product.id, item.quantity + 1))) refreshLimits();
+                          }}
                         >
                           <Plus
                             size={13}
@@ -239,6 +240,7 @@ export default function CartDrawer() {
                         EGP
                       </strong>
                     </div>
+                    <StockNote quantity={item.quantity} limit={limitOf(item.product.variantId)} />
                   </div>
                 </article>
               ))}
@@ -276,4 +278,12 @@ export default function CartDrawer() {
       </aside>
     </LegacyTranslations>
   );
+}
+
+// Says when a line is at, or above, what can still be bought.
+function StockNote({ quantity, limit }: { quantity: number; limit?: number }) {
+  const { msg } = useLanguage();
+  if (limit === undefined || quantity < limit) return null;
+  const key = quantity === limit ? "cart.maxAvailable" : limit === 0 ? "cart.soldOut" : "cart.overStock";
+  return <p className="cart-item-stock" role="status">{msg(key).replace("{count}", String(limit))}</p>;
 }

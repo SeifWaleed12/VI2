@@ -65,6 +65,8 @@ export default defineMiddlewares({
       middlewares: [boundCatalogHydration,
         ...nativeProductListMiddlewares],
     },
+    // A 1 MB logo is about 1.4 MB as base64; other routes keep the 100 KB default.
+    { matcher: "/admin/brands/:id/logo", method: "POST", bodyParser: { sizeLimit: "2mb" } },
     { matcher: "/store/products", middlewares: [filterProductsByBrand, allowFields(...STORE_PRODUCT_EXTRA_FIELDS)] },
     { matcher: "/store/products/:id", middlewares: [allowFields(...STORE_PRODUCT_EXTRA_FIELDS)] },
     // Without a method these also cover every path under them (src/api/cart-access.ts).
