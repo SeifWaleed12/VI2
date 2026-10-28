@@ -2,6 +2,7 @@ import { configuredSecret } from "./src/lib/secrets"
 import { notificationModule } from "./src/lib/notification-config"
 import { redisModules } from "./src/lib/redis-config"
 import { fileModules } from "./src/lib/file-config"
+import { odooModules } from "./src/lib/odoo-config"
 import { loadEnv, defineConfig } from '@medusajs/framework/utils'
 
 loadEnv(process.env.NODE_ENV || 'development', process.cwd())
@@ -43,5 +44,6 @@ module.exports = defineConfig({
     notificationModule(),
     ...redisModules(),
     ...fileModules(),
+    ...odooModules(),
   ],
 })
