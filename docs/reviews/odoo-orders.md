@@ -85,3 +85,11 @@ GPT did not rerun the checks or test against a real Odoo.
 - `npm run check`: backend 396 tests (46 suites), storefront 579, typecheck and lint clean.
 - Live, same `medusa exec` run as before (real query, Redis locks, fake Odoo, no writes): both cash-on-delivery orders now pass a delivery address with street, city and country `eg` and the sales order gets it; totals unchanged (670, 570). No test data created.
 - Not checked: a real Odoo's `res.partner` delivery fields and country lookup (O-0).
+
+## GPT review, round 2
+
+Reviewed only `9400d71`. Round 1 P2 resolved: a new contact gets the order address, each order gets a matching or new delivery address set as `partner_shipping_id`, existing contacts are left as they are. GPT noted the storefront keeps the governorate in Medusa's `city`, which goes to Odoo's `city`. No new findings. GPT did not rerun the checks or test against a live Odoo.
+
+## Approved
+
+GPT approved O-3a (`0080a5b`, `9400d71`) with no open findings. No PR yet: like O-2, the merge waits on the O-0 live check (address fields, country lookup, the line tax field name, `action_confirm`, prices kept) and on the Odoo service products `WEB-SHIPPING` and `WEB-DISCOUNT`. This branch is based on `odoo`, so it merges after `odoo`.
