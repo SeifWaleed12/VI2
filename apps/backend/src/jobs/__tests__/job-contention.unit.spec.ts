@@ -1,8 +1,9 @@
 import { MedusaError } from "@medusajs/framework/utils"
 import expire from "../expire-points"
 import cleanup from "../remove-abandoned-carts"
+import syncStock from "../sync-odoo-stock"
 
-it.each([expire, cleanup])("skips only another worker's lock acquisition timeout", async job => {
+it.each([expire, cleanup, syncStock])("skips only another worker's lock acquisition timeout", async job => {
   const execute = jest.fn().mockRejectedValueOnce(new MedusaError(MedusaError.Types.CONFLICT, "Timed-out acquiring lock."))
   const container = { resolve: () => ({ execute }) } as never
   await expect(job(container)).resolves.toBeUndefined()

@@ -10,20 +10,36 @@ const odooEnv = {
 it("loads the Odoo module when every ODOO variable is set", () => {
   expect(odooModules(odooEnv)).toEqual([{
     resolve: "./src/modules/odoo",
-    options: { url: "https://vi2.odoo.com", db: "vi2", login: "sync@example.com", apiKey: "key" },
+    options: { url: "https://vi2.odoo.com", db: "vi2", login: "sync@example.com", apiKey: "key", warehouseId: undefined, safetyStock: 0 },
   }])
-  expect(odooModules({ ...odooEnv, NODE_ENV: "production" })).toHaveLength(1)
+  expect(odooModules({ ...odooEnv, ODOO_WAREHOUSE_ID: " 3 ", ODOO_SAFETY_STOCK: "2" })[0].options).toEqual(expect.objectContaining({ warehouseId: 3, safetyStock: 2 }))
 })
 
-it("leaves Odoo out without ODOO variables, and always in tests", () => {
+it("leaves Odoo out without ODOO variables outside production, and always in tests", () => {
   expect(odooModules({})).toEqual([])
-  expect(odooModules({ NODE_ENV: "production" })).toEqual([])
   expect(odooModules({ ODOO_URL: "  " })).toEqual([])
   expect(odooModules({ ...odooEnv, NODE_ENV: "test" })).toEqual([])
+  expect(odooModules({ NODE_ENV: "test" })).toEqual([])
 })
 
 it("refuses a partial setup", () => {
   expect(() => odooModules({ ...odooEnv, ODOO_API_KEY: "" })).toThrow("Set all of ODOO_URL")
+})
+
+it("refuses to start production without Odoo or its warehouse", () => {
+  expect(() => odooModules({ NODE_ENV: "production" })).toThrow("Set all of ODOO_URL, ODOO_DB, ODOO_LOGIN, ODOO_API_KEY.")
+  expect(() => odooModules({ ...odooEnv, NODE_ENV: "production" })).toThrow("Set ODOO_WAREHOUSE_ID")
+  expect(odooModules({ ...odooEnv, ODOO_WAREHOUSE_ID: "3", NODE_ENV: "production" })).toHaveLength(1)
+})
+
+it("refuses a warehouse or safety stock that is not a whole number", () => {
+  for (const value of ["0", "-1", "2.5", "three"]) {
+    expect(() => odooModules({ ...odooEnv, ODOO_WAREHOUSE_ID: value })).toThrow("ODOO_WAREHOUSE_ID must be a whole number of at least 1.")
+  }
+  for (const value of ["-1", "1.5", "x"]) {
+    expect(() => odooModules({ ...odooEnv, ODOO_SAFETY_STOCK: value })).toThrow("ODOO_SAFETY_STOCK must be a whole number of at least 0.")
+  }
+  expect(odooModules({ ...odooEnv, ODOO_SAFETY_STOCK: "0" })[0].options.safetyStock).toBe(0)
 })
 
 it("refuses an address that is not a web address", () => {
@@ -38,5 +54,5 @@ it("allows plain http only to this machine, in every environment", () => {
   expect(() => odooModules({ ...odooEnv, ODOO_URL: "http://vi2.odoo.com" })).toThrow("ODOO_URL must use https:")
   expect(() => odooModules({ ...odooEnv, ODOO_URL: "http://staging.example.com:8069" })).toThrow("ODOO_URL must use https:")
   expect(() => odooModules({ ...odooEnv, ODOO_URL: "http://localhost.example.com" })).toThrow("ODOO_URL must use https:")
-  expect(() => odooModules({ ...odooEnv, ODOO_URL: "http://vi2.odoo.com", NODE_ENV: "production" })).toThrow("ODOO_URL must use https:")
+  expect(() => odooModules({ ...odooEnv, ODOO_URL: "http://vi2.odoo.com", ODOO_WAREHOUSE_ID: "3", NODE_ENV: "production" })).toThrow("ODOO_URL must use https:")
 })

@@ -2,17 +2,27 @@ import { MedusaError } from "@medusajs/framework/utils"
 
 const REQUIRED = ["ODOO_URL", "ODOO_DB", "ODOO_LOGIN", "ODOO_API_KEY"] as const
 
+function wholeNumber(name: string, value: string | undefined, min: number): number | undefined {
+  if (!value) return undefined
+  if (!/^\d+$/.test(value) || Number(value) < min) throw new MedusaError(MedusaError.Types.INVALID_DATA, `${name} must be a whole number of at least ${min}.`)
+  return Number(value)
+}
+
 // The Odoo module (docs/ODOO-INTEGRATION-PLAN.md) loads once all ODOO_*
-// variables are set. None set leaves it out and the store runs without Odoo.
+// connection variables are set. None set leaves it out and the store runs
+// without Odoo, outside production only: stock comes from Odoo, so production
+// refuses to start without it or without the website's Odoo warehouse.
 // Tests never reach Odoo.
-// shortcut: production also starts without Odoo; once stock comes from Odoo
-// (task O-2), production must refuse to start without it, as fileModules does.
 export function odooModules(env: NodeJS.ProcessEnv = process.env) {
   if (env.NODE_ENV === "test") return []
+  const production = env.NODE_ENV === "production"
   const values = REQUIRED.map((name) => env[name]?.trim())
   const setCount = values.filter(Boolean).length
-  if (setCount === 0) return []
-  if (setCount !== REQUIRED.length) throw new MedusaError(MedusaError.Types.INVALID_DATA, `Set all of ${REQUIRED.join(", ")}, or none.`)
+  if (setCount === 0 && !production) return []
+  if (setCount !== REQUIRED.length) throw new MedusaError(MedusaError.Types.INVALID_DATA, `Set all of ${REQUIRED.join(", ")}${production ? "" : ", or none"}.`)
+  const warehouseId = wholeNumber("ODOO_WAREHOUSE_ID", env.ODOO_WAREHOUSE_ID?.trim(), 1)
+  if (production && warehouseId === undefined) throw new MedusaError(MedusaError.Types.INVALID_DATA, "Set ODOO_WAREHOUSE_ID: production stock comes from that Odoo warehouse.")
+  const safetyStock = wholeNumber("ODOO_SAFETY_STOCK", env.ODOO_SAFETY_STOCK?.trim(), 0) ?? 0
   const [url, db, login, apiKey] = values as string[]
   let parsed: URL
   try {
@@ -28,6 +38,6 @@ export function odooModules(env: NodeJS.ProcessEnv = process.env) {
   }
   return [{
     resolve: "./src/modules/odoo",
-    options: { url: url.replace(/\/+$/, ""), db, login, apiKey },
+    options: { url: url.replace(/\/+$/, ""), db, login, apiKey, warehouseId, safetyStock },
   }]
 }

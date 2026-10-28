@@ -1,6 +1,6 @@
 import OdooModuleService, { OdooError } from "../service"
 
-const options = { url: "https://odoo.example.com", db: "vi2", login: "sync@example.com", apiKey: "key" }
+const options = { url: "https://odoo.example.com", db: "vi2", login: "sync@example.com", apiKey: "key", safetyStock: 0 }
 
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } })
 const result = (value: unknown) => json({ jsonrpc: "2.0", id: 1, result: value })
@@ -148,4 +148,55 @@ it("rejects answers that are not Odoo's API", async () => {
   expect(await category(odoo.findProductsBySku(["A"]))).toBe("invalid_response")
   fetchMock.mockResolvedValueOnce(result([{ id: "1", default_code: "A", barcode: false }]))
   expect(await category(odoo.findProductsBySku(["A"]))).toBe("invalid_response")
+})
+
+it("reads a warehouse's on-hand and outgoing moves by SKU", async () => {
+  fetchMock
+    .mockResolvedValueOnce(result(7))
+    .mockResolvedValueOnce(result([{ id: 3, view_location_id: [11, "WH"] }]))
+    .mockResolvedValueOnce(result([
+      { id: 1, product_id: [21, "Whey"], product_qty: 3, state: "assigned", origin: "S00042", date: "2026-10-25 08:30:00" },
+      { id: 2, product_id: [21, "Whey"], product_qty: 1, state: "done", origin: "S00042", date: "2026-10-24 08:30:00" },
+      { id: 3, product_id: [22, "Creatine"], product_qty: 2, state: "confirmed", origin: "POS/0007", date: "2026-10-26 08:30:00" },
+      { id: 4, product_id: [23, "Shaker"], product_qty: 5, state: "confirmed", origin: false, date: "2026-10-26 08:30:00" },
+    ]))
+    .mockResolvedValueOnce(result([
+      { id: 31, product_id: [21, "Whey"], quantity: 6 },
+      { id: 32, product_id: [21, "Whey"], quantity: 4.5 },
+      { id: 33, product_id: [22, "Creatine"], quantity: 8 },
+      { id: 34, product_id: [23, "Shaker"], quantity: 2 },
+    ]))
+    .mockResolvedValueOnce(result([{ id: 42, name: "S00042", client_order_ref: "order_A" }]))
+    .mockResolvedValueOnce(result([{ id: 21, default_code: "WHEY" }, { id: 22, default_code: "CREA" }, { id: 23, default_code: false }]))
+
+  const stock = await new OdooModuleService({}, options).readWarehouseStock(3, ["order_A"])
+
+  expect(stock.onHand).toEqual(new Map([["WHEY", 10.5], ["CREA", 8]]))
+  expect(stock.moves).toEqual([
+    { sku: "WHEY", quantity: 3, open: true, orderRef: "order_A", date: "2026-10-25T08:30:00Z" },
+    { sku: "WHEY", quantity: 1, open: false, orderRef: "order_A", date: "2026-10-24T08:30:00Z" },
+    { sku: "CREA", quantity: 2, open: true, orderRef: undefined, date: "2026-10-26T08:30:00Z" },
+  ])
+  const [, , , moveModel, , moveDomain] = sentBody(2).params.args
+  expect(moveModel).toBe("stock.move")
+  expect(moveDomain[0]).toEqual([
+    ["location_id", "child_of", 11], ["location_dest_id.usage", "!=", "internal"],
+    "|", ["state", "not in", ["draft", "done", "cancel"]],
+    "&", ["state", "=", "done"], ["sale_line_id.order_id.client_order_ref", "in", ["order_A"]],
+  ])
+  expect(sentBody(3).params.args.slice(3, 6)).toEqual(["stock.quant", "search_read", [[["location_id", "child_of", 11], ["location_id.usage", "=", "internal"]]]])
+  expect(sentBody(4).params.args[5]).toEqual([[["name", "in", ["S00042", "POS/0007"]]]])
+  expect(sentBody(5).params.args[6]).toEqual({ fields: ["default_code"], context: { active_test: false } })
+})
+
+it("refuses a warehouse Odoo does not have, and records without a product", async () => {
+  fetchMock.mockResolvedValueOnce(result(7)).mockResolvedValueOnce(result([]))
+  const odoo = new OdooModuleService({}, options)
+  expect(await category(odoo.readWarehouseStock(99, []))).toBe("rejected")
+
+  fetchMock
+    .mockResolvedValueOnce(result([{ id: 3, view_location_id: [11, "WH"] }]))
+    .mockResolvedValueOnce(result([{ id: 1, product_id: false, product_qty: 1, state: "assigned", origin: false, date: false }]))
+    .mockResolvedValueOnce(result([]))
+  expect(await category(odoo.readWarehouseStock(3, []))).toBe("invalid_response")
 })
