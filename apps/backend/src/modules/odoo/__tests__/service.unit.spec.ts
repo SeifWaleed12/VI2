@@ -245,9 +245,10 @@ it("creates a quotation with Medusa's prices and no tax", async () => {
     .mockResolvedValueOnce(result([{ id: 21, default_code: "WHEY", barcode: false }, { id: 30, default_code: "WEB-DISCOUNT", barcode: false }]))
     .mockResolvedValueOnce(result(91))
   const lines = [{ sku: "WHEY", quantity: 2, unitPrice: 1500 }, { sku: "WEB-DISCOUNT", quantity: 1, unitPrice: -150 }]
-  expect(await new OdooModuleService({}, options).upsertSaleOrder("order_1", 12, lines)).toEqual({ id: 91, state: "draft" })
+  expect(await new OdooModuleService({}, options).upsertSaleOrder("order_1", 12, lines, 13)).toEqual({ id: 91, state: "draft" })
   expect(sent(3)).toEqual(["sale.order", "create", [{
     partner_id: 12,
+    partner_shipping_id: 13,
     client_order_ref: "order_1",
     order_line: [
       [0, 0, { product_id: 21, product_uom_qty: 2, price_unit: 1500, tax_id: [[6, 0, []]] }],
@@ -271,4 +272,27 @@ it("confirms a sales order, and treats a create without an id as a bad answer", 
 
   fetchMock.mockResolvedValueOnce(result([])).mockResolvedValueOnce(result([])).mockResolvedValueOnce(result(false))
   expect(await category(odoo.upsertContact({ email: "a@b.c", name: "A" }))).toBe("invalid_response")
+})
+
+const address = { street: "12 Tahrir St", street2: "", city: "Cairo", zip: null, countryCode: "eg" }
+const addressFields = { street: "12 Tahrir St", street2: false, city: "Cairo", zip: false, country_id: 65 }
+
+it("creates a contact from an order with its delivery address", async () => {
+  fetchMock.mockResolvedValueOnce(result(7)).mockResolvedValueOnce(result([])).mockResolvedValueOnce(result([4])).mockResolvedValueOnce(result([65])).mockResolvedValueOnce(result(12))
+  await new OdooModuleService({}, options).upsertContact({ email: "sara@example.com", name: "Sara Ali", phone: "+20100", address })
+  expect(sent(3)).toEqual(["res.country", "search", [[["code", "=", "EG"]]], { order: "id" }])
+  expect(sent(4)).toEqual(["res.partner", "create", [{ name: "Sara Ali", email: "sara@example.com", phone: "+20100", category_id: [[4, 4]], ...addressFields }], {}])
+})
+
+it("reuses the contact's delivery address that matches exactly, or adds a new one", async () => {
+  const delivery = { parent_id: 12, type: "delivery", name: "Sara Ali", phone: "+20100", ...addressFields }
+  const domain = Object.entries(delivery).map(([field, value]) => [field, "=", value])
+  fetchMock.mockResolvedValueOnce(result(7)).mockResolvedValueOnce(result([65])).mockResolvedValueOnce(result([13]))
+  const odoo = new OdooModuleService({}, options)
+  expect(await odoo.upsertDeliveryAddress(12, { name: "Sara Ali", phone: "+20100", address })).toBe(13)
+  expect(sent(2)).toEqual(["res.partner", "search", [domain], { order: "id" }])
+
+  fetchMock.mockResolvedValueOnce(result([65])).mockResolvedValueOnce(result([])).mockResolvedValueOnce(result(14))
+  expect(await odoo.upsertDeliveryAddress(12, { name: "Sara Ali", phone: "+20100", address })).toBe(14)
+  expect(sent(5)).toEqual(["res.partner", "create", [delivery], {}])
 })

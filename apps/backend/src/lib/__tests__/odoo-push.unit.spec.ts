@@ -12,7 +12,7 @@ const placed = {
   original_shipping_total: 60,
   discount_total: 0,
   payment_collections: [{ payments: [{ provider_id: "pp_system_default" }] }],
-  shipping_address: { first_name: "Sara", last_name: "Ali", phone: "+201000000000" },
+  shipping_address: { first_name: "Sara", last_name: "Ali", phone: "+201000000000", address_1: "12 Tahrir St", address_2: null, city: "Cairo", postal_code: "11511", country_code: "eg" },
 }
 
 function setup({ order = placed as Record<string, unknown>, saleState = "draft", odooConfigured = true } = {}) {
@@ -20,6 +20,7 @@ function setup({ order = placed as Record<string, unknown>, saleState = "draft",
   const odoo = {
     upsertContact: jest.fn().mockResolvedValue({ id: 12, duplicates: [] }),
     upsertLead: jest.fn().mockResolvedValue(40),
+    upsertDeliveryAddress: jest.fn().mockResolvedValue(13),
     upsertSaleOrder: jest.fn().mockResolvedValue({ id: 90, state: saleState }),
     confirmSaleOrder: jest.fn().mockResolvedValue(undefined),
   }
@@ -45,9 +46,11 @@ it("sends a cash-on-delivery order to Odoo, confirms it and stores the Odoo ids"
   const { container, odoo, orders, locks } = setup()
   await pushOrderToOdoo(container, "order_1")
   expect(locks).toEqual(["odoo-order:order_1", "odoo-contact:sara@example.com"])
-  expect(odoo.upsertContact).toHaveBeenCalledWith({ email: "sara@example.com", name: "Sara Ali", phone: "+201000000000" })
+  const address = { street: "12 Tahrir St", street2: null, city: "Cairo", zip: "11511", countryCode: "eg" }
+  expect(odoo.upsertContact).toHaveBeenCalledWith({ email: "sara@example.com", name: "Sara Ali", phone: "+201000000000", address })
+  expect(odoo.upsertDeliveryAddress).toHaveBeenCalledWith(12, { name: "Sara Ali", phone: "+201000000000", address })
   expect(odoo.upsertLead).toHaveBeenCalledWith(12, "Sara Ali")
-  expect(odoo.upsertSaleOrder).toHaveBeenCalledWith("order_1", 12, [{ sku: "WHEY", quantity: 2, unitPrice: 1500 }, { sku: "WEB-SHIPPING", quantity: 1, unitPrice: 60 }])
+  expect(odoo.upsertSaleOrder).toHaveBeenCalledWith("order_1", 12, [{ sku: "WHEY", quantity: 2, unitPrice: 1500 }, { sku: "WEB-SHIPPING", quantity: 1, unitPrice: 60 }], 13)
   expect(odoo.confirmSaleOrder).toHaveBeenCalledWith(90)
   expect(orders.updateOrders).toHaveBeenCalledWith("order_1", { metadata: { note: "kept", odoo_sale_order_id: 90, odoo_crm_lead_id: 40 } })
 })
@@ -87,6 +90,20 @@ it("sends a registered customer to Odoo and keeps the ids; a guest waits for the
   guest.customers.retrieveCustomer.mockResolvedValue({ id: "cus_2", email: "g@example.com", has_account: false })
   await pushCustomerToOdoo(guest.container, "cus_2")
   expect(guest.odoo.upsertContact).not.toHaveBeenCalled()
+})
+
+it("sends each order's own delivery address, even when the contact already exists with another", async () => {
+  const { container, odoo } = setup({ order: { ...placed, shipping_address: { ...placed.shipping_address, address_1: "5 Nile Corniche", city: "Giza" } } })
+  await pushOrderToOdoo(container, "order_1")
+  expect(odoo.upsertDeliveryAddress).toHaveBeenCalledWith(12, expect.objectContaining({ address: expect.objectContaining({ street: "5 Nile Corniche", city: "Giza" }) }))
+  expect(odoo.upsertSaleOrder).toHaveBeenCalledWith("order_1", 12, expect.any(Array), 13)
+})
+
+it("registers a customer without an address and adds no delivery address", async () => {
+  const { container, odoo } = setup()
+  await pushCustomerToOdoo(container, "cus_1")
+  expect(odoo.upsertContact).toHaveBeenCalledWith({ email: "sara@example.com", name: "Sara", phone: null, address: undefined })
+  expect(odoo.upsertDeliveryAddress).not.toHaveBeenCalled()
 })
 
 it("logs a failed order push without the customer's details and rethrows so the event bus retries", async () => {

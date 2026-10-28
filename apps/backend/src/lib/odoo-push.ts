@@ -15,20 +15,28 @@ const ORDER_FIELDS = [
   "id", "email", "status", "metadata", "original_shipping_total", "discount_total",
   "items.*", "shipping_methods.*", "payment_collections.payments.provider_id",
   "shipping_address.first_name", "shipping_address.last_name", "shipping_address.phone",
+  "shipping_address.address_1", "shipping_address.address_2", "shipping_address.city", "shipping_address.postal_code", "shipping_address.country_code",
 ]
 
 type Person = { email: string, first_name?: string | null, last_name?: string | null, phone?: string | null }
+type MedusaAddress = { address_1?: string | null, address_2?: string | null, city?: string | null, postal_code?: string | null, country_code?: string | null }
 
-// The Odoo contact and website lead for one email (plan F1, D8), under the
-// lock the customer and order pushes share, so they never both create.
-async function pushContact(container: MedusaContainer, odoo: OdooModuleService, person: Person) {
+// The Odoo contact and website lead for one email (plan F1, D8), and the
+// delivery address when there is one, under the lock the customer and order
+// pushes share, so they never both create.
+async function pushContact(container: MedusaContainer, odoo: OdooModuleService, person: Person, shipTo?: MedusaAddress | null) {
   const name = [person.first_name, person.last_name].filter(Boolean).join(" ").trim() || person.email
+  const address = shipTo ? { street: shipTo.address_1, street2: shipTo.address_2, city: shipTo.city, zip: shipTo.postal_code, countryCode: shipTo.country_code } : undefined
   return container.resolve(Modules.LOCKING).execute(odooContactLockKey(person.email), async () => {
-    const contact = await odoo.upsertContact({ email: person.email, name, phone: person.phone })
+    const contact = await odoo.upsertContact({ email: person.email, name, phone: person.phone, address })
     if (contact.duplicates.length) {
       container.resolve(ContainerRegistrationKeys.LOGGER).warn(`Odoo has several contacts with one website email; using ${contact.id}, not ${contact.duplicates.join(", ")}.`)
     }
-    return { partnerId: contact.id, leadId: await odoo.upsertLead(contact.id, name) }
+    return {
+      partnerId: contact.id,
+      leadId: await odoo.upsertLead(contact.id, name),
+      deliveryId: address ? await odoo.upsertDeliveryAddress(contact.id, { name, phone: person.phone, address }) : undefined,
+    }
   }, LOCK)
 }
 
@@ -56,8 +64,8 @@ export async function pushOrderToOdoo(container: MedusaContainer, orderId: strin
     if (!order) throw new MedusaError(MedusaError.Types.NOT_FOUND, `Order ${orderId} not found.`)
     if (order.status === "canceled") return
     const lines = odooOrderLines(order as unknown as WebsiteOrder)
-    const { partnerId, leadId } = await pushContact(container, odoo, { ...order.shipping_address, email: order.email as string })
-    const sale = await odoo.upsertSaleOrder(order.id, partnerId, lines)
+    const { partnerId, leadId, deliveryId } = await pushContact(container, odoo, { ...order.shipping_address, email: order.email as string }, order.shipping_address)
+    const sale = await odoo.upsertSaleOrder(order.id, partnerId, lines, deliveryId)
     if (isCashOnDelivery(order as unknown as WebsiteOrder) && ["draft", "sent"].includes(sale.state)) await odoo.confirmSaleOrder(sale.id)
     await container.resolve(Modules.ORDER).updateOrders(order.id, { metadata: { ...order.metadata, odoo_sale_order_id: sale.id, odoo_crm_lead_id: leadId } })
   }, LOCK)

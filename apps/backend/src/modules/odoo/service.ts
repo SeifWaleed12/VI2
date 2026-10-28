@@ -38,10 +38,20 @@ export type OdooWarehouseStock = {
   moves: OdooMove[]
 }
 
+export type OdooAddress = {
+  street?: string | null
+  street2?: string | null
+  city?: string | null
+  zip?: string | null
+  // ISO 3166-1 alpha-2, as Medusa stores it.
+  countryCode?: string | null
+}
+
 export type OdooContact = {
   email: string
   name: string
   phone?: string | null
+  address?: OdooAddress
 }
 
 const TIMEOUT_MS = 10_000
@@ -163,14 +173,24 @@ class OdooModuleService {
   }
 
   // The contact with this email (the lowest id if staff made several), or a
-  // new one tagged "Website". Callers hold the contact lock (plan 2.1), so two
-  // runs for one email cannot both create.
+  // new one tagged "Website", with the address when there is one. Callers hold
+  // the contact lock (plan 2.1), so two runs for one email cannot both create.
   async upsertContact(contact: OdooContact): Promise<{ id: number, duplicates: number[] }> {
     const email = contact.email.trim().toLowerCase()
     const [id, ...duplicates] = await this.search("res.partner", [["email_normalized", "=", email]])
     if (id) return { id, duplicates }
     const tag = await this.findOrCreate("res.partner.category", "Website")
-    return { id: await this.create("res.partner", { name: contact.name, email, phone: contact.phone || false, category_id: [[4, tag]] }), duplicates: [] }
+    const address = contact.address ? await this.addressFields(contact.address) : {}
+    return { id: await this.create("res.partner", { name: contact.name, email, phone: contact.phone || false, category_id: [[4, tag]], ...address }), duplicates: [] }
+  }
+
+  // The contact's delivery address with exactly these details, or a new one,
+  // so each order ships where it was sent and repeat orders reuse an address.
+  // Callers hold the contact lock.
+  async upsertDeliveryAddress(partnerId: number, delivery: { name: string, phone?: string | null, address: OdooAddress }): Promise<number> {
+    const values = { parent_id: partnerId, type: "delivery", name: delivery.name, phone: delivery.phone || false, ...(await this.addressFields(delivery.address)) }
+    const [id] = await this.search("res.partner", Object.entries(values).map(([field, value]) => [field, "=", value]))
+    return id ?? this.create("res.partner", values)
   }
 
   // The contact's website lead, including one marked lost (archived), or a new one.
@@ -181,9 +201,9 @@ class OdooModuleService {
   }
 
   // The sales order whose client_order_ref is this Medusa order id, or a new
-  // quotation. Lines carry Medusa's prices and no tax (plan D9). Callers hold
-  // the order lock.
-  async upsertSaleOrder(ref: string, partnerId: number, lines: OdooOrderLine[]): Promise<{ id: number, state: string }> {
+  // quotation delivering to deliveryId. Lines carry Medusa's prices and no tax
+  // (plan D9). Callers hold the order lock.
+  async upsertSaleOrder(ref: string, partnerId: number, lines: OdooOrderLine[], deliveryId?: number): Promise<{ id: number, state: string }> {
     const [found] = records(await this.call("sale.order", "search_read", [[["client_order_ref", "=", ref]]], { fields: ["state"], order: "id", limit: 1 }), "sales order search")
     if (found) {
       if (typeof found.id !== "number" || typeof found.state !== "string") throw new OdooError("invalid_response", "Odoo returned a sales order without an id and state.")
@@ -195,6 +215,7 @@ class OdooModuleService {
     if (missing.length) throw new OdooError("rejected", `Odoo has no active product with Internal Reference ${missing.join(", ")}.`)
     const id = await this.create("sale.order", {
       partner_id: partnerId,
+      ...(deliveryId && { partner_shipping_id: deliveryId }),
       client_order_ref: ref,
       // shortcut: the line tax field is tax_id up to Odoo 18 and tax_ids from Odoo 19; match it to the version (plan D1) before merge.
       order_line: lines.map((line) => [0, 0, { product_id: products.get(line.sku), product_uom_qty: line.quantity, price_unit: line.unitPrice, tax_id: [[6, 0, []]] }]),
@@ -204,6 +225,13 @@ class OdooModuleService {
 
   async confirmSaleOrder(id: number): Promise<void> {
     await this.call("sale.order", "action_confirm", [[id]])
+  }
+
+  // Odoo address fields; false clears an empty one. The province is left out:
+  // Odoo needs its own state record for it.
+  private async addressFields(address: OdooAddress) {
+    const [country] = address.countryCode ? await this.search("res.country", [["code", "=", address.countryCode.toUpperCase()]]) : []
+    return { street: address.street || false, street2: address.street2 || false, city: address.city || false, zip: address.zip || false, country_id: country ?? false }
   }
 
   // Record ids, lowest first.
