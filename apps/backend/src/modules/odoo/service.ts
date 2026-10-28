@@ -111,7 +111,9 @@ class OdooModuleService {
     const view = relationId(warehouse.view_location_id, "warehouse")
 
     const moves = records(await this.call("stock.move", "search_read", [[
-      ["location_id", "child_of", view], ["location_dest_id.usage", "!=", "internal"],
+      ["location_id", "child_of", view],
+      // Leaving the warehouse (customer, transit, another warehouse's stock), not a pick or pack step inside it.
+      "|", ["location_dest_id.usage", "!=", "internal"], "!", ["location_dest_id", "child_of", view],
       "|", ["state", "not in", ["draft", "done", "cancel"]],
       "&", ["state", "=", "done"], ["sale_line_id.order_id.client_order_ref", "in", websiteOrderIds],
     ]], { fields: ["product_id", "product_qty", "state", "origin", "date"] }), "stock move search")

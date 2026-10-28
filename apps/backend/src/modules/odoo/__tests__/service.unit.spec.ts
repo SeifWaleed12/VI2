@@ -180,7 +180,9 @@ it("reads a warehouse's on-hand and outgoing moves by SKU", async () => {
   const [, , , moveModel, , moveDomain] = sentBody(2).params.args
   expect(moveModel).toBe("stock.move")
   expect(moveDomain[0]).toEqual([
-    ["location_id", "child_of", 11], ["location_dest_id.usage", "!=", "internal"],
+    ["location_id", "child_of", 11],
+    // Leaving the warehouse (customer, transit, another warehouse's stock), not a pick or pack step inside it.
+    "|", ["location_dest_id.usage", "!=", "internal"], "!", ["location_dest_id", "child_of", 11],
     "|", ["state", "not in", ["draft", "done", "cancel"]],
     "&", ["state", "=", "done"], ["sale_line_id.order_id.client_order_ref", "in", ["order_A"]],
   ])
