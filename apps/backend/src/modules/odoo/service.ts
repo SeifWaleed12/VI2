@@ -1,3 +1,4 @@
+import type { OdooOrderLine } from "../../lib/odoo-orders"
 import type { OdooMove } from "../../lib/odoo-stock"
 
 export type OdooOptions = {
@@ -35,6 +36,12 @@ export type OdooProduct = {
 export type OdooWarehouseStock = {
   onHand: Map<string, number>
   moves: OdooMove[]
+}
+
+export type OdooContact = {
+  email: string
+  name: string
+  phone?: string | null
 }
 
 const TIMEOUT_MS = 10_000
@@ -153,6 +160,70 @@ class OdooModuleService {
       })
     }
     return { onHand, moves: websiteMoves }
+  }
+
+  // The contact with this email (the lowest id if staff made several), or a
+  // new one tagged "Website". Callers hold the contact lock (plan 2.1), so two
+  // runs for one email cannot both create.
+  async upsertContact(contact: OdooContact): Promise<{ id: number, duplicates: number[] }> {
+    const email = contact.email.trim().toLowerCase()
+    const [id, ...duplicates] = await this.search("res.partner", [["email_normalized", "=", email]])
+    if (id) return { id, duplicates }
+    const tag = await this.findOrCreate("res.partner.category", "Website")
+    return { id: await this.create("res.partner", { name: contact.name, email, phone: contact.phone || false, category_id: [[4, tag]] }), duplicates: [] }
+  }
+
+  // The contact's website lead, including one marked lost (archived), or a new one.
+  async upsertLead(partnerId: number, name: string): Promise<number> {
+    const source = await this.findOrCreate("utm.source", "Website")
+    const [id] = await this.search("crm.lead", [["partner_id", "=", partnerId], ["source_id", "=", source]], { active_test: false })
+    return id ?? this.create("crm.lead", { name, partner_id: partnerId, source_id: source })
+  }
+
+  // The sales order whose client_order_ref is this Medusa order id, or a new
+  // quotation. Lines carry Medusa's prices and no tax (plan D9). Callers hold
+  // the order lock.
+  async upsertSaleOrder(ref: string, partnerId: number, lines: OdooOrderLine[]): Promise<{ id: number, state: string }> {
+    const [found] = records(await this.call("sale.order", "search_read", [[["client_order_ref", "=", ref]]], { fields: ["state"], order: "id", limit: 1 }), "sales order search")
+    if (found) {
+      if (typeof found.id !== "number" || typeof found.state !== "string") throw new OdooError("invalid_response", "Odoo returned a sales order without an id and state.")
+      return { id: found.id, state: found.state }
+    }
+    const skus = [...new Set(lines.map((line) => line.sku))]
+    const products = new Map((await this.findProductsBySku(skus)).map((product) => [product.sku, product.id]))
+    const missing = skus.filter((sku) => !products.has(sku))
+    if (missing.length) throw new OdooError("rejected", `Odoo has no active product with Internal Reference ${missing.join(", ")}.`)
+    const id = await this.create("sale.order", {
+      partner_id: partnerId,
+      client_order_ref: ref,
+      // shortcut: the line tax field is tax_id up to Odoo 18 and tax_ids from Odoo 19; match it to the version (plan D1) before merge.
+      order_line: lines.map((line) => [0, 0, { product_id: products.get(line.sku), product_uom_qty: line.quantity, price_unit: line.unitPrice, tax_id: [[6, 0, []]] }]),
+    })
+    return { id, state: "draft" }
+  }
+
+  async confirmSaleOrder(id: number): Promise<void> {
+    await this.call("sale.order", "action_confirm", [[id]])
+  }
+
+  // Record ids, lowest first.
+  private async search(model: string, domain: unknown[], context?: Record<string, unknown>): Promise<number[]> {
+    const ids = await this.call(model, "search", [domain], { order: "id", ...(context && { context }) })
+    if (!Array.isArray(ids) || ids.some((id) => typeof id !== "number")) throw new OdooError("invalid_response", `Odoo ${model} search did not return ids.`)
+    return ids
+  }
+
+  private async create(model: string, values: Record<string, unknown>): Promise<number> {
+    const id = await this.call(model, "create", [values])
+    if (typeof id !== "number") throw new OdooError("invalid_response", `Odoo ${model} create did not return an id.`)
+    return id
+  }
+
+  // shortcut: two first-ever pushes at the same moment can both create the
+  // "Website" tag or source; staff merge the duplicate. Lock it if that happens.
+  private async findOrCreate(model: string, name: string): Promise<number> {
+    const [id] = await this.search(model, [["name", "=", name]])
+    return id ?? this.create(model, { name })
   }
 
   private signIn(): Promise<number> {

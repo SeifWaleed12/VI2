@@ -202,3 +202,73 @@ it("refuses a warehouse Odoo does not have, and records without a product", asyn
     .mockResolvedValueOnce(result([]))
   expect(await category(odoo.readWarehouseStock(3, []))).toBe("invalid_response")
 })
+
+const sent = (call: number) => sentBody(call).params.args.slice(3)
+
+it("reuses the lowest-id contact with the email and reports the others", async () => {
+  fetchMock.mockResolvedValueOnce(result(7)).mockResolvedValueOnce(result([5, 9]))
+  expect(await new OdooModuleService({}, options).upsertContact({ email: " Sara@Example.com ", name: "Sara" })).toEqual({ id: 5, duplicates: [9] })
+  expect(sent(1)).toEqual(["res.partner", "search", [[["email_normalized", "=", "sara@example.com"]]], { order: "id" }])
+  expect(fetchMock).toHaveBeenCalledTimes(2)
+})
+
+it("creates a contact tagged Website, creating the tag the first time", async () => {
+  fetchMock.mockResolvedValueOnce(result(7)).mockResolvedValueOnce(result([])).mockResolvedValueOnce(result([])).mockResolvedValueOnce(result(4)).mockResolvedValueOnce(result(12))
+  expect(await new OdooModuleService({}, options).upsertContact({ email: "sara@example.com", name: "Sara Ali", phone: "" })).toEqual({ id: 12, duplicates: [] })
+  expect(sent(2)).toEqual(["res.partner.category", "search", [[["name", "=", "Website"]]], { order: "id" }])
+  expect(sent(3)).toEqual(["res.partner.category", "create", [{ name: "Website" }], {}])
+  expect(sent(4)).toEqual(["res.partner", "create", [{ name: "Sara Ali", email: "sara@example.com", phone: false, category_id: [[4, 4]] }], {}])
+})
+
+it("finds the contact's website lead, lost ones included, or creates it", async () => {
+  fetchMock.mockResolvedValueOnce(result(7)).mockResolvedValueOnce(result([3])).mockResolvedValueOnce(result([40]))
+  const odoo = new OdooModuleService({}, options)
+  expect(await odoo.upsertLead(12, "Sara")).toBe(40)
+  expect(sent(2)).toEqual(["crm.lead", "search", [[["partner_id", "=", 12], ["source_id", "=", 3]]], { order: "id", context: { active_test: false } }])
+
+  fetchMock.mockResolvedValueOnce(result([3])).mockResolvedValueOnce(result([])).mockResolvedValueOnce(result(41))
+  expect(await odoo.upsertLead(12, "Sara")).toBe(41)
+  expect(sent(5)).toEqual(["crm.lead", "create", [{ name: "Sara", partner_id: 12, source_id: 3 }], {}])
+})
+
+it("returns the existing sales order for a Medusa order without creating another", async () => {
+  fetchMock.mockResolvedValueOnce(result(7)).mockResolvedValueOnce(result([{ id: 90, state: "sale" }]))
+  expect(await new OdooModuleService({}, options).upsertSaleOrder("order_1", 12, [{ sku: "WHEY", quantity: 1, unitPrice: 10 }])).toEqual({ id: 90, state: "sale" })
+  expect(sent(1)).toEqual(["sale.order", "search_read", [[["client_order_ref", "=", "order_1"]]], { fields: ["state"], order: "id", limit: 1 }])
+  expect(fetchMock).toHaveBeenCalledTimes(2)
+})
+
+it("creates a quotation with Medusa's prices and no tax", async () => {
+  fetchMock
+    .mockResolvedValueOnce(result(7))
+    .mockResolvedValueOnce(result([]))
+    .mockResolvedValueOnce(result([{ id: 21, default_code: "WHEY", barcode: false }, { id: 30, default_code: "WEB-DISCOUNT", barcode: false }]))
+    .mockResolvedValueOnce(result(91))
+  const lines = [{ sku: "WHEY", quantity: 2, unitPrice: 1500 }, { sku: "WEB-DISCOUNT", quantity: 1, unitPrice: -150 }]
+  expect(await new OdooModuleService({}, options).upsertSaleOrder("order_1", 12, lines)).toEqual({ id: 91, state: "draft" })
+  expect(sent(3)).toEqual(["sale.order", "create", [{
+    partner_id: 12,
+    client_order_ref: "order_1",
+    order_line: [
+      [0, 0, { product_id: 21, product_uom_qty: 2, price_unit: 1500, tax_id: [[6, 0, []]] }],
+      [0, 0, { product_id: 30, product_uom_qty: 1, price_unit: -150, tax_id: [[6, 0, []]] }],
+    ],
+  }], {}])
+})
+
+it("refuses an order whose SKU Odoo does not have, creating nothing", async () => {
+  fetchMock.mockResolvedValueOnce(result(7)).mockResolvedValueOnce(result([])).mockResolvedValueOnce(result([{ id: 21, default_code: "WHEY", barcode: false }]))
+  const error = await new OdooModuleService({}, options).upsertSaleOrder("order_1", 12, [{ sku: "WHEY", quantity: 1, unitPrice: 10 }, { sku: "WEB-SHIPPING", quantity: 1, unitPrice: 60 }]).catch((caught) => caught)
+  expect(error).toEqual(new OdooError("rejected", "Odoo has no active product with Internal Reference WEB-SHIPPING."))
+  expect(fetchMock).toHaveBeenCalledTimes(3)
+})
+
+it("confirms a sales order, and treats a create without an id as a bad answer", async () => {
+  fetchMock.mockResolvedValueOnce(result(7)).mockResolvedValueOnce(result(true))
+  const odoo = new OdooModuleService({}, options)
+  await odoo.confirmSaleOrder(91)
+  expect(sent(1)).toEqual(["sale.order", "action_confirm", [[91]], {}])
+
+  fetchMock.mockResolvedValueOnce(result([])).mockResolvedValueOnce(result([])).mockResolvedValueOnce(result(false))
+  expect(await category(odoo.upsertContact({ email: "a@b.c", name: "A" }))).toBe("invalid_response")
+})
