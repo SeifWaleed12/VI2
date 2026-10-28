@@ -21,7 +21,7 @@ Derived caches/indexes must not silently become authorities.
 | Order | Medusa |
 | Payment state | Medusa + verified Paymob state |
 | Fulfillment | Medusa + Bosta integration |
-| Inventory | Odoo if explicitly confirmed as source of truth |
+| Inventory | Odoo; Medusa holds a copy synced every minute (ADR-001) |
 | Warehouse | Must be confirmed |
 | Supplier | Must be confirmed |
 | Invoice/accounting | Odoo if explicitly required |
