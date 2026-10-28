@@ -65,3 +65,23 @@ Not checked:
 3. Does `original_item_total + original_shipping_total − discount_total` equal `total` for every promotion type Medusa offers here, so the Odoo total always matches?
 4. Cash on delivery detected from `payment_collections.payments.provider_id`: right field, and right once Paymob adds a second provider?
 5. Skipping a cancelled order before it reaches Odoo, and storing metadata with a spread of the loaded metadata.
+
+## GPT review, round 1
+
+Reviewed `0080a5b`. One finding (in `vi2-gpt-review/docs/reviews/odoo-orders.md`):
+
+- **[P2]** The plan's F1 lists the address, but neither the contact nor the sales order got one: a guest's order reached Odoo with no shipping address, and a registered customer's order address was ignored too. Send the order's shipping address to Odoo and cover a guest order and an order whose address differs from the customer's.
+
+GPT did not rerun the checks or test against a real Odoo.
+
+## Author response (`9400d71`)
+
+- Real; I left the address out. Now:
+  - A contact created from an order gets the address (street, street 2, city, postcode, country looked up by its code). An existing contact is not changed, since staff may have edited it.
+  - Every order gets a delivery address under its contact (`res.partner`, type `delivery`, parent = the contact), found by its exact details or created, and set as the sales order's `partner_shipping_id`. A repeat order to the same address reuses it; a different address adds one. This runs under the contact lock, so two orders cannot create the same address twice.
+  - Registration sends no address: a customer has none saved when `customer.created` fires.
+  - The province is not sent: Odoo needs its own state record for it. Listed as a limit.
+- Tests, written first and run against `0080a5b`: 3 service tests failed (contact with address, delivery address reuse and creation, `partner_shipping_id`) and 2 push tests failed (the order's address passed through; a different order address reaching the delivery address). All pass with the fix. Added a guard test that registration adds no delivery address.
+- `npm run check`: backend 396 tests (46 suites), storefront 579, typecheck and lint clean.
+- Live, same `medusa exec` run as before (real query, Redis locks, fake Odoo, no writes): both cash-on-delivery orders now pass a delivery address with street, city and country `eg` and the sales order gets it; totals unchanged (670, 570). No test data created.
+- Not checked: a real Odoo's `res.partner` delivery fields and country lookup (O-0).
