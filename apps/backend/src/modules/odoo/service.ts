@@ -37,12 +37,14 @@ class OdooModuleService {
   constructor(_container: unknown, private readonly options: OdooOptions) {}
 
   async call(model: string, method: string, args: unknown[] = [], kwargs: Record<string, unknown> = {}): Promise<unknown> {
-    const uid = await this.signIn()
+    const session = this.signIn()
+    const uid = await session
     try {
       return await this.rpc("object", "execute_kw", [this.options.db, uid, this.options.apiKey, model, method, args, kwargs])
     } catch (error) {
-      // A revoked key or changed rights must not stay cached.
-      if (error instanceof OdooError && error.category === "auth") this.uid = undefined
+      // A revoked key or changed rights must not stay cached. Only the sign-in
+      // this call used is dropped, so a late failure keeps a newer sign-in.
+      if (error instanceof OdooError && error.category === "auth" && this.uid === session) this.uid = undefined
       throw error
     }
   }

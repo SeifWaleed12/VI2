@@ -77,6 +77,40 @@ it("signs in again after Odoo denies access to a call", async () => {
   expect(sentBody(3).params.args[1]).toBe(8)
 })
 
+it("shares one sign-in between calls made at the same time", async () => {
+  fetchMock.mockResolvedValueOnce(result(7)).mockResolvedValueOnce(result(1)).mockResolvedValueOnce(result(2))
+  const odoo = new OdooModuleService({}, options)
+
+  await Promise.all([odoo.call("res.partner", "search_count"), odoo.call("res.partner", "search_count")])
+  expect(fetchMock).toHaveBeenCalledTimes(3)
+  expect(sentBody(0).params.method).toBe("authenticate")
+  expect([sentBody(1).params.args[1], sentBody(2).params.args[1]]).toEqual([7, 7])
+})
+
+it("keeps a newer sign-in when an older call fails with an auth error later", async () => {
+  let releaseOlder!: (response: Response) => void
+  fetchMock
+    .mockResolvedValueOnce(result(7))
+    .mockResolvedValueOnce(odooError("odoo.exceptions.AccessDenied", "Session expired"))
+    .mockReturnValueOnce(new Promise<Response>((resolve) => { releaseOlder = resolve }))
+    .mockResolvedValueOnce(result(8))
+    .mockResolvedValueOnce(result([]))
+    .mockResolvedValueOnce(result([]))
+  const odoo = new OdooModuleService({}, options)
+
+  const first = odoo.call("res.partner", "search")
+  const older = odoo.call("res.partner", "search")
+  expect(await category(first)).toBe("auth")
+  await odoo.call("res.partner", "search")
+  expect(sentBody(3).params.method).toBe("authenticate")
+
+  releaseOlder(odooError("odoo.exceptions.AccessDenied", "Session expired"))
+  expect(await category(older)).toBe("auth")
+  await odoo.call("res.partner", "search")
+  expect(fetchMock).toHaveBeenCalledTimes(6)
+  expect(sentBody(5).params.args[1]).toBe(8)
+})
+
 it("keeps the sign-in after Odoo rejects a request", async () => {
   fetchMock
     .mockResolvedValueOnce(result(7))
