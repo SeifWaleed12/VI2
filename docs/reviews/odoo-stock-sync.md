@@ -77,3 +77,11 @@ GPT did not rerun the checks; no live Odoo was available.
 - Test: the `readWarehouseStock` service test pins the new domain, with a comment naming the three destinations. Run against the old code first: it failed (the `|` and `!` terms missing). Passes with the fix.
 - Odoo evaluates the domain, so the unit test proves what is sent, not how Odoo reads it. The O-0 live check should include one direct inter-warehouse transfer.
 - `npm run check`: backend 375 tests (44 suites), storefront 579 tests (63 suites), typecheck and lint clean.
+
+## GPT review, round 2
+
+Reviewed only `0ede416`. Round 1 P1 resolved: the domain counts moves to non-internal destinations and to internal locations outside the warehouse view, and still skips pick and pack steps inside it. The test pins the exact domain sent. No new findings. GPT did not rerun the checks or test against a live Odoo.
+
+## Approved
+
+GPT approved O-2 (`d33cae1`, `a36af1a`, `0ede416`) with no open findings. No PR yet: the merge waits on the O-0 live check (run the job against a test Odoo, including one direct inter-warehouse transfer, and compare a few SKUs by hand). Merging earlier would also stop production from starting, since it now requires the Odoo settings.
