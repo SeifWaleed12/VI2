@@ -62,3 +62,18 @@ Not checked:
 4. Fail-closed zeroing, and that unchanged levels are never written.
 5. Production refusing to start without Odoo.
 6. Does ADR-001 match what the code does?
+
+## GPT review, round 1
+
+Reviewed `b1adf1e..a36af1a`. One finding (written in `vi2-gpt-review/docs/reviews/odoo-stock-sync.md`):
+
+- **[P1]** The moves domain skipped every move to an internal location. A direct transfer from the website's warehouse to another warehouse's stock was skipped too, while its units still sat in the source quants, so the website showed units already promised to the other warehouse until Odoo validated the transfer.
+
+GPT did not rerun the checks; no live Odoo was available.
+
+## Author response (`0ede416`)
+
+- Real. The domain now skips a move only when its destination is internal **and** inside the warehouse's view location (pick and pack steps): `"|", ["location_dest_id.usage", "!=", "internal"], "!", ["location_dest_id", "child_of", view]`. Moves to customers, transit and other warehouses' stock all count as leaving. The pick/pack/out case is unchanged: only the out move leaves the view.
+- Test: the `readWarehouseStock` service test pins the new domain, with a comment naming the three destinations. Run against the old code first: it failed (the `|` and `!` terms missing). Passes with the fix.
+- Odoo evaluates the domain, so the unit test proves what is sent, not how Odoo reads it. The O-0 live check should include one direct inter-warehouse transfer.
+- `npm run check`: backend 375 tests (44 suites), storefront 579 tests (63 suites), typecheck and lint clean.
