@@ -1,6 +1,21 @@
-import { getCustomer, logoutCustomer } from "../medusa/services/customer";
+import { changePassword, getCustomer, logoutCustomer } from "../medusa/services/customer";
 
 afterEach(() => { jest.restoreAllMocks(); });
+
+test("refreshes account state after successful password change only", async () => {
+  const fakeWindow = new EventTarget(), changed = jest.fn();
+  fakeWindow.addEventListener("vi2-auth-change", changed);
+  Object.defineProperty(global, "window", { value: fakeWindow, configurable: true });
+  try {
+    const fetchMock = jest.spyOn(global, "fetch");
+    fetchMock.mockResolvedValueOnce(Response.json({ ok: false }, { status: 400 }));
+    await changePassword("old", "new");
+    expect(changed).not.toHaveBeenCalled();
+    fetchMock.mockResolvedValueOnce(Response.json({ ok: true }));
+    await changePassword("old", "new");
+    expect(changed).toHaveBeenCalledTimes(1);
+  } finally { delete (global as { window?: unknown }).window; }
+});
 
 test("an expired session clears customer state but a backend outage remains an error", async () => {
   const fetchMock = jest.spyOn(global, "fetch");

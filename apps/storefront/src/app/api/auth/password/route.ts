@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { AUTH_COOKIE, AUTH_TIMEOUT_MS, BACKEND_URL, PUBLISHABLE_KEY, authError, authJson, backendFailure, checkAuthOrigin, expiredSession, readAuthBody, transportFailure, validText } from "@/lib/auth-request";
+import { AUTH_COOKIE, AUTH_TIMEOUT_MS, BACKEND_URL, PUBLISHABLE_KEY, authError, authJson, backendFailure, checkAuthOrigin, expiredSession, readAuthBody, setAuthCookie, transportFailure, validText } from "@/lib/auth-request";
 
 const PASSWORD_ERRORS: Record<string, string> = {
   wrong_password: "Your current password is not correct.",
@@ -22,7 +22,11 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify({ current_password: body.currentPassword, new_password: body.newPassword }),
       cache: "no-store", signal: AbortSignal.timeout(AUTH_TIMEOUT_MS),
     });
-    if (backend.ok) return authJson({ ok: true });
+    if (backend.ok) {
+      const response = authJson({ ok: true });
+      setAuthCookie(response, "");
+      return response;
+    }
     if (backend.status === 400) {
       const data = await backend.json().catch(() => null);
       return authError(PASSWORD_ERRORS[data?.code] ?? "Check the passwords and try again.", 400);
