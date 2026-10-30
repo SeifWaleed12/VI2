@@ -65,7 +65,7 @@ it("blocks even the right password while locked, and leaves other accounts alone
   await failFiveTimes(s)
   expect((await attempt(customerLogin, s, 200, shopper)).passed).toBe(false)
   expect((await attempt(customerLogin, s, 401, { email: "other@example.com" })).passed).toBe(true)
-  expect((await attempt(limitLoginAttempts("user"), s, 401, shopper)).passed).toBe(true)
+  expect((await attempt(limitLoginAttempts("user"), s, 401, shopper)).passed).toBe(false)
 })
 
 it("resets the count after a successful sign-in", async () => {

@@ -3,6 +3,7 @@ import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
 import { capturePaymentWorkflow, createOrderFulfillmentWorkflow, createProductsWorkflow, markOrderFulfillmentAsDeliveredWorkflow, refundPaymentWorkflow } from "@medusajs/medusa/core-flows"
 import { setupEgyptStore } from "../../src/scripts/setup-egypt-store"
 import { signEmailChange } from "../../src/lib/email-change"
+import { credentialStamp } from "../../src/lib/security-session"
 import { expirePoints } from "../../src/jobs/expire-points"
 import pointsOnDelivery from "../../src/subscribers/points-on-delivery"
 import pointsOnRefund from "../../src/subscribers/points-on-refund"
@@ -31,6 +32,12 @@ medusaIntegrationTestRunner({
         headers: { "x-publishable-api-key": publishableKey, ...(token ? { authorization: `Bearer ${token}` } : {}) },
         validateStatus: () => true,
       })
+
+      async function emailCredential(email: string) {
+        const [login] = await getContainer().resolve(Modules.AUTH).listProviderIdentities({ provider: "emailpass", entity_id: email })
+        const { http } = getContainer().resolve(ContainerRegistrationKeys.CONFIG_MODULE).projectConfig
+        return credentialStamp(login.provider_metadata!.password as string, http.jwtSecret as string)
+      }
 
       beforeEach(async () => {
         const container = getContainer()
@@ -201,14 +208,14 @@ medusaIntegrationTestRunner({
             sent.mockRestore()
           }
           const id = await customerId(sara)
-          const taken = signEmailChange({ customer_id: id, from: "sara@test.dev", to: "omar@test.dev" }, jwtSecret())
+          const taken = signEmailChange({ customer_id: id, from: "sara@test.dev", to: "omar@test.dev", credential_stamp: await emailCredential("sara@test.dev") }, jwtSecret())
           expect((await api.post("/store/email-change/confirm", { token: taken }, store())).data.code).toBe("email_taken")
           expect((await signIn("sara@test.dev")).status).toBe(200)
 
           // An account record without a login already holds the address, so the
           // customer update fails; the login must move back (workflow compensation).
           await getContainer().resolve(Modules.CUSTOMER).createCustomers({ email: "held@test.dev", has_account: true })
-          const held = signEmailChange({ customer_id: id, from: "sara@test.dev", to: "held@test.dev" }, jwtSecret())
+          const held = signEmailChange({ customer_id: id, from: "sara@test.dev", to: "held@test.dev", credential_stamp: await emailCredential("sara@test.dev") }, jwtSecret())
           expect((await api.post("/store/email-change/confirm", { token: held }, store())).status).toBeGreaterThanOrEqual(400)
           expect((await signIn("sara@test.dev")).status).toBe(200)
           expect((await signIn("held@test.dev")).status).toBe(401)
@@ -217,7 +224,7 @@ medusaIntegrationTestRunner({
           // A failure between the login move and the marker write also moves the login back.
           const markerFails = jest.spyOn(auth, "updateAuthIdentities").mockRejectedValueOnce(new Error("auth store down"))
           try {
-            const between = signEmailChange({ customer_id: id, from: "sara@test.dev", to: "sara.between@test.dev" }, jwtSecret())
+            const between = signEmailChange({ customer_id: id, from: "sara@test.dev", to: "sara.between@test.dev", credential_stamp: await emailCredential("sara@test.dev") }, jwtSecret())
             expect((await api.post("/store/email-change/confirm", { token: between }, store())).status).toBeGreaterThanOrEqual(400)
           } finally {
             markerFails.mockRestore()
@@ -228,7 +235,7 @@ medusaIntegrationTestRunner({
 
           const [login] = await auth.listProviderIdentities({ provider: "emailpass", entity_id: "sara@test.dev" }, { relations: ["auth_identity"] })
           await auth.updateAuthIdentities([{ id: login.auth_identity_id as string, app_metadata: { ...login.auth_identity!.app_metadata, user_id: "user_staff" } }])
-          const staff = signEmailChange({ customer_id: id, from: "sara@test.dev", to: "sara.free@test.dev" }, jwtSecret())
+          const staff = signEmailChange({ customer_id: id, from: "sara@test.dev", to: "sara.free@test.dev", credential_stamp: await emailCredential("sara@test.dev") }, jwtSecret())
           expect((await api.post("/store/email-change/confirm", { token: staff }, store())).data.code).toBe("staff_login")
           expect((await signIn("sara@test.dev")).status).toBe(200)
         })

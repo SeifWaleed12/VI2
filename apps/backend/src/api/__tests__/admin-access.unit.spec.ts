@@ -1,4 +1,4 @@
-import { adminAccess, unlessInviteAcceptance } from "../admin-access"
+import { adminAccess, unlessInviteAcceptance, requestPath } from "../admin-access"
 import { hasPermission } from "@medusajs/framework"
 
 jest.mock("@medusajs/framework", () => ({ hasPermission: jest.fn() }))
@@ -64,6 +64,12 @@ it("refuses a manager an admin-only area even when Medusa's policies would allow
 
 const variant = { id: "variant_1", manage_inventory: true, allow_backorder: false }
 
+it("keeps stock checks on case-varied native route segments", async () => {
+  asManager()
+  const req = request(["role_manager"], { originalUrl: "/admin/products/prod_1/VARIANTS/variant_1", body: { manage_inventory: false }, variants: [variant] })
+  await expect(adminAccess(req as never, response() as never, jest.fn())).rejects.toThrow("administrator")
+})
+
 it("lets a manager resend a variant's unchanged stock settings", async () => {
   asManager()
   const next = jest.fn()
@@ -105,4 +111,9 @@ it("lets only invite acceptance bypass the global admin guard", () => {
     wrapped(req as never, {} as never, next)
   }
   expect(guard).toHaveBeenCalledTimes(3)
+})
+
+
+it.each(["/admin/products/prod_1/variants/variant_1#", "/admin/products/imports%23", "/admin/products/imports\\confirm#"])("rejects ambiguous security paths: %s", originalUrl => {
+  expect(() => requestPath({ originalUrl })).toThrow("unescaped API path")
 })

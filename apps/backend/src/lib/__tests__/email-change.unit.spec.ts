@@ -1,6 +1,6 @@
 import { confirmEmailContent, confirmEmailUrl, emailChangeNoticeContent, signEmailChange, verifyEmailChange } from "../email-change"
 
-const change = { customer_id: "cus_1", from: "sara@test.dev", to: "sara.new@test.dev" }
+const change = { customer_id: "cus_1", from: "sara@test.dev", to: "sara.new@test.dev", credential_stamp: "dummy-credential-stamp" }
 const secret = "test-secret"
 const now = Date.UTC(2026, 9, 20, 12)
 

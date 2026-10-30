@@ -46,10 +46,10 @@ it("starts again after a successful sign-in clears the count", async () => {
   expect(await limiter.reserve("k")).toBe(true)
 })
 
-it("keys by account only, with separate counters per actor and purpose", () => {
+it("keys by account only, sharing credential guesses across actors and separating purposes", () => {
   const key = attemptKey("login-attempts", "customer", " Shopper@Example.com ")
   expect(key).toBe(attemptKey("login-attempts", "customer", "shopper@example.com"))
-  expect(key).not.toBe(attemptKey("login-attempts", "user", "shopper@example.com"))
+  expect(key).toBe(attemptKey("login-attempts", "user", "shopper@example.com"))
   expect(key).not.toBe(attemptKey("reset-requests", "customer", "shopper@example.com"))
   expect(key).not.toBe(attemptKey("login-attempts", "customer", "other@example.com"))
 })

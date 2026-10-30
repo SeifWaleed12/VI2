@@ -3,14 +3,13 @@ import { hasPermission } from "@medusajs/framework"
 import { ContainerRegistrationKeys, MedusaError } from "@medusajs/framework/utils"
 import { managerAction } from "../lib/manager-access"
 import { continueManagerRequest } from "./manager-request-checks"
+import { requestPath } from "../lib/request-path"
 
 type Middleware = (req: AuthenticatedMedusaRequest, res: MedusaResponse, next: MedusaNextFunction) => unknown
 
 export type StaffRole = "admin" | "manager"
 
-export function requestPath(req: { originalUrl: string }) {
-  return req.originalUrl.split("?")[0].replace(/\/$/, "")
-}
+export { requestPath } from "../lib/request-path"
 
 // Invite acceptance is performed by a not-yet-registered identity. Medusa's own
 // route middleware authenticates it with allowUnregistered, so the global admin

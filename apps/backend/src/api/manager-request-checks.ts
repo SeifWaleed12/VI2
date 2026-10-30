@@ -27,7 +27,7 @@ async function changesStockSettings(scope: Scope, changes: StockSettingsChange[]
 }
 
 function isAllocation(method: string, path: string) {
-  return method === "POST" && path === "/admin/reservations"
+  return method === "POST" && path.toLowerCase() === "/admin/reservations"
 }
 
 // A manager's allocation does not reach Medusa's reservation route: it runs

@@ -38,7 +38,7 @@ function ownAccountAction(method: string, segments: string[], body: unknown): St
 // is admin only. Everything not explicitly listed is admin only, so admin APIs
 // Medusa adds later, and our own future business pages, stay closed by default.
 export function managerAction(method: string, path: string, body?: unknown): StaffAction | null {
-  const segments = path.replace(/^\/admin\/?/, "").split("/").filter(Boolean)
+  const segments = path.replace(/^\/admin\/?/i, "").split("/").filter(Boolean).map(segment => segment.toLowerCase())
   const own = ownAccountAction(method, segments, body)
   if (own !== undefined) return own
   // Review moderation is a catalog task; reuse existing product grants without adding a role.
@@ -75,11 +75,12 @@ export type StockSettingsChange = { variantId: string, settings: StockSettings }
 // (no id) starts with the values given; an existing one must keep its own. The
 // dashboard's edit form resends unchanged values, which pass the comparison.
 export function existingVariantStockSettings(path: string, body: unknown): StockSettingsChange[] {
-  const segments = path.replace(/^\/admin\/?/, "").split("/").filter(Boolean)
-  if (!["products", "product-variants"].includes(segments[0])) return []
-  const idSegment = segments[0] === "products" && segments[2] === "variants" ? segments[3]
-    : segments[0] === "product-variants" ? segments[1] : undefined
-  const pathVariantId = idSegment && idSegment !== "batch" ? idSegment : undefined
+  const segments = path.replace(/^\/admin\/?/i, "").split("/").filter(Boolean)
+  const area = segments[0]?.toLowerCase()
+  if (!["products", "product-variants"].includes(area)) return []
+  const idSegment = area === "products" && segments[2]?.toLowerCase() === "variants" ? segments[3]
+    : area === "product-variants" ? segments[1] : undefined
+  const pathVariantId = idSegment && idSegment.toLowerCase() !== "batch" ? idSegment : undefined
   const changes: StockSettingsChange[] = []
   const visit = (node: unknown, inheritedId?: string) => {
     if (Array.isArray(node)) return node.forEach((item) => visit(item))

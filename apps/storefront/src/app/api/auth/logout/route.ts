@@ -1,11 +1,20 @@
 import { NextRequest } from "next/server";
-import { authJson, checkAuthOrigin } from "@/lib/auth-request";
+import { authError, authJson, AUTH_TIMEOUT_MS, BACKEND_URL, checkAuthOrigin } from "@/lib/auth-request";
 
 const AUTH_TOKEN_COOKIE = "vi2_auth_token";
 
 export async function POST(request: NextRequest) {
   const originError = checkAuthOrigin(request);
   if (originError) return originError;
+  const token = request.cookies.get(AUTH_TOKEN_COOKIE)?.value;
+  if (token) {
+    try {
+      const result = await fetch(`${BACKEND_URL}/auth/logout`, { method: "POST", headers: { authorization: `Bearer ${token}` }, cache: "no-store", signal: AbortSignal.timeout(AUTH_TIMEOUT_MS) });
+      if (!result.ok && result.status !== 401) return authError("Sign-out could not be completed. Try again.", 503);
+    } catch {
+      return authError("Sign-out could not be completed. Try again.", 503);
+    }
+  }
   const response = authJson({ ok: true });
 
   // Clear single authoritative HttpOnly cookie

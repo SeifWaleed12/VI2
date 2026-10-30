@@ -1,5 +1,5 @@
 import type { MedusaNextFunction, MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
-import { requestPath } from "./admin-access"
+import { requestPath } from "../lib/request-path"
 
 // Medusa's dashboard draws its sidebars from layouts the server returns, and a
 // layout can mark entries hidden. For managers the server marks the entries of

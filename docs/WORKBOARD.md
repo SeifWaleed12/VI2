@@ -618,3 +618,12 @@ PR28 hydration fix delivered2026-10-27: GPT commits4afa837 on codex/product-revi
 
 
 PR28 hydration recheck closed2026-10-27: Seif supplied Claude verdict **Ship** for4afa837. Full report preserved in docs/reviews/product-reviews.md. Retain real React SSR regression; client interaction harness remains a mock, not an automated hydration engine. No jsdom/dependency or application change; other streamed auth users remain out of scope. Documentation-only closure, no test rerun. Update existing PR28; ready for Seif-controlled merge, not merged by GPT.
+
+## Security report remediation — claimed 2026-10-30
+GPT owns remediation of the 18 needs-validation records in security-audit-skill/vi2/run-1, authorized by Seif. Isolated branch codex/security-remediation from full-stack 2d637bd. Recheck each lead against current source, fix control gaps with focused regression coverage, and record deployment facts or owner-policy decisions separately. Preserve audit verdicts and original reports. Claude review and Seif-controlled merge; no additional agents, live data changes or deployment.
+
+Remediation draft status: eleven report records have scoped source changes; seven remain explicitly open. Regression cases added but not run: skill isolation unavailable and focused local-test permission pending. Owner selected receipt-only guest links and staff-managed guest returns. Full tracker: docs/reviews/security-report-remediation-2026-10-30.md. Not merge-ready; no commit/push/merge.
+
+2026-10-30: Seif explicitly authorized focused normal local unit tests with mocks/dummy data as an exception to audit-skill isolation. Native database and production checks remain pending.
+
+2026-10-30 remediation update: 17/18 records have implementation changes with unit coverage. Record 10 remains open: Seif preserves manager receipt; native arithmetic probe reproduces received=1 with fulfilled=0/shipped=0, but persisted inventory impact is unverified. Seif chose current-device logout and 10 registration attempts per visitor/15 minutes with explicit proxy trust. Backend 15 suites/162 tests and storefront 2 suites/65 tests pass; both app types and changed-source lint pass. New durable session module/migration, legacy-session sign-in reset and pending-link reissue require native rollout verification. No native database/build/provider/deployment tests; no additional agents, push or merge. Full handoff: docs/reviews/security-report-remediation-2026-10-30.md.

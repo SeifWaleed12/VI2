@@ -3,7 +3,7 @@ import { ContainerRegistrationKeys, MedusaError } from "@medusajs/framework/util
 import ProductBrandLink from "../links/product-brand"
 import { BRAND_MODULE } from "../modules/brand"
 import type BrandModuleService from "../modules/brand/service"
-import { requestPath } from "./admin-access"
+import { requestPath } from "../lib/request-path"
 
 const MAX_BRAND_IDS = 50
 // Matches no product: Medusa then answers an empty page with count 0.
