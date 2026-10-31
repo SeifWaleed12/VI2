@@ -620,6 +620,19 @@ PR28 hydration fix delivered2026-10-27: GPT commits4afa837 on codex/product-revi
 PR28 hydration recheck closed2026-10-27: Seif supplied Claude verdict **Ship** for4afa837. Full report preserved in docs/reviews/product-reviews.md. Retain real React SSR regression; client interaction harness remains a mock, not an automated hydration engine. No jsdom/dependency or application change; other streamed auth users remain out of scope. Documentation-only closure, no test rerun. Update existing PR28; ready for Seif-controlled merge, not merged by GPT.
 
 ## Security report remediation — claimed 2026-10-30
+
+### Current status — 2026-10-31
+
+| Task | Author / fix owner | Reviewer | Status | Review scope |
+|---|---|---|---|---|
+| Remediate the 18 retained security-audit records | GPT | Claude | **UNDER REVIEW — awaiting Claude's independent review; approval not yet given** | Branch `codex/security-remediation`; exact application range `2d637bd..3a45e58`, including `c26cf15` and `3a45e58`. Handoff: `docs/reviews/security-report-remediation-2026-10-30.md`. |
+
+Seif requested this review handoff on 2026-10-31. GPT's implementation and focused verification are finished; Claude is the assigned reviewer. Review all 18 record dispositions and the complete application diff, particularly authentication/authorization bypasses, session/recovery races, native route overrides and return-stock lifecycle/concurrency. Report findings with file/line evidence and an APPROVE or REQUEST CHANGES verdict in `docs/reviews/claude-security-remediation-review.md` in the reviewer's own checkout. Do not edit the author's application files or upgrade the original audit verdicts. The roughly 115 unverified hardening observations are outside this fix scope.
+
+Author-reported checks: backend 166 unit tests, storefront 90 tests, native Medusa/PostgreSQL 66 unique tests; both app type checks and changed-source lint pass. These are evidence for independent review, not Claude's verification. Deployment migration, trusted-proxy/origin settings, shared-lock/cache capacity and deployment smoke checks remain release gates. No merge or deployment is authorized; Seif controls acceptance. The workboard-only handoff follows application commit `3a45e58` and does not change the review's application scope.
+
+### Implementation history
+
 GPT owns remediation of the 18 needs-validation records in security-audit-skill/vi2/run-1, authorized by Seif. Isolated branch codex/security-remediation from full-stack 2d637bd. Recheck each lead against current source, fix control gaps with focused regression coverage, and record deployment facts or owner-policy decisions separately. Preserve audit verdicts and original reports. Claude review and Seif-controlled merge; no additional agents, live data changes or deployment.
 
 Remediation draft status: eleven report records have scoped source changes; seven remain explicitly open. Regression cases added but not run: skill isolation unavailable and focused local-test permission pending. Owner selected receipt-only guest links and staff-managed guest returns. Full tracker: docs/reviews/security-report-remediation-2026-10-30.md. Not merge-ready; no commit/push/merge.
