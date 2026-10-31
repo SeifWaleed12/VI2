@@ -41,6 +41,23 @@ it("rejects active content without uploading any files", async () => {
   await expect(upload({ files: [{ buffer: Buffer.from("<html>script</html>") }] } as never, {} as never)).rejects.toThrow("PNG, JPEG or WebP")
   expect(uploadFilesWorkflow).not.toHaveBeenCalled()
 })
+it("accepts generic raster images above the logo cap, through 10 MiB", async () => {
+  const run = jest.fn(async () => ({ result: [{ id: "file_1" }] }))
+  jest.mocked(uploadFilesWorkflow).mockReturnValue({ run } as never)
+  const buffer = Buffer.alloc(10 * 1024 * 1024)
+  Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]).copy(buffer)
+  const res = { status: jest.fn().mockReturnThis(), json: jest.fn() }
+  await upload({ files: [{ buffer }] } as never, res as never)
+  expect(run).toHaveBeenCalledWith({ input: { files: [expect.objectContaining({ mimeType: "image/png", filename: expect.stringMatching(/\.png$/) })] } })
+  expect(res.json).toHaveBeenCalledWith({ files: [{ id: "file_1" }] })
+})
+it("rejects generic images above 10 MiB before any upload", async () => {
+  jest.mocked(uploadFilesWorkflow).mockClear()
+  const buffer = Buffer.alloc(10 * 1024 * 1024 + 1)
+  Buffer.from([0xff, 0xd8, 0xff]).copy(buffer)
+  await expect(upload({ files: [{ buffer }] } as never, {} as never)).rejects.toThrow("10 MB")
+  expect(uploadFilesWorkflow).not.toHaveBeenCalled()
+})
 it("ignores public field expansion and requests only receipt data", async () => {
   const run = jest.fn(async (_input: unknown) => ({ result: { id: "order_1", email: "private@example.test", shipping_address: { phone: "private" }, items: [{ id: "item_1", title: "Whey", metadata: { private: "secret" } }] } }))
   jest.mocked(getOrderDetailWorkflow).mockReturnValue({ run } as never)

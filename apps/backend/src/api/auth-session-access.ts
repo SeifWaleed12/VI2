@@ -7,13 +7,13 @@ export async function activeSecuritySession(req: AuthenticatedMedusaRequest, _re
 }
 
 type NativeHandler = (req: MedusaRequest, res: MedusaResponse) => Promise<unknown>
-export async function sessionBoundResponse(req: MedusaRequest, res: MedusaResponse, handler: NativeHandler, refresh = false) {
+export async function sessionBoundResponse(req: MedusaRequest, res: MedusaResponse, handler: NativeHandler, reuseSession = false) {
   const send = res.json.bind(res)
   let payload: unknown
   res.json = (body: unknown) => { payload = body; return res }
   try { await handler(req, res) } finally { res.json = send }
   if (payload && typeof payload === "object" && "token" in payload && typeof payload.token === "string") {
-    const token = await bindSecuritySession(req.scope, payload.token, refresh ? (req as AuthenticatedMedusaRequest).auth_context : undefined)
+    const token = await bindSecuritySession(req.scope, payload.token, reuseSession ? (req as AuthenticatedMedusaRequest).auth_context : undefined)
     return send({ ...payload, token })
   }
   return send(payload)

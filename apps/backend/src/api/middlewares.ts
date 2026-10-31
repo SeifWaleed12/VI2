@@ -60,6 +60,11 @@ export default defineMiddlewares({
     { matcher: "/store/auth/register", method: "POST", middlewares: [limitRegistrationAttempts] },
     { matcher: "/store/*", middlewares: [authenticate("customer", ["session", "bearer"], { allowUnauthenticated: true, allowUnregistered: true }), activeSecuritySession] },
     { matcher: "/auth/token/refresh", method: "POST", middlewares: [authenticate("*", ["session", "bearer"], { allowUnregistered: true, requireMfa: false }), activeSecuritySession] },
+    { matcher: "/auth/mfa/*", middlewares: [authenticate("*", ["session", "bearer"], { allowUnregistered: true, requireMfa: false }), activeSecuritySession] },
+    // Confirmation may use its own verification code without a login. When a
+    // session is supplied, it must still be current, including after recovery.
+    { matcher: "/auth/verification/*", middlewares: [authenticate("*", ["session", "bearer"], { allowUnregistered: true, allowUnauthenticated: true, requireMfa: false }), activeSecuritySession] },
+    { matcher: "/auth/:auth_provider/user", method: "POST", middlewares: [authenticate("user", ["bearer"], { allowUnregistered: true }), activeSecuritySession] },
     { matcher: "/auth/logout", method: "POST", middlewares: [authenticate("*", ["bearer"]), activeSecuritySession] },
     { matcher: "/store/returns", method: "POST", middlewares: [authenticate("customer", ["session", "bearer"]), customerReturnOnly] },
     { matcher: "/auth/session", method: "POST", middlewares: [authenticate("*", ["bearer"], { allowUnregistered: true }), activeSecuritySession, rotateLoginSession] },

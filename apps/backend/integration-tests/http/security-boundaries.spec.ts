@@ -7,6 +7,7 @@ import { setupEgyptStore } from "../../src/scripts/setup-egypt-store"
 import { bindSecuritySession } from "../../src/lib/security-session"
 
 const createSuperAdminRole = require(join(dirname(require.resolve("@medusajs/medusa")), "migration-scripts/create-super-admin-role")).default
+const { generateTotpCode } = require(join(dirname(require.resolve("@medusajs/auth")), "utils/totp")) as { generateTotpCode: (input: { secret: string }) => string }
 const password = "security-boundary-password"
 const anyStatus = { validateStatus: () => true }
 jest.setTimeout(240000)
@@ -98,6 +99,87 @@ medusaIntegrationTestRunner({ testSuite: ({ api, getContainer }) => {
       expect((await mutation(new URL(api.defaults.baseURL!).origin)).status).toBe(201)
     })
 
+    async function rejectedAuthSurfaces(stale: string) {
+      for (const [method, path, body] of [
+        ["get", "/auth/mfa/factors", undefined],
+        ["post", "/auth/mfa/factors", { provider: "totp" }],
+        ["post", "/auth/mfa/factors/dummy/verify", { code: "123456" }],
+        ["delete", "/auth/mfa/factors/dummy", undefined],
+        ["post", "/auth/mfa/recovery-codes", {}],
+        ["post", "/auth/mfa/challenges/dummy/verify", { method: "totp", code: "123456" }],
+        ["post", "/auth/verification/request", { entity_id: "dummy@example.test", entity_type: "email" }],
+        ["post", "/auth/verification/confirm", { code: "dummy" }],
+        ["post", "/auth/emailpass/user", {}],
+      ] as const) {
+        const result = method === "get" ? await api.get(path, bearer(stale))
+          : method === "delete" ? await api.delete(path, bearer(stale)) : await api.post(path, body, bearer(stale))
+        expect({ path, status: result.status }).toEqual({ path, status: 401 })
+      }
+    }
+
+    it("blocks revoked refresh lineage and recovered credentials on every native auth surface", async () => {
+      const refreshed = await api.post("/auth/token/refresh", {}, bearer(token))
+      expect(refreshed.status).toBe(200)
+      expect((await api.post("/auth/logout", {}, bearer(token))).status).toBe(200)
+      await rejectedAuthSurfaces(token)
+      await rejectedAuthSurfaces(refreshed.data.token)
+      const current = await api.post("/auth/customer/emailpass", { email: customer.email, password }, anyStatus)
+      expect(current.status).toBe(200)
+      const container = getContainer(), { http } = container.resolve(ContainerRegistrationKeys.CONFIG_MODULE).projectConfig
+      const { result: reset } = await generateResetPasswordTokenWorkflow(container).run({ input: { entityId: customer.email, actorType: "customer", provider: "emailpass", secret: http.jwtSecret as string } })
+      expect((await api.post("/auth/customer/emailpass/update", { password: "recovered-security-password" }, bearer(reset))).status).toBe(200)
+      await rejectedAuthSurfaces(current.data.token)
+    })
+
+    it("preserves authenticated verification requests and code-only confirmation", async () => {
+      const auth = getContainer().resolve(Modules.AUTH)
+      const requests = jest.spyOn(auth, "requestAuthVerification")
+      let code: string
+      try {
+        const requested = await api.post("/auth/verification/request", { entity_id: customer.email, entity_type: "email" }, bearer(token))
+        expect(requested.status).toBe(201)
+        code = (await requests.mock.results[0].value).code
+        expect(typeof code).toBe("string")
+      } finally { requests.mockRestore() }
+      const confirmed = await api.post("/auth/verification/confirm", { code }, anyStatus)
+      expect(confirmed.status).toBe(200)
+      expect(confirmed.data.entity_id).toBe(customer.email)
+      expect(confirmed.data.verified_at).toBeTruthy()
+      expect((await api.post("/auth/verification/request", { entity_id: customer.email, entity_type: "email" }, anyStatus)).status).toBe(401)
+    })
+
+    it.each(["customer", "user"])("preserves %s MFA login, refresh and device revocation", async actor => {
+      const initial = actor === "customer" ? token : await admin()
+      const email = actor === "customer" ? customer.email : "boundary-admin@example.test"
+      const enrollment = await api.post("/auth/mfa/factors", { provider: "totp" }, bearer(initial))
+      expect(enrollment.status).toBe(200)
+      const code = () => generateTotpCode({ secret: enrollment.data.secret })
+      expect((await api.post(`/auth/mfa/factors/${enrollment.data.mfa_factor.id}/verify`, { code: code() }, bearer(initial))).status).toBe(200)
+      const pending = await api.post(`/auth/${actor}/emailpass`, { email, password }, anyStatus)
+      expect(pending.status).toBe(200)
+      expect(pending.data.mfa_required).toBe(true)
+      const protectedRequest = (value: string) => actor === "customer" ? api.get("/store/customers/me", store(value)) : api.get("/admin/users/me", bearer(value))
+      expect((await protectedRequest(pending.data.token)).status).toBe(401)
+      const verified = await api.post(`/auth/mfa/challenges/${pending.data.mfa_challenge.id}/verify`, { method: "totp", code: code() }, bearer(pending.data.token))
+      expect(verified.status).toBe(200)
+      expect((await protectedRequest(verified.data.token)).status).toBe(200)
+      const claims = (value: string) => JSON.parse(Buffer.from(value.split(".")[1], "base64url").toString())
+      expect(claims(verified.data.token).app_metadata.vi2_session_id).toBe(claims(pending.data.token).app_metadata.vi2_session_id)
+      const refreshed = await api.post("/auth/token/refresh", {}, bearer(verified.data.token))
+      expect(refreshed.status).toBe(200)
+      expect((await protectedRequest(refreshed.data.token)).status).toBe(200)
+      expect((await api.post("/auth/logout", {}, bearer(refreshed.data.token))).status).toBe(200)
+      await rejectedAuthSurfaces(verified.data.token)
+      await rejectedAuthSurfaces(pending.data.token)
+      const abandoned = await api.post(`/auth/${actor}/emailpass`, { email, password }, anyStatus)
+      expect(abandoned.data.mfa_required).toBe(true)
+      const container = getContainer(), { http } = container.resolve(ContainerRegistrationKeys.CONFIG_MODULE).projectConfig
+      const { result: reset } = await generateResetPasswordTokenWorkflow(container).run({ input: { entityId: email, actorType: actor, provider: "emailpass", secret: http.jwtSecret as string } })
+      expect((await api.post(`/auth/${actor}/emailpass/update`, { password: "recovered-mfa-password" }, bearer(reset))).status).toBe(200)
+      expect((await api.post(`/auth/mfa/challenges/${abandoned.data.mfa_challenge.id}/verify`, { method: "totp", code: code() }, bearer(abandoned.data.token))).status).toBe(401)
+      await rejectedAuthSurfaces(initial)
+    })
+
     it("rejects active uploads/presigned bypass and serves sniffed raster content", async () => {
       const staff = await admin()
       const upload = (content: Buffer, name: string, type: string) => {
@@ -117,6 +199,11 @@ medusaIntegrationTestRunner({ testSuite: ({ api, getContainer }) => {
       const file = await api.get(new URL(result.data.files[0].url).pathname, anyStatus)
       expect(file.status).toBe(200)
       expect(file.headers["content-type"]).toContain("image/png")
+      const larger = await upload(Buffer.concat([png, Buffer.alloc(1536 * 1024)]), "product-photo.png", "image/png")
+      expect(larger.status).toBe(200)
+      const oversized = await upload(Buffer.concat([png, Buffer.alloc(10 * 1024 * 1024)]), "oversized.png", "image/png")
+      expect(oversized.status).toBe(400)
+      expect(oversized.data.message).toContain("10 MB")
     })
 
     it("enforces cart ownership on case variants and projects public receipts", async () => {

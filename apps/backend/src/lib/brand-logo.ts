@@ -17,6 +17,10 @@ export type LogoProblem = "too_large" | "not_an_image"
 
 export function logoImage(bytes: Buffer): { mimeType: string, extension: string } | LogoProblem {
   if (bytes.length > MAX_LOGO_BYTES) return "too_large"
+  return rasterImage(bytes)
+}
+
+export function rasterImage(bytes: Buffer): { mimeType: string, extension: string } | "not_an_image" {
   const kind = KINDS.find((k) => k.matches(bytes))
   return kind ? { mimeType: kind.mimeType, extension: kind.extension } : "not_an_image"
 }

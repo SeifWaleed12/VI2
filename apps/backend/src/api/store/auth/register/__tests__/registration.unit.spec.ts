@@ -4,11 +4,15 @@ jest.mock("@medusajs/framework/utils", () => ({
   generateJwtToken: jest.fn(() => "test-token"),
 }))
 jest.mock("@medusajs/core-flows", () => ({ createCustomerAccountWorkflow: jest.fn() }))
+jest.mock("../../../../../lib/security-session", () => ({
+  bindSecuritySession: jest.fn(), CREDENTIAL_CLAIM: "vi2_credential_stamp",
+}))
 
 import { generateJwtToken } from "@medusajs/framework/utils"
 import { createCustomerAccountWorkflow } from "@medusajs/core-flows"
 import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
 import { POST } from "../route"
+import { bindSecuritySession } from "../../../../../lib/security-session"
 
 const input = { email: " TEST@example.com ", password: " password ", first_name: " Test ", last_name: " User " }
 const authService = { register: jest.fn(), deleteAuthIdentities: jest.fn() }
@@ -28,11 +32,12 @@ function context(body: unknown = input) {
 beforeEach(() => {
   jest.clearAllMocks()
   customerService.listCustomers.mockResolvedValue([])
-  authService.register.mockResolvedValue({ success: true, authIdentity: { id: "auth_test" } })
+  authService.register.mockResolvedValue({ success: true, authIdentity: { id: "auth_test", app_metadata: { vi2_credential_stamp: "verified-credential" } } })
   authService.deleteAuthIdentities.mockResolvedValue(undefined)
   run.mockResolvedValue({ result: { id: "cus_test", email: "test@example.com" } })
   jest.mocked(createCustomerAccountWorkflow).mockReturnValue({ run } as unknown as ReturnType<typeof createCustomerAccountWorkflow>)
   jest.mocked(generateJwtToken).mockReturnValue("test-token")
+  jest.mocked(bindSecuritySession).mockResolvedValue("bound-test-token")
 })
 
 test.each([null, [], { ...input, email: 42 }, { ...input, password: " " }, { ...input, phone: {} }, { ...input, first_name: " " }])("rejects invalid registration before service calls", async (body) => {
@@ -49,6 +54,8 @@ test("normalizes email and names while preserving the actual password", async ()
   expect(authService.register).toHaveBeenCalledWith("emailpass", expect.objectContaining({ body: { email: "test@example.com", password: input.password } }))
   expect(run).toHaveBeenCalledWith({ input: { authIdentityId: "auth_test", customerData: { email: "test@example.com", first_name: "Test", last_name: "User", phone: undefined } } })
   expect(res.status).toHaveBeenCalledWith(201)
+  expect(bindSecuritySession).toHaveBeenCalledWith(req.scope, "test-token", undefined, "verified-credential")
+  expect(res.json).toHaveBeenCalledWith({ token: "bound-test-token", customer: { id: "cus_test", email: "test@example.com" } })
 })
 
 test("says an email is taken, from a customer account or another login, and keeps other rejections vague", async () => {
@@ -94,6 +101,15 @@ test("does not delete a linked auth identity if token generation fails after acc
   await POST(req, res)
   expect(authService.deleteAuthIdentities).not.toHaveBeenCalled()
   expect(res.status).toHaveBeenCalledWith(500)
+})
+
+test("does not send an unbound token or delete a created customer when device persistence fails", async () => {
+  jest.mocked(bindSecuritySession).mockRejectedValueOnce(new Error("private session-store failure"))
+  const { req, res } = context()
+  await POST(req, res)
+  expect(authService.deleteAuthIdentities).not.toHaveBeenCalled()
+  expect(res.status).toHaveBeenCalledWith(500)
+  expect(res.json).toHaveBeenCalledWith({ message: "Registration could not be completed." })
 })
 
 test("failed compensation logs an identity reference without raw secrets", async () => {
