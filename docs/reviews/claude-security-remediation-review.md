@@ -95,3 +95,38 @@ Native HTTP in the documented isolation (toolchain image `vi2-security-toolchain
 ## Cleanup
 
 Task containers were removed and the disposable Postgres container is stopped and removed after the final run. My temporary source copy, runner files and logs are deleted. The author's files are unchanged.
+
+---
+
+# Re-review of fixes: `3a45e58..9e720b8` (2026-10-31)
+
+Reviewer: Claude. Review only: no application code, merge, push or deploy. The review above is preserved unchanged.
+
+**Reviewed application commit: `9e720b8`. Verdict: APPROVE.** B1 to B4 are fixed and independently verified. I found no new blocking defects. The deployment requirements in the first review still apply and are not done.
+
+## What changed (read in full)
+- `apps/backend/src/api/middlewares.ts`: `authenticate` plus `activeSecuritySession` now cover `/auth/mfa/*`, `/auth/verification/*` (unauthenticated confirm still allowed, a supplied session must be current) and `POST /auth/:auth_provider/user`.
+- `apps/backend/src/api/auth/mfa/challenges/[id]/verify/route.ts` (new): the MFA challenge result goes through `sessionBoundResponse` and reuses the first-factor device session and credential snapshot.
+- `apps/backend/src/api/admin/uploads/route.ts` and `lib/brand-logo.ts`: generic images use `rasterImage` with a 10 MB cap; brand logos keep the 1 MB cap.
+- Registration unit spec now mocks `lib/security-session` and asserts the bound token and a failure path.
+
+## Verification of each blocker (my own runs)
+
+| Blocker | Result | Evidence |
+|---|---|---|
+| B1 revoked token on MFA/verification | **Fixed** | Same isolated setup and a dummy MFA key. After logout, and after a password reset, every native auth surface returned 401: MFA list, enrol, recovery codes, delete factor, verification request and confirm-with-token, `/auth/:provider/user`, refresh, cookie session and `/store/customers/me`. A stolen, logged-out token trying to enrol a TOTP factor now gets 401 (it got 200 and locked the owner out before). Unauthenticated verification confirm still answers 400 (bad code), not 401, as intended. |
+| B2 MFA login unusable | **Fixed** | Customer: enable factor, log in (`mfa_required`), verify the challenge, the token works on the store (200) and refreshes (200); logout then revokes it (401). Staff: same flow, `/admin/users/me` 200 and a cookie session 200. After a password reset, a pending first-factor token can no longer complete the challenge (401). A pending first-factor token cannot call `/auth/logout` (401), which is expected: it is useless without the code and expires. |
+| B3 upload cap | **Fixed** | 1.5 MB and 9 MB PNG-header files accepted (200); 10.6 MB rejected with "up to 10 MB"; HTML and SVG still rejected (400). Brand logos keep their separate 1 MB path (unit-tested by the author, untouched code). |
+| B4 registration unit suite | **Fixed** | Full backend unit run: 48 of 48 suites, 389 tests pass (the earlier run had 1 suite failing to load). New assertions cover the bound token and the "no unbound token, no deletion when session persistence fails" case. |
+
+## Regression checks
+- The author's six native suites pass in the isolated runner: 70 of 70 tests (admin-access, account, checkout, sign-in, security-boundaries including the new MFA and verification cases, security-stock).
+- Backend `tsc --noEmit` clean; eslint clean on the changed source files. Storefront code is unchanged in this range.
+
+## Remaining items (none block approval)
+- The lower-priority notes from the first review (L1 to L4) are unchanged and still optional.
+- Not performed: the four suites that ran out of memory in my first sweep (abandoned-carts, merchandising, quick-variant, store-cache), real Redis or multi-process lock behavior, a browser or proxy test, and a production build. None of these touch the changed files except through the shared auth middleware, which the six native suites exercise.
+- Whether the target environment sets `AUTH_MFA_ENCRYPTION_KEY` no longer affects safety: with or without it, revoked tokens are refused.
+
+## Deployment requirements (unchanged, still pending)
+Run the `security_session` migration before serving this code and expect re-login; set `TRUSTED_PROXY_CLIENT_IP_HEADER` only behind a proxy that strips visitor copies (production signup, including staff invitation registration, is refused without it); set real `ADMIN_CORS` and `MEDUSA_BACKEND_URL` origins; confirm the production session store, shared locks and Redis sizing; review historical HTML or SVG uploads; add an edge rate limit that also covers IPv6 ranges. Seif controls merge and deployment.
