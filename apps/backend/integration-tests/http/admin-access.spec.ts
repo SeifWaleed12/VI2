@@ -5,6 +5,8 @@ import { medusaIntegrationTestRunner } from "@medusajs/test-utils"
 import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
 import { createOrderWorkflow, createRegionsWorkflow, createUsersWorkflow } from "@medusajs/medusa/core-flows"
 import setupCatalogManager from "../../src/scripts/setup-catalog-manager"
+import Medusa from "@medusajs/js-sdk"
+import FormData from "form-data"
 
 // Medusa's own migration script that creates Super Admin and assigns it to every
 // existing user; the test database does not run migration scripts by itself.
@@ -70,6 +72,40 @@ medusaIntegrationTestRunner({
       it("gives the super admin full access", async () => {
         for (const path of ["/admin/products", "/admin/orders", "/admin/stores", "/admin/rbac/roles"]) {
           expect((await api.get(path, admin)).status).toBe(200)
+        }
+      })
+
+      it.each(["admin", "manager"])("lets %s upload a CSV and complete both native product-import steps", async role => {
+        const session = role === "admin" ? admin : manager
+        const sdk = new Medusa({ baseUrl: api.defaults.baseURL! })
+        const handle = `csv-${role}-dummy`
+        const csv = "Product Handle,Product Title,Product Status,Variant Title,Variant SKU,Variant Manage Inventory,Variant Option 1 Name,Variant Option 1 Value\n"
+          + `${handle},Dummy CSV product,draft,Single,CSV-${role},false,Size,Single\n`
+        const type = role === "manager" ? "application/vnd.ms-excel" : "text/csv"
+        const started = await sdk.admin.product.createImport({ file: new File([csv], "dummy-products.csv", { type }) }, undefined, session.headers)
+        expect(started.transaction_id).toBeTruthy()
+        await sdk.admin.product.confirmImport(started.transaction_id, undefined, session.headers)
+        let imported: { id: string, title: string }[] = []
+        for (let attempt = 0; attempt < 50; attempt++) {
+          imported = await getContainer().resolve(Modules.PRODUCT).listProducts({ handle })
+          if (imported.length) break
+          await new Promise(resolve => setTimeout(resolve, 100))
+        }
+        expect(imported).toEqual([expect.objectContaining({ title: "Dummy CSV product" })])
+      })
+
+      it.each([
+        ["dummy.html", "text/html", "<html>active</html>"],
+        ["dummy.svg", "image/svg+xml", "<svg/>"],
+        ["dummy.csv", "text/html", "<html>disguised</html>"],
+      ])("refuses active/disguised uploads through both CSV routes: %s", async (name, type, content) => {
+        for (const session of [admin, manager]) {
+          const signed = await api.post("/admin/uploads/presigned-urls", { originalname: name, mime_type: type, size: Buffer.byteLength(content) }, session)
+          expect(signed.status).toBe(400)
+          const form = new FormData()
+          form.append("files", Buffer.from(content), { filename: name, contentType: type })
+          const uploaded = await api.post("/admin/uploads", form, { ...session, headers: { ...session.headers, ...form.getHeaders() } })
+          expect(uploaded.status).toBe(400)
         }
       })
 

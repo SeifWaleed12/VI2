@@ -12,6 +12,7 @@ import { filterProductsByBrand } from "./catalog-filters"
 import { storeProductRoutesMiddlewares } from "@medusajs/medusa/api/store/products/middlewares"
 import { boundCatalogHydration } from "./catalog-products"
 import { cacheStoreGet, invalidateStoreCacheAfterWrite } from "../lib/store-cache"
+import { requestPath } from "../lib/request-path"
 
 // Staff and customers sign in, reset and set passwords through the same
 // Medusa routes, so both get the same limits and password rule. Medusa signs in
@@ -56,6 +57,8 @@ const customerIfSignedIn = authenticate("customer", ["session", "bearer"], { all
 
 export default defineMiddlewares({
   routes: [
+    // Check raw spelling before native route parameters decode the provider.
+    { matcher: "/auth/*", middlewares: [(req, _res, next) => { requestPath(req); return next() }] },
     ...emailPassRoutes,
     { matcher: "/store/auth/register", method: "POST", middlewares: [limitRegistrationAttempts] },
     { matcher: "/store/*", middlewares: [authenticate("customer", ["session", "bearer"], { allowUnauthenticated: true, allowUnregistered: true }), activeSecuritySession] },

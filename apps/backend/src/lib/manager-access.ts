@@ -58,7 +58,12 @@ export function managerAction(method: string, path: string, body?: unknown): Sta
     return { resource: "reservation_item", operation: "create" }
   }
   if (method !== "GET" && area.access === "read") return null
-  // CSV imports cannot be checked field by field.
+  // Managers own product catalog/stock imports; every other area's imports
+  // remain admin-only, as do unlisted product-import actions.
+  if (method === "POST" && segments[0] === "products" && segments[1] === "imports"
+    && (segments.length === 2 || (segments.length === 4 && segments[3] === "confirm"))) {
+    return { resource: "product", operation: "create" }
+  }
   if (segments.some((segment) => segment === "import" || segment === "imports")) return null
   // Linking variants to inventory items is stock management, which Odoo owns.
   // The dashboard's create form sends an empty list for every variant; only

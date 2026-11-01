@@ -5,6 +5,7 @@ import { ContainerRegistrationKeys, generateJwtToken, Modules } from "@medusajs/
 import { createOrderWorkflow, createUsersWorkflow, generateResetPasswordTokenWorkflow } from "@medusajs/medusa/core-flows"
 import { setupEgyptStore } from "../../src/scripts/setup-egypt-store"
 import { bindSecuritySession } from "../../src/lib/security-session"
+import SecureEmailpassService from "../../src/modules/secure-emailpass/service"
 
 const createSuperAdminRole = require(join(dirname(require.resolve("@medusajs/medusa")), "migration-scripts/create-super-admin-role")).default
 const { generateTotpCode } = require(join(dirname(require.resolve("@medusajs/auth")), "utils/totp")) as { generateTotpCode: (input: { secret: string }) => string }
@@ -51,6 +52,28 @@ medusaIntegrationTestRunner({ testSuite: ({ api, getContainer }) => {
       expect(blocked.status).toBe(400)
       expect(blocked.data.message).toContain("/store/auth/register")
       expect(await getContainer().resolve(Modules.CUSTOMER).listCustomers({ email: "different@example.test" })).toHaveLength(0)
+    })
+
+    it.each([
+      "/auth/customer/%65mailpass",
+      "/auth/probe/%65mailpass",
+      "/auth/customer/%65mailpass/reset-password",
+      "/auth/customer/%65mailpass/register",
+    ])("rejects encoded provider paths before password-provider work: %s", async path => {
+      const authenticate = jest.spyOn(SecureEmailpassService.prototype, "authenticate")
+      const registration = jest.spyOn(SecureEmailpassService.prototype, "register")
+      const reset = jest.spyOn(getContainer().resolve(Modules.AUTH), "createPasswordResetToken")
+      try {
+        const result = await api.post(path, { email: customer.email, identifier: customer.email, password }, anyStatus)
+        expect(result.status).toBe(400)
+        expect(result.data.message).toContain("unescaped API path")
+        expect(authenticate).not.toHaveBeenCalled()
+        expect(registration).not.toHaveBeenCalled()
+        expect(reset).not.toHaveBeenCalled()
+        // Prove the spy covers the actual native provider, not a second copy.
+        expect((await api.post("/auth/customer/emailpass", { email: customer.email, password }, anyStatus)).status).toBe(200)
+        expect(authenticate).toHaveBeenCalledTimes(1)
+      } finally { authenticate.mockRestore(); registration.mockRestore(); reset.mockRestore() }
     })
 
     it("revokes one device and rejects all old tokens/refreshes after native password reset", async () => {

@@ -113,6 +113,19 @@ it("lets only invite acceptance bypass the global admin guard", () => {
   expect(guard).toHaveBeenCalledTimes(3)
 })
 
+it.each(["/admin/products/imports", "/admin/products/imports/tx_1/confirm"])("allows a manager's product CSV import action: %s", async originalUrl => {
+  asManager()
+  const next = jest.fn()
+  await adminAccess(request(["role_manager"], { originalUrl, body: {} }) as never, response() as never, next)
+  expect(next).toHaveBeenCalled()
+  expect(hasPermission).toHaveBeenLastCalledWith(expect.objectContaining({ actions: { resource: "product", operation: "create" } }))
+})
+
+it.each(["/admin/products/import", "/admin/products/imports/tx_1/cancel", "/admin/inventory-items/imports", "/admin/brands/imports"])("keeps other imports and actions admin-only: %s", async originalUrl => {
+  asManager()
+  await expect(adminAccess(request(["role_manager"], { originalUrl, body: {} }) as never, response() as never, jest.fn())).rejects.toThrow("administrator")
+})
+
 
 it.each(["/admin/products/prod_1/variants/variant_1#", "/admin/products/imports%23", "/admin/products/imports\\confirm#"])("rejects ambiguous security paths: %s", originalUrl => {
   expect(() => requestPath({ originalUrl })).toThrow("unescaped API path")
