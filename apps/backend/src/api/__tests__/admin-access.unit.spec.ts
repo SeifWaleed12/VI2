@@ -1,4 +1,4 @@
-import { adminAccess, unlessInviteAcceptance } from "../admin-access"
+import { adminAccess, unlessInviteAcceptance, requestPath } from "../admin-access"
 import { hasPermission } from "@medusajs/framework"
 
 jest.mock("@medusajs/framework", () => ({ hasPermission: jest.fn() }))
@@ -64,6 +64,14 @@ it("refuses a manager an admin-only area even when Medusa's policies would allow
 
 const variant = { id: "variant_1", manage_inventory: true, allow_backorder: false }
 
+it("allows manager stock-setting edits on case-varied native route segments", async () => {
+  asManager()
+  const req = request(["role_manager"], { originalUrl: "/admin/products/prod_1/VARIANTS/variant_1", body: { manage_inventory: false }, variants: [variant] })
+  const next = jest.fn()
+  await adminAccess(req as never, response() as never, next)
+  expect(next).toHaveBeenCalled()
+})
+
 it("lets a manager resend a variant's unchanged stock settings", async () => {
   asManager()
   const next = jest.fn()
@@ -77,12 +85,13 @@ it.each([
   ["/admin/products/prod_1/variants/variant_1", { allow_backorder: true }],
   ["/admin/products/prod_1", { variants: [{ id: "variant_1", allow_backorder: true }] }],
   ["/admin/products/prod_1/variants/batch", { update: [{ id: "variant_1", manage_inventory: false }] }],
-])("refuses a manager changing an existing variant's stock settings: %s %j", async (originalUrl, body) => {
+])("allows a manager changing an existing variant's stock settings: %s %j", async (originalUrl, body) => {
   asManager()
   const next = jest.fn()
   const req = request(["role_manager"], { originalUrl, body, variants: [variant] })
-  await expect(adminAccess(req as never, response() as never, next)).rejects.toThrow("Stock settings")
-  expect(next).not.toHaveBeenCalled()
+  await adminAccess(req as never, response() as never, next)
+  expect(next).toHaveBeenCalled()
+  expect(req.graph).toHaveBeenCalledTimes(1)
 })
 
 it("does not look up stock settings for a new variant", async () => {
@@ -105,4 +114,22 @@ it("lets only invite acceptance bypass the global admin guard", () => {
     wrapped(req as never, {} as never, next)
   }
   expect(guard).toHaveBeenCalledTimes(3)
+})
+
+it.each(["/admin/products/imports", "/admin/products/imports/tx_1/confirm"])("allows a manager's product CSV import action: %s", async originalUrl => {
+  asManager()
+  const next = jest.fn()
+  await adminAccess(request(["role_manager"], { originalUrl, body: {} }) as never, response() as never, next)
+  expect(next).toHaveBeenCalled()
+  expect(hasPermission).toHaveBeenLastCalledWith(expect.objectContaining({ actions: { resource: "product", operation: "create" } }))
+})
+
+it.each(["/admin/products/import", "/admin/products/imports/tx_1/cancel", "/admin/inventory-items/imports", "/admin/brands/imports"])("keeps other imports and actions admin-only: %s", async originalUrl => {
+  asManager()
+  await expect(adminAccess(request(["role_manager"], { originalUrl, body: {} }) as never, response() as never, jest.fn())).rejects.toThrow("administrator")
+})
+
+
+it.each(["/admin/products/prod_1/variants/variant_1#", "/admin/products/imports%23", "/admin/products/imports\\confirm#"])("rejects ambiguous security paths: %s", originalUrl => {
+  expect(() => requestPath({ originalUrl })).toThrow("unescaped API path")
 })

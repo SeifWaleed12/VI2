@@ -5,6 +5,8 @@ import { medusaIntegrationTestRunner } from "@medusajs/test-utils"
 import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
 import { createOrderWorkflow, createRegionsWorkflow, createUsersWorkflow } from "@medusajs/medusa/core-flows"
 import setupCatalogManager from "../../src/scripts/setup-catalog-manager"
+import Medusa from "@medusajs/js-sdk"
+import FormData from "form-data"
 
 // Medusa's own migration script that creates Super Admin and assigns it to every
 // existing user; the test database does not run migration scripts by itself.
@@ -73,6 +75,40 @@ medusaIntegrationTestRunner({
         }
       })
 
+      it.each(["admin", "manager"])("lets %s upload a CSV and complete both native product-import steps", async role => {
+        const session = role === "admin" ? admin : manager
+        const sdk = new Medusa({ baseUrl: api.defaults.baseURL! })
+        const handle = `csv-${role}-dummy`
+        const csv = "Product Handle,Product Title,Product Status,Variant Title,Variant SKU,Variant Manage Inventory,Variant Option 1 Name,Variant Option 1 Value\n"
+          + `${handle},Dummy CSV product,draft,Single,CSV-${role},false,Size,Single\n`
+        const type = role === "manager" ? "application/vnd.ms-excel" : "text/csv"
+        const started = await sdk.admin.product.createImport({ file: new File([csv], "dummy-products.csv", { type }) }, undefined, session.headers)
+        expect(started.transaction_id).toBeTruthy()
+        await sdk.admin.product.confirmImport(started.transaction_id, undefined, session.headers)
+        let imported: { id: string, title: string }[] = []
+        for (let attempt = 0; attempt < 50; attempt++) {
+          imported = await getContainer().resolve(Modules.PRODUCT).listProducts({ handle })
+          if (imported.length) break
+          await new Promise(resolve => setTimeout(resolve, 100))
+        }
+        expect(imported).toEqual([expect.objectContaining({ title: "Dummy CSV product" })])
+      })
+
+      it.each([
+        ["dummy.html", "text/html", "<html>active</html>"],
+        ["dummy.svg", "image/svg+xml", "<svg/>"],
+        ["dummy.csv", "text/html", "<html>disguised</html>"],
+      ])("refuses active/disguised uploads through both CSV routes: %s", async (name, type, content) => {
+        for (const session of [admin, manager]) {
+          const signed = await api.post("/admin/uploads/presigned-urls", { originalname: name, mime_type: type, size: Buffer.byteLength(content) }, session)
+          expect(signed.status).toBe(400)
+          const form = new FormData()
+          form.append("files", Buffer.from(content), { filename: name, contentType: type })
+          const uploaded = await api.post("/admin/uploads", form, { ...session, headers: { ...session.headers, ...form.getHeaders() } })
+          expect(uploaded.status).toBe(400)
+        }
+      })
+
       it("denies a staff user with no role on custom and native routes", async () => {
         expect((await api.post("/admin/brands", { name: "Sneaky", slug: "sneaky" }, nobody)).status).toBe(403)
         expect((await api.get("/admin/custom", nobody)).status).toBe(403)
@@ -127,20 +163,37 @@ medusaIntegrationTestRunner({
         expect((await api.delete(`/admin/products/${product.id}`, manager)).status).toBe(200)
       })
 
-      it("stops a manager from changing an existing variant's stock settings, but not from editing it", async () => {
+      it("lets managers change existing stock settings through direct edits and CSV imports", async () => {
         const { data } = await api.post("/admin/products", { title: "Stocked", status: "published", options: [{ title: "Size", values: ["Single"] }], variants: [{ title: "Single", options: { Size: "Single" }, manage_inventory: true, allow_backorder: false, prices: [{ amount: 100, currency_code: "egp" }] }] }, admin)
         const product = data.product
         const variant = product.variants[0]
         const path = `/admin/products/${product.id}/variants/${variant.id}`
-        expect((await api.post(path, { manage_inventory: false }, manager)).status).toBe(403)
-        expect((await api.post(path, { allow_backorder: true }, manager)).status).toBe(403)
-        expect((await api.post(`/admin/products/${product.id}`, { variants: [{ id: variant.id, allow_backorder: true }] }, manager)).status).toBe(403)
-        // The dashboard's edit form resends the unchanged values with every save.
-        expect((await api.post(path, { title: "Single pack", manage_inventory: true, allow_backorder: false }, manager)).status).toBe(200)
-        const stored = await getContainer().resolve(Modules.PRODUCT).retrieveProductVariant(variant.id)
+        expect((await api.post(path, { manage_inventory: false, allow_backorder: true }, manager)).status).toBe(200)
+        const products = getContainer().resolve(Modules.PRODUCT)
+        let stored = await products.retrieveProductVariant(variant.id)
+        expect(stored.manage_inventory).toBe(false)
+        expect(stored.allow_backorder).toBe(true)
+        expect((await api.post(`/admin/products/${product.id}`, { variants: [{ id: variant.id, title: "Single pack", manage_inventory: true, allow_backorder: false }] }, manager)).status).toBe(200)
+        stored = await products.retrieveProductVariant(variant.id)
         expect(stored.manage_inventory).toBe(true)
         expect(stored.allow_backorder).toBe(false)
         expect(stored.title).toBe("Single pack")
+
+        const csv = "Product Id,Product Handle,Product Title,Product Status,Variant Id,Variant Title,Variant Manage Inventory,Variant Allow Backorder,Variant Option 1 Name,Variant Option 1 Value\n"
+          + `${product.id},${product.handle},Stock policy via CSV,published,${variant.id},Single pack,false,true,Size,Single\n`
+        const sdk = new Medusa({ baseUrl: api.defaults.baseURL! })
+        const started = await sdk.admin.product.createImport({ file: new File([csv], "existing-product.csv", { type: "text/csv" }) }, undefined, manager.headers)
+        await sdk.admin.product.confirmImport(started.transaction_id, undefined, manager.headers)
+        let updated = await products.retrieveProduct(product.id)
+        for (let attempt = 0; attempt < 50; attempt++) {
+          stored = await products.retrieveProductVariant(variant.id)
+          updated = await products.retrieveProduct(product.id)
+          if (!stored.manage_inventory && stored.allow_backorder && updated.title === "Stock policy via CSV") break
+          await new Promise(resolve => setTimeout(resolve, 100))
+        }
+        expect(stored.manage_inventory).toBe(false)
+        expect(stored.allow_backorder).toBe(true)
+        expect(updated.title).toBe("Stock policy via CSV")
       })
 
       it("lets a manager see, update and cancel orders", async () => {

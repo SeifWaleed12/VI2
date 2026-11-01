@@ -32,6 +32,7 @@ medusaIntegrationTestRunner({
         const cache = container.resolve(Modules.CACHE)
         await cache.invalidate("login-attempts:*")
         await cache.invalidate("reset-requests:*")
+        await cache.invalidate("registration-attempts:*")
         const { result: [user] } = await createUsersWorkflow(container).run({ input: { users: [{ email: "admin@test.dev" }] } })
         const auth = container.resolve(Modules.AUTH)
         const { authIdentity } = await auth.register("emailpass", { body: { email: "admin@test.dev", password } })

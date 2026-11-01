@@ -17,6 +17,7 @@ it.each([
   [{ ...line, alreadyReserved: 5 }, 1, "At most 0 more"],
   [{ ...line, unitsPerItem: null }, 1, "not part of the ordered product"],
   [{ ...line, orderStatus: "canceled" }, 1, "canceled"],
+  [{ ...line, orderStatus: "draft" }, 1, "Convert the draft"],
   [null, 1, "existing order"],
   [{ ...line, alreadyReserved: Number.NaN }, 1, "could not be checked"],
   [{ ...line, unfulfilledQuantity: Number.NaN }, 1, "could not be checked"],

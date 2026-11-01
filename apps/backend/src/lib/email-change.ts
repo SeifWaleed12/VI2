@@ -1,7 +1,7 @@
 import { createHmac, timingSafeEqual } from "node:crypto"
 import { absoluteBase, escapeHtml } from "./email-html"
 
-export type EmailChange = { customer_id: string, from: string, to: string }
+export type EmailChange = { customer_id: string, from: string, to: string, credential_stamp: string }
 // When the link was made (ms); a link older than the customer's last email
 // change is refused, so a used link never works again (see the confirm route).
 export type VerifiedEmailChange = EmailChange & { issued_at: number }
@@ -30,8 +30,8 @@ export function verifyEmailChange(token: unknown, secret: string, now = Date.now
   try {
     const data = JSON.parse(Buffer.from(payload, "base64url").toString("utf8"))
     if (data.purpose !== PURPOSE || typeof data.exp !== "number" || typeof data.iat !== "number" || data.exp * 1000 <= now) return null
-    if (![data.customer_id, data.from, data.to].every((value) => typeof value === "string" && value)) return null
-    return { customer_id: data.customer_id, from: data.from, to: data.to, issued_at: data.iat }
+    if (![data.customer_id, data.from, data.to, data.credential_stamp].every((value) => typeof value === "string" && value)) return null
+    return { customer_id: data.customer_id, from: data.from, to: data.to, credential_stamp: data.credential_stamp, issued_at: data.iat }
   } catch {
     return null
   }

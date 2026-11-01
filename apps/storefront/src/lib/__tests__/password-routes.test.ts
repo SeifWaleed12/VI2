@@ -111,3 +111,13 @@ test("change password passes on the attempt limit", async () => {
   fetchMock.mockResolvedValue(json({}, 429));
   expect((await changePassword(post({ currentPassword: "old-password", newPassword: "new-password" }, { cookie: true }))).status).toBe(429);
 });
+
+test("clears the old cookie only after the password has changed", async () => {
+  fetchMock.mockResolvedValueOnce(json({ success: true }));
+  const changed = await changePassword(post({ currentPassword: "old-password", newPassword: "new-password" }, { cookie: true }));
+  expect(changed.status).toBe(200);
+  expect(changed.cookies.get("vi2_auth_token")?.value).toBe("");
+  fetchMock.mockResolvedValueOnce(json({ code: "wrong_password" }, 400));
+  const refused = await changePassword(post({ currentPassword: "wrong-password", newPassword: "new-password" }, { cookie: true }));
+  expect(refused.headers.get("set-cookie")).toBeNull();
+});

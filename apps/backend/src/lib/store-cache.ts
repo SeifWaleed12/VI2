@@ -29,7 +29,8 @@ export function storeCacheKey(req: Pick<MedusaRequest, "originalUrl" | "headers"
   const { headers } = req
   const url = new URL(req.originalUrl, "http://cache.invalid")
   url.searchParams.sort()
-  const parts = [url.pathname + url.search, headers["x-publishable-api-key"], headers["x-medusa-locale"], headers["accept-language"]]
+  const keys = [...new Set(String(headers["x-publishable-api-key"] ?? "").split(",").map(key => key.trim()))].sort().join(",")
+  const parts = [url.pathname + url.search, keys, headers["x-medusa-locale"], headers["accept-language"]]
   return PREFIX + createHash("sha256").update(parts.map((part) => String(part ?? "")).join("\n")).digest("hex")
 }
 
@@ -37,11 +38,14 @@ export function storeCacheKey(req: Pick<MedusaRequest, "originalUrl" | "headers"
 const isAnonymousRead = (req: Pick<MedusaRequest, "method" | "headers">) =>
   req.method === "GET" && !req.headers.authorization && !req.headers.cookie
 
-const CACHE_QUERY_FIELDS = new Set(["limit", "offset", "fields", "region_id", "currency_code", "q", "order", "id", "category_id", "brand_id", "tag_id", "collection_id", "handle", "include_descendants", "parent_category_id"])
+export const MAX_CACHED_BODY_BYTES = 128 * 1024
 function hasCacheableQuery(req: Pick<MedusaRequest, "originalUrl" | "headers">) {
-  if (req.originalUrl.length > 8192 || String(req.headers["accept-language"] ?? "").length > 256) return false
-  return [...new URL(req.originalUrl, "http://cache.invalid").searchParams.keys()]
-    .every(key => CACHE_QUERY_FIELDS.has(key.replace(/\[.*$/, "")))
+  const url = new URL(req.originalUrl, "http://cache.invalid")
+  // Only query-free catalog representations have a bounded, source-owned key
+  // space. Search, filters and pagination still work through the native handler.
+  if (url.search || !/^\/store\/(products|product-categories|collections|regions|brands|product-tags|deals)(\/[a-z0-9_]+)?$/.test(url.pathname) || /[#%\\]/.test(req.originalUrl) || req.originalUrl.length > 1024) return false
+  if (![undefined, "en", "ar"].includes(req.headers["x-medusa-locale"] as string | undefined)) return false
+  return [undefined, "en", "ar", "en-US", "ar-EG"].includes(req.headers["accept-language"] as string | undefined)
 }
 
 // A cache that is down or slow must never break the store: any cache error
@@ -84,7 +88,8 @@ export function cacheStoreGet(ttlSeconds: number) {
     res.on("close", () => complete())
     const send = res.json.bind(res)
     res.json = (body) => {
-      if (res.statusCode === 200 && started === revision) {
+      const withinSize = Buffer.byteLength(JSON.stringify(body) ?? "", "utf8") <= MAX_CACHED_BODY_BYTES
+      if (res.statusCode === 200 && started === revision && withinSize) {
         cache.set(key, body, ttlSeconds).catch(() => {})
         complete(body)
       } else complete()

@@ -17,6 +17,7 @@ export type OrderLineStock = {
 export function allocationProblem(line: OrderLineStock | null, requested: unknown): string | null {
   if (typeof requested !== "number" || !Number.isFinite(requested) || requested <= 0) return "Allocate a positive quantity."
   if (!line) return "Stock can only be allocated to a line of an existing order."
+  if (line.orderStatus === "draft") return "Convert the draft to an order before allocating stock."
   if (line.orderStatus === "canceled") return "This order is canceled."
   if (line.unitsPerItem === null) return "This stock item is not part of the ordered product."
   const remaining = line.unfulfilledQuantity * line.unitsPerItem - line.alreadyReserved

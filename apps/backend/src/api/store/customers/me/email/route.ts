@@ -5,6 +5,7 @@ import { tokenFingerprint } from "../../../../../lib/email-html"
 import { attemptKey, attemptLimiterFrom, EMAIL_CHANGE_POLICY, LOGIN_POLICY } from "../../../../../lib/login-attempts"
 import { tooManyAttempts } from "../../../../login-rate-limit"
 import { emailChangeSchema } from "../../../../validators"
+import { currentCredential, credentialStamp } from "../../../../../lib/security-session"
 
 // POST /store/customers/me/email: a signed-in customer asks to change their
 // email. Nothing changes here: a link goes to the new address (see
@@ -28,12 +29,17 @@ export async function POST(req: AuthenticatedMedusaRequest, res: MedusaResponse)
   const loginKey = attemptKey("login-attempts", "customer", current)
   if (!await logins.reserve(loginKey)) return tooManyAttempts(res, LOGIN_POLICY)
   const auth = req.scope.resolve(Modules.AUTH)
+  const { http } = req.scope.resolve(ContainerRegistrationKeys.CONFIG_MODULE).projectConfig
+  const [provider] = await auth.listProviderIdentities({ provider: "emailpass", entity_id: current })
+  const hash = provider?.provider_metadata?.password
+  if (typeof hash !== "string" || !provider.auth_identity_id) throw new MedusaError(MedusaError.Types.UNAUTHORIZED, "Sign in again")
+  const stamp = credentialStamp(hash, http.jwtSecret as string)
   const check = await auth.authenticate("emailpass", { body: { email: current, password: parsed.data.password } })
   if (!check.success) return res.status(400).json({ code: "wrong_password", message: "Your current password is not correct." })
   await logins.clear(loginKey)
 
-  const { http } = req.scope.resolve(ContainerRegistrationKeys.CONFIG_MODULE).projectConfig
-  const token = signEmailChange({ customer_id: customer.id, from: current, to: next }, http.jwtSecret as string)
+  if (stamp !== await currentCredential(req.scope, provider.auth_identity_id)) throw new MedusaError(MedusaError.Types.UNAUTHORIZED, "Your credentials changed. Sign in again.")
+  const token = signEmailChange({ customer_id: customer.id, from: current, to: next, credential_stamp: stamp }, http.jwtSecret as string)
   const url = confirmEmailUrl(process.env.STOREFRONT_URL, token)
   const logger = req.scope.resolve(ContainerRegistrationKeys.LOGGER)
   if (!url) {

@@ -1,6 +1,6 @@
 import type { AuthenticatedMedusaRequest, MedusaNextFunction, MedusaResponse } from "@medusajs/framework/http"
 import { ContainerRegistrationKeys, MedusaError, Modules } from "@medusajs/framework/utils"
-import { requestPath } from "./admin-access"
+import { requestPath } from "../lib/request-path"
 
 // Owner decisions 2026-10-12 and 2026-10-13. In Medusa anyone holding a cart id
 // can use the cart, and a cart's customer is picked by the email typed at
@@ -46,7 +46,7 @@ const withCartLock = (req: Request, cartId: string, job: (signal?: AbortSignal) 
 
 async function cartIdOf(req: Request) {
   const [, , area, id] = requestPath(req).split("/")
-  if (area === "carts") return id
+  if (area.toLowerCase() === "carts") return req.params.id ?? id
   if (!id) return typeof req.body?.cart_id === "string" ? req.body.cart_id : undefined
   const query = req.scope.resolve(ContainerRegistrationKeys.QUERY)
   const { data: [collection] } = await query.graph({ entity: "payment_collection", fields: ["cart.id"], filters: { id } })
@@ -58,7 +58,7 @@ async function cartIdOf(req: Request) {
 export async function cartOwnerOnly(req: Request, _res: MedusaResponse, next: MedusaNextFunction) {
   const cartId = await cartIdOf(req)
   const cart = cartId ? await ownedCart(req, cartId) : undefined
-  const settingEmail = req.method === "POST" && /^\/store\/carts\/[^/]+$/.test(requestPath(req)) && typeof req.body?.email === "string"
+  const settingEmail = req.method === "POST" && /^\/store\/carts\/[^/]+$/i.test(requestPath(req)) && typeof req.body?.email === "string"
   if (cart && !cart.customer?.has_account && settingEmail) {
     // Medusa keeps the cart's current guest when its email matches, so it
     // does not look the email up among accounts.

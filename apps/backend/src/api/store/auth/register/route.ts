@@ -1,4 +1,5 @@
 import { registrationSchema } from "../../../validators";
+import { bindSecuritySession, CREDENTIAL_CLAIM } from "../../../../lib/security-session";
 import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http";
 import {
   Modules,
@@ -99,7 +100,7 @@ async function registerCustomer(req: MedusaRequest, res: MedusaResponse) {
       }
     );
 
-    return res.status(201).json({ token, customer });
+    return res.status(201).json({ token: await bindSecuritySession(req.scope, token, undefined, authIdentity.app_metadata?.[CREDENTIAL_CLAIM] as string), customer });
   } catch {
     // Explicit compensation step: if customer creation fails, clean up the auth identity
     // so we don't leave an orphaned authentication identity that blocks future registrations.

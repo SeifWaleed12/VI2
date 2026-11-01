@@ -2,6 +2,8 @@ import type { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
 import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
 import { verifyEmailChange } from "../../../../lib/email-change"
 import { changeCustomerEmailWorkflow } from "../../../../workflows/change-customer-email"
+import { currentCredential } from "../../../../lib/security-session"
+import { withCredentialLock } from "../../../../lib/credential-lock"
 
 const invalidLink = (res: MedusaResponse) =>
   res.status(400).json({ code: "invalid_link", message: "This link is invalid or has expired. Ask for a new one from your account." })
@@ -24,9 +26,9 @@ export async function POST(req: MedusaRequest<{ token?: unknown }>, res: MedusaR
     const app = (login?.auth_identity?.app_metadata ?? {}) as Record<string, unknown>
     if (!login || app.customer_id !== customer.id) return invalidLink(res)
     // A link works once: it must be newer than the login's last email change
-    // (kept in the login's app_metadata, which only the server writes), so even
+    // (kept in server-only provider metadata), so even
     // after changing back to the old address an earlier link is refused.
-    if (change.issued_at <= Number(app.email_changed_at ?? 0)) return invalidLink(res)
+    if (change.issued_at <= Math.max(Number(app.email_changed_at ?? 0), Number(login.provider_metadata?.email_changed_at ?? 0))) return invalidLink(res)
     // One Medusa login can also be a staff account; changing it here would
     // change the staff login too.
     if (app.user_id) return res.status(409).json({ code: "staff_login", message: "This login is also a staff account. Change its email from the dashboard." })
@@ -34,9 +36,14 @@ export async function POST(req: MedusaRequest<{ token?: unknown }>, res: MedusaR
       return res.status(409).json({ code: "email_taken", message: "Another account already uses this email." })
     }
     signal?.throwIfAborted()
-    await changeCustomerEmailWorkflow(req.scope).run({
-      input: { login_id: login.id, auth_identity_id: login.auth_identity_id as string, app_metadata: app, customer_id: customer.id, from: change.from, to: change.to },
+    const changed = await withCredentialLock(req.scope, login.auth_identity_id as string, async () => {
+      if (change.credential_stamp !== await currentCredential(req.scope, login.auth_identity_id as string)) return false
+      await changeCustomerEmailWorkflow(req.scope).run({
+        input: { login_id: login.id, auth_identity_id: login.auth_identity_id as string, app_metadata: app, customer_id: customer.id, from: change.from, to: change.to },
+      })
+      return true
     })
+    if (!changed) return invalidLink(res)
     signal?.throwIfAborted()
     return res.status(200).json({ success: true, email: change.to })
   }, { timeout: 5 })

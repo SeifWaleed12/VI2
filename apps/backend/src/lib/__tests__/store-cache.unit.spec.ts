@@ -1,4 +1,4 @@
-import { cacheStoreGet, invalidateStoreCache, invalidateStoreCacheAfterWrite, storeCacheKey } from "../store-cache"
+import { cacheStoreGet, invalidateStoreCache, invalidateStoreCacheAfterWrite, MAX_CACHED_BODY_BYTES, storeCacheKey } from "../store-cache"
 
 function fakeCache() {
   const store = new Map<string, unknown>()
@@ -15,7 +15,7 @@ function fakeCache() {
 function request(cache: unknown, overrides: Record<string, unknown> = {}) {
   return {
     method: "GET",
-    originalUrl: "/store/products?limit=5",
+    originalUrl: "/store/products",
     headers: { "x-publishable-api-key": "pk", "x-medusa-locale": "en" } as Record<string, string>,
     scope: { resolve: () => cache },
     ...overrides,
@@ -43,6 +43,22 @@ it("serves the second identical read from the cache", async () => {
   expect(cache.set).toHaveBeenCalledWith(expect.stringMatching(/^store-cache:/), { products: [1] }, 60)
 })
 
+it("does not persist arbitrary pagination or language variants", async () => {
+  const cache = fakeCache()
+  for (let i = 0; i < 1000; i++) await run(request(cache, { originalUrl: `/store/brands?offset=${i}` }), response())
+  await run(request(cache, { headers: { ...request(cache).headers, "accept-language": "attacker-controlled" } }), response())
+  expect(cache.get).not.toHaveBeenCalled()
+  expect(cache.set).not.toHaveBeenCalled()
+})
+
+it("serves oversized bodies without persisting them", async () => {
+  const cache = fakeCache(), res = response()
+  const send = res.json
+  await run(request(cache), res, { data: "x".repeat(MAX_CACHED_BODY_BYTES) })
+  expect(send).toHaveBeenCalled()
+  expect(cache.set).not.toHaveBeenCalled()
+})
+
 it("combines concurrent cold reads in one server", async () => {
   const cache = fakeCache()
   const middleware = cacheStoreGet(60)
@@ -51,7 +67,7 @@ it("combines concurrent cold reads in one server", async () => {
   const handler = jest.fn(async (res) => { await gate; res.json({ products: [1] }) })
   const requests = Array.from({ length: 100 }, () => {
     const res = response()
-    return middleware(request(cache, { originalUrl: "/store/products?limit=7" }), res, () => handler(res))
+    return middleware(request(cache, { originalUrl: "/store/products/prod_7" }), res, () => handler(res))
   })
   await new Promise(resolve => setImmediate(resolve))
   expect(handler).toHaveBeenCalledTimes(1)
@@ -74,7 +90,7 @@ it("does not create cache entries for arbitrary cache-busting query keys", async
 it("bounds followers when a cold handler never produces a response", async () => {
   jest.useFakeTimers()
   try {
-    const cache = fakeCache(), req = request(cache, { originalUrl: "/store/products?limit=13" })
+    const cache = fakeCache(), req = request(cache, { originalUrl: "/store/products/prod_13" })
     const middleware = cacheStoreGet(60), first = response(), second = response()
     const leader = middleware(req, first, jest.fn())
     const follower = middleware(req, second, jest.fn())
@@ -141,7 +157,7 @@ it("clears the store cache after a successful admin write only", () => {
   expect(cache.invalidate).toHaveBeenCalledWith("store-cache:*")
 })
 
-it.each(["/store/products?limit=5", "/store/regions", "/store/product-categories"])("does not let a public no-cache header bypass %s", async originalUrl => {
+it.each(["/store/products", "/store/regions", "/store/product-categories"])("does not let a public no-cache header bypass %s", async originalUrl => {
   const cache = fakeCache()
   await run(request(cache, { originalUrl }), response())
   const next = await run(request(cache, { originalUrl, headers: { ...request(cache).headers, "cache-control": "no-cache" } }), response())
@@ -150,7 +166,7 @@ it.each(["/store/products?limit=5", "/store/regions", "/store/product-categories
 })
 
 it("lets followers receive native validation errors instead of a false outage", async () => {
-  const cache = fakeCache(), req = request(cache, { originalUrl: "/store/products?brand_id=bad" })
+  const cache = fakeCache(), req = request(cache, { originalUrl: "/store/products/prod_bad" })
   const middleware = cacheStoreGet(60), first = response(), second = response()
   await middleware(req, first, jest.fn())
   const next = jest.fn(() => second.status(400).json({ message: "Invalid brand" }))
