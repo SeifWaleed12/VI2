@@ -160,3 +160,24 @@ Reviewer: Claude. Review only: no application code, merge, push or deploy. The e
 
 ## Not performed
 Real S3/R2 presigning, a browser import through the dashboard, real Redis or a production build; the four suites my earlier sweep could not finish remain unrun. Deployment requirements from the first review are unchanged and still pending.
+---
+
+# Re-review of M1 fix: `5ab6a06..15b485a` (2026-11-01)
+
+Reviewer: Claude. Review only: no application code, merge, push or deploy. All earlier reviews above are preserved.
+
+**Reviewed application commit: `15b485a`. Verdict: APPROVE.**
+
+## What changed
+Owner decision (Seif): managers may change inventory tracking and backorders through direct edits and CSV imports. The fix removes the manager stock-settings guard entirely (`existingVariantStockSettings`, `changesStockSettings` and the "Stock settings can only be changed by an administrator" check in `manager-request-checks.ts`) rather than patching one path. A grep of the backend finds no leftover reference. Order allocation still goes through the workflow's stored order-line budget. Tests were inverted to assert the new policy.
+
+## Verification (my own runs, isolated runner as before)
+- **Persisted changes.** As a Catalog Manager on an existing two-variant product: `POST /admin/products/:id/variants/:vid {manage_inventory:false, allow_backorder:true}` returned 200 and the stored variant became `false/true`; the nested product update (`variants:[{id,…}]`) returned 200 and persisted; the batch variants endpoint returned 200 and persisted (back to `true/false`); a CSV import (real js-sdk upload, create-import, confirm) of the existing `Product Id` and `Variant Id` set the flags back and renamed the product, and the database matched.
+- **Retained restrictions (all 403 for a manager):** creating or updating inventory items, adding stock quantity through location levels (single and batch), linking a variant to an inventory item, a reservation with no order line, store settings, user creation, the inventory-items import, and the other product-import action (`/imports/:id/cancel`). The unit tests also confirm `managerAction` keeps stores and inventory location levels admin-only even when a body carries `allow_backorder`.
+- **Regression tests.** Full backend unit suite: 48 of 48 suites, 408 tests. Native isolated run of admin-access, security-boundaries and sign-in: 54 of 54 tests (the author's count), including the rewritten admin-access test that checks direct edits, nested edits and the CSV update against the database. Backend `tsc` clean; eslint clean on the changed files.
+
+## Findings
+None blocking. Note the policy consequence the owner has now accepted: a manager can turn off inventory tracking or allow backorders on live products, so overselling is possible by design. Stock quantities themselves remain admin-only.
+
+## Not performed
+Real S3/R2, a browser import through the dashboard, real Redis, a production build, and the four suites my earlier sweep could not finish. Deployment requirements from the first review are unchanged and still pending.

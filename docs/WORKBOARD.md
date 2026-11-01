@@ -621,11 +621,11 @@ PR28 hydration recheck closed2026-10-27: Seif supplied Claude verdict **Ship** f
 
 ## Security report remediation — claimed 2026-10-30
 
-### Current status — 2026-10-31
+### Current status — 2026-11-01
 
 | Task | Author / fix owner | Reviewer | Status | Review scope |
 |---|---|---|---|---|
-| Remediate the 18 retained security-audit records | GPT | Claude | **UNDER REVIEW — M1 candidate 15b485a requires fresh Claude review** | [PR #30](https://github.com/SeifWaleed12/VI2/pull/30): `codex/security-remediation` to `full-stack`. Correction range `5ab6a06..15b485a`; prior REQUEST CHANGES on `bb1c1cc` preserved from `661c064`. Seif authorizes both stock settings through BOTH direct edits and CSV imports; obsolete restriction removed. Earlier approval covers only `9e720b8`. Full review: `docs/reviews/claude-security-remediation-review.md`. |
+| Remediate the 18 retained security-audit records | GPT | Claude | **REVIEW APPROVED — 15b485a; awaiting Seif's merge/acceptance** | [PR #30](https://github.com/SeifWaleed12/VI2/pull/30): `codex/security-remediation` to `full-stack`. Fresh APPROVE of `15b485a` from review commit `f0b45ea`; prior REQUEST CHANGES on `bb1c1cc` preserved from `661c064`. Owner permits both stock settings through direct edits/CSV. Full appended review: `docs/reviews/claude-security-remediation-review.md`. |
 
 2026-10-31 review follow-up completed in `9e720b8`: validate current sessions on native MFA/verification and staff-link routes; bind MFA completion to the existing first-factor device/credential snapshot; generic images allow 10 MiB while logos retain 1 MiB; repair registration unit mocking and assert bound-token/failure behavior. Claude independently rechecked and APPROVED this exact application commit; the complete appended review from `6a1e217` is copied verbatim to `docs/reviews/claude-security-remediation-review.md`. The reviewer's checkout is untouched. Manager return permissions and owner decisions remain. L1–L4 remain documented nonblocking follow-ups. Seif controls merge/deployment. No additional agents.
 
@@ -673,3 +673,5 @@ M1 implementation complete: removed only the obsolete stock-setting comparison/e
 M1 source candidate `15b485a` (range `5ab6a06..15b485a`); subsequent handoff commit is documentation only. Task containers/tmpfs database and temporary source/log/cache files removed. Push this candidate and updated PR description to the same branch for Claude re-review; Seif merges.
 
 Published M1 candidate `15b485a` and documentation to the existing PR #30 branch; PR description records the owner decision, actual checks and fresh-review requirement. Additional workboard reconciliation is documentation only. The approved-at-9e720b8 history is preserved, not applied to this new candidate. No merge or deployment.
+
+M1 review closure — 2026-11-01: Claude APPROVES exact application `15b485a`, review commit `f0b45ea`. Fresh review independently verifies direct/nested/batch and existing-record CSV stock-setting persistence, retained admin-only actions, all 408 backend unit tests, 54 native admin-access/security-boundaries/sign-in tests, backend types and scoped lint. No blocking findings remain. Original reviews and appended approval copied verbatim. GPT records closure without application changes or test reruns. Optional/provider limits and deployment gates remain; PR #30 awaits Seif's merge/acceptance. No merge or deployment.

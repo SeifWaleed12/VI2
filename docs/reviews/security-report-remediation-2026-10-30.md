@@ -5,7 +5,7 @@ Source audit: `C:/Users/Seif Waleed/security-audit-skill/vi2/run-1/REPORT.md`, a
 
 ## Current disposition
 
-All 18 retained records have scoped implementation changes and regression coverage. Claude independently APPROVED application `9e720b8` on 2026-10-31, with B1–B4 verified closed; that review remains preserved as `6a1e217`. The owner requested two further PR #30 corrections on 2026-11-01: encoded auth-provider paths and CSV product imports. Claude requests changes on `bb1c1cc`: M1 exposes inconsistent manager stock-setting permissions through CSV versus direct edits. **Seif has now authorized both settings through both paths; the M1 follow-up implements that decision and requires fresh Claude review. Earlier approval covers only `9e720b8`.** Owner-controlled merge and release checks remain pending. The original stock, account and checkout evidence is retained below. This document does not claim deployment or a completed independent re-audit.
+All 18 retained records have scoped implementation changes and regression coverage. **Claude independently APPROVES exact application `15b485a`, fresh review commit `f0b45ea`, with no blocking findings.** This follows the encoded-auth/CSV corrections and owner-authorized alignment of manager stock settings across direct edits and imports. Earlier approvals and REQUEST CHANGES reviews remain preserved; the fresh approval covers the new M1 candidate rather than relying on approval of `9e720b8`. Owner-controlled merge and release checks remain pending. The original stock, account and checkout evidence is retained below. This document does not claim deployment or a completed independent re-audit.
 
 The original audit files and their NEEDS-VALIDATION verdicts are unchanged. Its approximately 115 unverified hardening observations are outside this remediation scope and must not be represented as confirmed vulnerabilities or fixed findings.
 
@@ -186,4 +186,12 @@ Commands: full backend unit runner with `--runInBand --cacheDirectory .cache/pr3
 
 M1 fixture cleanup: task Node/PostgreSQL containers are removed; the tmpfs database was discarded. Sanitized source, runner/log files and the task Jest cache were removed after recording results. The cached toolchain and unrelated services/data remain untouched.
 
-M1 application candidate: `15b485a`, correction range `5ab6a06..15b485a`. Subsequent handoff changes are documentation only. Claude must re-review this owner-authorized permission alignment; neither the earlier approval of `9e720b8` nor the REQUEST CHANGES review of `bb1c1cc` approves this new candidate.
+M1 application: `15b485a`, correction range `5ab6a06..15b485a`. Subsequent handoff changes are documentation only. The fresh approval below covers this owner-authorized permission alignment; the earlier approval of `9e720b8` and REQUEST CHANGES on `bb1c1cc` did not cover this candidate.
+
+## Fresh independent approval of 15b485a — 2026-11-01
+
+Claude's verdict is **APPROVE** of exact application `15b485a`, committed on the review branch as `f0b45ea`. The complete review is preserved verbatim at `docs/reviews/claude-security-remediation-review.md`, with all original review text verified as an unchanged prefix before importing the append. Complete file SHA-256: `D820C7F3014E18B012CE6E28BF6A4FB3A40A67826C27D5CBF0D8BAD90D786A3A`.
+
+The reviewer independently verified persisted settings through direct, nested, batch and existing-ID CSV edits; manager restrictions remain for inventory-item creation/update, stock quantities/location levels, inventory links, unscoped reservations, store/staff settings and other import actions. Reviewer results: all 48 backend unit suites / 408 tests, 54 native tests across admin-access/security-boundaries/sign-in, backend types and changed-source lint pass. These are reviewer results, not author reruns in this documentation-only closure. The owner's accepted policy allows managers to disable tracking or enable backorders on live products; stock quantities themselves remain admin-only.
+
+No blocking findings remain in the fresh review. Optional L1–L6 observations, local/S3/R2 provider limits, unperformed browser/real Redis/build checks and deployment requirements remain documented. No reviewed application code changed after `15b485a`; no tests, providers, migrations, merge or deployment were run for closure. PR #30 is review-approved and awaits Seif's merge/acceptance.
