@@ -11,10 +11,17 @@ it("grants full use of orders, catalog, customers and marketing", () => {
   ]))
 })
 
-it("lets managers see stock and reference data without changing them", () => {
-  expect(keys()).toEqual(expect.arrayContaining(["inventory_item:read", "inventory_item:create", "store:read", "region:read", "sales_channel:read"]))
+it("lets managers run stock, including the bulk routes that check \"*\"", () => {
+  expect(keys()).toEqual(expect.arrayContaining([
+    "inventory_item:read", "inventory_item:create", "inventory_item:update", "inventory_item:delete", "inventory_item:*",
+    "inventory_level:read", "inventory_level:create", "inventory_level:update", "inventory_level:delete", "inventory_level:*",
+  ]))
+})
+
+it("lets managers see reservations and reference data without changing them", () => {
+  expect(keys()).toEqual(expect.arrayContaining(["store:read", "region:read", "sales_channel:read"]))
   expect(keys().filter((key) => /^reservation_item:/.test(key)).sort()).toEqual(["reservation_item:create", "reservation_item:read"])
-  expect(keys().filter((key) => /^(inventory_item|inventory_level|store|region|sales_channel|stock_location):(\*|update|delete)$/.test(key))).toEqual([])
+  expect(keys().filter((key) => /^(store|region|sales_channel|stock_location):(\*|update|delete)$/.test(key))).toEqual([])
 })
 
 it("never grants admin-only resources", () => {
@@ -25,7 +32,7 @@ it("never grants admin-only resources", () => {
 })
 
 it("only grants \"*\" where code defines it, because Medusa deletes undefined permissions", () => {
-  expect(keys().filter((key) => key.endsWith(":*"))).toEqual(["price:*"])
+  expect(keys().filter((key) => key.endsWith(":*")).sort()).toEqual(["inventory_item:*", "inventory_level:*", "price:*"])
 })
 
 it("lists each permission once", () => {

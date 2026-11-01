@@ -10,12 +10,6 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === "object" && !Array.isArray(value)
 }
 
-function bodyHas(body: unknown, predicate: (key: string, value: unknown) => boolean): boolean {
-  if (Array.isArray(body)) return body.some((item) => bodyHas(item, predicate))
-  if (!isRecord(body)) return false
-  return Object.entries(body).some(([key, value]) => predicate(key, value) || bodyHas(value, predicate))
-}
-
 function ownAccountAction(method: string, segments: string[], body: unknown): StaffAction | null | undefined {
   const path = segments.join("/")
   if (method === "GET" && ["users/me", "rbac/me/permissions", "feature-flags", "layouts/configurations"].includes(path)) return OWN
@@ -62,11 +56,6 @@ export function managerAction(method: string, path: string, body?: unknown): Sta
     return { resource: "product", operation: "create" }
   }
   if (segments.some((segment) => segment === "import" || segment === "imports")) return null
-  // Linking variants to inventory items is stock management, which Odoo owns.
-  // The dashboard's create form sends an empty list for every variant; only
-  // listed items are links.
-  const linksInventory = (key: string, value: unknown) => key === "inventory_items" && !(Array.isArray(value) && value.length === 0)
-  if (method !== "GET" && (segments.includes("inventory-items") || bodyHas(body, linksInventory))) return null
   const operation = method === "GET" ? "read" : method === "DELETE" ? "delete" : segments.length === 1 ? "create" : "update"
   return { resource: area.resource, operation }
 }

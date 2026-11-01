@@ -1,10 +1,10 @@
 // What the manager role may do, set by the owner on 2026-10-06. A manager runs
 // the shop day to day: orders (including fulfilment, refunds and cancellation),
-// the catalog (including prices, publishing and deletion), brands, customers,
+// the catalog (including prices, publishing and deletion), stock (amended
+// 2026-11-01: Odoo is parked and Medusa holds stock), brands, customers,
 // promotions and price lists. Admin only: store settings, staff and roles, API
 // keys, regions, tax, shipping and location setup, workflows, and any future
-// business page such as revenue reports. Stock comes from Odoo, so managers can
-// see inventory but never change it or a variant's stock settings.
+// business page such as revenue reports.
 //
 // This one table drives both the request guard (src/api/admin-access.ts) and
 // the role's Medusa permissions (src/scripts/setup-catalog-manager.ts).
@@ -44,10 +44,9 @@ export const MANAGER_AREAS: Readonly<Record<string, ManagerArea>> = {
   "promotions": full("promotion"),
   "campaigns": full("campaign"),
   "price-lists": full("price_list"),
-  // Stock levels come from Odoo: visible, never edited here. A reservation
-  // holds stock, so creating or releasing one by hand is a stock change too;
-  // order workflows still reserve and release stock themselves.
-  "inventory-items": read("inventory_item"),
+  "inventory-items": full("inventory_item"),
+  // A reservation hand-edited would drift from its order, so order workflows
+  // reserve and release stock; managers only allocate to an order line.
   "reservations": read("reservation_item"),
   // Reference data that order, product and customer pages display.
   "stores": read("store"),
@@ -77,7 +76,7 @@ const NESTED_GRANTS: Readonly<Record<string, Access>> = {
   refund: "full",
   capture: "full",
   credit_line: "full",
-  inventory_level: "read",
+  inventory_level: "full",
   translation_setting: "read",
 }
 
@@ -95,11 +94,9 @@ export function managerPolicyGrants(): PolicyGrant[] {
   for (const [resource, access] of Object.entries(NESTED_GRANTS)) byResource.set(resource, access)
   const grants: PolicyGrant[] = [...byResource].flatMap(([resource, access]) =>
     access === "full" ? FULL_OPERATIONS.map((operation) => ({ resource, operation })) : [{ resource, operation: "read" as const }])
-  // Creating a product creates its (empty) inventory item; stock stays read-only.
-  grants.push({ resource: "inventory_item", operation: "create" })
   // Allocating stock to an order line, limited to what the line needs.
   grants.push({ resource: "reservation_item", operation: "create" })
-  // Medusa's price-list batch route checks "price:*" (defined in src/policies).
-  grants.push({ resource: "price", operation: "*" })
+  // Medusa's batch routes check "*" (defined in src/policies).
+  grants.push({ resource: "price", operation: "*" }, { resource: "inventory_item", operation: "*" }, { resource: "inventory_level", operation: "*" })
   return grants
 }

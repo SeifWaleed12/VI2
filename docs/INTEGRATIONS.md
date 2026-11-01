@@ -20,6 +20,8 @@ Map provider failures into internal error categories and never expose raw provid
 
 ## Odoo
 
+Parked 2026-11-01: the client postponed this integration, and it will return. Medusa holds stock until then. Do not build it until the owner releases it.
+
 Intended primary role: inventory, with invoice/accounting only if explicitly required.
 
 Potential responsibilities:
