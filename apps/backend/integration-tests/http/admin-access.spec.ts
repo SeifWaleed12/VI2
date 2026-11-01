@@ -137,11 +137,31 @@ medusaIntegrationTestRunner({
           variants: [{ title: "1kg", options: { Size: "1kg" }, manage_inventory: true, allow_backorder: false, inventory_items: [], prices: [{ amount: 100, currency_code: "egp" }] }],
         }, manager)
         expect(response.status).toBe(200)
-        const linked = await api.post("/admin/products", {
+      })
+
+      it("lets a manager run stock from creating an item to deleting it", async () => {
+        const { data: { stock_location: location } } = await api.post("/admin/stock-locations", { name: "Warehouse" }, admin)
+        const { data: { inventory_item: item } } = await api.post("/admin/inventory-items", { sku: "MANAGER-STOCK" }, manager)
+        const levels = `/admin/inventory-items/${item.id}/location-levels`
+        expect((await api.post(levels, { location_id: location.id, stocked_quantity: 5 }, manager)).status).toBe(200)
+        const stocked = async () => (await getContainer().resolve(Modules.INVENTORY).listInventoryLevels({ inventory_item_id: item.id }))[0].stocked_quantity
+        expect((await api.post(`${levels}/${location.id}`, { stocked_quantity: 7 }, manager)).status).toBe(200)
+        expect(await stocked()).toBe(7)
+        expect((await api.post(`${levels}/batch`, { update: [{ location_id: location.id, stocked_quantity: 8 }] }, manager)).status).toBe(200)
+        expect(await stocked()).toBe(8)
+        expect((await api.post("/admin/inventory-items/location-levels/batch", { update: [{ inventory_item_id: item.id, location_id: location.id, stocked_quantity: 9 }] }, manager)).status).toBe(200)
+        expect(await stocked()).toBe(9)
+
+        const kit = await api.post("/admin/products", {
           title: "Kit", status: "draft", options: [{ title: "Size", values: ["1kg"] }],
-          variants: [{ title: "1kg", options: { Size: "1kg" }, inventory_items: [{ inventory_item_id: "iitem_x", required_quantity: 1 }], prices: [{ amount: 100, currency_code: "egp" }] }],
+          variants: [{ title: "1kg", options: { Size: "1kg" }, inventory_items: [{ inventory_item_id: item.id, required_quantity: 1 }], prices: [{ amount: 100, currency_code: "egp" }] }],
         }, manager)
-        expect(linked.status).toBe(403)
+        expect(kit.status).toBe(200)
+        const [variant] = kit.data.product.variants
+        const link = `/admin/products/${kit.data.product.id}/variants/${variant.id}/inventory-items/${item.id}`
+        expect((await api.post(link, { required_quantity: 2 }, manager)).status).toBe(200)
+        expect((await api.delete(link, manager)).status).toBe(200)
+        expect((await api.delete(`/admin/inventory-items/${item.id}`, manager)).status).toBe(200)
       })
 
       it("lets a catalog manager edit product content", async () => {
@@ -270,7 +290,7 @@ medusaIntegrationTestRunner({
         expect((await api.delete("/admin/brands/brand_missing", admin)).status).toBe(404)
       })
 
-      it("lets a manager see stock and store data but not change them", async () => {
+      it("lets a manager see store data but not change it", async () => {
         for (const path of ["/admin/inventory-items", "/admin/stores", "/admin/regions", "/admin/sales-channels", "/admin/stock-locations"]) {
           expect({ path, status: (await api.get(path, manager)).status }).toEqual({ path, status: 200 })
         }
@@ -278,7 +298,6 @@ medusaIntegrationTestRunner({
         expect((await api.post(`/admin/stores/${data.stores[0].id}`, { name: "Renamed" }, manager)).status).toBe(403)
         expect((await api.post("/admin/regions", { name: "Elsewhere", currency_code: "usd" }, manager)).status).toBe(403)
         expect((await api.post("/admin/stock-locations", { name: "Warehouse" }, manager)).status).toBe(403)
-        expect((await api.post("/admin/inventory-items", { sku: "NEW-SKU" }, manager)).status).toBe(403)
         expect((await api.post("/admin/tax-regions", { country_code: "eg" }, manager)).status).toBe(403)
       })
 

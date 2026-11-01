@@ -266,8 +266,8 @@ export function translateArabicUi(value: string) {
   if (productCount) return `${productCount[1]} منتج`;
   const brandCount = normalized.match(/^(\d+) products?$/i);
   if (brandCount) return `${brandCount[1]} منتج`;
-  const remaining = normalized.match(/^ONLY (\d+) LEFT$/i);
-  if (remaining) return `متبقي ${remaining[1]} فقط`;
+  const remaining = normalized.match(/^ONLY (\d+) LEFT IN CAIRO WAREHOUSE$/i);
+  if (remaining) return `متبقي ${remaining[1]} فقط في مخزن القاهرة`;
   const ratings = normalized.match(/^(\d+(?:[.,]\d+)?[KM]?) ratings$/i);
   if (ratings) return `${ratings[1]} تقييم`;
   const lastQuantity = normalized.match(/^LAST QTY:\s*(\d+)$/i);

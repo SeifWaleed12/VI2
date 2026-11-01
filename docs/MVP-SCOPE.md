@@ -41,7 +41,7 @@ Order
 Then integrate confirmed requirements such as:
 
 ```text
-Odoo
+Odoo (parked 2026-11-01)
 Paymob
 Bosta
 Search

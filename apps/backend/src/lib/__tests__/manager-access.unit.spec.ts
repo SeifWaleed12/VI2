@@ -45,15 +45,13 @@ it.each([
   ["POST", "/admin/sales-channels"],
   ["POST", "/admin/stock-locations/sloc_1/fulfillment-sets"],
   ["POST", "/admin/tax-regions"],
-  ["POST", "/admin/inventory-items/inv_1/location-levels/sloc_1"],
-  ["DELETE", "/admin/inventory-items/inv_1"],
+  ["POST", "/admin/stock-locations"],
   ["POST", "/admin/reservations"],
   ["POST", "/admin/reservations/res_1"],
   ["DELETE", "/admin/reservations/res_1"],
   ["GET", "/admin/search"],
   ["GET", "/admin/index/details"],
   ["POST", "/admin/products/import"],
-  ["POST", "/admin/products/prod_1/variants/v1/inventory-items"],
   ["GET", "/admin/custom"],
   ["GET", "/admin/reports/revenue"],
   ["PATCH", "/admin/products/prod_1"],
@@ -66,7 +64,7 @@ it("treats exports as reading", () => {
   expect(managerAction("POST", "/admin/products/export")).toEqual({ resource: "product", operation: "read" })
   expect(managerAction("POST", "/admin/inventory-items/export")).toEqual({ resource: "inventory_item", operation: "read" })
   // Only an area's own export endpoint counts as reading.
-  expect(managerAction("POST", "/admin/inventory-items/inv_1/export")).toBeNull()
+  expect(managerAction("POST", "/admin/stores/store_1/export")).toBeNull()
 })
 
 it("lets a manager allocate stock only to an order line, never reserve by hand", () => {
@@ -77,9 +75,22 @@ it("lets a manager allocate stock only to an order line, never reserve by hand",
   expect(managerAction("POST", "/admin/reservations/res_1", { line_item_id: "ordli_1", quantity: 9 })).toBeNull()
 })
 
-it("refuses inventory links in any product payload", () => {
-  expect(managerAction("POST", "/admin/products/prod_1/variants", { title: "Kit", inventory_items: [{ inventory_item_id: "inv_1" }] })).toBeNull()
-  expect(managerAction("POST", "/admin/products", { title: "Kit", variants: [{ title: "Kit", inventory_items: [{ inventory_item_id: "inv_1", required_quantity: 2 }] }] })).toBeNull()
+it.each([
+  ["POST", "/admin/inventory-items", "inventory_item", "create"],
+  ["POST", "/admin/inventory-items/inv_1", "inventory_item", "update"],
+  ["DELETE", "/admin/inventory-items/inv_1", "inventory_item", "delete"],
+  ["POST", "/admin/inventory-items/inv_1/location-levels", "inventory_item", "update"],
+  ["POST", "/admin/inventory-items/inv_1/location-levels/sloc_1", "inventory_item", "update"],
+  ["POST", "/admin/inventory-items/inv_1/location-levels/batch", "inventory_item", "update"],
+  ["POST", "/admin/inventory-items/location-levels/batch", "inventory_item", "update"],
+  ["POST", "/admin/products/prod_1/variants/v1/inventory-items", "product", "update"],
+])("lets a manager manage stock: %s %s", (method, path, resource, operation) => {
+  expect(managerAction(method, path)).toEqual({ resource, operation })
+})
+
+it("lets inventory links through in product payloads", () => {
+  expect(managerAction("POST", "/admin/products/prod_1/variants", { title: "Kit", inventory_items: [{ inventory_item_id: "inv_1" }] })).toEqual({ resource: "product", operation: "update" })
+  expect(managerAction("POST", "/admin/products", { title: "Kit", variants: [{ title: "Kit", inventory_items: [{ inventory_item_id: "inv_1", required_quantity: 2 }] }] })).toEqual({ resource: "product", operation: "create" })
 })
 
 it("lets a manager create a product the way the dashboard sends it, with an empty inventory list per variant", () => {
@@ -109,7 +120,7 @@ describe("manager stock-setting policy", () => {
 
   it("does not grant access to admin-only areas through stock-setting fields", () => {
     expect(managerAction("POST", "/admin/stores/store_1", { manage_inventory: false })).toBeNull()
-    expect(managerAction("POST", "/admin/inventory-items/inv_1/location-levels/loc_1", { allow_backorder: true })).toBeNull()
+    expect(managerAction("POST", "/admin/reservations/res_1", { allow_backorder: true })).toBeNull()
   })
 })
 

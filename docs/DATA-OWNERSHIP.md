@@ -21,8 +21,8 @@ Derived caches/indexes must not silently become authorities.
 | Order | Medusa |
 | Payment state | Medusa + verified Paymob state |
 | Fulfillment | Medusa + Bosta integration |
-| Inventory | Odoo if explicitly confirmed as source of truth |
-| Warehouse | Must be confirmed |
+| Inventory | Medusa while Odoo is parked (2026-11-01); staff edit stock in the dashboard. Odoo only if explicitly confirmed as source of truth when it returns |
+| Warehouse | Medusa, one Cairo stock location |
 | Supplier | Must be confirmed |
 | Invoice/accounting | Odoo if explicitly required |
 | Search index | Medusa native PostgreSQL Search as derived data |

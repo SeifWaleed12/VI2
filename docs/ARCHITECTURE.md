@@ -14,7 +14,7 @@ Medusa
     ├── PostgreSQL
     ├── Redis
     ├── Medusa Search (PostgreSQL, derived catalog)
-    ├── Odoo
+    ├── Odoo (parked 2026-11-01)
     ├── Paymob
     ├── Bosta
     └── S3/R2 Storage
