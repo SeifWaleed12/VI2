@@ -11,7 +11,7 @@ async function checkReceipt(req: AuthenticatedMedusaRequest, orderId: string) {
   if (changes.length !== 1) throw new MedusaError(MedusaError.Types.NOT_ALLOWED, "This return has no active receipt request.")
   const incoming = new Map<string, number>()
   for (const action of changes[0].actions ?? []) {
-    if (![ChangeActionType.RECEIVE_RETURN_ITEM, ChangeActionType.RECEIVE_DAMAGED_RETURN_ITEM].includes(action.action as never)) continue
+    if (!action || ![ChangeActionType.RECEIVE_RETURN_ITEM, ChangeActionType.RECEIVE_DAMAGED_RETURN_ITEM].includes(action.action as never)) continue
     const details = action.details as { reference_id: string, quantity: unknown }
     const quantity = number(details.quantity)
     if (!details.reference_id || !Number.isFinite(quantity) || quantity <= 0) throw new MedusaError(MedusaError.Types.INVALID_DATA, "Invalid return quantity.")
@@ -19,7 +19,7 @@ async function checkReceipt(req: AuthenticatedMedusaRequest, orderId: string) {
   }
   const { data: [order] } = await query.graph({ entity: "order", fields: ["id", "items.id", "items.detail.shipped_quantity", "items.detail.return_received_quantity", "items.detail.return_dismissed_quantity"], filters: { id: orderId } })
   for (const [id, quantity] of incoming) {
-    const detail = order?.items?.find(item => item.id === id)?.detail
+    const detail = order?.items?.find(item => item?.id === id)?.detail
     if (!detail) throw new MedusaError(MedusaError.Types.INVALID_DATA, "The returned order item was not found.")
     const problem = returnReceiptProblem(number(detail.shipped_quantity), number(detail.return_received_quantity), number(detail.return_dismissed_quantity), quantity)
     if (problem) throw new MedusaError(MedusaError.Types.NOT_ALLOWED, problem)

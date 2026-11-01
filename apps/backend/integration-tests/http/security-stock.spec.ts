@@ -60,7 +60,7 @@ medusaIntegrationTestRunner({
         const fulfilled = await api.post(`/admin/orders/${order.id}/fulfillments`, { location_id: locationId, items: [{ id: order.items[0].id, quantity: 1 }] }, manager)
         expect(fulfilled.status).toBe(200)
         const { data: [stored] } = await query.graph({ entity: "order", fields: ["fulfillments.id"], filters: { id: order.id } })
-        fulfillmentId = stored.fulfillments![0].id
+        fulfillmentId = stored.fulfillments![0]!.id
       }
 
       async function quantity() {
@@ -122,7 +122,7 @@ medusaIntegrationTestRunner({
         expect((await api.post(`/admin/orders/${order.id}/fulfillments/${fulfillmentId}/shipments`, { labels: [], items: [{ id: order.items[0].id, quantity: 1 }] }, manager)).status).toBe(200)
         expect((await api.post(`/admin/orders/${order.id}/fulfillments`, { location_id: locationId, items: [{ id: order.items[0].id, quantity: 1 }] }, manager)).status).toBe(200)
         const { data: [stored] } = await getContainer().resolve(ContainerRegistrationKeys.QUERY).graph({ entity: "order", fields: ["fulfillments.id"], filters: { id: order.id } })
-        const unshipped = stored.fulfillments!.find(fulfillment => fulfillment.id !== fulfillmentId)!
+        const unshipped = stored.fulfillments!.find(fulfillment => fulfillment!.id !== fulfillmentId)!
         expect(await quantity()).toBe(8)
         const firstReturn = await prepareReceipt()
         expect((await api.post(`/admin/returns/${firstReturn}/receive/confirm`, {}, manager)).status).toBe(200)
