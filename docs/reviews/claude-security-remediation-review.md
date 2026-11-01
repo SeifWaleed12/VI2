@@ -130,3 +130,33 @@ Reviewer: Claude. Review only: no application code, merge, push or deploy. The r
 
 ## Deployment requirements (unchanged, still pending)
 Run the `security_session` migration before serving this code and expect re-login; set `TRUSTED_PROXY_CLIENT_IP_HEADER` only behind a proxy that strips visitor copies (production signup, including staff invitation registration, is refused without it); set real `ADMIN_CORS` and `MEDUSA_BACKEND_URL` origins; confirm the production session store, shared locks and Redis sizing; review historical HTML or SVG uploads; add an edge rate limit that also covers IPv6 ranges. Seif controls merge and deployment.
+---
+
+# Review of PR #30 corrections: `5bd2661..bb1c1cc` (2026-11-01)
+
+Reviewer: Claude. Review only: no application code, merge, push or deploy. The earlier approvals (`3a45e58` and `9e720b8`) are preserved and do not cover this range. Later PR commit `5ab6a06` is documentation only.
+
+**Reviewed application commit: `bb1c1cc`. Verdict: REQUEST CHANGES** (one Medium finding about manager CSV imports; everything else verified).
+
+## Finding
+
+### M1. A manager's CSV import can change stock settings of existing products that the dashboard blocks for managers (Medium)
+- **Where:** `apps/backend/src/lib/manager-access.ts:61-66` (new manager grant for `POST /admin/products/imports` and `.../:id/confirm`), against the stock-settings guard in `manager-request-checks.ts` / `existingVariantStockSettings`, which refuses a manager changing `manage_inventory` or `allow_backorder` on existing variants.
+- **Reproduction (isolated native run, dummy data):** a Catalog Manager sent `POST /admin/products/:id/variants/:vid {allow_backorder:true}` and got 403. The same manager uploaded a CSV containing the existing product's `Product Id` and `Variant Id` with `Variant Manage Inventory=false`, `Variant Allow Backorder=true` and a new title, then ran the import and confirm steps. The existing variant changed from `manage_inventory=true, allow_backorder=false` to `false, true`, and the product was renamed. Native import updates existing records when ids are present.
+- **Impact:** the 2026-11-01 owner decision lets managers import product CSVs; it does not say they may change stock behavior of live products. The import turns off inventory tracking or allows backorders (overselling) on existing products, a control the same role cannot use directly. The author's tests only import a new product, so this path is untested and undocumented.
+- **Smallest fix (pick one):**
+  1. Owner confirms managers may change these settings now that Odoo is parked, and the direct-edit guard and the docs are updated to match, with a regression test; or
+  2. When `res.locals.staffRole === "manager"`, refuse a CSV in the multipart upload route (`api/admin/uploads/route.ts:15-19`) whose header contains `Product Id` or `Variant Id`, so managers can only import new products; add a native test that a manager update-CSV is refused.
+
+### Low / informational (not blocking)
+- **L5:** a file named `*.csv` with HTML content and a `text/csv` MIME is accepted (stored privately as `text/csv`); only the MIME is checked, not the content. Harmless as served (not executable), but adding `X-Content-Type-Options: nosniff` at the file edge is cheap. A `.csv` name with an HTML MIME is refused, as claimed.
+- **L6:** presigned CSV uploads to real S3/R2 are client-to-bucket, so the 10 MB size and CSV content are not enforced server-side; confidentiality relies on bucket policy. The author documents this provider limit; I could not test S3/R2.
+
+## Verified (my own runs)
+- **Encoded-auth guard.** `/auth/*` now runs `requestPath` first. In a native run every one of these returned 400: `/auth/user/%65mailpass`, `/auth/%75ser/emailpass`, `emailpass%2Fregister`, `/emailpass/%72eset-password`, `reset%2Dpassword`, `update%3f`, `/auth/mfa/%66actors`, `/auth/token/%72efresh`, `%00` and `%5C` variants. Normal login (200), a login with an encoded query string (200) and the cookie session (200) still work. The author's spies confirm no password-provider or reset work runs.
+- **CSV upload validation.** Multipart: valid CSV with `text/csv` or Excel MIME accepted and stored as `private-…csv`; octet-stream MIME, HTML MIME, empty file, NUL byte, 10 MiB + 1, trailing-space name and non-csv names refused; uppercase `.CSV` accepted. Presigned: CSV with either MIME returns a generated `.csv` key with MIME normalized to `text/csv`, and a client `access: "public"` is overridden to private; HTML, PNG and over-10 MiB are refused (400). Images keep their separate 10 MiB path, logos 1 MiB.
+- **Manager permissions.** A manager completed the real js-sdk create-import and confirm flow. The unit tests confirm other imports (`/admin/products/import`, `.../cancel`, inventory-item and brand imports) stay admin-only. Only M1 is wrong about what the allowed import can do.
+- **Regression tests.** Full backend unit suite: 48 of 48 suites, 408 tests. Native isolated run: security-boundaries, admin-access, sign-in, security-stock and account all pass (68 tests; the author reports 54 on three suites). Backend `tsc` clean; eslint clean on the changed files.
+
+## Not performed
+Real S3/R2 presigning, a browser import through the dashboard, real Redis or a production build; the four suites my earlier sweep could not finish remain unrun. Deployment requirements from the first review are unchanged and still pending.

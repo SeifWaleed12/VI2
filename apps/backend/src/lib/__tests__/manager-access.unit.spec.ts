@@ -1,4 +1,4 @@
-import { existingVariantStockSettings, managerAction } from "../manager-access"
+import { managerAction } from "../manager-access"
 
 it.each([
   ["GET", "/admin/orders", "order", "read"],
@@ -100,20 +100,16 @@ it("keeps shared dashboard views admin only", () => {
   expect(managerAction("POST", "/admin/views/product/configurations/vc_1", {})).toBeNull()
 })
 
-describe("existingVariantStockSettings", () => {
-  it("finds stock settings sent for existing variants, wherever they are", () => {
-    expect(existingVariantStockSettings("/admin/products/prod_1/variants/v1", { title: "x", manage_inventory: false })).toEqual([{ variantId: "v1", settings: { manage_inventory: false } }])
-    expect(existingVariantStockSettings("/admin/products/prod_1", { variants: [{ id: "v2", allow_backorder: true }, { title: "new", manage_inventory: false }] }))
-      .toEqual([{ variantId: "v2", settings: { allow_backorder: true } }])
-    expect(existingVariantStockSettings("/admin/products/prod_1/variants/batch", { update: [{ id: "v3", manage_inventory: true, allow_backorder: false }] }))
-      .toEqual([{ variantId: "v3", settings: { manage_inventory: true, allow_backorder: false } }])
+describe("manager stock-setting policy", () => {
+  it("allows direct and nested catalog stock-setting changes", () => {
+    expect(managerAction("POST", "/admin/products/prod_1/variants/v1", { manage_inventory: false, allow_backorder: true })).toEqual({ resource: "product", operation: "update" })
+    expect(managerAction("POST", "/admin/product-variants/v1", { allow_backorder: true })).toEqual({ resource: "product_variant", operation: "update" })
+    expect(managerAction("POST", "/admin/products/prod_1", { variants: [{ id: "v1", manage_inventory: false }] })).toEqual({ resource: "product", operation: "update" })
   })
 
-  it("ignores new variants and unrelated areas", () => {
-    expect(existingVariantStockSettings("/admin/products/prod_1/variants", { manage_inventory: false })).toEqual([])
-    expect(existingVariantStockSettings("/admin/products/prod_1/quick-variant", { manage_inventory: false })).toEqual([])
-    expect(existingVariantStockSettings("/admin/products", { variants: [{ manage_inventory: false }] })).toEqual([])
-    expect(existingVariantStockSettings("/admin/orders/order_1", { id: "x", manage_inventory: false })).toEqual([])
+  it("does not grant access to admin-only areas through stock-setting fields", () => {
+    expect(managerAction("POST", "/admin/stores/store_1", { manage_inventory: false })).toBeNull()
+    expect(managerAction("POST", "/admin/inventory-items/inv_1/location-levels/loc_1", { allow_backorder: true })).toBeNull()
   })
 })
 

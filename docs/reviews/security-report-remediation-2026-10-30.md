@@ -5,7 +5,7 @@ Source audit: `C:/Users/Seif Waleed/security-audit-skill/vi2/run-1/REPORT.md`, a
 
 ## Current disposition
 
-All 18 retained records have scoped implementation changes and regression coverage. Claude independently APPROVED application `9e720b8` on 2026-10-31, with B1–B4 verified closed; that review remains preserved as `6a1e217`. The owner requested two further PR #30 corrections on 2026-11-01: encoded auth-provider paths and CSV product imports. **The new changes require fresh review; the earlier approval covers only `9e720b8`.** Owner-controlled merge and release checks remain pending. The original stock, account and checkout evidence is retained below. This document does not claim deployment or a completed independent re-audit.
+All 18 retained records have scoped implementation changes and regression coverage. Claude independently APPROVED application `9e720b8` on 2026-10-31, with B1–B4 verified closed; that review remains preserved as `6a1e217`. The owner requested two further PR #30 corrections on 2026-11-01: encoded auth-provider paths and CSV product imports. Claude requests changes on `bb1c1cc`: M1 exposes inconsistent manager stock-setting permissions through CSV versus direct edits. **Seif has now authorized both settings through both paths; the M1 follow-up implements that decision and requires fresh Claude review. Earlier approval covers only `9e720b8`.** Owner-controlled merge and release checks remain pending. The original stock, account and checkout evidence is retained below. This document does not claim deployment or a completed independent re-audit.
 
 The original audit files and their NEEDS-VALIDATION verdicts are unchanged. Its approximately 115 unverified hardening observations are outside this remediation scope and must not be represented as confirmed vulnerabilities or fixed findings.
 
@@ -16,6 +16,7 @@ The original audit files and their NEEDS-VALIDATION verdicts are unchanged. Its 
 - Registration allows 10 attempts per 15 minutes per visitor, with explicit trusted-proxy configuration in production.
 - Managers retain return receipt. Receipt requires units to have been marked shipped, and each shipped unit can consume the return budget only once.
 - Owner decision 2026-11-01: admins and managers may import product CSVs. Managers get only POST `/admin/products/imports` and POST `/admin/products/imports/:id/confirm`; other areas' imports and unlisted product import actions remain admin-only.
+- M1 clarification, 2026-11-01: managers may change `manage_inventory` and `allow_backorder` on existing variants through BOTH CSV imports and direct edits. This supersedes the older direct-edit restriction; it does not grant unrelated inventory-location, reservation or import permissions.
 - Seif allowed focused local unit tests with mocks/dummy data, then approved isolated Node 22 test-tool downloads. No additional agents were launched.
 
 ## Record-by-record implementation and evidence
@@ -166,3 +167,21 @@ The native runner reused cached `vi2-security-toolchain:ready` (same digest and 
 No environment files/secrets were edited or printed; no dependencies, Odoo branches, store cache, registration-limit or return-receipt implementation changes. Cleanup and the final source commit are recorded in the workboard. Fresh Claude review is required before owner-controlled merge.
 
 Application candidate: `bb1c1cc`; review correction range `5bd2661..bb1c1cc`. Later handoff updates are documentation only. All task containers and the tmpfs database were removed; sanitized source, runner/log files and the task unit cache were deleted after the results above were recorded.
+
+## Further Claude review of bb1c1cc — REQUEST CHANGES
+
+Verdict: REQUEST CHANGES, one Medium finding M1, committed by Claude as `661c064`. Existing-product CSV updates could change `manage_inventory`/`allow_backorder` that the same manager could not change through direct variant edits. GPT asked Seif to resolve that policy mismatch before changing permissions. The final owner decision is recorded below.
+
+Claude independently verified the encoded-auth guard and CSV name/MIME/size/NUL handling, product import flow, other-area restrictions, all 408 backend unit tests, 68 native tests across five suites, backend types and changed-source lint. Those are reviewer results, not new author reruns. Nonblocking L5 (CSV-labelled HTML is served as CSV) and L6 (direct S3/R2 presigning cannot enforce actual uploaded size/content in this handler) remain recorded. The complete original and appended review is preserved verbatim in `docs/reviews/claude-security-remediation-review.md`. Approval is not claimed for the current application.
+
+## M1 owner-authorized policy alignment — 2026-11-01
+
+Seif re-opened the policy question and chose to allow managers to change both settings through CSV imports and direct edits. The earlier admin-only answer was superseded. GPT removed the obsolete direct-edit stock-settings comparison and its now-unused extraction helper. Native Medusa remains responsible for validating/persisting product and variant changes. The separate allocation workflow, order-line budget and other area/action restrictions are unchanged. The workboard's older policy entry is marked superseded rather than silently retaining contradictory instructions.
+
+Regression coverage replaces the old denial/extractor assertions with the authorized role behavior: case-varied/direct/nested/batch stock-setting requests continue to native handlers; stock-setting fields do not grant access to admin-only areas. The native test updates an existing variant directly, verifies both saved booleans, restores them through a nested edit, then imports an existing product/variant CSV and waits for both changed booleans and the product title to persist. This reproduces M1's existing-record path under the explicit new policy; it is not only a create-product CSV test.
+
+Validation: **48 backend unit suites / 408 tests pass**; **2 native suites / 29 tests pass** (`admin-access.spec.ts` and `security-stock.spec.ts`). The existing-record direct/CSV policy test, native manager allocation-budget cases and stock receipt/cancellation/concurrency/failure tests pass. Backend, Admin and storefront TypeScript checks pass; scoped source ESLint and patch whitespace checks pass. No new dependencies, environment-file/secret edits or output, Odoo-branch changes, real providers or merge/deployment. The original review is preserved verbatim (complete file SHA-256 `92AC85A417D82E67AF2C971597214BFF9DBA2D7C12271A93BB3291CD939241DB`); the current code needs fresh review.
+
+Commands: full backend unit runner with `--runInBand --cacheDirectory .cache/pr30-m1-jest`; native Jest with `--config jest.integration.config.js --runInBand --cacheDirectory /scratch/cache/jest --runTestsByPath integration-tests/http/admin-access.spec.ts integration-tests/http/security-stock.spec.ts`. Type checks use the same three project paths as the preceding correction. Native execution reuses the documented cached image, empty allowlisted dummy environment, isolated PostgreSQL loopback, read-only target/toolchain/root and bounded scratch/resources/900-second timeout; task containers are `vi2-m1-node` and `vi2-m1-pg`. No new downloads. Earlier 54-test auth/import/sign-in evidence remains labelled at `bb1c1cc`; it was not rerun as part of this manager-policy-only follow-up. No browser, real Redis or S3/R2 checks were performed.
+
+M1 fixture cleanup: task Node/PostgreSQL containers are removed; the tmpfs database was discarded. Sanitized source, runner/log files and the task Jest cache were removed after recording results. The cached toolchain and unrelated services/data remain untouched.

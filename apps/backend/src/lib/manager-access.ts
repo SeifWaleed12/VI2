@@ -6,9 +6,6 @@ export type StaffAction = { resource: string, operation: "read" | "create" | "up
 // They map to a permission every manager has, so they need no area.
 const OWN = { resource: "product", operation: "read" } as const
 
-const STOCK_SETTINGS = ["manage_inventory", "allow_backorder"] as const
-export type StockSettings = Partial<Record<typeof STOCK_SETTINGS[number], unknown>>
-
 function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === "object" && !Array.isArray(value)
 }
@@ -72,30 +69,4 @@ export function managerAction(method: string, path: string, body?: unknown): Sta
   if (method !== "GET" && (segments.includes("inventory-items") || bodyHas(body, linksInventory))) return null
   const operation = method === "GET" ? "read" : method === "DELETE" ? "delete" : segments.length === 1 ? "create" : "update"
   return { resource: area.resource, operation }
-}
-
-export type StockSettingsChange = { variantId: string, settings: StockSettings }
-
-// Stock settings a request sends for variants that already exist. A new variant
-// (no id) starts with the values given; an existing one must keep its own. The
-// dashboard's edit form resends unchanged values, which pass the comparison.
-export function existingVariantStockSettings(path: string, body: unknown): StockSettingsChange[] {
-  const segments = path.replace(/^\/admin\/?/i, "").split("/").filter(Boolean)
-  const area = segments[0]?.toLowerCase()
-  if (!["products", "product-variants"].includes(area)) return []
-  const idSegment = area === "products" && segments[2]?.toLowerCase() === "variants" ? segments[3]
-    : area === "product-variants" ? segments[1] : undefined
-  const pathVariantId = idSegment && idSegment.toLowerCase() !== "batch" ? idSegment : undefined
-  const changes: StockSettingsChange[] = []
-  const visit = (node: unknown, inheritedId?: string) => {
-    if (Array.isArray(node)) return node.forEach((item) => visit(item))
-    if (!isRecord(node)) return
-    const id = typeof node.id === "string" ? node.id : inheritedId
-    const settings: StockSettings = {}
-    for (const key of STOCK_SETTINGS) if (key in node) settings[key] = node[key]
-    if (id && Object.keys(settings).length) changes.push({ variantId: id, settings })
-    for (const value of Object.values(node)) if (typeof value === "object") visit(value)
-  }
-  visit(body, pathVariantId)
-  return changes
 }
