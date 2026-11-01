@@ -31,3 +31,13 @@ No test feeds a null action or null item into `checkReceipt`, because the query 
 ## Things to look at
 
 1. Should a null action skip, or refuse the receipt? It is skipped here because it carries no quantity to receive.
+
+## GPT review, round 1
+
+Reviewed `f26f94c` against `81f03d4`. Verdict: no actionable findings. GPT read the code and did not rerun the checks.
+
+- A null action adds nothing to the quantity being checked, so skipping it is safe.
+- A null order item fails to match and reaches the existing "not found" refusal, so it cannot bypass the quantity check.
+- The two test assertions only satisfy TypeScript.
+
+Approved. PR open for owner merge.
