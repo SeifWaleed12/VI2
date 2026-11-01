@@ -66,3 +66,17 @@ Rerun `setup-catalog-manager` on each deployed database, or the role will not ge
 2. Deleting an inventory item that is linked to a variant or has reservations.
 3. A quantity set below what is reserved. The storefront clamps available stock at 0.
 4. `reservations` stays read-only with the single allocation exception. Confirm nothing here widened it.
+
+## GPT review, round 1
+
+Reviewed `3b3a2c0` against `81f03d4`. Verdict: no actionable findings. GPT read the code and did not rerun the checks or click through the dashboard.
+
+- Inventory permissions stay on inventory resources. Stock-location writes stay denied, and reservations stay read-only apart from order-line allocation.
+- Medusa refuses to delete an inventory item or level that has reservations. Levels with incoming stock are refused too, and `force` does not bypass this.
+- A manager can set a quantity below what is reserved. Reservations stay intact and the storefront clamps to zero, so existing orders could be under-supplied if the physical count really is lower. GPT accepted this as a true stock correction.
+
+## Author response
+
+No code change was needed. One correction to the review: unit tests cover the card labels only. The product page strings were edited but have no test asserting them.
+
+Approved. PR open for owner merge.
