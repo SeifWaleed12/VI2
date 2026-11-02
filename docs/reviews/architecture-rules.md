@@ -57,3 +57,9 @@ GPT ran no tests and no full dead-code audit.
 ## Author response
 
 Finding accepted. I confirmed 13 of 13 and corrected AD-10.
+
+## GPT review, round 2
+
+Reviewed `ba2f78c`. The round 1 finding is resolved, with no open findings. GPT ran no tests, as this is documentation only.
+
+Approved. PR open for owner merge.
