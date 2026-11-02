@@ -205,7 +205,7 @@ Owner rule (2026-11-02): every line any agent writes or changes must follow Clea
 | A customer action spanning several API calls | Named function outside the component, so it can be tested alone. |
 | Every Medusa call, and mapping Medusa data to storefront types | `src/lib/medusa/services`. |
 | Pure helpers and rule checks | `src/lib`, which never imports from `src/app`, `src/components`, `src/context` or `src/providers`. |
-| Customer-facing text | A message key in `src/lib/i18n.ts`. English wording is never a translation key. Do not add to the older dictionaries. |
+| Customer-facing text | A message key in `src/lib/i18n.ts`. English wording is never a translation key. Runtime text the storefront does not write (catalog data, service messages) goes through `t()` and `src/lib/service-messages.ts`. |
 
 A value that decides behavior, such as the low-stock limit, is one named constant in one place.
 

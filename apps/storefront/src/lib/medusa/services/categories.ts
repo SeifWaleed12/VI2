@@ -25,7 +25,7 @@ export async function getCategories(
         : {}),
     });
 
-    return (response.product_categories || []) as unknown as StoreCategory[];
+    return response.product_categories || [];
   } catch (error) {
     console.error("Failed to retrieve categories from Medusa:", error);
     return [];
@@ -38,7 +38,7 @@ export async function getCategory(id: string): Promise<StoreCategory | null> {
       fields: "*category_children,*parent_category,*products",
     });
 
-    return (product_category || null) as unknown as StoreCategory | null;
+    return product_category || null;
   } catch (error) {
     console.error(`Failed to retrieve category "${id}" from Medusa:`, error);
     return null;
@@ -56,7 +56,7 @@ export async function getCategoryByHandle(
     });
 
     const category = product_categories?.[0];
-    return (category || null) as unknown as StoreCategory | null;
+    return category || null;
   } catch (error) {
     console.error(
       `Failed to retrieve category by handle "${handle}" from Medusa:`,

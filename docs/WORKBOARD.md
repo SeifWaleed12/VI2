@@ -257,20 +257,20 @@ The initial update prepared tasks only. Seif authorized SF 1 on 2026-10-09; othe
 
 ## Architecture debt (assessed 2026-11-02 against `full-stack` 1c09174)
 
-Rule: AGENTS.md section 4.2. Fix an item when a task touches that area, or when Seif asks. No rewrites without his request. Update this list when an item is fixed.
+Rule: AGENTS.md section 4.2. Seif asked on 2026-11-02 for every item to be fixed on `claude/architecture-rules` (PR #33). New breaches go in this table.
 
-| Item | Area | Problem | Principle | Fix | When |
-|---|---|---|---|---|---|
-| AD-1 | `CheckoutClient.tsx` (1,398 lines) | Form, validation, delivery options, order placement, refresh recovery and all page markup share one component with 12 states and 6 effects. The production gate is repeated 3 times. | Single responsibility | Hooks for form and delivery; a state machine for submission; order preparation as a named function; one component per section; one order summary for desktop and mobile. | First step of the Paymob work |
-| AD-2 | Storefront text | Four systems: `i18n.ts` keys, copy objects in 9 files, the `LanguageContext.tsx` dictionary, and `arabicLocalization.ts`. Two of them translate by matching English text, and `LegacyTranslations` is used across the storefront, so changing English wording can silently lose the Arabic. | Open/closed, one rule in one place | Strangler: new text uses keys; move each screen when it is next changed; delete the old dictionaries at the end. | Ongoing |
-| AD-3 | `api/store/customers/me/email/route.ts` | The route holds validation, rate limits, password check, token signing, email sending and development logging. | Single responsibility, thin routes | Move the steps into an application function or workflow. Security-sensitive: keep the existing tests. | Next change to email change |
-| AD-4 | `api/store/auth/register/route.ts` (124 lines) | Multi-step write with hand-written rollback in the route. | Workflow for multi-step writes | Workflow with compensation. | Next change to registration |
-| AD-5 | `api/store/customers/me/points/route.ts` | The pending-points rule and its paging loop live in the route. | One rule in one place | Move it to `lib/points.ts` beside `customerPoints`. | Next change to points |
-| AD-6 | Low-stock limit | The value 8 is written in `catalogMeta.ts`, `ProductCard.tsx` and `ProductDetailClient.tsx`. | One rule in one place | One named constant. | Small, any time |
-| AD-7 | `lib/account-validation.ts` | `lib` imports phone checks from `app/[locale]/checkout/checkout-details.ts`, the wrong direction. | Dependency rule | Move the phone helpers to `lib`. | Small, any time |
-| AD-8 | Dead code | `data/catalogArchitecture.ts` (226 lines) is imported nowhere. In `catalogMeta.ts`, `getProductHealthGoals`, `getProductForm`, `getProductDietaryTags`, `matchesGoal` and `matchesForm` are used by nothing outside that file. | Simplicity | Delete after confirming no dynamic use. | Small, any time |
-| AD-9 | `Navbar.tsx` (1,071 lines) | One component of that size with 16 imports. Not reviewed in depth. | Single responsibility | Review first, then split desktop, mobile and menu parts. | Next larger navbar change |
-| AD-10 | All 13 `admin/returns/**` routes and storefront services | `as never` and similar casts bypass types at native handler and SDK boundaries. | Type safety | Replace with typed wrappers where the types allow it. | When touched |
+| Item | Area | Problem found | Status |
+|---|---|---|---|
+| AD-1 | Checkout | `CheckoutClient.tsx` (1,398 lines) mixed form, validation, delivery, order placement, recovery and markup. | Fixed: about 130 lines; hooks, a tested submission state machine (`order-submission.ts`), a tested `prepareOrder`, section components; one production gate constant. |
+| AD-2 | Storefront text | Four text systems, two keyed by English wording, plus a page-rewriting translator. | Fixed: screens use message keys; the page-rewriting translator, `arabicLocalization.ts` and three unused components are removed. English is a key only for runtime text (catalog data, service messages) in `lib/service-messages.ts`. Later: services should return codes instead of sentences. |
+| AD-3 | Email change route | Route held validation, limits, password check, token signing and sending. | Fixed: `lib/email-change-request.ts`; the route maps outcomes to HTTP. |
+| AD-4 | Registration route | Hand-written rollback in the route. | Fixed: `workflows/register-customer.ts` with compensation; the password never enters workflow state. |
+| AD-5 | Points route | Pending-points rule in the route. | Fixed: `pendingPoints` in `lib/points.ts`. |
+| AD-6 | Low-stock limit | 8 written in three files. | Fixed: `LOW_STOCK_LIMIT` and `isLowStock` in `catalogMeta.ts`. |
+| AD-7 | `lib/account-validation.ts` | `lib` imported from a page folder. | Fixed: phone and governorate helpers in `lib/egypt-address.ts`. |
+| AD-8 | Dead code | `catalogArchitecture.ts` and five catalog helpers were unused. | Fixed: deleted, along with `ValueSets`, `RegulatoryDisclosure` and `ArabicLocalization`, which were also unused. |
+| AD-9 | Navbar (1,071 lines) | One large component. | Fixed: `Navbar.tsx` (230 lines), `NavbarAccount`, `NavbarCategoryRow`, `NavbarDrawer`, `LocaleToggle`. |
+| AD-10 | Type casts | `as never` / `as unknown as` at native handler and SDK boundaries. | Partly fixed: the 13 return routes, token refresh, MFA verify, the points subscriber and storefront region/category services are typed. Seven casts remain where Medusa's generated query types lack a field or filter the code uses (`allocate-order-line-stock`, `remove-abandoned-carts`, `catalog-ranking`, `order-received-email`, `store/orders/[id]`). |
 
 Not reviewed in depth: `CreateAccountClient.tsx`, `GlobalSearch.tsx`, `cart-provider.tsx`, `admin/routes/brands/page.tsx`.
 

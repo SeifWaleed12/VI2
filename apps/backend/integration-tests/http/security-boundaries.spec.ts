@@ -7,6 +7,9 @@ import { setupEgyptStore } from "../../src/scripts/setup-egypt-store"
 import { bindSecuritySession } from "../../src/lib/security-session"
 import SecureEmailpassService from "../../src/modules/secure-emailpass/service"
 
+// The email-change step needs a storefront address for its link.
+process.env.STOREFRONT_URL ??= "http://localhost:3000"
+
 const createSuperAdminRole = require(join(dirname(require.resolve("@medusajs/medusa")), "migration-scripts/create-super-admin-role")).default
 const { generateTotpCode } = require(join(dirname(require.resolve("@medusajs/auth")), "utils/totp")) as { generateTotpCode: (input: { secret: string }) => string }
 const password = "security-boundary-password"
