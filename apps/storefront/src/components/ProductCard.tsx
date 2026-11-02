@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 
 import type { Product } from "@/types/product";
-import { getStockLabel } from "@/lib/catalogMeta";
+import { getStockLabel, isLowStock } from "@/lib/catalogMeta";
 import { translateArabicUi } from "@/lib/arabicLocalization";
 import { useCart } from "@/context/CartContext";
 import { useLanguage } from "@/context/LanguageContext";
@@ -106,7 +106,7 @@ export default function ProductCard({
         <div className={styles.stockLine}>
           <span
             className={
-              product.stock <= 8
+              isLowStock(product.stock)
                 ? styles.lowStock
                 : ""
             }

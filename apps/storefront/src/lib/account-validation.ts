@@ -1,4 +1,4 @@
-import { isValidEgyptPhone, normalizeEgyptPhone } from "@/app/[locale]/checkout/checkout-details";
+import { isValidEgyptPhone, normalizeEgyptPhone } from "@/lib/egypt-address";
 import type { AccountKey } from "./account-copy";
 
 // What each account form field accepts. Each rule returns the message to show

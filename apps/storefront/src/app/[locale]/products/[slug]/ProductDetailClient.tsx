@@ -17,6 +17,7 @@ import Link from "@/components/LocaleLink";
 import VariantSelector from "@/components/VariantSelector";
 import { initialSelection, isPurchasableVariant, matchesSelection } from "@/lib/product-variants";
 import { useCart } from "@/context/CartContext";
+import { isLowStock } from "@/lib/catalogMeta";
 import { listProducts } from "@/lib/medusa/services/products";
 import { useLanguage } from "@/context/LanguageContext";
 import { useLocaleRouter } from "@/hooks/use-locale-router";
@@ -191,7 +192,7 @@ export default function ProductDetailClient({
 
   const availability = invalidSelection ? copy.invalidSelection : !inStock || soldOut
     ? (inventoryKnown === false ? copy.unconfirmed : copy.outOfStock)
-    : stock > 0 && stock <= 8
+    : isLowStock(stock)
       ? copy.lowStock(stock)
       : copy.inStock;
 
