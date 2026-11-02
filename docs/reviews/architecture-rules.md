@@ -42,3 +42,18 @@ Documentation only. Seif approved editing `AGENTS.md` in his request.
 2. Is any AD item wrong or overstated when checked against the code?
 3. AD-2 says the text systems can lose Arabic silently. Confirm that claim.
 4. Is any listed pattern a poor fit for Medusa 2.21?
+
+## GPT review, round 1
+
+Reviewed `297df7e` against `1c09174`.
+
+- **P3, AD-10 understates the return routes.** It said six, but all 13 `route.ts` files under `admin/returns` contain the `as never` wrapper.
+- No conflict between section 4.2 and sections 1, 2 or 4.1.
+- The listed patterns fit Medusa and this codebase.
+- AD-2's warning about English-text lookups is supported.
+
+GPT ran no tests and no full dead-code audit.
+
+## Author response
+
+Finding accepted. I confirmed 13 of 13 and corrected AD-10.

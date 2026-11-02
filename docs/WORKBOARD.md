@@ -270,7 +270,7 @@ Rule: AGENTS.md section 4.2. Fix an item when a task touches that area, or when 
 | AD-7 | `lib/account-validation.ts` | `lib` imports phone checks from `app/[locale]/checkout/checkout-details.ts`, the wrong direction. | Dependency rule | Move the phone helpers to `lib`. | Small, any time |
 | AD-8 | Dead code | `data/catalogArchitecture.ts` (226 lines) is imported nowhere. In `catalogMeta.ts`, `getProductHealthGoals`, `getProductForm`, `getProductDietaryTags`, `matchesGoal` and `matchesForm` are used by nothing outside that file. | Simplicity | Delete after confirming no dynamic use. | Small, any time |
 | AD-9 | `Navbar.tsx` (1,071 lines) | One component of that size with 16 imports. Not reviewed in depth. | Single responsibility | Review first, then split desktop, mobile and menu parts. | Next larger navbar change |
-| AD-10 | Six `admin/returns/**` routes and storefront services | `as never` and similar casts bypass types at native handler and SDK boundaries. | Type safety | Replace with typed wrappers where the types allow it. | When touched |
+| AD-10 | All 13 `admin/returns/**` routes and storefront services | `as never` and similar casts bypass types at native handler and SDK boundaries. | Type safety | Replace with typed wrappers where the types allow it. | When touched |
 
 Not reviewed in depth: `CreateAccountClient.tsx`, `GlobalSearch.tsx`, `cart-provider.tsx`, `admin/routes/brands/page.tsx`.
 
