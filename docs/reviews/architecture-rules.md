@@ -136,3 +136,14 @@ The workboard's "Architecture debt" table records the result of each item.
 3. Did the text codemod turn any data value into a message key? One case in best sellers ("All") was found and fixed.
 4. Is any visible English left on the converted screens in Arabic?
 5. Do the remaining seven casts in AD-10 really need to stay?
+
+## GPT review, round 3
+
+Reviewed the code fixes (`3ee9a11..8bc2d1b`), then the whole branch (`297df7e..8bc2d1b`). No actionable findings. GPT did not rerun tests or the browser checks.
+
+Follow-ups before release:
+- A native Arabic speaker reviews the new Arabic strings.
+- Place one real order end to end.
+- Open forgot-password, reset-password, order success and the Arabic cart drawer in a browser.
+
+Approved. PR open for owner merge.
