@@ -1,5 +1,5 @@
 "use client";
-import { LegacyTranslations } from "@/context/LanguageContext";
+import { useLanguage } from "@/context/LanguageContext";
 import { useLocaleRouter } from "@/hooks/use-locale-router";
 
 import Link from "@/components/LocaleLink";
@@ -22,6 +22,7 @@ import { resetPassword } from "@/lib/medusa";
 import styles from "../AccountAuth.module.css";
 
 export default function ResetPasswordClient() {
+  const { msg, t } = useLanguage();
   const router = useLocaleRouter();
   const searchParams = useSearchParams();
   // Read once: the token is then removed from the address bar so it does not
@@ -42,11 +43,11 @@ export default function ResetPasswordClient() {
     setError("");
 
     if (password.length < 8) {
-      setError("Your password must be at least 8 characters.");
+      setError(msg("account.yourPasswordMustBeAt"));
       return;
     }
     if (password !== repeatPassword) {
-      setError("The passwords do not match.");
+      setError(msg("account.thePasswordsDoNotMatch"));
       return;
     }
 
@@ -55,36 +56,29 @@ export default function ResetPasswordClient() {
     setLoading(false);
 
     if (!result.ok) {
-      setError(result.message);
+      setError(t(result.message));
       return;
     }
 
-    setSuccess("Your password has been changed. Opening sign in...");
+    setSuccess(msg("account.yourPasswordHasBeenChanged"));
     window.setTimeout(() => router.replace("/account/sign-in"), 1200);
   }
 
   return (
-    <LegacyTranslations><main className={styles.page}>
+    <main className={styles.page}>
       <section className={`${styles.shell} ${styles.shellSingle}`}>
         <div className={styles.formSide}>
           <div className={styles.kicker}>
-            <i />
-            VI2 ACCOUNT
-          </div>
+            <i />{msg("account.vi2Account")}</div>
 
-          <h1 className={styles.heading}>
-            NEW
-            <span>PASSWORD.</span>
+          <h1 className={styles.heading}>{msg("account.new")}<span>{msg("account.password4")}</span>
           </h1>
 
           {!token ? (
             <>
-              <p className={styles.intro}>
-                This reset link is incomplete. Request a new link and
-                open it from your email.
-              </p>
+              <p className={styles.intro}>{msg("account.thisResetLinkIsIncomplete")}</p>
               <div className={styles.switch}>
-                <Link href="/account/forgot-password">REQUEST A NEW LINK</Link>
+                <Link href="/account/forgot-password">{msg("account.requestANewLink")}</Link>
               </div>
             </>
           ) : (
@@ -93,12 +87,12 @@ export default function ResetPasswordClient() {
               onSubmit={submit}
             >
               <label className={styles.field}>
-                <span>NEW PASSWORD *</span>
+                <span>{msg("account.newPassword")}</span>
                 <input
                   type="password"
                   value={password}
                   autoComplete="new-password"
-                  placeholder="At least 8 characters"
+                  placeholder={msg("account.atLeast8Characters")}
                   onChange={(event) => {
                     setPassword(event.target.value);
                     setError("");
@@ -107,12 +101,12 @@ export default function ResetPasswordClient() {
               </label>
 
               <label className={styles.field}>
-                <span>CONFIRM PASSWORD *</span>
+                <span>{msg("account.confirmPassword")}</span>
                 <input
                   type="password"
                   value={repeatPassword}
                   autoComplete="new-password"
-                  placeholder="Repeat password"
+                  placeholder={msg("account.repeatPassword")}
                   onChange={(event) => {
                     setRepeatPassword(event.target.value);
                     setError("");
@@ -139,13 +133,13 @@ export default function ResetPasswordClient() {
                 className={styles.submit}
                 disabled={loading || !!success}
               >
-                {loading ? "SAVING..." : "SET NEW PASSWORD"}
+                {loading ? msg("account.saving") : msg("account.setNewPassword")}
                 {!loading && <ArrowRight size={16} strokeWidth={1.5} />}
               </button>
             </form>
           )}
         </div>
       </section>
-    </main></LegacyTranslations>
+    </main>
   );
 }

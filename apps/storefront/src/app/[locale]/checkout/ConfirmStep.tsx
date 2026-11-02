@@ -21,7 +21,7 @@ type Props = {
 
 // Step 2: payment notice, order review and placing the order.
 export default function ConfirmStep({ form, deliveryOptions, total, error, submitting, recovering, onEdit, onPlaceOrder }: Props) {
-  const { msg } = useLanguage();
+  const { msg, t } = useLanguage();
   const { money, deliveryPrice } = useMoney();
   const { options, selectedId, select, status, retry } = deliveryOptions;
   return (
@@ -77,7 +77,7 @@ export default function ConfirmStep({ form, deliveryOptions, total, error, submi
                   >
                     <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                       <input type="radio" name="shippingOption" checked={selectedId === option.id} onChange={() => select(option.id)} />
-                      <span style={{ fontSize: "var(--text-body)", fontWeight: 600 }}>{option.name}</span>
+                      <span style={{ fontSize: "var(--text-body)", fontWeight: 600 }}>{t(option.name)}</span>
                     </div>
                     <strong style={{ fontSize: "var(--text-body)" }}>{deliveryPrice(option.amount)}</strong>
                   </label>

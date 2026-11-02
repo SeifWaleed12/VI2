@@ -50,7 +50,7 @@ import styles from "./Navbar.module.css";
 type MobileCatalogKey = string;
 
 export default function Navbar({ initialDirectory = { roots: [], error: false } }: { initialDirectory?: CategoryDirectory }) {
-  const { t, msg } = useLanguage();
+  const { msg } = useLanguage();
   const [directory, setDirectory] = useState(initialDirectory);
   const [loadingCategories, setLoadingCategories] = useState(false);
   const headerRef = useRef<HTMLDivElement>(null);
@@ -427,7 +427,7 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
                 strokeWidth={1.4}
               />
 
-              <span>{t("EG")}</span>
+              <span>{msg("nav.country")}</span>
 
               <span
                 className={
@@ -457,7 +457,7 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
                 }
               />
 
-              <strong>{t("EGP")}</strong>
+              <strong>{msg("nav.egp")}</strong>
             </div>
           </div>
         </div>
@@ -475,7 +475,7 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
             <button
               type="button"
               className={styles.mobileMenuButton}
-              aria-label={t(copy.menu)}
+              aria-label={copy.menu}
               onClick={() => {
                 setMobilePanel(null);
                 setMenuOpen(true);
@@ -490,11 +490,11 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
             <Link
               href="/"
               className={styles.logo}
-              aria-label={t("Vi2 home")}
+              aria-label={msg("footer.home")}
             >
               <Image
                 src="/brand/vi2-logo-mark-black.png"
-                alt={t("Vi2")}
+                alt={"Vi2"}
                 width={58}
                 height={70}
                 priority
@@ -509,7 +509,7 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
               aria-label={msg("nav.search")}
             >
               <span>
-                {t(copy.search)}
+                {copy.search}
               </span>
 
               <Search
@@ -558,8 +558,8 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
                     </strong>
                   ) : (
                     <>
-                      <span>{t(copy.account)}</span>
-                      {!isLoading && <strong>{t(copy.signIn)}</strong>}
+                      <span>{copy.account}</span>
+                      {!isLoading && <strong>{copy.signIn}</strong>}
                     </>
                   )}
                 </div>
@@ -584,7 +584,7 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
               type="button"
               className={styles.cart}
               data-cart-trigger
-              aria-label={t(copy.cart)}
+              aria-label={copy.cart}
               onClick={() => {
                 closeMenu();
                 setMegaOpen(null);
@@ -598,15 +598,15 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
                 strokeWidth={1.4}
               />
 
-              {t(itemCount > 0 && (
+              {itemCount > 0 && (
                 <span
                   className={
                     styles.cartCount
                   }
                 >
-                  {t(itemCount)}
+                  {itemCount}
                 </span>
-              ))}
+              )}
             </button>
           </div>
         </header>
@@ -748,7 +748,7 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
                   ? isArabic
                     ? `مرحباً، ${displayName}`
                     : `Welcome, ${displayName}`
-                  : t(copy.welcome)}
+                  : copy.welcome}
               </strong>
             </Link>
 
@@ -774,7 +774,7 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
 
               <nav className={styles.primaryMenuList} aria-label={msg("nav.mainCategories")}>
                 {!directory.roots.length && <CategoryStatus error={directory.error} loading={loadingCategories} retry={retryCategories} />}
-                {t(primaryMobileCategories.map(
+                {primaryMobileCategories.map(
                   (item) => (
                     <button
                       key={item.key}
@@ -795,13 +795,13 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
                       />
                     </button>
                   ),
-                ))}
+                )}
               </nav>
             </section>
 
             <section className={styles.menuSection}>
               <span className={styles.sectionLabel}>
-                {t(copy.shopBy)}
+                {copy.shopBy}
               </span>
 
               <nav className={styles.simpleLinks} aria-label={msg("nav.shopBy")}>
@@ -858,7 +858,7 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
                   size={19}
                   strokeWidth={1.4}
                 />
-                {t(copy.account)}
+                {copy.account}
               </Link>
 
               <Link
@@ -873,7 +873,7 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
                   size={19}
                   strokeWidth={1.4}
                 />
-                {t(copy.orders)}
+                {copy.orders}
               </Link>
 
               <Link
@@ -888,7 +888,7 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
                   size={19}
                   strokeWidth={1.4}
                 />
-                {t(copy.rewards)}
+                {copy.rewards}
               </Link>
             </section>
 
@@ -898,7 +898,7 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
                 strokeWidth={1.4}
               />
 
-              <span>{t("EG")}</span>
+              <span>{msg("nav.country")}</span>
 
               <span
                 className={
@@ -928,7 +928,7 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
                 }
               />
 
-              <strong>{t("EGP")}</strong>
+              <strong>{msg("nav.egp")}</strong>
             </div>
 
             {isAuthenticated ? (
@@ -961,7 +961,7 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
                 className={styles.drawerCta}
                 onClick={closeMenu}
               >
-                {t(copy.create)}
+                {copy.create}
               </Link>
             )}
           </div>
@@ -976,7 +976,7 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
             }
             aria-hidden={!activeMobilePanel}
           >
-            {t(activeMobilePanel && (
+            {activeMobilePanel && (
               <>
                 <div className={styles.subMenuHeader}>
                   <button
@@ -1036,7 +1036,7 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
                     <p className={styles.subMenuStatus} role="status">{msg("shop.noBrands")}</p>
                   )}
                   <nav className={styles.subMenuList} aria-label={activeMobilePanel.title}>
-                    {t(activeMobilePanel.items.map(
+                    {(activeMobilePanel.items.map(
                       ([label, href]) => (
                         <Link
                           key={`${label}-${href}`}
@@ -1050,7 +1050,7 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
                   </nav>
                 </div>
               </>
-            ))}
+            )}
           </div>
         </aside>
       </div>

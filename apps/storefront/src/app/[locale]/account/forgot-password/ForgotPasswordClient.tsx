@@ -1,5 +1,5 @@
 "use client";
-import { LegacyTranslations } from "@/context/LanguageContext";
+import { useLanguage } from "@/context/LanguageContext";
 
 import Link from "@/components/LocaleLink";
 import {
@@ -17,6 +17,7 @@ import { requestPasswordReset } from "@/lib/medusa";
 import styles from "../AccountAuth.module.css";
 
 export default function ForgotPasswordClient() {
+  const { msg, t } = useLanguage();
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -28,7 +29,7 @@ export default function ForgotPasswordClient() {
     setSuccess("");
 
     if (!email.trim()) {
-      setError("Enter your email address.");
+      setError(msg("account.enterYourEmailAddress"));
       return;
     }
 
@@ -37,39 +38,31 @@ export default function ForgotPasswordClient() {
     setLoading(false);
 
     if (!result.ok) {
-      setError(result.message);
+      setError(t(result.message));
       return;
     }
 
-    setSuccess(result.message ?? "Check your email for a link to reset your password.");
+    setSuccess(result.message ? t(result.message) : msg("account.checkYourEmailForA"));
   }
 
   return (
-    <LegacyTranslations><main className={styles.page}>
+    <main className={styles.page}>
       <section className={`${styles.shell} ${styles.shellSingle}`}>
         <div className={styles.formSide}>
           <div className={styles.kicker}>
-            <i />
-            VI2 ACCOUNT
-          </div>
+            <i />{msg("account.vi2Account")}</div>
 
-          <h1 className={styles.heading}>
-            FORGOT
-            <span>PASSWORD?</span>
+          <h1 className={styles.heading}>{msg("account.forgot")}<span>{msg("account.password3")}</span>
           </h1>
 
-          <p className={styles.intro}>
-            Enter the email you use for your Vi2 account and we will
-            send you a link to choose a new password. The link
-            expires in 15 minutes.
-          </p>
+          <p className={styles.intro}>{msg("account.enterTheEmailYouUse")}</p>
 
           <form
             className={styles.form}
             onSubmit={submit}
           >
             <label className={styles.field}>
-              <span>EMAIL ADDRESS</span>
+              <span>{msg("account.emailAddress2")}</span>
 
               <input
                 type="email"
@@ -102,17 +95,17 @@ export default function ForgotPasswordClient() {
               className={styles.submit}
               disabled={loading}
             >
-              {loading ? "SENDING..." : "SEND RESET LINK"}
+              {loading ? msg("account.sending") : msg("account.sendResetLink")}
               {!loading && <ArrowRight size={16} strokeWidth={1.5} />}
             </button>
           </form>
 
           <div className={styles.switch}>
-            <span>Remembered it?</span>
-            <Link href="/account/sign-in">SIGN IN</Link>
+            <span>{msg("account.rememberedIt")}</span>
+            <Link href="/account/sign-in">{msg("account.signIn2")}</Link>
           </div>
         </div>
       </section>
-    </main></LegacyTranslations>
+    </main>
   );
 }

@@ -1,5 +1,5 @@
 "use client";
-import { LegacyTranslations } from "@/context/LanguageContext";
+import { useLanguage } from "@/context/LanguageContext";
 import { useLocaleRouter } from "@/hooks/use-locale-router";
 
 import Link from "@/components/LocaleLink";
@@ -55,6 +55,7 @@ function validEgyptPhone(
 }
 
 export default function CreateAccountClient() {
+  const { msg, t } = useLanguage();
   const router = useLocaleRouter();
   const { register } = useAuth();
 
@@ -104,7 +105,7 @@ export default function CreateAccountClient() {
       !confirmPassword
     ) {
       setError(
-        "Complete all required fields.",
+        msg("account.completeAllRequiredFields"),
       );
       return;
     }
@@ -115,7 +116,7 @@ export default function CreateAccountClient() {
       )
     ) {
       setError(
-        "Enter a valid Egyptian mobile number.",
+        msg("account.enterAValidEgyptianMobile"),
       );
       return;
     }
@@ -124,7 +125,7 @@ export default function CreateAccountClient() {
       password.length < 8
     ) {
       setError(
-        "Your password must be at least 8 characters.",
+        msg("account.yourPasswordMustBeAt"),
       );
       return;
     }
@@ -134,14 +135,14 @@ export default function CreateAccountClient() {
       confirmPassword
     ) {
       setError(
-        "The passwords do not match.",
+        msg("account.thePasswordsDoNotMatch"),
       );
       return;
     }
 
     if (!accepted) {
       setError(
-        "Accept the account terms to continue.",
+        msg("account.acceptTheAccountTermsTo"),
       );
       return;
     }
@@ -159,15 +160,15 @@ export default function CreateAccountClient() {
     if (!result.ok) {
       setEmailTaken(result.emailTaken === true);
       setError(
-        result.message ??
-          "Could not create your account. Please try again.",
+        (result.message && t(result.message)) ||
+        msg("account.couldNotCreateYourAccount"),
       );
       setLoading(false);
       return;
     }
 
     setSuccess(
-      "Your Vi2 account is ready.",
+      msg("account.yourVi2AccountIsReady"),
     );
 
     window.setTimeout(
@@ -182,25 +183,16 @@ export default function CreateAccountClient() {
   }
 
   return (
-    <LegacyTranslations><main className={styles.page}>
+    <main className={styles.page}>
       <section className={styles.shell}>
         <div className={styles.formSide}>
           <div className={styles.kicker}>
-            <i />
-            JOIN VI2
-          </div>
+            <i />{msg("account.joinVi2")}</div>
 
-          <h1 className={styles.heading} data-arabic-text="أنشئ حساباً.">
-            CREATE
-            <span>
-              ACCOUNT.
-            </span>
+          <h1 className={styles.heading}>{msg("account.create")}<span>{msg("account.account")}</span>
           </h1>
 
-          <p className={styles.intro}>
-            Create your Vi2 account experience for a faster
-            return, saved details and future member features.
-          </p>
+          <p className={styles.intro}>{msg("account.createYourVi2AccountExperience")}</p>
 
           <form
             className={styles.form}
@@ -208,15 +200,13 @@ export default function CreateAccountClient() {
           >
             <div className={styles.nameRow}>
               <label className={styles.field}>
-                <span>
-                  FIRST NAME *
-                </span>
+                <span>{msg("account.firstName")}</span>
 
                 <input
                   type="text"
                   value={firstName}
                   autoComplete="given-name"
-                  placeholder="First name"
+                  placeholder={msg("account.firstName2")}
                   onChange={(event) => {
                     setFirstName(
                       event.target.value,
@@ -227,15 +217,13 @@ export default function CreateAccountClient() {
               </label>
 
               <label className={styles.field}>
-                <span>
-                  LAST NAME *
-                </span>
+                <span>{msg("account.lastName")}</span>
 
                 <input
                   type="text"
                   value={lastName}
                   autoComplete="family-name"
-                  placeholder="Last name"
+                  placeholder={msg("account.lastName2")}
                   onChange={(event) => {
                     setLastName(
                       event.target.value,
@@ -247,9 +235,7 @@ export default function CreateAccountClient() {
             </div>
 
             <label className={styles.field}>
-              <span>
-                MOBILE NUMBER *
-              </span>
+              <span>{msg("account.mobileNumber")}</span>
 
               <input
                 type="tel"
@@ -267,9 +253,7 @@ export default function CreateAccountClient() {
             </label>
 
             <label className={styles.field}>
-              <span>
-                EMAIL ADDRESS *
-              </span>
+              <span>{msg("account.emailAddress")}</span>
 
               <input
                 type="email"
@@ -286,9 +270,7 @@ export default function CreateAccountClient() {
             </label>
 
             <label className={styles.field}>
-              <span>
-                PASSWORD *
-              </span>
+              <span>{msg("account.password")}</span>
 
               <div className={styles.passwordWrap}>
                 <input
@@ -299,7 +281,7 @@ export default function CreateAccountClient() {
                   }
                   value={password}
                   autoComplete="new-password"
-                  placeholder="Create password"
+                  placeholder={msg("account.createPassword")}
                   onChange={(event) => {
                     setPassword(
                       event.target.value,
@@ -313,8 +295,8 @@ export default function CreateAccountClient() {
                   className={styles.passwordToggle}
                   aria-label={
                     showPassword
-                      ? "Hide password"
-                      : "Show password"
+                      ? msg("account.hidePassword")
+                      : msg("account.showPassword")
                   }
                   onClick={() =>
                     setShowPassword(
@@ -340,19 +322,13 @@ export default function CreateAccountClient() {
 
             <div className={styles.passwordRules}>
               <span>
-                <Check size={11} />
-                8+ CHARACTERS
-              </span>
+                <Check size={11} />{msg("account.8Characters")}</span>
               <span>
-                <Check size={11} />
-                KEEP IT UNIQUE
-              </span>
+                <Check size={11} />{msg("account.keepItUnique")}</span>
             </div>
 
             <label className={styles.field}>
-              <span>
-                CONFIRM PASSWORD *
-              </span>
+              <span>{msg("account.confirmPassword")}</span>
 
               <input
                 type={
@@ -362,7 +338,7 @@ export default function CreateAccountClient() {
                 }
                 value={confirmPassword}
                 autoComplete="new-password"
-                placeholder="Repeat password"
+                placeholder={msg("account.repeatPassword")}
                 onChange={(event) => {
                   setConfirmPassword(
                     event.target.value,
@@ -383,10 +359,7 @@ export default function CreateAccountClient() {
                 }
               />
 
-              <span>
-                I agree to create a Vi2 account experience
-                using these details on this browser.
-              </span>
+              <span>{msg("account.iAgreeToCreateA")}</span>
             </label>
 
             {error && (
@@ -399,8 +372,8 @@ export default function CreateAccountClient() {
                   {error}
                   {emailTaken && (
                     <span className={styles.noticeLinks}>
-                      <Link href="/account/sign-in">Sign in</Link>
-                      <Link href="/account/forgot-password">Reset password</Link>
+                      <Link href="/account/sign-in">{msg("account.signIn")}</Link>
+                      <Link href="/account/forgot-password">{msg("account.resetPassword")}</Link>
                     </span>
                   )}
                 </span>
@@ -423,8 +396,8 @@ export default function CreateAccountClient() {
               disabled={loading}
             >
               {loading
-                ? "CREATING ACCOUNT..."
-                : "CREATE ACCOUNT"}
+                ? msg("account.creatingAccount")
+                : msg("account.createAccount")}
 
               {!loading && (
                 <ArrowRight
@@ -436,13 +409,9 @@ export default function CreateAccountClient() {
           </form>
 
           <div className={styles.switch}>
-            <span>
-              Already have an account?
-            </span>
+            <span>{msg("account.alreadyHaveAnAccount")}</span>
 
-            <Link href="/account/sign-in">
-              SIGN IN
-            </Link>
+            <Link href="/account/sign-in">{msg("account.signIn2")}</Link>
           </div>
         </div>
 
@@ -450,24 +419,13 @@ export default function CreateAccountClient() {
           <div className={styles.sideMark}>
             <strong>VI2</strong>
 
-            <span>
-              LIVE WELL,
-              <br />
-              LIVE FULLY.
-            </span>
+            <span>{msg("account.liveWell")}<br />{msg("account.liveFully")}</span>
           </div>
 
-          <h2 data-arabic-text="انضم إلى روتين Vi2.">
-            JOIN THE
-            <span>
-              VI2 ROUTINE.
-            </span>
+          <h2>{msg("account.joinThe")}<span>{msg("account.vi2Routine")}</span>
           </h2>
 
-          <p className={styles.sideCopy}>
-            A simple member experience built around your
-            routine, without connecting any backend yet.
-          </p>
+          <p className={styles.sideCopy}>{msg("account.aSimpleMemberExperienceBuilt")}</p>
 
           <div className={styles.benefits}>
             <div className={styles.benefit}>
@@ -476,12 +434,8 @@ export default function CreateAccountClient() {
                 strokeWidth={1.4}
               />
               <div>
-                <strong>
-                  MEMBER BENEFITS
-                </strong>
-                <span>
-                  Ready for rewards later.
-                </span>
+                <strong>{msg("account.memberBenefits")}</strong>
+                <span>{msg("account.readyForRewardsLater")}</span>
               </div>
             </div>
 
@@ -491,12 +445,8 @@ export default function CreateAccountClient() {
                 strokeWidth={1.4}
               />
               <div>
-                <strong>
-                  ORDER HISTORY
-                </strong>
-                <span>
-                  Ready for backend connection later.
-                </span>
+                <strong>{msg("account.orderHistory")}</strong>
+                <span>{msg("account.readyForBackendConnectionLater")}</span>
               </div>
             </div>
 
@@ -506,12 +456,8 @@ export default function CreateAccountClient() {
                 strokeWidth={1.4}
               />
               <div>
-                <strong>
-                  YOUR ROUTINE
-                </strong>
-                <span>
-                  Make repeat shopping simpler.
-                </span>
+                <strong>{msg("account.yourRoutine")}</strong>
+                <span>{msg("account.makeRepeatShoppingSimpler")}</span>
               </div>
             </div>
 
@@ -521,12 +467,8 @@ export default function CreateAccountClient() {
                 strokeWidth={1.4}
               />
               <div>
-                <strong>
-                  VI2 IDENTITY
-                </strong>
-                <span>
-                  One clean account journey.
-                </span>
+                <strong>{msg("account.vi2Identity")}</strong>
+                <span>{msg("account.oneCleanAccountJourney")}</span>
               </div>
             </div>
           </div>
@@ -535,11 +477,9 @@ export default function CreateAccountClient() {
             <ShieldCheck
               size={14}
               strokeWidth={1.4}
-            />
-            FRONTEND ACCOUNT FLOW
-          </div>
+            />{msg("account.frontendAccountFlow")}</div>
         </aside>
       </section>
-    </main></LegacyTranslations>
+    </main>
   );
 }

@@ -1,61 +1,19 @@
-import { LegacyTranslations } from "@/context/LanguageContext";
 export const metadata = { robots: { index: false, follow: false }, referrer: "no-referrer" as const };
 import {
   Suspense,
 } from "react";
 
+import OrderLoading from "./OrderLoading";
 import SuccessClient from "./SuccessClient";
 
 export default function OrderSuccessPage() {
   return (
     <Suspense
       fallback={
-        <SuccessLoading />
+        <OrderLoading />
       }
     >
       <SuccessClient />
     </Suspense>
-  );
-}
-
-function SuccessLoading() {
-  return (
-    <LegacyTranslations><main
-      style={{
-        minHeight: "70vh",
-        display: "grid",
-        placeItems: "center",
-        background: "#f8f4ed",
-        color: "#181916",
-      }}
-    >
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          gap: "10px",
-        }}
-      >
-        <strong
-          style={{
-            fontSize: "var(--text-ui)",
-            letterSpacing: "0.12em",
-          }}
-        >
-          VI2
-        </strong>
-
-        <span
-          style={{
-            fontSize: "var(--text-ui)",
-            fontWeight: 800,
-            letterSpacing: "0.14em",
-          }}
-        >
-          PREPARING ORDER CONFIRMATION
-        </span>
-      </div>
-    </main></LegacyTranslations>
   );
 }

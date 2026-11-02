@@ -1,5 +1,6 @@
 "use client";
-import { LegacyTranslations } from "@/context/LanguageContext";
+import { useLanguage } from "@/context/LanguageContext";
 export default function CatalogError({ reset }: { reset: () => void }) {
-  return <LegacyTranslations><main><h1>Temporarily unavailable</h1><p>We could not load the latest store data. Please try again.</p><button onClick={reset}>Try again</button></main></LegacyTranslations>;
+  const { msg } = useLanguage();
+  return <main><h1>{msg("error.temporarilyUnavailable")}</h1><p>{msg("error.weCouldNotLoadThe")}</p><button onClick={reset}>{msg("error.tryAgain")}</button></main>;
 }

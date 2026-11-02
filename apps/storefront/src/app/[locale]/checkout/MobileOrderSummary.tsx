@@ -18,7 +18,7 @@ type Props = {
 };
 
 export default function MobileOrderSummary({ items, itemCount, discountTotal, delivery, total }: Props) {
-  const { msg } = useLanguage();
+  const { msg, t } = useLanguage();
   const { money, deliveryPrice } = useMoney();
   const [open, setOpen] = useState(false);
   return (
@@ -47,8 +47,8 @@ export default function MobileOrderSummary({ items, itemCount, discountTotal, de
                 <span>{item.quantity}</span>
               </div>
               <div>
-                <span>{item.product.brand}</span>
-                <strong>{item.product.shortName}</strong>
+                <span>{t(item.product.brand)}</span>
+                <strong>{t(item.product.shortName)}</strong>
                 <small>{money(item.product.price * item.quantity)}</small>
               </div>
             </div>

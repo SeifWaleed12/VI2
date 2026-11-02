@@ -24,7 +24,7 @@ type Props = {
 
 // The desktop order summary: items, promo code and totals.
 export default function OrderSummary({ items, subtotal, discountTotal, delivery, total }: Props) {
-  const { msg } = useLanguage();
+  const { msg, t } = useLanguage();
   const { money, deliveryPrice } = useMoney();
   return (
     <aside className={styles.summary}>
@@ -47,9 +47,9 @@ export default function OrderSummary({ items, subtotal, discountTotal, delivery,
                   <span>{item.quantity}</span>
                 </div>
                 <div className={styles.orderItemInfo}>
-                  <span>{item.product.brand}</span>
-                  <strong>{item.product.shortName}</strong>
-                  <small>{item.product.size}</small>
+                  <span>{t(item.product.brand)}</span>
+                  <strong>{t(item.product.shortName)}</strong>
+                  <small>{t(item.product.size)}</small>
                 </div>
                 <strong className={styles.orderItemPrice}>{money(item.product.price * item.quantity)}</strong>
               </article>

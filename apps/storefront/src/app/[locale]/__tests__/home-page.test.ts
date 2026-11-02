@@ -12,7 +12,6 @@ jest.mock("@/components/TrendingNow", () => ({ __esModule: true, default: ({ pro
 jest.mock("@/components/HomeBestSellers", () => ({ __esModule: true, default: () => null }));
 jest.mock("@/components/BrandUniverse", () => ({ __esModule: true, default: ({ brands }: { brands: string[] }) => createElement("div", {}, brands.join(" ")) }));
 jest.mock("@/components/HomeDiscovery", () => ({ __esModule: true, default: () => null }));
-jest.mock("@/components/ValueSets", () => ({ __esModule: true, default: () => null }));
 
 beforeEach(() => {
   jest.clearAllMocks();

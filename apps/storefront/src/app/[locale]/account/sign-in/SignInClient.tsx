@@ -1,5 +1,5 @@
 "use client";
-import { LegacyTranslations } from "@/context/LanguageContext";
+import { useLanguage } from "@/context/LanguageContext";
 import { useLocaleRouter } from "@/hooks/use-locale-router";
 
 import Link from "@/components/LocaleLink";
@@ -29,6 +29,7 @@ import { safeRedirect } from "@/lib/safe-redirect";
 import styles from "../AccountAuth.module.css";
 
 export default function SignInClient() {
+  const { msg, t } = useLanguage();
   const router = useLocaleRouter();
   const searchParams = useSearchParams();
   const { signIn, isAuthenticated } = useAuth();
@@ -55,7 +56,7 @@ export default function SignInClient() {
     setSuccess("");
 
     if (!email.trim() || !password) {
-      setError("Enter your email and password.");
+      setError(msg("account.enterYourEmailAndPassword"));
       return;
     }
 
@@ -67,13 +68,13 @@ export default function SignInClient() {
     });
 
     if (!result.ok) {
-      setError(result.message ?? "Invalid email or password.");
+      setError(result.message ? t(result.message) : msg("account.invalidEmailOrPassword"));
       setLoading(false);
       return;
     }
 
     setSuccess(
-      "Signed in. Opening your account...",
+      msg("account.signedInOpeningYourAccount"),
     );
 
     window.setTimeout(
@@ -88,31 +89,23 @@ export default function SignInClient() {
   }
 
   return (
-    <LegacyTranslations><main className={styles.page}>
+    <main className={styles.page}>
       <section className={styles.shell}>
         <div className={styles.formSide}>
           <div className={styles.kicker}>
-            <i />
-            VI2 ACCOUNT
-          </div>
+            <i />{msg("account.vi2Account")}</div>
 
-          <h1 className={styles.heading} data-arabic-text="مرحباً بعودتك.">
-            WELCOME
-            <span>BACK.</span>
+          <h1 className={styles.heading}>{msg("account.welcome")}<span>{msg("account.back")}</span>
           </h1>
 
-          <p className={styles.intro}>
-            Sign in to return to your Vi2 account experience,
-            keep your shopping journey organized and make your
-            next visit faster.
-          </p>
+          <p className={styles.intro}>{msg("account.signInToReturnTo")}</p>
 
           <form
             className={styles.form}
             onSubmit={submit}
           >
             <label className={styles.field}>
-              <span>EMAIL ADDRESS</span>
+              <span>{msg("account.emailAddress2")}</span>
 
               <input
                 type="email"
@@ -129,7 +122,7 @@ export default function SignInClient() {
             </label>
 
             <label className={styles.field}>
-              <span>PASSWORD</span>
+              <span>{msg("account.password2")}</span>
 
               <div className={styles.passwordWrap}>
                 <input
@@ -140,7 +133,7 @@ export default function SignInClient() {
                   }
                   value={password}
                   autoComplete="current-password"
-                  placeholder="Your password"
+                  placeholder={msg("account.yourPassword")}
                   onChange={(event) => {
                     setPassword(
                       event.target.value,
@@ -154,8 +147,8 @@ export default function SignInClient() {
                   className={styles.passwordToggle}
                   aria-label={
                     showPassword
-                      ? "Hide password"
-                      : "Show password"
+                      ? msg("account.hidePassword")
+                      : msg("account.showPassword")
                   }
                   onClick={() =>
                     setShowPassword(
@@ -182,9 +175,7 @@ export default function SignInClient() {
             <Link
               href="/account/forgot-password"
               className={styles.forgotLink}
-            >
-              Forgot password?
-            </Link>
+            >{msg("account.forgotPassword")}</Link>
 
             {error && (
               <div className={styles.noticeError}>
@@ -212,8 +203,8 @@ export default function SignInClient() {
               disabled={loading}
             >
               {loading
-                ? "SIGNING IN..."
-                : "SIGN IN"}
+                ? msg("account.signingIn")
+                : msg("account.signIn2")}
 
               {!loading && (
                 <ArrowRight
@@ -225,13 +216,9 @@ export default function SignInClient() {
           </form>
 
           <div className={styles.switch}>
-            <span>
-              New to Vi2?
-            </span>
+            <span>{msg("account.newToVi2")}</span>
 
-            <Link href="/account/create-account">
-              CREATE ACCOUNT
-            </Link>
+            <Link href="/account/create-account">{msg("account.createAccount")}</Link>
           </div>
         </div>
 
@@ -239,24 +226,13 @@ export default function SignInClient() {
           <div className={styles.sideMark}>
             <strong>VI2</strong>
 
-            <span>
-              LIVE WELL,
-              <br />
-              LIVE FULLY.
-            </span>
+            <span>{msg("account.liveWell")}<br />{msg("account.liveFully")}</span>
           </div>
 
-          <h2 data-arabic-text="حساب واحد. تجربة أسهل.">
-            ONE ACCOUNT.
-            <span>
-              LESS FRICTION.
-            </span>
+          <h2>{msg("account.oneAccount")}<span>{msg("account.lessFriction")}</span>
           </h2>
 
-          <p className={styles.sideCopy}>
-            A cleaner account experience designed around faster
-            return visits, saved preferences and a simpler Vi2 journey.
-          </p>
+          <p className={styles.sideCopy}>{msg("account.aCleanerAccountExperienceDesigned")}</p>
 
           <div className={styles.benefits}>
             <div className={styles.benefit}>
@@ -265,12 +241,8 @@ export default function SignInClient() {
                 strokeWidth={1.4}
               />
               <div>
-                <strong>
-                  ORDER HISTORY
-                </strong>
-                <span>
-                  Keep purchases together.
-                </span>
+                <strong>{msg("account.orderHistory")}</strong>
+                <span>{msg("account.keepPurchasesTogether")}</span>
               </div>
             </div>
 
@@ -280,12 +252,8 @@ export default function SignInClient() {
                 strokeWidth={1.4}
               />
               <div>
-                <strong>
-                  VI2 REWARDS
-                </strong>
-                <span>
-                  Member benefits ready for later.
-                </span>
+                <strong>{msg("account.vi2Rewards")}</strong>
+                <span>{msg("account.memberBenefitsReadyForLater")}</span>
               </div>
             </div>
 
@@ -295,12 +263,8 @@ export default function SignInClient() {
                 strokeWidth={1.4}
               />
               <div>
-                <strong>
-                  FASTER RETURN
-                </strong>
-                <span>
-                  Get back to your routine quickly.
-                </span>
+                <strong>{msg("account.fasterReturn")}</strong>
+                <span>{msg("account.getBackToYourRoutine")}</span>
               </div>
             </div>
           </div>
@@ -309,11 +273,9 @@ export default function SignInClient() {
             <ShieldCheck
               size={14}
               strokeWidth={1.4}
-            />
-            VI2 ACCOUNT EXPERIENCE
-          </div>
+            />{msg("account.vi2AccountExperience")}</div>
         </aside>
       </section>
-    </main></LegacyTranslations>
+    </main>
   );
 }

@@ -16,7 +16,7 @@ export default function HomeBestSellers({
 }: {
   initialProducts?: Product[];
 }) {
-  const { t } = useLanguage();
+  const { msg } = useLanguage();
   const bestSellers = (initialProducts ?? []).slice(0, 8);
   if (!bestSellers.length) return null;
 
@@ -42,13 +42,13 @@ export default function HomeBestSellers({
               styles.titleWrap
             }
           >
-            <h2 data-arabic-text="تسوق المنتجات">{t("SHOP PRODUCTS")}</h2>
+            <h2>{msg("cart.shopProducts")}</h2>
           </div>
 
           <Link
             href="/shop"
             className={styles.viewAll}
-          >{t("VIEW ALL")}<ArrowRight
+          >{msg("home.viewAll")}<ArrowRight
               size={15}
               strokeWidth={
                 1.5
@@ -62,7 +62,7 @@ export default function HomeBestSellers({
             styles.rail
           }
         >
-          {t(bestSellers.map(
+          {bestSellers.map(
             (
               product,
             ) => (
@@ -76,7 +76,7 @@ export default function HomeBestSellers({
                 compact
               />
             ),
-          ))}
+          )}
         </div>
       </div>
     </section>
