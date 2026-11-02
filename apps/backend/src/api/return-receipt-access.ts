@@ -2,7 +2,7 @@ import type { AuthenticatedMedusaRequest, MedusaResponse } from "@medusajs/frame
 import { ChangeActionType, ContainerRegistrationKeys, MathBN, MedusaError, Modules, OrderChangeStatus } from "@medusajs/framework/utils"
 import { returnReceiptProblem } from "../lib/return-receipt"
 
-type NativeHandler = (req: AuthenticatedMedusaRequest, res: MedusaResponse) => Promise<unknown>
+type NativeHandler<Req, Res> = (req: Req, res: Res) => Promise<unknown>
 const number = (value: unknown) => MathBN.convert((value ?? 0) as number).toNumber()
 
 async function checkReceipt(req: AuthenticatedMedusaRequest, orderId: string) {
@@ -28,7 +28,7 @@ async function checkReceipt(req: AuthenticatedMedusaRequest, orderId: string) {
 
 // Receipt and all edits to its pending actions share one native distributed
 // order lock. The lock covers the awaited workflow, not the client connection.
-export async function withReturnMutation(req: AuthenticatedMedusaRequest, res: MedusaResponse, native: NativeHandler, confirm = false) {
+export async function withReturnMutation<Req extends AuthenticatedMedusaRequest<any, any>, Res extends MedusaResponse<any>>(req: Req, res: Res, native: NativeHandler<Req, Res>, confirm = false) {
   const query = req.scope.resolve(ContainerRegistrationKeys.QUERY)
   const { data: [orderReturn] } = await query.graph({ entity: "return", fields: ["order_id"], filters: { id: req.params.id } })
   if (!orderReturn?.order_id) throw new MedusaError(MedusaError.Types.NOT_FOUND, "Return not found.")
@@ -46,3 +46,7 @@ export async function withReturnMutation(req: AuthenticatedMedusaRequest, res: M
   } finally { res.json = send }
   return send(payload)
 }
+
+// Wraps a native return route in the lock above.
+export const returnMutation = <Req extends AuthenticatedMedusaRequest<any, any>, Res extends MedusaResponse<any>>(native: NativeHandler<Req, Res>, confirm = false) =>
+  (req: Req, res: Res) => withReturnMutation(req, res, native, confirm)

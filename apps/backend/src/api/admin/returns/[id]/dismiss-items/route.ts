@@ -1,5 +1,4 @@
-import type { AuthenticatedMedusaRequest, MedusaResponse } from "@medusajs/framework/http"
 import { POST as nativePOST } from "@medusajs/medusa/api/admin/returns/[id]/dismiss-items/route"
-import { withReturnMutation } from "../../../../return-receipt-access"
+import { returnMutation } from "../../../../return-receipt-access"
 
-export const POST = (req: AuthenticatedMedusaRequest, res: MedusaResponse) => withReturnMutation(req, res, nativePOST as never)
+export const POST = returnMutation(nativePOST)

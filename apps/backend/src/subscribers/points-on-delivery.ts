@@ -1,6 +1,6 @@
 import type { SubscriberArgs, SubscriberConfig } from "@medusajs/framework"
 import { ContainerRegistrationKeys, FulfillmentWorkflowEvents } from "@medusajs/framework/utils"
-import { earnsPoints, orderRefunds, POINTS_ORDER_FIELDS, pointsFor, recordPoints, takeEarlierRefunds } from "../lib/points"
+import { earnsPoints, orderRefunds, POINTS_ORDER_FIELDS, pointsFor, type PointsOrder, recordPoints, takeEarlierRefunds } from "../lib/points"
 
 // Vi2 Points are earned when an order is delivered (P-5): marked delivered in
 // the admin today, by the Bosta integration later. Failures are logged without
@@ -13,7 +13,7 @@ export default async function pointsOnDelivery({ event, container }: SubscriberA
     const orderId = (fulfillment as { order?: { id?: string } } | undefined)?.order?.id
     if (!orderId) return
     const { data: [order] } = await query.graph({ entity: "order", fields: POINTS_ORDER_FIELDS, filters: { id: orderId } })
-    if (!earnsPoints(order as never)) return
+    if (!earnsPoints(order as PointsOrder)) return
     const customerId = order.customer_id as string
     const refunds = await orderRefunds(container, order.id)
     await recordPoints(container, { customer_id: customerId, kind: "earn", source_id: order.id }, async context =>

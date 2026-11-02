@@ -115,6 +115,21 @@ medusaIntegrationTestRunner({
         expect(await getContainer().resolve(Modules.CUSTOMER).listCustomers({ email: "shopper@test.dev" })).toHaveLength(1)
       })
 
+      it("rolls back the login when creating the customer fails, so the email can register later", async () => {
+        const customers = getContainer().resolve(Modules.CUSTOMER)
+        const create = customers.createCustomers.bind(customers)
+        customers.createCustomers = (async () => { throw new Error("private failure") }) as unknown as typeof customers.createCustomers
+        const details = { email: "retry@test.dev", password, first_name: "Re", last_name: "Try" }
+        try {
+          const failed = await api.post("/store/auth/register", details, store())
+          expect([failed.status, failed.data.message]).toEqual([500, "Registration could not be completed."])
+        } finally {
+          customers.createCustomers = create
+        }
+        expect(await getContainer().resolve(Modules.AUTH).listProviderIdentities({ provider: "emailpass", entity_id: details.email })).toHaveLength(0)
+        expect((await api.post("/store/auth/register", details, store())).status).toBe(201)
+      })
+
       it("rejects a short password on every route that sets one, without creating an identity", async () => {
         const staff = await api.post("/auth/user/emailpass/register", { email: "weak@test.dev", password: "seven77" }, anyStatus)
         expect(staff.status).toBe(400)

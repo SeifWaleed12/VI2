@@ -3,13 +3,13 @@ jest.mock("@medusajs/framework/utils", () => ({
   ContainerRegistrationKeys: { CONFIG_MODULE: "config", LOGGER: "logger" },
   generateJwtToken: jest.fn(() => "test-token"),
 }))
-jest.mock("@medusajs/core-flows", () => ({ createCustomerAccountWorkflow: jest.fn() }))
+jest.mock("../../../../../workflows/register-customer", () => ({ registerCustomerWorkflow: jest.fn() }))
 jest.mock("../../../../../lib/security-session", () => ({
   bindSecuritySession: jest.fn(), CREDENTIAL_CLAIM: "vi2_credential_stamp",
 }))
 
 import { generateJwtToken } from "@medusajs/framework/utils"
-import { createCustomerAccountWorkflow } from "@medusajs/core-flows"
+import { registerCustomerWorkflow } from "../../../../../workflows/register-customer"
 import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
 import { POST } from "../route"
 import { bindSecuritySession } from "../../../../../lib/security-session"
@@ -35,7 +35,7 @@ beforeEach(() => {
   authService.register.mockResolvedValue({ success: true, authIdentity: { id: "auth_test", app_metadata: { vi2_credential_stamp: "verified-credential" } } })
   authService.deleteAuthIdentities.mockResolvedValue(undefined)
   run.mockResolvedValue({ result: { id: "cus_test", email: "test@example.com" } })
-  jest.mocked(createCustomerAccountWorkflow).mockReturnValue({ run } as unknown as ReturnType<typeof createCustomerAccountWorkflow>)
+  jest.mocked(registerCustomerWorkflow).mockReturnValue({ run } as unknown as ReturnType<typeof registerCustomerWorkflow>)
   jest.mocked(generateJwtToken).mockReturnValue("test-token")
   jest.mocked(bindSecuritySession).mockResolvedValue("bound-test-token")
 })
@@ -86,13 +86,13 @@ test("handles customer lookup outages without disclosing exception details", asy
   expect(logger.error).toHaveBeenCalledWith("Customer registration failed")
 })
 
-test("compensates identity when customer creation fails", async () => {
+test("hides workflow failures from the customer", async () => {
   run.mockRejectedValueOnce(new Error("private workflow failure"))
   const { req, res } = context()
   await POST(req, res)
-  expect(authService.deleteAuthIdentities).toHaveBeenCalledWith(["auth_test"])
   expect(res.status).toHaveBeenCalledWith(500)
   expect(res.json).toHaveBeenCalledWith({ message: "Registration could not be completed." })
+  expect(logger.error).toHaveBeenCalledWith("Customer registration failed")
 })
 
 test("does not delete a linked auth identity if token generation fails after account creation", async () => {
@@ -110,15 +110,6 @@ test("does not send an unbound token or delete a created customer when device pe
   expect(authService.deleteAuthIdentities).not.toHaveBeenCalled()
   expect(res.status).toHaveBeenCalledWith(500)
   expect(res.json).toHaveBeenCalledWith({ message: "Registration could not be completed." })
-})
-
-test("failed compensation logs an identity reference without raw secrets", async () => {
-  run.mockRejectedValueOnce(new Error("private workflow failure"))
-  authService.deleteAuthIdentities.mockRejectedValueOnce(new Error("private provider secret"))
-  const { req, res } = context()
-  await POST(req, res)
-  expect(logger.error).toHaveBeenCalledWith("Failed to compensate auth identity auth_test after customer creation failure")
-  expect(res.status).toHaveBeenCalledWith(500)
 })
 
 test("a previous guest checkout with the same email does not block registration", async () => {
