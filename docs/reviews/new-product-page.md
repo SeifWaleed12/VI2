@@ -493,3 +493,30 @@ list). Enter picked the highlighted option. A mouse click ticked Chocolate. Typi
 shared Flavors list is unchanged. Not checked: a real screen reader (NVDA or VoiceOver).
 
 Review only `96f6cbc` on `claude/new-product-page`.
+
+## GPT review, round 4
+
+Reviewed only fix commit `96f6cbc` on `claude/new-product-page`; read the handoff and Claude's round 3b response in `ee43a43`.
+
+### Findings
+
+No actionable problems found in this fix.
+
+- **Variant option validation:** The workflow rejects both extra and missing keys before it calls `createProductOptionValues`. My disposable-database HTTP probes got **400** for the invalid shapes and confirmed a requested new shared value was not added. Reordered keys were accepted (**201**) and Medusa created the expected `1 kg / Chocolate` variant. An empty `{}` option map was rejected (**400**) with both expected option titles. The duplicate-option-title probe was refused by Medusa (`Product option with title: Flavor, already exists.`), so duplicate titles do not bypass the current key check through the normal admin path. `newProductSchema` also limits options to 10 and variants to 100. The modified step has one caller, inside `createVi2ProductWorkflow`; the workflow is called by the new-product route. I do not consider the added key check a violation of “one step does one thing”: the step already resolves/validates the selected shared options and values before creating missing values, and this check is a precondition on that same option/value operation. Keeping it before the write is important for avoiding shared-value side effects on a rejected product.
+- **Price boundary:** `1,000,000` returned **201**; `1,000,000.01` and `Number.MAX_VALUE` returned **400**, each with `variants.0.price: "Price must be 1,000,000 EGP or less"`. The page maps a `variants.<index>.price` error to the matching variant row and price field. I verified that mapping in code; I did not re-enter the boundary in the full admin page during this round.
+- **Picker accessibility and interaction:** In a temporary browser harness using the actual `ChipCombobox`, opening the picker exposed `aria-controls="picker-list"`; the active descendant pointed to a rendered `role="option"`. ArrowDown moved the active descendant from Alpha to Beta, Enter selected Beta, Backspace removed it, typing `Mango` exposed the `Add "Mango"` option and Enter added it, and clicking Alpha selected it. The harness was removed after the check. This verifies the updated semantics and the listed interaction paths, but is not a screen-reader session.
+- **Scope and architecture:** The exact-key check runs before shared-value creation, rather than in the route or page. The route remains a parse/workflow/map boundary. No other caller of the changed step was found. The 15-test HTTP suite includes the extra/missing-key regression and passes.
+
+### Checks
+
+- `npm run check` from the checkout root: **passed** — backend 226/226 tests, storefront 225/225, typechecks passed, lint 0 errors / 19 existing storefront warnings.
+- `new-product.spec.ts` using the supplied `run-int.js` disposable-database runner: **15/15 passed**. The expected EDA failure test emitted its injected `EDA store down` log while passing.
+- Additional disposable-database HTTP probes covered the price boundaries, reversed keys, empty variant options, and duplicate option titles. No test edits remained. The pre-existing untracked `apps/backend/static/1792275544776-download.webp` was left untouched.
+
+**Verdict: the three round 3b findings are resolved; no new problem found.** I did not run a real screen reader or manually exercise the full admin page for the price-boundary cell presentation.
+
+## Approval
+
+GPT approved round 4 (2026-11-03): the round 3b findings are resolved and no new problems were found.
+Open checks, as stated by both sides: no real screen-reader session, and the older quick-variant route
+still has no price cap (outside this change). Ready for Seif to open a PR into `full-stack`.
