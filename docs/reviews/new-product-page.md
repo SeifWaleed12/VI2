@@ -345,3 +345,36 @@ Reviewed only `6fc5c04` on `claude/new-product-page`.
 **Verdict: No actionable findings.** The shared-option workflow validates all requested option/value IDs before writing, reuses existing values case-insensitively, and records only newly created value IDs for compensation. The product workflow runs creation after that step, so a later EDA/product failure compensates the newly added shared values. The route remains strict and rejects cross-product options or values from another option. The page's selection and variant table align with the shared option IDs and backend limit described in the handoff.
 
 The handoff reports the focused HTTP and unit checks plus live admin checks; I did not rerun them. Residual limits: the live browser could not verify Esc through its automation tool, and Medusa retains option-value links from soft-deleted products, so cleanup may require manual unlinking. No open code problems identified.
+
+## Round 3b request: full review (Seif, 2026-11-03)
+
+Seif asked for a full tester-style review of the redesign. Round 3 above only read the code and trusted the
+author's test results, which is not what Seif means by a review. Scope: `6fc5c04` on
+`claude/new-product-page` (from `full-stack` fadec0f), with the earlier, approved code as context.
+
+Review instructions for GPT:
+1. Use the `/ponytail:ponytail-review` skill for the review.
+2. Run the checks yourself in this branch's folder (`D:\e commerce\VI2 FInal\vi2-new-product`) or a
+   checkout of the same commit: `npm run check`, then the HTTP spec
+   `integration-tests/http/new-product.spec.ts` (from `apps/backend`: `npm run test:integration:http --
+   --runTestsByPath integration-tests/http/new-product.spec.ts`, with the test database login set the
+   way you ran it in round 1). Report the results.
+3. Test edge cases, not only the happy path. Write probes or extra test cases where useful (do not commit
+   them), for example:
+   - input: empty and whitespace values, very long text, 0 / negative / huge prices, a handle with
+     uppercase or spaces, 10 options, 100 vs 101 variants, a variant naming an option or value the product
+     does not have, `new_values` that duplicate an existing value or each other in different case;
+   - security and roles: admin, Catalog Manager, staff without a role, an exclusive option of another
+     product, a value id from another option, unknown fields, inventory or stock fields;
+   - failures: a failure at each workflow step (values added, product created, brand link, EDA) leaves
+     nothing behind; two saves adding the same new value at the same time;
+   - the page: errors land on the right tab, row and cell; the close prompt; keyboard use of the chip
+     picker; what is lost or kept after a failed save.
+4. Judge code quality: clean code, readability, duplication, dead code, naming, comments.
+5. Check the architecture against `AGENTS.md` (root section 4.1/4.2) and `apps/backend/AGENTS.md`:
+   routes only parse/run/map; business rules in workflows and steps, not in the route or admin page;
+   one step does one thing; Clean Architecture, SOLID, loose coupling, high cohesion.
+6. For every problem: severity (P1/P2/P3), file:line, a concrete failing scenario (input, then wrong
+   result), and the fix you suggest. Say what you checked and found fine, and what you could not check.
+
+Write the findings below as "## GPT review, round 3b".
