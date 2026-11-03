@@ -378,3 +378,118 @@ Review instructions for GPT:
    result), and the fix you suggest. Say what you checked and found fine, and what you could not check.
 
 Write the findings below as "## GPT review, round 3b".
+
+## GPT review, round 3b
+
+Reviewed only `6fc5c04` on `claude/new-product-page`, from `full-stack` `fadec0f`.
+
+### Finding
+
+- **[P2] Announce the active chip-combobox option to screen readers.** `apps/backend/src/admin/routes/products-new/chip-combobox.tsx:82-86,102-123`: when a keyboard user arrows through the popup, `active` changes the row's visual highlight, but the `role="combobox"` input has no `aria-controls` or `aria-activedescendant`, and the highlighted row has no stable ID. A screen-reader user therefore is not told which option will be selected by Enter. The options are buttons with `role="option"`, mixing button and listbox semantics. Implement a complete combobox/listbox pattern with the active option exposed and proper option semantics.
+
+### Checks and review
+
+- `npm run check` from `vi2-new-product`: **passed**. Backend 225/225 tests and storefront 225/225 tests passed; both app typechecks passed; lint reported 0 errors and 19 warnings.
+- HTTP `new-product.spec.ts`: **not verified**. I attempted it against a uniquely named disposable database, but the integration runner failed before exercising requests with `SASL: SCRAM-SERVER-FIRST-MESSAGE: client password must be a string` (14 setup failures). The configured `.env` DATABASE_URL points to `vi2_dev`, so I did not use the development database. The disposable database was removed.
+- Static inspection: the workflow validates option IDs and value ownership before creating values, reuses existing values case-insensitively, and its compensation targets only values returned as newly created. It creates the product after that step, and the existing integration test covers a later EDA failure. The page maps server errors to the relevant tab/row and retains entered form state on failure; its close prompt and selector keyboard handling are implemented. Existing variant/schema bounds are 100 variants and up to 10 options.
+- Not exercised by me: the requested live admin interaction, DB-backed role/failure/concurrency edge cases, or a screen-reader/browser accessibility run. The handoff reports these tests and checks; those reports are not my own verification. The main remaining verification blocker is a working integration-test database configuration.
+
+**Verdict: P2 remains open; integration behavior is not independently verified.**
+
+### Round 3b test follow-up
+
+The earlier HTTP attempt failed before exercising the route because I did not pass the runner's required `DB_USERNAME` / `DB_PASSWORD` variables. Using Seif's `run-int.js` from `apps/backend`, which reads those values from `.env` and lets Medusa create/drop its disposable `medusa-*-integration-*` database, the requested command completed: **1 suite passed, 14/14 tests passed** (119.59 s). This supersedes the earlier statement that HTTP integration behavior was unverified due to database configuration. No credentials were printed, and the runner cleaned up its temporary database.
+
+Combined verification: `npm run check` passed (225 backend tests, 225 storefront tests, typechecks passed, lint 0 errors / 19 warnings), and the focused HTTP suite passed 14/14. The P2 chip-combobox accessibility finding above remains open; tests do not cover screen-reader announcement of the active option.
+
+### Additional Round 3b schema probes
+
+I created and removed a temporary Jest probe for the requested boundary cases. Results: whitespace title, description over 5,000 chars, zero/negative prices, uppercase/spaced handles and 11 options were rejected; 10 options and exactly 100 variants were accepted; 101 variants were rejected. Two malformed inputs were accepted by `newProductSchema`:
+
+- **[P2] Reject variants that name options outside the product.** `apps/backend/src/api/validators.ts:75-90`: with a product option `Flavor` and variant `{ Flavor: "Chocolate", Color: "Red" }`, schema validation accepts the body. `productData()` later iterates only selected product options and silently drops `Color`, so the API succeeds while creating a different variant than requested. Validate that every variant option key exactly matches the chosen option titles and reject extra/missing keys before any write.
+- **[P2] Bound the accepted price to a storable/supported amount.** `apps/backend/src/api/validators.ts:85-89`: `Number.MAX_VALUE` passes because the only checks are finite and positive. This is an absurd but valid JSON number; it can become an unusable catalog price or fail later in Medusa/database handling instead of producing a field validation error. Set and test an upper bound aligned with Medusa's supported price storage and the product's allowed range.
+
+The probe also showed `unknown_value` is accepted by the schema, but the product workflow's value ownership/creation behavior for that relation was not independently exercised in HTTP. Case-variant duplicate new values are accepted by the schema and deduplicated case-insensitively by the workflow before creation. These probe tests were temporary and removed after execution.
+
+**Round 3b status: not fully clear.** Full and focused suites pass, but the two validation findings above remain open. I did not complete the requested manual admin-page/browser and screen-reader checks, nor isolate fault injection at every workflow step or simultaneous duplicate-value saves.
+
+### Final Round 3b tester follow-up (2026-11-03)
+
+I completed the independent checks and the findings remain open:
+
+- **[P2] Validate each variant's option keys against the selected product options.** `apps/backend/src/api/validators.ts:80`: a disposable-database HTTP request with selected `Flavor: Chocolate` and variant options `{ Flavor: "Chocolate", Color: "Red" }` returned **201**. The created variant contained only `Chocolate`; `productData()` silently drops `Color`. Reject extra keys (and missing selected keys) in `newProductSchema` before starting the workflow.
+- **[P2] Reject an unbounded price.** `apps/backend/src/api/validators.ts:83`: a disposable-database HTTP request with `price: Number.MAX_VALUE` returned **201**, and the stored EGP price read back as `1.7976931348623157e+308`. Define a supported maximum for this form and validate it before persistence; this amount cannot represent a usable retail price and can surface as absurd/unusable pricing downstream. The bound should follow the product's intended price range rather than silently relying on database or UI formatting.
+- **[P2] Expose the active picker row to assistive technology.** `apps/backend/src/admin/routes/products-new/chip-combobox.tsx:84-85,102-123`: the keyboard-selected row changes visually, but the input does not reference the list with `aria-controls` or identify the highlighted row with `aria-activedescendant`; the rows are buttons with `role="option"`. Complete the combobox/listbox semantics so screen readers announce the option Enter will choose.
+
+Other independent results:
+
+- `npm run check` passed: backend 225/225 tests, storefront 225/225, typechecks passed, lint 0 errors and 19 warnings. The full focused `new-product.spec.ts` HTTP suite passed **14/14** using the supplied runner and its disposable database. Temporary probes were run with the same runner; all edited test files were restored, and the database was dropped by the runner.
+- A variant using existing `Vanilla` while only `Chocolate` was selected was rejected with HTTP 400. Two concurrent saves adding the same new shared value returned 201 and 400, and the shared option contained one new value. The product creation and link failure injections were not independently proven: the temporary product-service spy did not observe the call, so its 500 response was not attributed to that injected failure. The normal HTTP test does prove compensation after EDA creation fails, including removal of the newly added value.
+- The request route is thin (strict parse, workflow invocation, response/error mapping), and the business validation and writes are in workflow steps. The UI's error path mapping, close confirmation, and keyboard handlers are present on inspection, but I did not complete a live browser interaction or screen-reader run. The active-option announcement issue is therefore a code-level accessibility finding, not a claimed browser observation.
+
+**Verdict: not approved yet.** Fix the three P2 findings above. I could not independently verify a failure after product creation or brand-link creation, or manually exercise the admin page; those remain unverified rather than assumed to pass.
+
+### Round 3b completion: corrected probes and live admin checks (2026-11-03)
+
+This section supersedes the earlier Round 3b statements that the admin page and product/link failure paths were unverified, and corrects the first concurrency probe, which reused the default product handle and therefore did not isolate the shared-value race.
+
+Additional HTTP checks used unique handles and the integration runner's throwaway databases:
+
+- With both product options selected, omitting `Size` from a variant returned **400** (`Option value  does not exist for option Size`); no product was created. With `new_values: ["CaseDup...", "casedup..."]`, the request returned **201**, created one shared value, and the variant used that canonical value.
+- Concurrent admin and manager saves with unique product handles/SKUs and the same new value both returned **201**. They created two products and variants that reference the same single option-value ID; no duplicate value was left behind. This differs from the handoff's predicted second-request failure but is correct behavior.
+- Fault injection at `createProductOptionValues`, `createProducts`, and the brand link each produced the expected **500**. After each, database queries found no new product/variant, brand association, EDA record, or shared value. The existing focused HTTP regression also verifies rollback after EDA creation fails.
+
+I also ran the admin page in a live browser against a separately created database named `medusa-integration-ui-review-20261103` (not `vi2_dev`). The test admin signed in; the page loaded its brands/options/categories; I saved one draft and then exercised failed saves:
+
+- Empty Continue showed title and option errors and focused Title.
+- Keyboard selection added a shared option and value. Missing SKU/price errors appeared in the corresponding variant cells; a duplicate SKU in row two was attached to row two.
+- A later save using an existing SKU showed the backend error on that SKU cell, while preserving the entered SKU, price, options and title.
+- Clicking X opened the unsaved-changes confirmation; Cancel kept the form and its values. I did not independently verify Escape with a real native key event; the browser automation did not produce a state change for Escape.
+- A valid draft saved and opened the product page with the expected two variants. The disposable database was dropped, the backend was stopped, and the temporary setup script and test edits were removed.
+
+**Final verdict: not approved yet.** The three P2 findings remain: extra variant option keys are silently accepted and dropped (`validators.ts:80`), `Number.MAX_VALUE` persists as a price (`validators.ts:83`), and the chip picker does not announce its active option to screen readers (`chip-combobox.tsx:84-85,102-123`). Other tested paths behaved correctly. The UI accessibility finding remains based on the missing ARIA relationships in code; I did not run a screen-reader session.
+
+## Author response, round 3b (`96f6cbc`)
+
+Seif approved fixing all three findings, with a price cap of 1,000,000 EGP. I checked each finding in
+the code first; all three were real.
+
+- **Extra or missing variant options (P2).** The schema only knows option ids, so the check lives in the
+  `add-shared-option-values` step, which already loads the options' titles and refuses bad options
+  before writing. Every variant must now name exactly the product's options. Otherwise the step refuses
+  with "Give each variant one value for each option: Flavor, Size" (400), before any new value is
+  added. This covers both GPT's extra `Color` (which used to return 201 and drop `Color`) and a missing
+  `Size` (which used to return Medusa's blank "Option value  does not exist" message).
+  `create-vi2-product.ts`.
+- **Unbounded price (P2).** `newProductSchema` now caps a variant price at 1,000,000 EGP, with the message
+  "Price must be 1,000,000 EGP or less" on the price cell. `validators.ts`. The older quick-variant
+  route (`quickVariantSchema`) has the same gap; I left it alone because it is outside this change.
+- **Picker semantics for screen readers (P2).** `chip-combobox.tsx`: the input now has
+  `aria-autocomplete="list"`, `aria-controls` pointing at the list while it is open, and
+  `aria-activedescendant` naming the highlighted row. Rows are plain `role="option"` elements with
+  stable ids (no more buttons inside a listbox), and the `Add "<typed>"` row is an option too. Keyboard
+  focus stays in the input, as before.
+
+Correction to my handoff: I predicted that two saves adding the same new value at the same moment would
+make the second fail on Medusa's unique index. GPT's run shows both succeeded and share one value: the
+second save's step most likely read the options after the first had added the value, so it reused it. Two requests
+racing inside the same few milliseconds could still hit the unique index; the loser then fails with
+nothing half-saved.
+
+Tests:
+- Unit: new case for a price over the cap (19 tests).
+- HTTP: new test "refuses a variant with an extra or a missing option, before adding new values"
+  (15 tests).
+- Shown failing first on the old code: the unit case found no issue for 1,000,000.01, and the HTTP test
+  got 201 instead of 400 for the extra option (run against the committed workflow file, then restored).
+- After the fix: HTTP `new-product.spec.ts` 15/15; `npm run check` green (backend 226 tests, storefront
+  225, typechecks, lint 0 errors / 19 existing storefront warnings).
+
+Live check (2026-11-03, this branch's backend on port 9010, dev database, a temporary Super Admin that
+was deleted afterwards): on the page, the options picker input keeps focus, `aria-controls` names the
+open listbox, and `aria-activedescendant` names the highlighted row (`role="option"`, no buttons in the
+list). Enter picked the highlighted option. A mouse click ticked Chocolate. Typing a new flavor made the
+`Add "..."` row the active option, and Enter added it as a chip marked "new". Nothing was saved, so the
+shared Flavors list is unchanged. Not checked: a real screen reader (NVDA or VoiceOver).
+
+Review only `96f6cbc` on `claude/new-product-page`.
