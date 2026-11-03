@@ -213,3 +213,126 @@ Validation: ran `npm run test:unit -- --runTestsByPath src/admin/lib/__tests__/g
 No live browser, HTTP suite, or full-workspace check was rerun for this admin UI-only diff. The prior round's 12/12 HTTP result remains the latest reviewer-run HTTP evidence.
 
 No open problems.
+
+## Redesign: Medusa's look, shared options (requested by Seif, 2026-11-03)
+
+Seif found the page worse than Medusa's own Create form (categories, variants, layout). He did not
+want the Arabic name, and he wanted shared product options with new values added on the spot. He
+chose to rebuild this page in Medusa's design rather than patch `@medusajs/dashboard`. A patch would
+need redoing on Medusa upgrades, and 2.22.2, the newest, still cannot add values to a shared option.
+
+What changed (this section replaces the form, Arabic-name and options parts above):
+- **Page** (`products-new/page.tsx`): Medusa's full-screen create window, built from `@medusajs/ui`
+  (`FocusModal`, `ProgressTabs`, `Prompt` through `usePrompt`). Class names are copied from
+  `@medusajs/dashboard` 2.21's `product-create`. It has three tabs and a footer:
+  - **Details:** title, subtitle, handle, description, and media (a dashed upload box and a list with
+    "Make thumbnail" / "Delete"). Under Variants: shared options as chips, then each option's values as
+    chips, then the combinations with a tick per row (unticked = not sold) and a select-all box.
+  - **Organize:** the Discountable card, brand, categories (chips, "Parent › Child"), weight, EDA
+    number and the "Approved by EDA" card.
+  - **Variants:** a spreadsheet-style table (option values, SKU, barcode, price EGP). Bad cells turn
+    red with the message under them.
+  - **Footer:** Cancel, Save as draft, and Continue / Publish. The status comes from the button, as in
+    Medusa.
+  - **Behavior:** Continue checks Details first and focuses the first problem. Editing a field clears
+    its error. Closing with Esc, X or Cancel asks "Are you sure you want to leave this form?" when
+    anything was entered (Medusa's wording).
+- **Picker** (`products-new/chip-combobox.tsx`, new): a search box with chips. Keyboard: arrows,
+  Enter, Backspace, and Esc (which closes only the list). It can show an `Add "<typed>"` row. Medusa
+  does not export its Combobox or category picker to admin extensions, so these are look-alikes, not
+  Medusa's code.
+- **Shared options only.** The page lists `GET /admin/product-options?is_exclusive=false` (Products ›
+  Options). A product links those options; it no longer gets its own copy. A typed value that the
+  option lacks shows as a chip marked "new". It is added to the shared option when the product is
+  saved, so every later product can pick it. A typed value equal to an existing one (ignoring case)
+  selects the existing one.
+- **Schema** (`newProductSchema`):
+  - `title_ar` removed.
+  - `subtitle` and `handle` added (handle: lowercase letters, numbers, dashes).
+  - `options` is now `[{ id, value_ids, new_values? }]`, with at least one value per option and each
+    option once.
+  - Variants still name their values by option title.
+- **Workflow** (`create-vi2-product.ts`): the translation step is gone. New step
+  `add-shared-option-values` runs after `prepare-vi2-product` and before `createProductsWorkflow`:
+  - It refuses, before writing anything, an option that is not shared ("Choose a shared option from
+    Products > Options") or a value id from another option ("Choose Flavor values from its list").
+  - It creates the new values with one `createProductOptionValues` call. Compensation deletes exactly
+    the values it created.
+  - The product gets `options: [{ id, value_ids }]` (Medusa 2.21's own input for linking a shared
+    option).
+  - Variant values are spelled as the option stores them ("mango" saves as "Mango").
+- Stock comment updated: Medusa owns stock now (Odoo postponed); stock still starts at 0.
+
+Why not use Medusa's `POST /admin/product-options/:id` to add a value: it replaces the whole value
+list (`upsertWithReplace`). A list loaded earlier could then delete a value someone else just added.
+The workflow adds single values instead, and only at save time, so an abandoned form adds nothing.
+
+Files:
+- New: `apps/backend/src/admin/routes/products-new/chip-combobox.tsx`. It is removed with the
+  `products-new` folder in "How to remove"; nothing else to undo.
+- Changed: `page.tsx`, `validators.ts`, `create-vi2-product.ts`, `vi2-products/route.ts` (comment
+  only), both test files.
+
+Tests:
+- **Unit:** new cases for an option with no values, an option added twice, and a handle with spaces.
+- **HTTP** (`new-product.spec.ts`, now 14 tests, all passing on 2026-11-03). The suite creates two
+  shared options (Flavor, Size). New or changed:
+  - The admin's product links the shared options (no option of its own).
+  - A manager adds a new flavor ("Mango"), and the shared Flavor list becomes Chocolate, Mango,
+    Vanilla.
+  - `new_values: ["Mango", "vanilla"]` adds only Mango and reuses Vanilla; variant titles use the
+    stored spelling.
+  - Another product's own option and a value from a different option are refused, with nothing
+    written.
+  - A failing late step (the EDA store mocked to fail) leaves no product and no new flavor.
+- **Counterfactual:** with the step's compensation emptied, the late-failure test fails ("Mango" is
+  left in the shared list). Restored and rerun.
+- **`npm run check`:** backend 225 unit tests, storefront 225, typecheck, lint 0 errors (19 existing
+  storefront warnings).
+- Not rerun: the other HTTP suites (only this page's route, schema and workflow changed).
+
+Live check (2026-11-03): the backend ran from this worktree on port 9010 (another backend was using
+9000), against the dev database. A temporary Super Admin and Catalog Manager (`live-check-*@vi2.test`)
+were used and deleted afterwards.
+- **Manager:**
+  - Continue on an empty form shows "Enter a title" and "Add at least one option" and focuses the
+    title.
+  - Picked the shared "Flavors" option and Chocolate, and typed a new "ZZ Live Check Flavor": the chip
+    is marked "new" and its row appears.
+  - Organize: NOW Foods, Biotin, 1000 g, an EDA number, Approved.
+  - Variants: Save as draft with empty cells marks the SKU and price cells red. Filled in, saved as
+    draft, and the product page opened.
+  - API check: the product's only option is the shared one (`is_exclusive: false`); the shared list
+    gained the new flavor; EGP prices, barcode, weight and EDA were saved.
+  - Closing with X asks before leaving; Cancel keeps the form.
+- **Admin:**
+  - The new flavor is now offered as an existing value. Typing it in lower case offers no "Add" and
+    selects the existing one (no duplicate).
+  - A SKU that already exists is refused: the toast names it and the cell says "Already exists in the
+    store". After changing it, Publish works.
+- **Found and fixed during the check:**
+  - The hidden window title showed on screen (now `asChild`, like Medusa).
+  - Errors stayed after a field was fixed.
+  - Continue did not bring the error into view.
+  - The first Down arrow skipped the top row.
+  - Esc lost the form without asking.
+- **Cleanup:** both test products deleted. Medusa's API refused to delete the test flavor
+  ("associated with products"): Medusa soft-deletes products and keeps their option-value links. A
+  one-off script removed it after unlinking the deleted test products. The Flavors list is back to
+  Chocolate, hj, Peanut Butter, Vanilla.
+
+Not verified / limits:
+- Seif cannot delete a shared value through Medusa while a deleted product still references it.
+  That is Medusa's behavior (above), not this page's.
+- The page cannot create a new shared option, only values; options are created in Products ›
+  Options. A product without options (Medusa's "Default variant") is not offered.
+- Media is not drag-sortable (Medusa's is). "Make thumbnail" moves an image to the front instead.
+- In this check, the browser tool's Esc key action did not reach the window. A real key event did,
+  and showed the prompt.
+
+Review focus for GPT:
+- `add-shared-option-values`: validation before any write, the case-insensitive reuse, and
+  compensation.
+- Two saves adding the same new value at the same moment: the second hits Medusa's unique index
+  (`option_id`, `value`) and fails with Medusa's message. Nothing is half-saved.
+- `page.tsx`: error mapping to tabs and rows, and the close prompt.

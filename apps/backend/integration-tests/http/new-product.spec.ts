@@ -27,6 +27,8 @@ medusaIntegrationTestRunner({
       let nobody: Session
       let brandId: string
       let categoryId: string
+      let flavor: { id: string, values: Record<string, string> }
+      let size: { id: string, values: Record<string, string> }
 
       async function staff(email: string) {
         const container = getContainer()
@@ -57,11 +59,21 @@ medusaIntegrationTestRunner({
         nobody = await login("nobody@test.dev")
         brandId = (await brands().createBrands({ name: "Optimum", slug: "optimum", status: "active" })).id
         categoryId = (await container.resolve(Modules.PRODUCT).createProductCategories({ name: "Protein", handle: "protein", is_active: true })).id
+        const shared = await container.resolve(Modules.PRODUCT).createProductOptions([
+          { title: "Flavor", values: ["Chocolate", "Vanilla"], is_exclusive: false },
+          { title: "Size", values: ["1 kg", "2.27 kg"], is_exclusive: false },
+        ])
+        ;[flavor, size] = shared.map((option) => ({ id: option.id, values: Object.fromEntries(option.values.map((value) => [value.value, value.id])) }))
       })
+
+      const flavorValues = async () => {
+        const [option] = await getContainer().resolve(Modules.PRODUCT).listProductOptions({ id: flavor.id }, { relations: ["values"] })
+        return option.values.map((value) => value.value).sort()
+      }
 
       const body = (overrides: Record<string, unknown> = {}) => ({
         title: "Whey Test",
-        title_ar: "واي تجربة",
+        subtitle: "Isolate",
         description: "Test product",
         category_ids: [categoryId],
         status: "published",
@@ -70,7 +82,10 @@ medusaIntegrationTestRunner({
         brand_id: brandId,
         eda: { registration_number: "EDA-123", is_approved: true },
         images: ["http://localhost:9000/static/front.png", "http://localhost:9000/static/back.png"],
-        options: [{ title: "Flavor", values: ["Chocolate", "Vanilla"] }, { title: "Size", values: ["1 kg", "2.27 kg"] }],
+        options: [
+          { id: flavor.id, value_ids: [flavor.values.Chocolate, flavor.values.Vanilla] } as { id: string, value_ids: string[], new_values?: string[] },
+          { id: size.id, value_ids: [size.values["1 kg"], size.values["2.27 kg"]] },
+        ],
         variants: [
           { options: { Flavor: "Chocolate", Size: "1 kg" }, sku: "WH-CH-1", barcode: "6221000000011", price: 1500 },
           { options: { Flavor: "Chocolate", Size: "2.27 kg" }, sku: "WH-CH-2", barcode: "6221000000012", price: 3000 },
@@ -84,7 +99,7 @@ medusaIntegrationTestRunner({
       async function product(id: string) {
         const { data: [found] } = await query().graph({
           entity: "product",
-          fields: ["id", "title", "status", "weight", "discountable", "thumbnail", "images.url", "categories.id", "sales_channels.id", "shipping_profile.id",
+          fields: ["id", "title", "subtitle", "status", "options.id", "weight", "discountable", "thumbnail", "images.url", "categories.id", "sales_channels.id", "shipping_profile.id",
             "brand.id", "eda_registration.registration_number", "eda_registration.is_approved",
             "variants.sku", "variants.barcode", "variants.title", "variants.manage_inventory", "variants.allow_backorder",
             "variants.prices.amount", "variants.prices.currency_code", "variants.inventory_items.inventory.id"],
@@ -93,7 +108,7 @@ medusaIntegrationTestRunner({
         return found as Record<string, any>
       }
 
-      // Nothing is left behind: no product, variant, brand link, EDA record or translation.
+      // Nothing is left behind: no product, variant, brand link, EDA record or new option value.
       async function expectNothingCreated() {
         const { data: products } = await query().graph({ entity: "product", fields: ["id"], filters: { title: "Whey Test" } })
         expect(products).toEqual([])
@@ -102,7 +117,7 @@ medusaIntegrationTestRunner({
         const { data: [brand] } = await query().graph({ entity: "brand", fields: ["products.id"], filters: { id: brandId } })
         expect((brand as { products?: unknown[] }).products ?? []).toEqual([])
         expect(await getContainer().resolve<EdaModuleService>(EDA_MODULE).listEdaRegistrations()).toEqual([])
-        expect(await getContainer().resolve(Modules.TRANSLATION).listTranslations({ reference: "product" })).toEqual([])
+        expect(await flavorValues()).toEqual(["Chocolate", "Vanilla"])
       }
 
       it("lets an admin create the whole product in one save", async () => {
@@ -113,7 +128,7 @@ medusaIntegrationTestRunner({
         const { data: [profile] } = await query().graph({ entity: "shipping_profile", fields: ["id"], filters: { type: "default" } })
 
         expect(saved).toEqual(expect.objectContaining({
-          title: "Whey Test", status: "published", weight: 2270, discountable: true, thumbnail: "http://localhost:9000/static/front.png",
+          title: "Whey Test", subtitle: "Isolate", status: "published", weight: 2270, discountable: true, thumbnail: "http://localhost:9000/static/front.png",
           categories: [expect.objectContaining({ id: categoryId })],
           sales_channels: [expect.objectContaining({ id: store.default_sales_channel_id })],
           shipping_profile: expect.objectContaining({ id: profile.id }),
@@ -134,20 +149,54 @@ medusaIntegrationTestRunner({
         }
         const { data: levels } = await query().graph({ entity: "inventory_level", fields: ["stocked_quantity"], filters: { inventory_item_id: variants.flatMap((variant) => variant.inventory_items.map((item: { inventory: { id: string } }) => item.inventory.id)) } })
         expect(levels).toEqual([])
-        const translations = await getContainer().resolve(Modules.TRANSLATION).listTranslations({ reference: "product", reference_id: saved.id })
-        expect(translations).toEqual([expect.objectContaining({ locale_code: "ar-EG", translations: { title: "واي تجربة" } })])
+        // The product uses the shared options; it gets no option of its own.
+        expect(saved.options.map((option: { id: string }) => option.id).sort()).toEqual([flavor.id, size.id].sort())
       })
 
-      it("lets a manager create it too", async () => {
-        const response = await create(manager)
+      it("lets a manager create it too, adding a new flavor", async () => {
+        const payload = body()
+        payload.options[0].new_values = ["Mango"]
+        payload.variants.push({ options: { Flavor: "Mango", Size: "1 kg" }, sku: "WH-MA-1", price: 1500 })
+        const response = await create(manager, payload)
         expect(response.status).toBe(201)
-        expect((await product(response.data.product.id)).variants).toHaveLength(4)
+        expect((await product(response.data.product.id)).variants).toHaveLength(5)
+        expect(await flavorValues()).toEqual(["Chocolate", "Mango", "Vanilla"])
+      })
+
+      it("adds new flavors to the shared option and reuses one that only differs in case", async () => {
+        const response = await create(admin, body({
+          options: [{ id: flavor.id, value_ids: [flavor.values.Chocolate], new_values: ["Mango", "vanilla"] }],
+          variants: [
+            { options: { Flavor: "Chocolate" }, sku: "WH-CH-1", price: 1500 },
+            { options: { Flavor: "Mango" }, sku: "WH-MA-1", price: 1500 },
+            { options: { Flavor: "vanilla" }, sku: "WH-VA-1", price: 1500 },
+          ],
+        }))
+        expect(response.status).toBe(201)
+        expect(await flavorValues()).toEqual(["Chocolate", "Mango", "Vanilla"])
+        const saved = await product(response.data.product.id)
+        expect(saved.variants.map((variant: { title: string }) => variant.title).sort()).toEqual(["Chocolate", "Mango", "Vanilla"])
+      })
+
+      it("refuses another product's own option and a value from a different option", async () => {
+        const { result: [other] } = await createProductsWorkflow(getContainer()).run({
+          input: { products: [{ title: "Other", options: [{ title: "Color", values: ["Red"] }], variants: [{ title: "Red", sku: "OT-1", options: { Color: "Red" }, prices: [{ amount: 100, currency_code: "egp" }] }] }] },
+        })
+        const { data: [withOptions] } = await query().graph({ entity: "product", fields: ["options.id", "options.values.id"], filters: { id: other.id } })
+        const own = withOptions.options[0] as { id: string, values: { id: string }[] }
+        const exclusive = await create(admin, body({ options: [{ id: own.id, value_ids: [own.values[0].id] }], variants: [{ options: { Color: "Red" }, sku: "WH-RD-1", price: 1 }] }))
+        expect(exclusive.status).toBe(400)
+        expect(exclusive.data.message).toBe("Choose a shared option from Products > Options")
+        const mixed = await create(admin, body({ options: [{ id: flavor.id, value_ids: [size.values["1 kg"]], new_values: ["Mango"] }], variants: [{ options: { Flavor: "Mango" }, sku: "WH-MA-1", price: 1 }] }))
+        expect(mixed.status).toBe(400)
+        expect(mixed.data.message).toBe("Choose Flavor values from its list")
+        await expectNothingCreated()
       })
 
       it("creates a product with only the required fields", async () => {
         const response = await create(admin, {
           title: "Whey Test", status: "draft", discountable: false,
-          options: [{ title: "Size", values: ["1 kg"] }],
+          options: [{ id: size.id, value_ids: [size.values["1 kg"]] }],
           variants: [{ options: { Size: "1 kg" }, sku: "WH-ONLY-1", price: 900 }],
         })
         expect(response.status).toBe(201)
@@ -180,7 +229,7 @@ medusaIntegrationTestRunner({
         payload.variants[2].price = 0
         const response = await create(admin, payload)
         expect(response.status).toBe(400)
-        expect(response.data.errors).toEqual({ title: "Enter the English name", "variants.2.price": "Price must be more than 0" })
+        expect(response.data.errors).toEqual({ title: "Enter a title", "variants.2.price": "Price must be more than 0" })
       })
 
       it.each([
@@ -210,11 +259,14 @@ medusaIntegrationTestRunner({
         await expectNothingCreated()
       })
 
-      it("removes everything when a late step fails", async () => {
-        const translation = getContainer().resolve(Modules.TRANSLATION)
-        const spy = jest.spyOn(translation, "createTranslations").mockRejectedValueOnce(new Error("translation store down"))
+      it("removes everything, including a new flavor, when a late step fails", async () => {
+        const eda = getContainer().resolve<EdaModuleService>(EDA_MODULE)
+        const spy = jest.spyOn(eda, "createEdaRegistrations").mockRejectedValueOnce(new Error("EDA store down"))
+        const payload = body()
+        payload.options[0].new_values = ["Mango"]
+        payload.variants.push({ options: { Flavor: "Mango", Size: "1 kg" }, sku: "WH-MA-1", price: 1500 })
         try {
-          expect((await create(admin)).status).toBe(500)
+          expect((await create(admin, payload)).status).toBe(500)
         } finally {
           spy.mockRestore()
         }

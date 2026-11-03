@@ -1,6 +1,7 @@
 import { ContainerRegistrationKeys, MedusaError, Modules } from "@medusajs/framework/utils"
 import { createStep, createWorkflow, StepResponse, transform, when, WorkflowResponse } from "@medusajs/framework/workflows-sdk"
-import { createProductsWorkflow, createRemoteLinkStep, createTranslationsWorkflow } from "@medusajs/medusa/core-flows"
+import type { CreateProductOptionValueDTO } from "@medusajs/framework/types"
+import { createProductsWorkflow, createRemoteLinkStep } from "@medusajs/medusa/core-flows"
 import { EGYPT_STORE } from "../lib/egypt-store"
 import { BRAND_MODULE } from "../modules/brand"
 import type BrandModuleService from "../modules/brand/service"
@@ -9,7 +10,8 @@ import { setProductEdaWorkflow } from "./product-eda"
 // What the "New product (Vi2)" admin page saves in one go.
 export type Vi2ProductInput = {
   title: string
-  title_ar?: string
+  subtitle?: string
+  handle?: string
   description?: string
   category_ids?: string[]
   status: "draft" | "published"
@@ -18,11 +20,16 @@ export type Vi2ProductInput = {
   brand_id?: string
   eda?: { registration_number: string, is_approved: boolean }
   images?: string[]
-  options: { title: string, values: string[] }[]
+  // Shared options (Products > Options): the chosen value ids, plus values to add to the option.
+  options: { id: string, value_ids: string[], new_values?: string[] }[]
+  // Variant options by option title, e.g. { Flavor: "Chocolate" }.
   variants: { options: Record<string, string>, sku: string, barcode?: string, price: number }[]
 }
 
 type StoreDefaults = { sales_channel_id: string, shipping_profile_id: string }
+type ChosenOption = { id: string, title: string, values: { id: string, value: string }[] }
+
+const sameValue = (a: string, b: string) => a.toLowerCase() === b.toLowerCase()
 
 // Refuses SKUs the store already has and an unknown or inactive brand before
 // anything is created, and finds the website's sales channel and the default
@@ -48,10 +55,49 @@ const prepareVi2ProductStep = createStep(
   }
 )
 
-function productData({ input, defaults }: { input: Vi2ProductInput, defaults: StoreDefaults }) {
+// Checks every option is a shared one and every chosen value belongs to it,
+// then adds the new values to their shared option. A new value that matches an
+// existing one (ignoring case) uses the existing one. Compensation deletes the
+// values this step added.
+const addSharedOptionValuesStep = createStep(
+  "add-shared-option-values",
+  async (options: Vi2ProductInput["options"], { container }) => {
+    const productModule = container.resolve(Modules.PRODUCT)
+    const found = await productModule.listProductOptions({ id: options.map((option) => option.id) }, { relations: ["values"] })
+    const chosen: ChosenOption[] = []
+    const toCreate: { option_id: string, value: string }[] = []
+    for (const option of options) {
+      const shared = found.find((candidate) => candidate.id === option.id)
+      if (!shared || shared.is_exclusive) throw new MedusaError(MedusaError.Types.INVALID_DATA, "Choose a shared option from Products > Options")
+      const values = option.value_ids.map((id) => {
+        const value = shared.values.find((candidate) => candidate.id === id)
+        if (!value) throw new MedusaError(MedusaError.Types.INVALID_DATA, `Choose ${shared.title} values from its list`)
+        return { id: value.id, value: value.value }
+      })
+      for (const name of option.new_values ?? []) {
+        const existing = shared.values.find((candidate) => sameValue(candidate.value, name))
+        if (existing) values.push({ id: existing.id, value: existing.value })
+        else if (!toCreate.some((value) => value.option_id === shared.id && sameValue(value.value, name))) toCreate.push({ option_id: shared.id, value: name })
+      }
+      chosen.push({ id: shared.id, title: shared.title, values })
+    }
+    // option_id is a column of the value table, missing from Medusa's create DTO.
+    const created = toCreate.length ? await productModule.createProductOptionValues(toCreate as CreateProductOptionValueDTO[]) : []
+    created.forEach((value, index) => chosen.find((option) => option.id === toCreate[index].option_id)!.values.push({ id: value.id, value: value.value }))
+    for (const option of chosen) option.values = option.values.filter((value, index) => option.values.findIndex((other) => other.id === value.id) === index)
+    return new StepResponse(chosen, created.map((value) => value.id))
+  },
+  async (createdIds, { container }) => {
+    if (createdIds?.length) await container.resolve(Modules.PRODUCT).deleteProductOptionValues(createdIds)
+  }
+)
+
+function productData({ input, defaults, options }: { input: Vi2ProductInput, defaults: StoreDefaults, options: ChosenOption[] }) {
   return {
     products: [{
       title: input.title,
+      subtitle: input.subtitle,
+      handle: input.handle,
       description: input.description,
       status: input.status,
       weight: input.weight,
@@ -61,28 +107,37 @@ function productData({ input, defaults }: { input: Vi2ProductInput, defaults: St
       thumbnail: input.images?.[0],
       sales_channels: [{ id: defaults.sales_channel_id }],
       shipping_profile_id: defaults.shipping_profile_id,
-      options: input.options,
-      variants: input.variants.map((variant) => ({
-        title: input.options.map((option) => variant.options[option.title]).join(" / "),
-        sku: variant.sku,
-        barcode: variant.barcode,
-        options: variant.options,
-        prices: [{ amount: variant.price, currency_code: EGYPT_STORE.currencyCode }],
-        // Odoo owns stock: Medusa tracks it from zero and never oversells.
-        manage_inventory: true,
-        allow_backorder: false,
-      })),
+      options: options.map((option) => ({ id: option.id, value_ids: option.values.map((value) => value.id) })),
+      variants: input.variants.map((variant) => {
+        // Spelled the way the shared option stores it, so "mango" picks "Mango".
+        const values = options.map((option) => {
+          const typed = variant.options[option.title] ?? ""
+          return [option.title, option.values.find((value) => sameValue(value.value, typed))?.value ?? typed]
+        })
+        return {
+          title: values.map(([, value]) => value).join(" / "),
+          sku: variant.sku,
+          barcode: variant.barcode,
+          options: Object.fromEntries(values),
+          prices: [{ amount: variant.price, currency_code: EGYPT_STORE.currencyCode }],
+          // Medusa owns stock: it is tracked from zero and never oversold.
+          manage_inventory: true,
+          allow_backorder: false,
+        }
+      }),
     }],
   }
 }
 
 // All or nothing: if a later step fails, the earlier ones are compensated, so
-// no product is left without its brand, EDA registration or Arabic name.
+// no product is left without its brand or EDA registration, and no new option
+// value is left behind.
 export const createVi2ProductWorkflow = createWorkflow(
   "create-vi2-product",
   (input: Vi2ProductInput) => {
     const defaults = prepareVi2ProductStep(input)
-    const products = createProductsWorkflow.runAsStep({ input: transform({ input, defaults }, productData) })
+    const options = addSharedOptionValuesStep(transform({ input }, ({ input }) => input.options))
+    const products = createProductsWorkflow.runAsStep({ input: transform({ input, defaults, options }, productData) })
     const productId = transform({ products }, ({ products }) => products[0].id)
 
     when("vi2-product-has-brand", { input }, ({ input }) => !!input.brand_id).then(() => {
@@ -94,13 +149,6 @@ export const createVi2ProductWorkflow = createWorkflow(
     when("vi2-product-has-eda", { input }, ({ input }) => !!input.eda).then(() => {
       setProductEdaWorkflow.runAsStep({
         input: transform({ input, productId }, ({ input, productId }) => ({ product_id: productId, ...input.eda! })),
-      })
-    })
-    when("vi2-product-has-arabic-name", { input }, ({ input }) => !!input.title_ar).then(() => {
-      createTranslationsWorkflow.runAsStep({
-        input: transform({ input, productId }, ({ input, productId }) => ({
-          translations: [{ reference: "product", reference_id: productId, locale_code: "ar-EG", translations: { title: input.title_ar } }],
-        })),
       })
     })
     return new WorkflowResponse(productId)

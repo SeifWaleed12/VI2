@@ -8,7 +8,8 @@ import { newProductSchema } from "../../validators"
 const REFUSALS: string[] = [MedusaError.Types.INVALID_DATA, MedusaError.Types.DUPLICATE_ERROR, MedusaError.Types.NOT_FOUND, MedusaError.Types.NOT_ALLOWED]
 
 // POST /admin/vi2-products - create a product with its brand, EDA registration
-// and Arabic name in one save. Errors name the form field when they can.
+// and shared options (adding new option values) in one save. Errors name the
+// form field when they can.
 export async function POST(req: MedusaRequest, res: MedusaResponse) {
   const parsed = newProductSchema.safeParse(req.body)
   if (!parsed.success) {

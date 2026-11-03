@@ -5,7 +5,7 @@ const valid = {
   title: "Whey Protein",
   status: "draft",
   discountable: true,
-  options: [{ title: "Flavor", values: ["Chocolate"] }],
+  options: [{ id: "opt_flavor", value_ids: ["optval_choc"] }],
   variants: [{ options: { Flavor: "Chocolate" }, sku: "WH-CH-1", price: 1500 }],
 }
 
@@ -22,18 +22,21 @@ describe("new product schema", () => {
   })
 
   it.each([
-    ["title", { ...valid, title: "  " }, "title", "Enter the English name"],
+    ["title", { ...valid, title: "  " }, "title", "Enter a title"],
     ["sku", { ...valid, variants: [{ ...valid.variants[0], sku: "" }] }, "variants.0.sku", "Enter a SKU"],
     ["price", { ...valid, variants: [{ ...valid.variants[0], price: undefined }] }, "variants.0.price", "Enter a price"],
     ["zero price", { ...valid, variants: [{ ...valid.variants[0], price: 0 }] }, "variants.0.price", "Price must be more than 0"],
     ["options", { ...valid, options: [] }, "options", "Add at least one option"],
+    ["option values", { ...valid, options: [{ id: "opt_flavor", value_ids: [], new_values: [] }] }, "options.0", "Choose at least one value"],
+    ["each option once", { ...valid, options: [valid.options[0], valid.options[0]] }, "options", "Each option can be added once"],
+    ["a handle in URL form", { ...valid, handle: "Whey Protein" }, "handle", "Use lowercase letters, numbers and dashes"],
     ["variants", { ...valid, variants: [] }, "variants", "Keep at least one variant"],
   ])("requires %s", (_name, body, path, message) => {
     expect(issues(body)).toContainEqual({ path, message })
   })
 
   it("refuses a SKU used twice in one form, on the second row", () => {
-    const body = { ...valid, options: [{ title: "Flavor", values: ["Chocolate", "Vanilla"] }], variants: [
+    const body = { ...valid, options: [{ id: "opt_flavor", value_ids: ["optval_choc"], new_values: ["Vanilla"] }], variants: [
       { options: { Flavor: "Chocolate" }, sku: "WH-1", price: 1 },
       { options: { Flavor: "Vanilla" }, sku: "WH-1", price: 1 },
     ] }
