@@ -26,6 +26,7 @@ describe("new product schema", () => {
     ["sku", { ...valid, variants: [{ ...valid.variants[0], sku: "" }] }, "variants.0.sku", "Enter a SKU"],
     ["price", { ...valid, variants: [{ ...valid.variants[0], price: undefined }] }, "variants.0.price", "Enter a price"],
     ["zero price", { ...valid, variants: [{ ...valid.variants[0], price: 0 }] }, "variants.0.price", "Price must be more than 0"],
+    ["a price within the cap", { ...valid, variants: [{ ...valid.variants[0], price: 1_000_000.01 }] }, "variants.0.price", "Price must be 1,000,000 EGP or less"],
     ["options", { ...valid, options: [] }, "options", "Add at least one option"],
     ["option values", { ...valid, options: [{ id: "opt_flavor", value_ids: [], new_values: [] }] }, "options.0", "Choose at least one value"],
     ["each option once", { ...valid, options: [valid.options[0], valid.options[0]] }, "options", "Each option can be added once"],

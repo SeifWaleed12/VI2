@@ -26,6 +26,8 @@ export const ChipCombobox = ({ id, choices, value, onChange, onCreate, placehold
   const matches = choices.filter((choice) => choice.label.toLowerCase().includes(typed.toLowerCase()))
   const canCreate = !!onCreate && !!typed && !choices.some((choice) => choice.label.toLowerCase() === typed.toLowerCase())
   const rows = matches.length + (canCreate ? 1 : 0)
+  const listId = `${id}-list`
+  const rowId = (index: number) => `${id}-row-${index}`
   const selected = value.map((key) => choices.find((choice) => choice.value === key)).filter((choice): choice is Choice => !!choice)
 
   const toggle = (key: string) => onChange(value.includes(key) ? value.filter((item) => item !== key) : [...value, key])
@@ -83,6 +85,10 @@ export const ChipCombobox = ({ id, choices, value, onChange, onCreate, placehold
             id={id}
             role="combobox"
             aria-expanded={open}
+            aria-autocomplete="list"
+            aria-controls={open ? listId : undefined}
+            // The input keeps focus, so the highlighted row is announced through it.
+            aria-activedescendant={open && rows ? rowId(Math.min(active, rows - 1)) : undefined}
             aria-invalid={invalid}
             autoComplete="off"
             value={search}
@@ -99,31 +105,33 @@ export const ChipCombobox = ({ id, choices, value, onChange, onCreate, placehold
         onInteractOutside={(event) => { if (anchor.current?.contains(event.target as Node)) event.preventDefault() }}
         className="max-h-[300px] w-[var(--radix-popper-anchor-width)] overflow-y-auto p-1"
       >
-        <div role="listbox" aria-multiselectable>
+        <div id={listId} role="listbox" aria-multiselectable>
           {matches.map((choice, index) => (
-            <button
+            <div
               key={choice.value}
-              type="button"
+              id={rowId(index)}
               role="option"
               aria-selected={value.includes(choice.value)}
               onMouseDown={(event) => event.preventDefault()}
               onClick={() => pick(index)}
-              className={clx("txt-compact-small flex w-full items-center gap-x-2 rounded-md px-2 py-1.5 text-left", index === active && "bg-ui-bg-component-hover")}
+              className={clx("txt-compact-small flex w-full cursor-pointer items-center gap-x-2 rounded-md px-2 py-1.5", index === active && "bg-ui-bg-component-hover")}
             >
               <span className="w-4 text-ui-fg-interactive">{value.includes(choice.value) ? "✓" : ""}</span>
               {choice.label}
               {choice.hint && <span className="text-ui-fg-muted">{choice.hint}</span>}
-            </button>
+            </div>
           ))}
           {canCreate && (
-            <button
-              type="button"
+            <div
+              id={rowId(matches.length)}
+              role="option"
+              aria-selected={false}
               onMouseDown={(event) => event.preventDefault()}
               onClick={() => pick(matches.length)}
-              className={clx("txt-compact-small text-ui-fg-interactive flex w-full items-center gap-x-2 rounded-md px-2 py-1.5 text-left", active === matches.length && "bg-ui-bg-component-hover")}
+              className={clx("txt-compact-small text-ui-fg-interactive flex w-full cursor-pointer items-center gap-x-2 rounded-md px-2 py-1.5", active === matches.length && "bg-ui-bg-component-hover")}
             >
               <span className="w-4">+</span>Add "{typed}"
-            </button>
+            </div>
           )}
           {!rows && <Text size="small" className="text-ui-fg-muted px-2 py-1.5">No results</Text>}
         </div>

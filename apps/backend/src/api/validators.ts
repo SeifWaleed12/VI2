@@ -80,7 +80,7 @@ export const newProductSchema = z.object({
     options: z.record(z.string(), text),
     sku: required("Enter a SKU").max(100),
     barcode: text.max(100).optional(),
-    price: z.number({ error: "Enter a price" }).finite().positive("Price must be more than 0"),
+    price: z.number({ error: "Enter a price" }).finite().positive("Price must be more than 0").max(1_000_000, "Price must be 1,000,000 EGP or less"),
   }).strict()).min(1, "Keep at least one variant").max(100),
 }).strict().superRefine((product, ctx) => {
   if (new Set(product.options.map((option) => option.id)).size < product.options.length) {

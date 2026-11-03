@@ -193,6 +193,16 @@ medusaIntegrationTestRunner({
         await expectNothingCreated()
       })
 
+      it("refuses a variant with an extra or a missing option, before adding new values", async () => {
+        const options = [{ id: flavor.id, value_ids: [], new_values: ["Mango"] }, body().options[1]]
+        for (const variantOptions of [{ Flavor: "Mango", Size: "1 kg", Color: "Red" }, { Flavor: "Mango" }]) {
+          const response = await create(admin, body({ options, variants: [{ options: variantOptions, sku: "WH-MA-1", price: 1 }] }))
+          expect(response.status).toBe(400)
+          expect(response.data.message).toBe("Give each variant one value for each option: Flavor, Size")
+        }
+        await expectNothingCreated()
+      })
+
       it("creates a product with only the required fields", async () => {
         const response = await create(admin, {
           title: "Whey Test", status: "draft", discountable: false,

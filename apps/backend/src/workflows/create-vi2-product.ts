@@ -55,13 +55,13 @@ const prepareVi2ProductStep = createStep(
   }
 )
 
-// Checks every option is a shared one and every chosen value belongs to it,
-// then adds the new values to their shared option. A new value that matches an
-// existing one (ignoring case) uses the existing one. Compensation deletes the
-// values this step added.
+// Checks every option is a shared one, every chosen value belongs to it and
+// every variant names exactly these options, then adds the new values to their
+// shared option. A new value that matches an existing one (ignoring case) uses
+// the existing one. Compensation deletes the values this step added.
 const addSharedOptionValuesStep = createStep(
   "add-shared-option-values",
-  async (options: Vi2ProductInput["options"], { container }) => {
+  async ({ options, variants }: Pick<Vi2ProductInput, "options" | "variants">, { container }) => {
     const productModule = container.resolve(Modules.PRODUCT)
     const found = await productModule.listProductOptions({ id: options.map((option) => option.id) }, { relations: ["values"] })
     const chosen: ChosenOption[] = []
@@ -80,6 +80,14 @@ const addSharedOptionValuesStep = createStep(
         else if (!toCreate.some((value) => value.option_id === shared.id && sameValue(value.value, name))) toCreate.push({ option_id: shared.id, value: name })
       }
       chosen.push({ id: shared.id, title: shared.title, values })
+    }
+    // Medusa would drop an extra option and give a blank error for a missing one.
+    const titles = chosen.map((option) => option.title)
+    if (variants.some((variant) => {
+      const keys = Object.keys(variant.options)
+      return keys.length !== titles.length || !titles.every((title) => keys.includes(title))
+    })) {
+      throw new MedusaError(MedusaError.Types.INVALID_DATA, `Give each variant one value for each option: ${titles.join(", ")}`)
     }
     // option_id is a column of the value table, missing from Medusa's create DTO.
     const created = toCreate.length ? await productModule.createProductOptionValues(toCreate as CreateProductOptionValueDTO[]) : []
@@ -136,7 +144,7 @@ export const createVi2ProductWorkflow = createWorkflow(
   "create-vi2-product",
   (input: Vi2ProductInput) => {
     const defaults = prepareVi2ProductStep(input)
-    const options = addSharedOptionValuesStep(transform({ input }, ({ input }) => input.options))
+    const options = addSharedOptionValuesStep(transform({ input }, ({ input }) => ({ options: input.options, variants: input.variants })))
     const products = createProductsWorkflow.runAsStep({ input: transform({ input, defaults, options }, productData) })
     const productId = transform({ products }, ({ products }) => products[0].id)
 
