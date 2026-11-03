@@ -24,5 +24,6 @@ build
 !.yarn/versions
 
 .medusa
-# Admin export files (orders, products, inventory) that Medusa writes here
-static/private-*-exports.csv
+# Uploads and admin exports Medusa's local file provider writes here at run
+# time (product images, brand logos, order/product/inventory exports)
+static/

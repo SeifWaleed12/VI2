@@ -13,8 +13,8 @@ Hetzner / Coolify
 Medusa
     ├── PostgreSQL
     ├── Redis
-    ├── Meilisearch
-    ├── Odoo
+    ├── Medusa Search (PostgreSQL, derived catalog)
+    ├── Odoo (parked 2026-11-01)
     ├── Paymob
     ├── Bosta
     └── S3/R2 Storage
@@ -101,19 +101,29 @@ Every cache needs:
 
 Correctness must survive an empty/unavailable cache.
 
+Redis in use (`apps/backend/src/lib/redis-config.ts`, on whenever `REDIS_URL` is set, off in tests):
+
+| What | Purpose | TTL | Invalidation | Source of truth | If Redis is down |
+|---|---|---|---|---|---|
+| Sign-in attempt counts and locks | Rate limiting | 15 min | Cleared on successful sign-in | The count itself | Sign-in fails closed (existing behaviour) |
+| Public store reads (`lib/store-cache.ts`): `/store/products` 60 s, `/store/product-categories` and `/store/collections` and `/store/brands` 5 min, `/store/regions` 10 min | Spare PostgreSQL on browse, search and menu requests | as listed | Every successful non-GET `/admin/*` request clears all `store-cache:*` keys; the TTL covers changes made outside the admin API | PostgreSQL | The cache read gives up after 250 ms and the request is answered from PostgreSQL (checked live: about 0.3 s instead of 0.02 s) |
+| Event bus and workflow engine | Events and running workflows survive restarts and reach every server | none | none | Redis queue | Medusa cannot publish events |
+
+Only anonymous GET requests are cached (no `Authorization` header or cookie). The key holds the URL, publishable key and locale. Carts, checkout, payments, orders and customer routes are never cached, and checkout re-validates price and stock itself.
+
 ## Search
 
 ```text
 Next.js
     ↓
-Search API
+Medusa /store/catalog
     ↓
-Meilisearch
+Medusa native Search module (PostgreSQL product projection)
     ↓
-Product Index
+Native product hydration for visible prices and stock
 ```
 
-Meilisearch is derived data, not the commerce source of truth.
+The installed search implementation is Medusa native PostgreSQL Search. The projection is derived discovery data; native Medusa products/prices/inventory remain authoritative. Meilisearch is not deployed by this implementation.
 
 Do not build advanced search before the core catalog/search path works.
 
@@ -124,3 +134,18 @@ For a major architectural decision:
 2. Document impact and tradeoffs.
 3. Create/update an ADR.
 4. Update this reference if the baseline architecture changes.
+
+
+## Audit remediation operational boundaries (25 October 2026)
+
+Production requires REDIS_URL. The optional cache connection has a 1,500 ms command deadline, 2,000 ms stalled-socket deadline, no offline queue and no replay of unfinished commands. Events/workflow/locking connections retain their native coordination policy; optional cache failure does not make shared correctness infrastructure optional.
+
+Within each server, identical anonymous cold reads share a fill for up to 2 seconds, with at most 256 fill records. Waiting readers get an explicit 503/Retry-After if the fill does not complete. This is bounded optional coordination, not commerce authority or a cross-process lock. Cache URL keys sort query parameters; unknown query keys/oversized cache-key inputs are not admitted. Broad invalidation and cross-process in-flight-read staleness remain TTL-bounded; legitimate query cardinality and Redis memory/connection budgets require deployment sizing.
+
+Catalog refresh signals merge per worker into bounded batches (over 1,000 retained IDs becomes one full reconciliation); every durable subscriber still awaits completion/failure. Routine reconciliation preserves a currently valid, price-version-matching projection while rebuilding. It never extends old validity after failure. Known broad mutations, expired state, changed price watermarks and failed mutation refreshes fail closed. Existing five-minute freshness and sale boundaries remain unchanged. No routine native swap indexes are created.
+
+Loyalty is an append-only Medusa module ledger. A customer-scoped PostgreSQL transaction advisory lock fences balance decisions even when Redis ownership is lost. Transactional removal, duplicate detection and ledger writes share the same READ COMMITTED context; cancellation before/after a write rolls that transaction back. This does not establish distributed atomicity for other modules. Balances/activity are aggregated in the module persistence boundary; no mutable second balance exists. Expiry and cart cleanup have renewable job-wide native locks and cancellation checks. Failed event jobs retain at most 5,000 entries/7 days.
+
+Staff editing policy set by Seif: the latest successful committed save wins for an ordinary field. Independent partial field updates survive concurrent saves. A last click need not be the last committed save. Native inventory/order workflows and the loyalty invariant remain mandatory; no blanket last-save policy replaces them.
+
+Cache response reads still stop waiting after 250 ms. A 500 ms Redis delay must not trigger the native cache provider's read-error key deletion. Failed invalidation retries at most 3 times with 500/1,000 ms delays; callers share in-flight retry work per cache instance, and a new local write during a scan requests another bounded scan. After exhaustion TTL remains the fallback. Scheduled maintenance skips only acquisition-timeout contention before its callback starts; Redis outages and job-body errors still fail visibly.

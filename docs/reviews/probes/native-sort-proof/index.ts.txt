@@ -1,0 +1,95 @@
+import { defineSearchIndex, graphConsume, graphSeed, search, getVariantAvailability, QueryContext } from "@medusajs/framework/utils"
+import type { SearchContainer, SearchMutation } from "@medusajs/framework/types"
+import { ARABIC_FIELDS, ARABIC_LOCALE, PRODUCT_SEARCH_INDEX, SOURCE_FIELDS, toSearchDocument, type ArabicSource, type SearchSource } from "../lib/product-search"
+
+// Medusa reads the products, then each batch is read again in Arabic and both
+// names go into one document. Unpublished products become deletes.
+
+async function nativeSortProof(rows: SearchSource[], container: SearchContainer) {
+  const { data: stores } = await container.query.graph({ entity: "store", fields: ["default_sales_channel_id", "default_region_id"] })
+  const channel = stores[0]?.default_sales_channel_id as string | undefined
+  const region = stores[0]?.default_region_id as string | undefined
+  if (!channel || !region || !rows.length) return new Map()
+  const { data: products } = await container.query.graph({
+    entity: "product", fields: ["id", "variants.id", "variants.manage_inventory", "variants.allow_backorder", "variants.calculated_price.*"],
+    filters: { id: rows.map(row => row.id) },
+    context: { variants: { calculated_price: QueryContext({ currency_code: "egp", region_id: region, quantity: 1 }) } },
+  }, { cache: { enable: false } })
+  if (rows.length > 50) console.log("PROOF_NATIVE_GRAPH", JSON.stringify({region,channel,sample:products[0]}))
+  const variants = products.flatMap(p => p.variants ?? [])
+  const availability = await getVariantAvailability(container.query, { variant_ids: variants.map(v => v.id), sales_channel_id: channel })
+  return new Map(products.map(p => {
+    const variant = p.variants?.[0]
+    const amountRaw = variant?.calculated_price?.calculated_amount
+    const amount = amountRaw == null ? null : Number(amountRaw)
+    const buyable = (p.variants ?? []).some(v => v.calculated_price?.calculated_amount > 0 && (v.allow_backorder === true || v.manage_inventory === false || (availability[v.id]?.availability ?? 0) > 0))
+    const deals = (p.variants ?? []).filter(v => {
+      const price = v.calculated_price
+      return price?.calculated_price?.price_list_type === "sale" && Number(price.calculated_amount) > 0 && Number(price.original_amount) > Number(price.calculated_amount)
+    })
+    const best = deals.sort((a,b) => (b.calculated_price.original_amount-b.calculated_price.calculated_amount)-(a.calculated_price.original_amount-a.calculated_price.calculated_amount))[0]
+    return [p.id, {
+      proof_price: amount ?? 0, proof_priced: Number.isFinite(amount) && amount > 0 ? 1 : 0,
+      proof_available: buyable ? 1 : 0, proof_region_id: region, proof_channel_id: channel,
+      proof_deal: best ? 1 : 0, proof_deal_price: best?.calculated_price?.calculated_amount ?? 0,
+    }]
+  }))
+}
+
+async function withArabic(mutations: SearchMutation[], container: SearchContainer): Promise<SearchMutation[]> {
+  const result: SearchMutation[] = []
+  for (const mutation of mutations) {
+    if (mutation.action !== "upsert") {
+      result.push(mutation)
+      continue
+    }
+    const rows = mutation.documents as unknown as SearchSource[]
+    const { data } = await container.query.graph({ entity: "product", fields: ARABIC_FIELDS, filters: { id: rows.map((row) => row.id) } }, { locale: ARABIC_LOCALE })
+    const arabic = new Map((data as ArabicSource[]).map((row) => [row.id, row]))
+    const native = await nativeSortProof(rows, container)
+    const documents = rows.flatMap((row) => {
+      const document = toSearchDocument(row, arabic.get(row.id))
+      return document ? [{ ...document, ...native.get(row.id) }] : []
+    })
+    const removed = rows.filter((row) => !documents.some((doc) => doc.id === row.id)).map((row) => row.id)
+    if (documents.length) result.push({ action: "upsert", documents })
+    if (removed.length) result.push({ action: "delete", filters: { id: removed } })
+  }
+  return result
+}
+
+const seedFromGraph = graphSeed({ fields: SOURCE_FIELDS })
+const consumeFromGraph = graphConsume({ fields: SOURCE_FIELDS })
+
+// Renamed categories or brands, Arabic name edits and variant edits do not emit
+// product events; the nightly reindex (jobs/reindex-product-search.ts) picks them up.
+export default defineSearchIndex({
+  name: PRODUCT_SEARCH_INDEX,
+  entity: "product",
+  fields: search.define({
+    id: search.keyword().filterable().sortable(),
+    proof_price: search.float().sortable(),
+    proof_priced: search.integer().sortable(),
+    proof_available: search.integer().sortable(),
+    proof_region_id: search.keyword().filterable(),
+    proof_channel_id: search.keyword().filterable(),
+    proof_deal: search.integer().filterable(),
+    proof_deal_price: search.float().sortable(),
+    handle: search.keyword(),
+    title: search.text().searchable({ weight: 3 }),
+    title_ar: search.text().searchable({ weight: 3 }),
+    brand: search.text().searchable({ weight: 2 }),
+    brand_id: search.keyword().filterable(),
+    categories: search.text().array().searchable({ weight: 2 }),
+    category_ids: search.keyword().array().filterable(),
+    tag_ids: search.keyword().array().filterable(),
+    goals: search.text().array().searchable(),
+    variants: search.text().array().searchable(),
+    sales_channel_ids: search.keyword().array().filterable(),
+  }),
+  events: ["product.created", "product.updated", "product.deleted"],
+  consume: async (event, context) => withArabic(await consumeFromGraph(event, context), context.container),
+  seed: async function* (context) {
+    for await (const mutations of seedFromGraph(context)) yield await withArabic(mutations, context.container)
+  },
+})

@@ -3,6 +3,11 @@ import {
   categoryScope,
   flattenCategories,
 } from "../category-tree";
+
+it("orders and flattens a deep hierarchy without recursion", () => {
+  const input = Array.from({ length: 20_000 }, (_, i) => ({ id: `c${i}`, name: "Category", handle: `c${i}`, parent_category_id: i ? `c${i-1}` : null }));
+  expect(flattenCategories(buildCategoryTree(input))).toHaveLength(20_000);
+});
 const data = [
   {
     id: "root",

@@ -1,6 +1,6 @@
 import type { AuthenticatedMedusaRequest, MedusaNextFunction, MedusaResponse } from "@medusajs/framework/http"
 import { ContainerRegistrationKeys, MedusaError, Modules } from "@medusajs/framework/utils"
-import { requestPath } from "./admin-access"
+import { requestPath } from "../lib/request-path"
 
 // Owner decisions 2026-10-12 and 2026-10-13. In Medusa anyone holding a cart id
 // can use the cart, and a cart's customer is picked by the email typed at
@@ -31,9 +31,22 @@ async function guestCustomerId(req: Request, email: string) {
   return (guest ?? await customers.createCustomers({ email, has_account: false })).id
 }
 
+// Medusa's cart workflows and the abandoned-cart job (jobs/remove-abandoned-carts.ts)
+// lock a cart by its id; the owner changes here take the same lock, so a cart
+// can't be claimed between the job's last check and its deletion.
+const withCartLock = (req: Request, cartId: string, job: (signal?: AbortSignal) => Promise<unknown>) =>
+  req.scope.resolve(Modules.LOCKING).execute(cartId, async (signal?: AbortSignal) => {
+    signal?.throwIfAborted()
+    await ownedCart(req, cartId)
+    signal?.throwIfAborted()
+    const result = await job(signal)
+    signal?.throwIfAborted()
+    return result
+  }, { timeout: 5 })
+
 async function cartIdOf(req: Request) {
   const [, , area, id] = requestPath(req).split("/")
-  if (area === "carts") return id
+  if (area.toLowerCase() === "carts") return req.params.id ?? id
   if (!id) return typeof req.body?.cart_id === "string" ? req.body.cart_id : undefined
   const query = req.scope.resolve(ContainerRegistrationKeys.QUERY)
   const { data: [collection] } = await query.graph({ entity: "payment_collection", fields: ["cart.id"], filters: { id } })
@@ -45,12 +58,16 @@ async function cartIdOf(req: Request) {
 export async function cartOwnerOnly(req: Request, _res: MedusaResponse, next: MedusaNextFunction) {
   const cartId = await cartIdOf(req)
   const cart = cartId ? await ownedCart(req, cartId) : undefined
-  const settingEmail = req.method === "POST" && /^\/store\/carts\/[^/]+$/.test(requestPath(req)) && typeof req.body?.email === "string"
+  const settingEmail = req.method === "POST" && /^\/store\/carts\/[^/]+$/i.test(requestPath(req)) && typeof req.body?.email === "string"
   if (cart && !cart.customer?.has_account && settingEmail) {
     // Medusa keeps the cart's current guest when its email matches, so it
     // does not look the email up among accounts.
     const email = (req.body!.email as string).trim().toLowerCase()
-    await req.scope.resolve(Modules.CART).updateCarts(cart.id, { customer_id: await guestCustomerId(req, email) })
+    await withCartLock(req, cart.id, async signal => {
+      const guestId = await guestCustomerId(req, email)
+      signal?.throwIfAborted()
+      return req.scope.resolve(Modules.CART).updateCarts(cart.id, { customer_id: guestId })
+    })
   }
   return next()
 }
@@ -73,7 +90,7 @@ export async function assignOrderOwner(req: Request, _res: MedusaResponse, next:
   const cart = await ownedCart(req, req.params.id)
   const signedIn = signedInCustomer(req)
   if (cart && !cart.completed_at && signedIn && signedIn !== cart.customer?.id) {
-    await req.scope.resolve(Modules.CART).updateCarts(cart.id, { customer_id: signedIn })
+    await withCartLock(req, cart.id, () => req.scope.resolve(Modules.CART).updateCarts(cart.id, { customer_id: signedIn }))
   }
   return next()
 }

@@ -11,11 +11,20 @@ type CatalogProduct = HttpTypes.StoreProduct & {
 
 // Request and response fields are frozen in docs/CATALOG-CONTRACT.md.
 const PRODUCT_FIELDS =
-  "brand.id,brand.name,brand.status,eda_registration.registration_number,eda_registration.is_approved,id,handle,title,description,thumbnail,images.url,metadata,variants.id,variants.title,variants.sku,variants.barcode,variants.manage_inventory,variants.allow_backorder,variants.calculated_price,variants.inventory_quantity,variants.options.id,variants.options.value,variants.options.option_id,options.id,options.title,options.values.id,options.values.value,categories.id,categories.name,categories.handle";
+  "brand.id,brand.name,brand.status,eda_registration.registration_number,eda_registration.is_approved,id,handle,title,description,thumbnail,images.url,metadata,variants.id,variants.variant_rank,variants.created_at,variants.title,variants.sku,variants.barcode,variants.manage_inventory,variants.allow_backorder,variants.calculated_price,variants.inventory_quantity,variants.options.id,variants.options.value,variants.options.option_id,options.id,options.title,options.values.id,options.values.value,categories.id,categories.name,categories.handle";
 
 export function mapMedusaProduct(p: CatalogProduct): Product {
   const meta: Record<string, unknown> = p.metadata ?? {};
-  const variant = p.variants?.[0];
+  const nativeVariants = [...(p.variants ?? [])].sort((a, b) => (a.variant_rank ?? 0) - (b.variant_rank ?? 0)
+    || String(a.created_at ?? "").localeCompare(String(b.created_at ?? "")) || a.id.localeCompare(b.id));
+  const available = (v: HttpTypes.StoreProductVariant) => v.allow_backorder === true || v.manage_inventory === false || Number(v.inventory_quantity ?? 0) > 0;
+  // Tracked stock without backorders is the most one cart may hold.
+  const limitOf = (v: HttpTypes.StoreProductVariant) =>
+    v.manage_inventory !== false && v.allow_backorder !== true && typeof v.inventory_quantity === "number" ? Math.max(0, v.inventory_quantity) : undefined;
+  const variant = nativeVariants.find(v => {
+    const amount = Number(v.calculated_price?.calculated_amount ?? 0);
+    return Number.isFinite(amount) && amount > 0 && available(v);
+  }) ?? nativeVariants[0];
 
   // Medusa v2 calculated_price contains region-specific pricing in direct currency units
   const calcPrice = variant?.calculated_price;
@@ -25,7 +34,7 @@ export function mapMedusaProduct(p: CatalogProduct): Product {
 
   const compareRaw = calcPrice?.original_amount ?? null;
   const compareAtPrice =
-    compareRaw !== null && compareRaw !== priceRaw
+    priceRaw !== null && compareRaw !== null && compareRaw > priceRaw
       ? Number(compareRaw)
       : undefined;
 
@@ -37,6 +46,8 @@ export function mapMedusaProduct(p: CatalogProduct): Product {
     p.thumbnail ||
     p.images?.[0]?.url ||
     String(meta.image ?? "");
+
+  const images = [...new Set([image, ...(p.images ?? []).map((i) => i?.url)])].filter((url): url is string => !!url);
 
   const categories: ProductCategoryRef[] = (p.categories ?? [])
     .filter((c): c is NonNullable<typeof c> => typeof c?.id === "string")
@@ -57,20 +68,20 @@ export function mapMedusaProduct(p: CatalogProduct): Product {
 
   // Map variants
   const variants: ProductVariant[] = Array.isArray(p.variants)
-    ? p.variants.map((v) => {
+    ? nativeVariants.map((v) => {
         const vCalcPrice = v.calculated_price;
         const vPriceRaw =
           vCalcPrice?.calculated_amount ?? null;
-        const vPrice = vPriceRaw !== null ? Number(vPriceRaw) : price;
+        const vPrice = vPriceRaw !== null ? Number(vPriceRaw) : 0;
 
         const vCompareRaw = vCalcPrice?.original_amount ?? null;
         const vCompareAt =
-          vCompareRaw !== null && vCompareRaw !== vPriceRaw
+          vPriceRaw !== null && vCompareRaw !== null && vCompareRaw > vPriceRaw
             ? Number(vCompareRaw)
             : undefined;
 
         const vStock = Number(v.inventory_quantity ?? 0);
-        const inStock = v.allow_backorder === true || v.manage_inventory === false || vStock > 0;
+        const inStock = available(v);
 
         const optMap: Record<string, string> = {};
         if (Array.isArray(v.options)) {
@@ -109,6 +120,7 @@ export function mapMedusaProduct(p: CatalogProduct): Product {
           stock: vStock,
           inventoryKnown: typeof v.inventory_quantity === "number",
           inStock,
+          ...(limitOf(v) !== undefined ? { maxQuantity: limitOf(v) } : {}),
           options: optMap,
           image: v.thumbnail || undefined,
         };
@@ -132,12 +144,14 @@ export function mapMedusaProduct(p: CatalogProduct): Product {
     rating: 0,
     reviewCount: 0,
     image,
+    ...(images.length > 1 ? { images } : {}),
     ...(meta.flavor ? { flavor: String(meta.flavor) } : {}),
     ...(meta.size ? { size: String(meta.size) } : {}),
     ...(meta.servings ? { servings: Number(meta.servings) } : {}),
     stock: Number(variant?.inventory_quantity ?? 0),
     inventoryKnown: typeof variant?.inventory_quantity === "number",
-    inStock: variants.some((v) => v.inStock === true),
+    inStock: !!variant && available(variant) && Number.isFinite(price) && price > 0,
+    ...(variant && limitOf(variant) !== undefined ? { maxQuantity: limitOf(variant) } : {}),
     ...(meta.badge ? { badge: String(meta.badge) } : {}),
     ...(edaNumber ? { eda: { registrationNumber: edaNumber, approved: p.eda_registration?.is_approved === true } } : {}),
     ...(options.length > 0 ? { options } : {}),
@@ -157,8 +171,12 @@ export type ListProductsParams = {
   category_id?: string[];
   // Active brands only; unknown or inactive brands give an empty page.
   brand_id?: string[];
+  id?: string[];
   q?: string;
   order?: string;
+  tag_id?: string[];
+  fresh?: boolean;
+  signal?: AbortSignal;
 };
 
 export type ProductPage = {
@@ -190,15 +208,34 @@ export async function listProducts(params: ListProductsParams): Promise<ProductP
     const query: Record<string, unknown> = { limit, offset, fields: PRODUCT_FIELDS, region_id: regionId };
     if (params.category_id?.length) query.category_id = params.category_id;
     if (params.brand_id?.length) query.brand_id = params.brand_id;
+    if (params.tag_id?.length) query.tag_id = params.tag_id;
+    if (params.id?.length) query.id = params.id;
     if (params.q?.trim()) query.q = params.q.trim();
     if (params.order) query.order = params.order;
 
-    const { products, count } = await medusa.store.product.list(query, { "x-medusa-locale": medusaLocale(params.locale) });
+    const headers = { "x-medusa-locale": medusaLocale(params.locale) };
+    const { products, count } = params.fresh
+      ? await medusa.client.fetch<{ products: CatalogProduct[]; count: number }>("/store/catalog-products", { method: "GET", query, headers, cache: "no-store", signal: params.signal })
+      : params.signal
+        ? await medusa.client.fetch<{ products: CatalogProduct[]; count: number }>("/store/products", { method: "GET", query, headers, signal: params.signal })
+        : await medusa.store.product.list(query, headers);
     return { products: (products || []).map(mapMedusaProduct), count: count ?? 0, limit, offset };
   } catch (error) {
     if ((error as { status?: unknown } | null)?.status === 400) throw new InvalidCatalogFilterError();
     throw new Error("Catalog temporarily unavailable.");
   }
+}
+
+// Bundles: inventory-kit products made of two or more different stock items,
+// at their own price. The sale list itself comes from listCatalog({ deals: true }).
+export async function getBundles(locale: Locale): Promise<Product[]> {
+  let ids: string[];
+  try {
+    ids = (await medusa.client.fetch<{ bundle_ids: string[] }>("/store/deals", { method: "GET" }))?.bundle_ids ?? [];
+  } catch {
+    throw new Error("Bundles temporarily unavailable.");
+  }
+  return ids.length ? (await listProducts({ locale, id: ids, limit: MAX_PAGE_SIZE })).products : [];
 }
 
 export type GetProductsParams = Omit<ListProductsParams, "locale" | "brand_id"> & { locale?: Locale };

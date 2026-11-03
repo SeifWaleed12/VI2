@@ -23,7 +23,7 @@
 
     display: grid;
     grid-template-columns:
-      repeat(5, 1fr);
+      repeat(4, 1fr);
 
     border:
       1px solid
@@ -104,29 +104,5 @@
   .nav .active {
     color: #f7f2ea;
     background: #181916;
-  }
-
-  .cart strong {
-    position: absolute;
-
-    top: 3px;
-    right: 11px;
-
-    width: 16px;
-    height: 16px;
-    min-width: 16px;
-
-    padding: 0;
-
-    display: grid;
-    place-items: center;
-
-    border-radius: 50%;
-
-    color: #f8f3ea;
-    background: #181916;
-
-    font-size: var(--text-ui);
-    font-weight: 800;
   }
 }

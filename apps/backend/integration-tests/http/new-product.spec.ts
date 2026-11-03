@@ -259,7 +259,7 @@ medusaIntegrationTestRunner({
         stock.variants[0] = { ...stock.variants[0], manage_inventory: false, inventory_quantity: 10 } as never
         expect((await create(admin, linked)).status).toBe(400)
         expect((await create(admin, stock)).status).toBe(400)
-        expect((await create(manager, linked)).status).toBe(403)
+        expect((await create(manager, linked)).status).toBe(400)
         expect((await create(manager, stock)).status).toBe(400)
         await expectNothingCreated()
       })

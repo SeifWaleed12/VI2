@@ -16,6 +16,7 @@ import { useLanguage } from "@/context/LanguageContext";
 import type { Product } from "@/types/product";
 
 import styles from "./ValueSets.module.css";
+import CatalogImage from "@/components/CatalogImage";
 
 type ValueSetsProps = {
   products?: Product[];
@@ -184,7 +185,7 @@ export default function ValueSets({
                     styles.images
                   }
                 >
-                  {first && (
+                  {first && (first.image ? (
                     <Image
                       src={first.image}
                       alt={first.name}
@@ -195,9 +196,11 @@ export default function ValueSets({
                         styles.imageOne
                       }
                     />
-                  )}
+                  ) : (
+                    <CatalogImage alt={first.name} className={styles.imageOne} />
+                  ))}
 
-                  {second && (
+                  {second && (second.image ? (
                     <Image
                       src={second.image}
                       alt={second.name}
@@ -208,7 +211,9 @@ export default function ValueSets({
                         styles.imageTwo
                       }
                     />
-                  )}
+                  ) : (
+                    <CatalogImage alt={second.name} className={styles.imageTwo} />
+                  ))}
                 </div>
 
                 <div

@@ -1,9 +1,12 @@
 import type BrandModuleService from "../../src/modules/brand/service"
+import { existsSync } from "fs"
 import { dirname, join } from "path"
 import { medusaIntegrationTestRunner } from "@medusajs/test-utils"
 import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
 import { createOrderWorkflow, createRegionsWorkflow, createUsersWorkflow } from "@medusajs/medusa/core-flows"
 import setupCatalogManager from "../../src/scripts/setup-catalog-manager"
+import Medusa from "@medusajs/js-sdk"
+import FormData from "form-data"
 
 // Medusa's own migration script that creates Super Admin and assigns it to every
 // existing user; the test database does not run migration scripts by itself.
@@ -72,6 +75,40 @@ medusaIntegrationTestRunner({
         }
       })
 
+      it.each(["admin", "manager"])("lets %s upload a CSV and complete both native product-import steps", async role => {
+        const session = role === "admin" ? admin : manager
+        const sdk = new Medusa({ baseUrl: api.defaults.baseURL! })
+        const handle = `csv-${role}-dummy`
+        const csv = "Product Handle,Product Title,Product Status,Variant Title,Variant SKU,Variant Manage Inventory,Variant Option 1 Name,Variant Option 1 Value\n"
+          + `${handle},Dummy CSV product,draft,Single,CSV-${role},false,Size,Single\n`
+        const type = role === "manager" ? "application/vnd.ms-excel" : "text/csv"
+        const started = await sdk.admin.product.createImport({ file: new File([csv], "dummy-products.csv", { type }) }, undefined, session.headers)
+        expect(started.transaction_id).toBeTruthy()
+        await sdk.admin.product.confirmImport(started.transaction_id, undefined, session.headers)
+        let imported: { id: string, title: string }[] = []
+        for (let attempt = 0; attempt < 50; attempt++) {
+          imported = await getContainer().resolve(Modules.PRODUCT).listProducts({ handle })
+          if (imported.length) break
+          await new Promise(resolve => setTimeout(resolve, 100))
+        }
+        expect(imported).toEqual([expect.objectContaining({ title: "Dummy CSV product" })])
+      })
+
+      it.each([
+        ["dummy.html", "text/html", "<html>active</html>"],
+        ["dummy.svg", "image/svg+xml", "<svg/>"],
+        ["dummy.csv", "text/html", "<html>disguised</html>"],
+      ])("refuses active/disguised uploads through both CSV routes: %s", async (name, type, content) => {
+        for (const session of [admin, manager]) {
+          const signed = await api.post("/admin/uploads/presigned-urls", { originalname: name, mime_type: type, size: Buffer.byteLength(content) }, session)
+          expect(signed.status).toBe(400)
+          const form = new FormData()
+          form.append("files", Buffer.from(content), { filename: name, contentType: type })
+          const uploaded = await api.post("/admin/uploads", form, { ...session, headers: { ...session.headers, ...form.getHeaders() } })
+          expect(uploaded.status).toBe(400)
+        }
+      })
+
       it("denies a staff user with no role on custom and native routes", async () => {
         expect((await api.post("/admin/brands", { name: "Sneaky", slug: "sneaky" }, nobody)).status).toBe(403)
         expect((await api.get("/admin/custom", nobody)).status).toBe(403)
@@ -100,11 +137,31 @@ medusaIntegrationTestRunner({
           variants: [{ title: "1kg", options: { Size: "1kg" }, manage_inventory: true, allow_backorder: false, inventory_items: [], prices: [{ amount: 100, currency_code: "egp" }] }],
         }, manager)
         expect(response.status).toBe(200)
-        const linked = await api.post("/admin/products", {
+      })
+
+      it("lets a manager run stock from creating an item to deleting it", async () => {
+        const { data: { stock_location: location } } = await api.post("/admin/stock-locations", { name: "Warehouse" }, admin)
+        const { data: { inventory_item: item } } = await api.post("/admin/inventory-items", { sku: "MANAGER-STOCK" }, manager)
+        const levels = `/admin/inventory-items/${item.id}/location-levels`
+        expect((await api.post(levels, { location_id: location.id, stocked_quantity: 5 }, manager)).status).toBe(200)
+        const stocked = async () => (await getContainer().resolve(Modules.INVENTORY).listInventoryLevels({ inventory_item_id: item.id }))[0].stocked_quantity
+        expect((await api.post(`${levels}/${location.id}`, { stocked_quantity: 7 }, manager)).status).toBe(200)
+        expect(await stocked()).toBe(7)
+        expect((await api.post(`${levels}/batch`, { update: [{ location_id: location.id, stocked_quantity: 8 }] }, manager)).status).toBe(200)
+        expect(await stocked()).toBe(8)
+        expect((await api.post("/admin/inventory-items/location-levels/batch", { update: [{ inventory_item_id: item.id, location_id: location.id, stocked_quantity: 9 }] }, manager)).status).toBe(200)
+        expect(await stocked()).toBe(9)
+
+        const kit = await api.post("/admin/products", {
           title: "Kit", status: "draft", options: [{ title: "Size", values: ["1kg"] }],
-          variants: [{ title: "1kg", options: { Size: "1kg" }, inventory_items: [{ inventory_item_id: "iitem_x", required_quantity: 1 }], prices: [{ amount: 100, currency_code: "egp" }] }],
+          variants: [{ title: "1kg", options: { Size: "1kg" }, inventory_items: [{ inventory_item_id: item.id, required_quantity: 1 }], prices: [{ amount: 100, currency_code: "egp" }] }],
         }, manager)
-        expect(linked.status).toBe(403)
+        expect(kit.status).toBe(200)
+        const [variant] = kit.data.product.variants
+        const link = `/admin/products/${kit.data.product.id}/variants/${variant.id}/inventory-items/${item.id}`
+        expect((await api.post(link, { required_quantity: 2 }, manager)).status).toBe(200)
+        expect((await api.delete(link, manager)).status).toBe(200)
+        expect((await api.delete(`/admin/inventory-items/${item.id}`, manager)).status).toBe(200)
       })
 
       it("lets a catalog manager edit product content", async () => {
@@ -126,20 +183,37 @@ medusaIntegrationTestRunner({
         expect((await api.delete(`/admin/products/${product.id}`, manager)).status).toBe(200)
       })
 
-      it("stops a manager from changing an existing variant's stock settings, but not from editing it", async () => {
+      it("lets managers change existing stock settings through direct edits and CSV imports", async () => {
         const { data } = await api.post("/admin/products", { title: "Stocked", status: "published", options: [{ title: "Size", values: ["Single"] }], variants: [{ title: "Single", options: { Size: "Single" }, manage_inventory: true, allow_backorder: false, prices: [{ amount: 100, currency_code: "egp" }] }] }, admin)
         const product = data.product
         const variant = product.variants[0]
         const path = `/admin/products/${product.id}/variants/${variant.id}`
-        expect((await api.post(path, { manage_inventory: false }, manager)).status).toBe(403)
-        expect((await api.post(path, { allow_backorder: true }, manager)).status).toBe(403)
-        expect((await api.post(`/admin/products/${product.id}`, { variants: [{ id: variant.id, allow_backorder: true }] }, manager)).status).toBe(403)
-        // The dashboard's edit form resends the unchanged values with every save.
-        expect((await api.post(path, { title: "Single pack", manage_inventory: true, allow_backorder: false }, manager)).status).toBe(200)
-        const stored = await getContainer().resolve(Modules.PRODUCT).retrieveProductVariant(variant.id)
+        expect((await api.post(path, { manage_inventory: false, allow_backorder: true }, manager)).status).toBe(200)
+        const products = getContainer().resolve(Modules.PRODUCT)
+        let stored = await products.retrieveProductVariant(variant.id)
+        expect(stored.manage_inventory).toBe(false)
+        expect(stored.allow_backorder).toBe(true)
+        expect((await api.post(`/admin/products/${product.id}`, { variants: [{ id: variant.id, title: "Single pack", manage_inventory: true, allow_backorder: false }] }, manager)).status).toBe(200)
+        stored = await products.retrieveProductVariant(variant.id)
         expect(stored.manage_inventory).toBe(true)
         expect(stored.allow_backorder).toBe(false)
         expect(stored.title).toBe("Single pack")
+
+        const csv = "Product Id,Product Handle,Product Title,Product Status,Variant Id,Variant Title,Variant Manage Inventory,Variant Allow Backorder,Variant Option 1 Name,Variant Option 1 Value\n"
+          + `${product.id},${product.handle},Stock policy via CSV,published,${variant.id},Single pack,false,true,Size,Single\n`
+        const sdk = new Medusa({ baseUrl: api.defaults.baseURL! })
+        const started = await sdk.admin.product.createImport({ file: new File([csv], "existing-product.csv", { type: "text/csv" }) }, undefined, manager.headers)
+        await sdk.admin.product.confirmImport(started.transaction_id, undefined, manager.headers)
+        let updated = await products.retrieveProduct(product.id)
+        for (let attempt = 0; attempt < 50; attempt++) {
+          stored = await products.retrieveProductVariant(variant.id)
+          updated = await products.retrieveProduct(product.id)
+          if (!stored.manage_inventory && stored.allow_backorder && updated.title === "Stock policy via CSV") break
+          await new Promise(resolve => setTimeout(resolve, 100))
+        }
+        expect(stored.manage_inventory).toBe(false)
+        expect(stored.allow_backorder).toBe(true)
+        expect(updated.title).toBe("Stock policy via CSV")
       })
 
       it("lets a manager see, update and cancel orders", async () => {
@@ -173,7 +247,50 @@ medusaIntegrationTestRunner({
         expect((await api.post("/admin/brands", { name: "Optimum", slug: "optimum" }, manager)).status).toBe(201)
       })
 
-      it("lets a manager see stock and store data but not change them", async () => {
+      it("lets staff upload, replace and remove a brand logo, stored as a file and checked on the server", async () => {
+        const pixel = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII="
+        const { data: { brand } } = await api.post("/admin/brands", { name: "Logo Brand", slug: "logo-brand" }, admin)
+        const served = async (url: string) => (await api.get(new URL(url).pathname, { validateStatus: () => true })).status
+        // The test storage is Medusa's local provider: public files live in static/<file id>.
+        const stored = (fileId: string) => existsSync(join(process.cwd(), "static", fileId))
+
+        const first = await api.post(`/admin/brands/${brand.id}/logo`, { content: pixel }, manager)
+        expect(first.status).toBe(200)
+        expect(first.data.brand.logo).toMatch(/brand-logo-logo-brand.*\.png$/)
+        expect(await served(first.data.brand.logo)).toBe(200)
+        expect(stored(first.data.brand.logo_file_id)).toBe(true)
+
+        // Replacing deletes the old file once the brand points to the new one.
+        const second = await api.post(`/admin/brands/${brand.id}/logo`, { content: pixel }, admin)
+        expect(second.status).toBe(200)
+        expect(second.data.brand.logo).not.toBe(first.data.brand.logo)
+        expect(await served(first.data.brand.logo)).toBe(404)
+        expect(stored(first.data.brand.logo_file_id)).toBe(false)
+
+        const svg = Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>').toString("base64")
+        const big = Buffer.concat([Buffer.from(pixel, "base64"), Buffer.alloc(1024 * 1024)]).toString("base64")
+        expect((await api.post(`/admin/brands/${brand.id}/logo`, { content: svg }, admin)).data.message).toContain("PNG, JPG or WebP")
+        expect((await api.post(`/admin/brands/${brand.id}/logo`, { content: big }, admin)).data.message).toContain("1 MB")
+        expect((await api.post(`/admin/brands/${brand.id}/logo`, { content: pixel }, nobody)).status).toBe(403)
+        expect((await api.post("/admin/brands/brand_missing/logo", { content: pixel }, admin)).status).toBe(404)
+        // The address can no longer be typed in.
+        expect((await api.put(`/admin/brands/${brand.id}`, { logo: "https://evil.test/x.png" }, admin)).status).toBe(400)
+
+        const removed = await api.delete(`/admin/brands/${brand.id}/logo`, admin)
+        expect([removed.status, removed.data.brand.logo, removed.data.brand.logo_file_id]).toEqual([200, null, null])
+        expect(await served(second.data.brand.logo)).toBe(404)
+        expect(stored(second.data.brand.logo_file_id)).toBe(false)
+
+        // Deleting the brand deletes its logo file too; nothing points to it any more.
+        const third = await api.post(`/admin/brands/${brand.id}/logo`, { content: pixel }, admin)
+        expect(await served(third.data.brand.logo)).toBe(200)
+        expect((await api.delete(`/admin/brands/${brand.id}`, admin)).status).toBe(200)
+        expect(await served(third.data.brand.logo)).toBe(404)
+        expect(stored(third.data.brand.logo_file_id)).toBe(false)
+        expect((await api.delete("/admin/brands/brand_missing", admin)).status).toBe(404)
+      })
+
+      it("lets a manager see store data but not change it", async () => {
         for (const path of ["/admin/inventory-items", "/admin/stores", "/admin/regions", "/admin/sales-channels", "/admin/stock-locations"]) {
           expect({ path, status: (await api.get(path, manager)).status }).toEqual({ path, status: 200 })
         }
@@ -181,7 +298,6 @@ medusaIntegrationTestRunner({
         expect((await api.post(`/admin/stores/${data.stores[0].id}`, { name: "Renamed" }, manager)).status).toBe(403)
         expect((await api.post("/admin/regions", { name: "Elsewhere", currency_code: "usd" }, manager)).status).toBe(403)
         expect((await api.post("/admin/stock-locations", { name: "Warehouse" }, manager)).status).toBe(403)
-        expect((await api.post("/admin/inventory-items", { sku: "NEW-SKU" }, manager)).status).toBe(403)
         expect((await api.post("/admin/tax-regions", { country_code: "eg" }, manager)).status).toBe(403)
       })
 

@@ -34,7 +34,7 @@ export type CustomerContextValue = {
   ) => Promise<{ ok: true; customer: Customer } | { ok: false; message: string }>; // Alias
   register: (
     credentials: RegisterCredentials,
-  ) => Promise<{ ok: true; customer: Customer } | { ok: false; message: string }>;
+  ) => Promise<{ ok: true; customer: Customer } | { ok: false; message: string; emailTaken?: boolean }>;
   logout: () => Promise<void>;
   signOut: () => Promise<void>; // Alias
   refreshCustomer: () => Promise<void>;
@@ -62,6 +62,7 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
 
   // Initial load + listen for auth change events across the application
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- loads the signed-in customer on mount
     refreshCustomer();
 
     const handleAuthChange = () => {

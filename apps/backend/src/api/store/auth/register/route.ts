@@ -1,4 +1,5 @@
 import { registrationSchema } from "../../../validators";
+import { bindSecuritySession, CREDENTIAL_CLAIM } from "../../../../lib/security-session";
 import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http";
 import {
   Modules,
@@ -28,17 +29,15 @@ async function registerCustomer(req: MedusaRequest, res: MedusaResponse) {
   // has_account=false customer with the same email; Medusa allows one guest and
   // one registered record per email, so only a registered account blocks this.
   // Guest orders are not linked to the new account: the email is unverified.
+  // Saying the email is taken tells anyone it has an account; Seif chose that
+  // for shoppers (2026-10-25), as large shops do. Sign-in stays vague.
   const customerService = req.scope.resolve(Modules.CUSTOMER);
   const existingCustomers = await customerService.listCustomers({
     email: normalizedEmail,
     has_account: true,
   });
 
-  if (existingCustomers && existingCustomers.length > 0) {
-    return res.status(400).json({
-      message: "Unable to register with these details. Try signing in or contact support.",
-    });
-  }
+  if (existingCustomers && existingCustomers.length > 0) return emailTaken(res)
 
   // 2. Register identity in the Auth Module
   const authService = req.scope.resolve(Modules.AUTH);
@@ -52,6 +51,9 @@ async function registerCustomer(req: MedusaRequest, res: MedusaResponse) {
 
   const authResponse = await authService.register("emailpass", authInput);
 
+  // A login with this email exists without a customer account (for example a
+  // staff member): the email is taken all the same.
+  if (!authResponse.success && /exists/i.test(authResponse.error ?? "")) return emailTaken(res)
   if (!authResponse.success || !authResponse.authIdentity) {
     return res.status(400).json({
       message: "Unable to register with these details. Try signing in or contact support.",
@@ -98,7 +100,7 @@ async function registerCustomer(req: MedusaRequest, res: MedusaResponse) {
       }
     );
 
-    return res.status(201).json({ token, customer });
+    return res.status(201).json({ token: await bindSecuritySession(req.scope, token, undefined, authIdentity.app_metadata?.[CREDENTIAL_CLAIM] as string), customer });
   } catch {
     // Explicit compensation step: if customer creation fails, clean up the auth identity
     // so we don't leave an orphaned authentication identity that blocks future registrations.
@@ -114,4 +116,8 @@ async function registerCustomer(req: MedusaRequest, res: MedusaResponse) {
 
     return res.status(500).json({ message: "Registration could not be completed." });
   }
+}
+
+function emailTaken(res: MedusaResponse) {
+  return res.status(409).json({ code: "email_taken", message: "This email already has an account." })
 }

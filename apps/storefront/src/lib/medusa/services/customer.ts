@@ -77,7 +77,7 @@ export async function loginCustomer(
  */
 export async function registerCustomer(
   credentials: RegisterCredentials,
-): Promise<{ ok: true; customer: Customer } | { ok: false; message: string }> {
+): Promise<{ ok: true; customer: Customer } | { ok: false; message: string; emailTaken?: boolean }> {
   try {
     const res = await fetch("/api/auth/register", {
       method: "POST",
@@ -99,6 +99,7 @@ export async function registerCustomer(
         ok: false,
         message:
           data.message || "Registration failed. Please try again.",
+        emailTaken: data.code === "email_taken",
       };
     }
 
@@ -168,6 +169,8 @@ export function resetPassword(token: string, password: string): Promise<Password
 }
 
 /** Changes the signed-in customer's password after checking the current one. */
-export function changePassword(currentPassword: string, newPassword: string): Promise<PasswordResult> {
-  return postPasswordForm("/api/auth/password", { currentPassword, newPassword }, "Unable to change the password right now. Please try again.");
+export async function changePassword(currentPassword: string, newPassword: string): Promise<PasswordResult> {
+  const result = await postPasswordForm("/api/auth/password", { currentPassword, newPassword }, "Unable to change the password right now. Please try again.");
+  if (result.ok && typeof window !== "undefined") window.dispatchEvent(new Event("vi2-auth-change"));
+  return result;
 }

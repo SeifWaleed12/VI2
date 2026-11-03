@@ -1,8 +1,10 @@
-import { createElement, useState } from "react"
+import { createElement } from "react"
 import { renderToStaticMarkup } from "react-dom/server"
 import HomeBestSellers from "../HomeBestSellers"
 import TrendingNow from "../TrendingNow"
 import HomeHeroSlider from "../HomeHeroSlider"
+import HomeDiscovery from "../HomeDiscovery"
+jest.mock("../HomeDiscovery.module.css", () => ({}))
 import { message } from "@/lib/i18n"
 import type { Product } from "@/types/product"
 let mockHeroLocale: "en" | "ar" = "en"
@@ -14,6 +16,7 @@ jest.mock("@/context/LanguageContext", () => ({ useLanguage: () => ({ language: 
 jest.mock("../BestSellerCard", () => ({ __esModule: true, default: ({ product, rank }: { product: Product; rank?: number }) => createElement("div", { "data-rank": rank }, product.name) }))
 jest.mock("../HomeBestSellers.module.css", () => ({}))
 jest.mock("../TrendingNow.module.css", () => ({}))
+jest.mock("../CatalogImage.module.css", () => ({}))
 jest.mock("../HomeHeroSlider.module.css", () => ({}))
 const product = { id: "p1", slug: "protein", name: "Protein", shortName: "Protein", category: "Protein", description: "", image: "/protein.png" } as Product
 
@@ -23,13 +26,13 @@ it("links the collection action to the shop without claiming sales rank", () => 
   expect(html).toContain("SHOP PRODUCTS")
   expect(html).not.toContain("BEST SELLERS")
   expect(html).not.toContain("data-rank")
-  expect(html).toContain('aria-pressed="true"')
+  expect(html).not.toContain('aria-pressed=')
 })
 
 it("renders each discovery product once for keyboard browsing with its visible name", () => {
   const html = renderToStaticMarkup(createElement(() => TrendingNow({ products: [product] })))
   expect(html.match(/<a(?![^>]*tabindex="-1")[^>]*href="\/en\/products\/protein"/g)).toHaveLength(1)
-  expect(html).toContain("EXPLORE PRODUCTS")
+  expect(html).toContain("TRENDING PRODUCTS")
   expect(html).toContain(">Protein</span>")
 })
 
@@ -41,12 +44,11 @@ it("keeps four manual slide controls and one active slide", () => {
 
 jest.mock("react", () => ({ ...jest.requireActual("react"), useState: jest.fn((...args: unknown[]) => jest.requireActual("react").useState(...args)) }))
 
-it("explains an empty selected category and offers a reset", () => {
-  jest.mocked(useState).mockReturnValueOnce(["Wellness", jest.fn()] as never)
-  const html = renderToStaticMarkup(createElement(HomeBestSellers, { initialProducts: [product] }))
-  expect(html).toContain("No products in this category yet.")
-  expect(html).toContain("SHOW ALL CATEGORIES")
-  expect(html).toContain('role="status"')
+it("shows supplied Arabic products without an English keyword taxonomy", () => {
+  const html = renderToStaticMarkup(createElement(HomeBestSellers, { initialProducts: [{ ...product, name: "فيتامين", category: "", description: "" }] }))
+  expect(html).toContain("فيتامين")
+  expect(html).not.toContain("No products in this category yet.")
+  expect(html).not.toContain("VITAMINS &amp; MINERALS")
 })
 it.each(["en", "ar"] as const)("renders the whole localized hero statement before hydration in %s", (locale) => {
   mockHeroLocale = locale
@@ -56,3 +58,13 @@ it.each(["en", "ar"] as const)("renders the whole localized hero statement befor
   expect(html).toContain("data-preserve-language")
   expect(html).not.toContain("<br")
 })
+
+it.each(["en", "ar"] as const)("takes the highlighted health goal to the shop filtered by it in %s", locale => {
+  mockHeroLocale = locale;
+  const html = renderToStaticMarkup(createElement(HomeDiscovery));
+  expect(html).toContain('href="/' + locale + '/shop?goal=muscle-recovery"');
+  expect(html).toContain(message(locale, "home.shopGoal").replace("{goal}", message(locale, "goal.muscle-recovery")).replace("&", "&amp;"));
+  // "View all" stays unfiltered.
+  expect(html).toContain('href="/' + locale + '/shop"');
+  expect(html).not.toContain("SHOP NOW");
+});

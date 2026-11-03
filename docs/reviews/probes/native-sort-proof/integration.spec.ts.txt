@@ -1,0 +1,113 @@
+import { join } from "node:path"
+import { medusaIntegrationTestRunner } from "@medusajs/test-utils"
+import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
+import { createInventoryLevelsWorkflow, createPriceListsWorkflow, createProductsWorkflow, createProductCategoriesWorkflow, createSalesChannelsWorkflow, updatePriceListsWorkflow } from "@medusajs/medusa/core-flows"
+import { setupEgyptStore } from "../../src/scripts/setup-egypt-store"
+import reindex from "../../src/jobs/reindex-product-search"
+import { invalidateStoreCache } from "../../src/lib/store-cache"
+
+jest.setTimeout(360_000)
+
+// Temporary capability probe; run only against this disposable database.
+// The proof_* fields are a temporary extension of the existing native product index.
+medusaIntegrationTestRunner({
+  dbName: "vi2-native-sort-proof-20261023",
+  cwd: join(__dirname, "../.."),
+  testSuite: ({ api, getContainer }) => {
+    it("globally sorts native prices/stock before paging, handles >100 deals, and exposes the missing refresh contract", async () => {
+      const container = getContainer()
+      await setupEgyptStore(container)
+      const query = container.resolve(ContainerRegistrationKeys.QUERY)
+      const search = container.resolve(Modules.SEARCH)
+      const { data: [store] } = await query.graph({ entity: "store", fields: ["default_sales_channel_id", "default_region_id", "default_location_id"] })
+      const channelId = store.default_sales_channel_id as string
+      const regionId = store.default_region_id as string
+      const { data: [key] } = await query.graph({ entity: "api_key", fields: ["token"], filters: { type: "publishable" } })
+      const options = { headers: { "x-publishable-api-key": key.token as string }, validateStatus: () => true }
+      const { result: [category] } = await createProductCategoriesWorkflow(container).run({ input: { product_categories: [{ name: "Proof scope", handle: "proof-scope", is_active: true }] } })
+      const { result: [otherChannel] } = await createSalesChannelsWorkflow(container).run({ input: { salesChannelsData: [{ name: "Hidden proof" }] } })
+      const product = (title: string, amount: number, extra: object = {}) => ({
+        title, status: "published" as const, sales_channels: [{ id: channelId }],
+        options: [{ title: "Size", values: ["1"] }],
+        variants: [{ title: "1", options: { Size: "1" }, manage_inventory: false, prices: [{ amount, currency_code: "egp" }] }],
+        ...extra,
+      })
+      const { result: products } = await createProductsWorkflow(container).run({ input: { products: [
+        ...Array.from({ length: 107 }, (_, i) => product("Native deal " + i, 500 + i, i % 2 ? {} : { category_ids: [category.id] })),
+        product("Stock-sensitive", 10, { variants: [{ title: "1", options: { Size: "1" }, manage_inventory: true, prices: [{ amount: 10, currency_code: "egp" }] }] }),
+        product("Backorder", 11, { variants: [{ title: "1", options: { Size: "1" }, manage_inventory: true, allow_backorder: true, prices: [{ amount: 11, currency_code: "egp" }] }] }),
+        product("Unpriced", 0, { variants: [{ title: "1", options: { Size: "1" }, manage_inventory: false, prices: [] }] }),
+        product("Bulk-only sale", 500), product("Private sale", 500), product("Override", 500),
+        product("Hidden product", 1, { sales_channels: [{ id: otherChannel.id }] }),
+        product("Draft product", 1, { status: "draft" }),
+      ] } })
+      const byTitle = new Map(products.map(p => [p.title, p]))
+      const managed = byTitle.get("Stock-sensitive")!
+      const { data: [managedVariant] } = await query.graph({ entity: "product_variant", fields: ["id", "inventory_items.inventory_item_id"], filters: { id: managed.variants[0].id } })
+      const inventoryItemId = managedVariant.inventory_items[0].inventory_item_id as string
+      await createInventoryLevelsWorkflow(container).run({ input: { inventory_levels: [{ inventory_item_id: inventoryItemId, location_id: store.default_location_id as string, stocked_quantity: 1 }] } })
+      const { result: priceLists } = await createPriceListsWorkflow(container).run({ input: { price_lists_data: [
+        { title: "Public proof sale", description: "Probe only", status: "active", prices: products.slice(0,107).map((p,i) => ({ variant_id: p.variants[0].id, currency_code: "egp", amount: 100 + i })) },
+        { title: "Bulk proof", description: "Probe only", status: "active", prices: [{ variant_id: byTitle.get("Bulk-only sale")!.variants[0].id, currency_code: "egp", amount: 1, min_quantity: 5 }] },
+        { title: "Private proof", description: "Probe only", status: "active", rules: { "customer.groups.id": ["cusgroup_proof"] }, prices: [{ variant_id: byTitle.get("Private sale")!.variants[0].id, currency_code: "egp", amount: 1 }] },
+        { title: "Override proof", description: "Probe only", status: "active", type: "override", prices: [{ variant_id: byTitle.get("Override")!.variants[0].id, currency_code: "egp", amount: 300 }] },
+      ] as never } })
+      const find = async (order: Record<string, "ASC" | "DESC">, skip = 0, filters: Record<string, unknown> = {}, take = 24) =>
+        query.search({ entity: "product", fields: ["id", "proof_price", "proof_priced", "proof_available", "proof_deal", "proof_deal_price"], filters: { sales_channel_ids: [channelId], proof_region_id: regionId, proof_channel_id: channelId, ...filters }, pagination: { skip, take, order }, search_options: { count: "exact" } })
+      const waitFor = async (check: () => Promise<boolean>) => {
+        for (let n=0;n<80;n++) { if(await check()) return; await new Promise(r=>setTimeout(r,250)) }
+        throw new Error("Native index did not reach expected state")
+      }
+      console.log("PROOF_NATIVE_API", JSON.stringify((await api.get("/store/products?region_id="+regionId+"&id="+products[0].id+"&fields=id,variants.calculated_price",options)).data))
+      await reindex(container)
+      await waitFor(async()=> (await find({ id:"ASC" })).search_result.metadata.count === 113)
+      const asc: Record<string, unknown>[] = []
+      for(let skip=0;skip<113;skip+=24) {
+        const page=await find({ proof_priced:"DESC", proof_price:"ASC", id:"ASC" },skip)
+        expect(page.search_result.metadata.count).toBe(113)
+        asc.push(...page.data)
+      }
+      expect(new Set(asc.map(p=>p.id)).size).toBe(113)
+      console.log("PROOF_ORDER", JSON.stringify(asc.slice(-8).map(row=>({...row,title:products.find(p=>p.id===row.id)?.title}))))
+      expect(asc.at(-1)?.id).toBe(byTitle.get("Unpriced")!.id)
+      const amounts=asc.filter(p=>p.proof_priced===1).map(p=>p.proof_price as number)
+      expect(amounts).toEqual([...amounts].sort((a,b)=>a-b))
+      const desc=await find({ proof_priced:"DESC", proof_price:"DESC", id:"ASC" })
+      expect(desc.data.map(p=>p.proof_price)).toEqual([...desc.data.map(p=>p.proof_price as number)].sort((a,b)=>b-a))
+      const deals=await find({ proof_deal_price:"ASC", id:"ASC" },96,{ proof_deal:1 })
+      expect(deals.search_result.metadata.count).toBe(107)
+      expect(deals.data).toHaveLength(11)
+      expect((await find({id:"ASC"},0,{ category_ids:[category.id] })).search_result.metadata.count).toBe(54)
+      const single=async(id:string)=>(await find({id:"ASC"},0,{id},1)).data[0]
+      for(const title of ["Bulk-only sale","Private sale"]) expect((await single(byTitle.get(title)!.id)).proof_price).toBe(500)
+      expect((await single(byTitle.get("Override")!.id)).proof_deal).toBe(0)
+      const native = await api.get("/store/products?region_id="+regionId+"&id="+managed.id+"&fields=id,variants.id,variants.calculated_price,variants.inventory_quantity",options)
+      expect(native.status).toBe(200)
+      expect(native.data.products[0].variants[0].calculated_price.calculated_amount).toBe((await single(managed.id)).proof_price)
+      expect(native.data.products[0].variants[0].inventory_quantity).toBe(1)
+      expect((await single(managed.id)).proof_available).toBe(1)
+      const reservation=await container.resolve(Modules.INVENTORY).createReservationItems({ inventory_item_id: inventoryItemId, location_id: store.default_location_id as string, quantity:1 })
+      await invalidateStoreCache(container)
+      const reserved=await api.get("/store/products?region_id="+regionId+"&id="+managed.id+"&fields=id,variants.inventory_quantity",options)
+      expect(reserved.data.products[0].variants[0].inventory_quantity).toBe(0)
+      // The current production index listens only to product events: reservation changes alone do not refresh it.
+      expect((await single(managed.id)).proof_available).toBe(1)
+      await search.ingest({ name:"product.updated", data:{id:managed.id} })
+      expect((await single(managed.id)).proof_available).toBe(0)
+      expect((await single(byTitle.get("Backorder")!.id)).proof_available).toBe(1)
+      const stockPage=await find({proof_available:"DESC",id:"ASC"},96)
+      expect(new Set(stockPage.data.slice(-2).map(p=>p.id))).toEqual(new Set([managed.id, byTitle.get("Unpriced")!.id]))
+      await updatePriceListsWorkflow(container).run({ input:{ price_lists_data:[{ id:priceLists[0].id,status:"draft" as never }] } })
+      const changed=products[0]
+      await invalidateStoreCache(container)
+      const now=await api.get("/store/products?region_id="+regionId+"&id="+changed.id+"&fields=id,variants.calculated_price",options)
+      expect(now.data.products[0].variants[0].calculated_price.calculated_amount).toBe(500)
+      expect((await single(changed.id)).proof_price).toBe(100)
+      await search.ingest({name:"product.updated",data:{id:changed.id}})
+      expect((await single(changed.id)).proof_price).toBe(500)
+      expect((await single(changed.id)).proof_deal).toBe(0)
+      await container.resolve(Modules.INVENTORY).deleteReservationItems(reservation.id)
+      console.log("NATIVE_SORT_PROOF:113 visible;107 deals;24/page;native price/stock;reservation and price-list refresh gap reproduced;explicit ingestion repairs")
+    })
+  },
+})

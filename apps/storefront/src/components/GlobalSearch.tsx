@@ -14,20 +14,15 @@ import {
 import {
   FormEvent,
   useEffect,
-  useMemo,
   useRef,
   useState,
 } from "react";
 
-
 import type { Product } from "@/types/product";
-import { getProducts } from "@/lib/medusa";
-import {
-  getProductHealthGoals,
-} from "@/lib/catalogMeta";
-import { getArabicProductSearchText } from "@/lib/arabicLocalization";
+import { listCatalog } from "@/lib/medusa/services/catalog";
 
 import styles from "./GlobalSearch.module.css";
+import CatalogImage from "@/components/CatalogImage";
 
 type Props = {
   open: boolean;
@@ -52,6 +47,11 @@ const arabicPopularSearches: Record<string, string> = {
   "Omega-3": "أوميجا-3",
   Ashwagandha: "أشواجاندا",
 };
+
+// Searching starts at two letters, once typing pauses.
+export const SEARCH_MIN_CHARS = 2;
+const SEARCH_DELAY_MS = 250;
+const SUGGESTION_COUNT = 6;
 
 function formatPrice(
   value: number,
@@ -78,26 +78,32 @@ export default function GlobalSearch({
   const [recent, setRecent] =
     useState<string[]>([]);
 
-  const [catalogError, setCatalogError] = useState(false);
-  const [medusaProducts, setMedusaProducts] = useState<Product[]>([]);
+  // The answer for one search term; an older answer never replaces a newer term's.
+  const [found, setFound] = useState<{ key: string; products: Product[]; failed: boolean }>({ key: "", products: [], failed: false });
+  const term = query.trim();
+  const searchKey = `${language}:${term}`;
+  const searchable = open && term.length >= SEARCH_MIN_CHARS;
 
   useEffect(() => {
+    if (!searchable) return;
     let active = true;
-    getProducts({locale: language})
-      .then((res) => {
-        if (active && res.length > 0) {
-          setMedusaProducts(res);
-        }
-      })
-      .catch(() => { if (active) setCatalogError(true); });
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => {
+      listCatalog({ q: term, locale: language, limit: SUGGESTION_COUNT, sort: "default", signal: controller.signal })
+        .then((page) => { if (active) setFound({ key: searchKey, products: page.products, failed: false }); })
+        .catch(() => { if (active) setFound({ key: searchKey, products: [], failed: true }); });
+    }, SEARCH_DELAY_MS);
     return () => {
       active = false;
+      controller.abort();
+      window.clearTimeout(timer);
     };
-  }, [language]);
+  }, [searchable, term, language, searchKey]);
 
-  const catalogProducts = useMemo(() => {
-    return medusaProducts;
-  }, [medusaProducts]);
+  const answered = searchable && found.key === searchKey;
+  const searching = searchable && !answered;
+  const searchFailed = answered && found.failed;
+  const suggestions = answered ? found.products : [];
 
   useEffect(() => {
     if (!open) {
@@ -117,6 +123,7 @@ export default function GlobalSearch({
         if (
           Array.isArray(parsed)
         ) {
+          // eslint-disable-next-line react-hooks/set-state-in-effect -- browser storage exists only after hydration
           setRecent(
             parsed
               .filter(
@@ -146,103 +153,6 @@ export default function GlobalSearch({
     };
   }, [open]);
 
-  const suggestions =
-    useMemo(() => {
-      const normalized =
-        query
-          .trim()
-          .toLowerCase();
-
-      if (!normalized) {
-        return catalogProducts
-          .filter(
-            (product) =>
-              product.badge ===
-                "Best Seller" ||
-              (product.reviewCount > 0 &&
-                product.rating >= 4.8),
-          )
-          .slice(0, 6);
-      }
-
-      return catalogProducts
-        .map((product) => {
-          const searchable = [
-            product.name,
-            product.shortName,
-            product.brand,
-            product.category,
-            product.flavor ?? "",
-            product.size ?? "",
-            ...getProductHealthGoals(
-              product,
-            ),
-            getArabicProductSearchText(product),
-          ]
-            .join(" ")
-            .toLowerCase();
-
-          let score = 0;
-
-          if (
-            product.shortName
-              .toLowerCase()
-              .startsWith(
-                normalized,
-              )
-          ) {
-            score += 6;
-          }
-
-          if (
-            product.name
-              .toLowerCase()
-              .includes(
-                normalized,
-              )
-          ) {
-            score += 4;
-          }
-
-          if (
-            product.brand
-              .toLowerCase()
-              .includes(
-                normalized,
-              )
-          ) {
-            score += 3;
-          }
-
-          if (
-            searchable.includes(
-              normalized,
-            )
-          ) {
-            score += 2;
-          }
-
-          return {
-            product,
-            score,
-          };
-        })
-        .filter(
-          (entry) =>
-            entry.score > 0,
-        )
-        .sort(
-          (a, b) =>
-            b.score -
-            a.score,
-        )
-        .slice(0, 8)
-        .map(
-          (entry) =>
-            entry.product,
-        );
-    }, [catalogProducts, query]);
-
   if (!open) {
     return null;
   }
@@ -250,7 +160,7 @@ export default function GlobalSearch({
   const copy = {
     search: msg("nav.search"), placeholder: msg("search.placeholder"),
     recent: msg("search.recent"), popular: msg("search.popular"),
-    suggestions: msg(query.trim() ? "search.suggestions" : "search.picks"),
+    suggestions: msg("search.suggestions"),
     viewAll: msg("search.viewAll"), clear: msg("search.clear"), empty: msg("search.empty"),
   };
 
@@ -319,7 +229,6 @@ export default function GlobalSearch({
       role="presentation"
       onMouseDown={onClose}
     >
-      {catalogError && <p role="alert">{msg("search.error")}</p>}
       <section
         className={styles.panel}
         role="dialog"
@@ -487,6 +396,7 @@ export default function GlobalSearch({
           </div>
         </div>
 
+        {searchable && <>
         <div className={styles.resultsHead}>
           <span>
             {copy.suggestions}
@@ -510,7 +420,11 @@ export default function GlobalSearch({
           )}
         </div>
 
-        {suggestions.length > 0 ? (
+        {searching ? (
+          <p className={styles.empty} role="status">{msg("search.loading")}</p>
+        ) : searchFailed ? (
+          <p className={styles.empty} role="alert">{msg("search.error")}</p>
+        ) : suggestions.length > 0 ? (
           <div className={styles.results}>
             {suggestions.map(
               (product) => (
@@ -532,16 +446,16 @@ export default function GlobalSearch({
                       styles.image
                     }
                   >
-                    <Image
-                      src={
-                        product.image
-                      }
-                      alt={
-                        product.name
-                      }
-                      width={170}
-                      height={190}
-                    />
+                    {product.image ? (
+                      <Image
+                        src={product.image}
+                        alt={product.name}
+                        width={170}
+                        height={190}
+                      />
+                    ) : (
+                      <CatalogImage alt={product.name} />
+                    )}
                   </div>
 
                   <div
@@ -596,6 +510,7 @@ export default function GlobalSearch({
             <p>{copy.empty}</p>
           </div>
         )}
+        </>}
       </section>
     </div>
   );

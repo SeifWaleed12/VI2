@@ -32,7 +32,7 @@ let fetchMock: jest.SpyInstance;
 beforeEach(() => { fetchMock = jest.spyOn(global, "fetch"); });
 afterEach(() => { jest.restoreAllMocks(); });
 
-test.each(["javascript:alert(1)", "https://evil.example/", "//evil.example/", "/\\evil.example/", "/\nevil.example/", " /account", null])("rejects unsafe login redirect %s", (url) => {
+test.each(["javascript:alert(1)", "https://evil.example/", "//evil.example/", "/\\evil.example/", "/\nevil.example/", " /account", "/.//evil.example", "/a/..//evil.example", "/%2e//evil.example", null])("rejects unsafe login redirect %s", (url) => {
   expect(safeRedirect(url)).toBe("/account");
 });
 test("preserves internal checkout redirects", () => {
@@ -151,7 +151,15 @@ test("registration timeout advises sign-in instead of automatic resubmission", a
   expect(fetchMock).toHaveBeenCalledTimes(1);
 });
 test("logout expires current and legacy cookies", async () => {
-  const response = await logout(post());
+  fetchMock.mockResolvedValue(json({ success: true }));
+  const response = await logout(post({}, { cookie: true }));
   expect(response.status).toBe(200);
   for (const key of ["vi2_auth_token", "vi2_access_token", "vi2_refresh_token"]) expect(response.cookies.get(key)?.value).toBe("");
+});
+
+test("preserves the cookie when server-side logout cannot be persisted", async () => {
+  fetchMock.mockRejectedValue(new Error("backend unavailable"));
+  const response = await logout(post({}, { cookie: true }));
+  expect(response.status).toBe(503);
+  expect(response.cookies.get("vi2_auth_token")).toBeUndefined();
 });

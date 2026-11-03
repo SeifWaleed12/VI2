@@ -25,6 +25,7 @@ import {
   useCallback,
   useState,
   useRef,
+  type MouseEvent,
 } from "react";
 
 import GlobalSearch from "@/components/GlobalSearch";
@@ -39,6 +40,9 @@ import { useDrawerFocus } from "@/hooks/use-drawer-focus";
 import { type CategoryDirectory, categoryHref, flattenCategories } from "@/lib/category-tree";
 import { getCategoryTree } from "@/lib/medusa/services/categories";
 import CategoryStatus from "@/components/CategoryStatus";
+import { getBrands } from "@/lib/medusa/services/brands";
+import { HEALTH_GOALS, goalLabelKey } from "@/lib/health-goals";
+import type { Brand } from "@/types/brand";
 
 import styles from "./Navbar.module.css";
 
@@ -52,6 +56,9 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
   const headerRef = useRef<HTMLDivElement>(null);
   const drawerRef = useRef<HTMLElement>(null);
   const focusMenuOnOpen = useRef(false);
+  const accountWrapRef = useRef<HTMLDivElement>(null);
+  const accountTriggerRef = useRef<HTMLButtonElement>(null);
+  const accountOpenedByHover = useRef(false);
   const searchTriggerRef = useRef<HTMLButtonElement>(null);
   const mobilePanelBackRef = useRef<HTMLButtonElement>(null);
   const mobilePanelOpenerRef = useRef<HTMLButtonElement | null>(null);
@@ -61,7 +68,11 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
     catch { setDirectory({ roots: [], error: true }); }
     finally { setLoadingCategories(false); }
   }
-  useEffect(() => { setDirectory(initialDirectory); }, [initialDirectory]);
+  const [shownDirectory, setShownDirectory] = useState(initialDirectory);
+  if (shownDirectory !== initialDirectory) {
+    setShownDirectory(initialDirectory);
+    setDirectory(initialDirectory);
+  }
   useEffect(() => {
     const header = headerRef.current;
     if (!header) return;
@@ -109,6 +120,18 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
   const [accountOpen, setAccountOpen] =
     useState(false);
 
+  useEffect(() => {
+    if (!accountOpen) return;
+    function dismissOutside(event: PointerEvent) {
+      if (event.target instanceof Node && !accountWrapRef.current?.contains(event.target)) {
+        accountOpenedByHover.current = false;
+        setAccountOpen(false);
+      }
+    }
+    document.addEventListener("pointerdown", dismissOutside);
+    return () => document.removeEventListener("pointerdown", dismissOutside);
+  }, [accountOpen]);
+
   const { customer, isAuthenticated, isLoading, signOut } = useAuth();
   const displayName = customer
     ? customer.firstName?.trim() || customer.email?.split("@")[0] || ""
@@ -116,6 +139,12 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
 
   const [mobilePanel, setMobilePanel] =
     useState<MobileCatalogKey | null>(null);
+  // Loaded when the Brands panel is first opened.
+  const [brands, setBrands] = useState<Brand[] | "loading" | "error" | null>(null);
+  const loadBrands = () => {
+    setBrands("loading");
+    getBrands().then(setBrands, () => setBrands("error"));
+  };
 
   const closeMenu = useCallback(() => {
     setMenuOpen(false);
@@ -151,14 +180,18 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
     return () => { document.body.style.overflow = previous; };
   }, [overlayOpen]);
 
-  useEffect(() => {
-    if (!isCartOpen) return;
-    setMenuOpen(false);
-    setMobilePanel(null);
-    setSearchOpen(false);
-    setMegaOpen(null);
-    setAccountOpen(false);
-  }, [isCartOpen]);
+  // Opening the cart closes every other panel (checked during render, not in an effect).
+  const [cartWasOpen, setCartWasOpen] = useState(isCartOpen);
+  if (isCartOpen !== cartWasOpen) {
+    setCartWasOpen(isCartOpen);
+    if (isCartOpen) {
+      setMenuOpen(false);
+      setMobilePanel(null);
+      setSearchOpen(false);
+      setMegaOpen(null);
+      setAccountOpen(false);
+    }
+  }
 
 
   useEffect(() => {
@@ -201,6 +234,10 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
       if (document.getElementById("desktop-category-menu")?.contains(document.activeElement)) {
         headerRef.current?.querySelector<HTMLButtonElement>('[aria-controls="desktop-category-menu"][aria-expanded="true"]')?.focus();
       }
+      if (accountWrapRef.current?.contains(document.activeElement)) {
+        accountTriggerRef.current?.focus({ preventScroll: true });
+      }
+      accountOpenedByHover.current = false;
       setMenuOpen(false);
       setSearchOpen(false);
       setMegaOpen(null);
@@ -335,43 +372,25 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
           "Cart",
       };
 
-  const healthCatalog = {
-    health: {
-      title: isArabic
-        ? "الأهداف الصحية"
-        : "Health Goals",
-      shopAllHref:
-        "/#health-goals",
-      items: isArabic
-        ? [
-            ["العافية العامة وطول العمر", "/shop?goal=Daily%20Wellness"],
-            ["المناعة والدعم الموسمي", "/shop?goal=Immune%20Support"],
-            ["الهضم والتمثيل الغذائي", "/shop?goal=Gut%20Health"],
-            ["القلب والدماغ والدورة الدموية", "/shop?goal=Heart%20Health"],
-            ["العظام والمفاصل والعضلات", "/shop?goal=Muscle%20%26%20Recovery"],
-            ["النوم والمزاج", "/shop?goal=Stress%20%26%20Sleep"],
-            ["مراحل الحياة", "/shop?goal=Daily%20Wellness"],
-            ["أنظمة الجسم والجمال", "/shop?goal=Daily%20Wellness"],
-          ]
-        : [
-            ["General Wellness & Longevity", "/shop?goal=Daily%20Wellness"],
-            ["Immune & Seasonal Support", "/shop?goal=Immune%20Support"],
-            ["Digestion & Metabolism", "/shop?goal=Gut%20Health"],
-            ["Heart, Brain & Circulation", "/shop?goal=Heart%20Health"],
-            ["Bone, Joint & Pain", "/shop?goal=Muscle%20%26%20Recovery"],
-            ["Mind, Sleep & Mood", "/shop?goal=Stress%20%26%20Sleep"],
-            ["Demographics & Stage of Life", "/shop?goal=Daily%20Wellness"],
-            ["Specific Body Systems & Aesthetics", "/shop?goal=Daily%20Wellness"],
-          ],
-    },
-  };
   const primaryMobileCategories = directory.roots.map(c => ({ key: c.id, label: c.name }));
   const selectedCategory = directory.roots.find(c => c.id === mobilePanel);
-  const activeMobilePanel = mobilePanel === "health" ? healthCatalog.health : selectedCategory ? {
+  const activeMobilePanel = selectedCategory ? {
     title: selectedCategory.name,
-    shopAllHref: categoryHref(selectedCategory.id),
-    items: flattenCategories(selectedCategory.children).map(c => [c.name, categoryHref(c.id)]),
+    shopAllHref: categoryHref(selectedCategory.id, selectedCategory.handle),
+    items: flattenCategories(selectedCategory.children).map(c => [c.name, categoryHref(c.id, c.handle)]),
+  } : mobilePanel === "health" ? {
+    title: msg("nav.health"),
+    shopAllHref: "/shop",
+    items: HEALTH_GOALS.map(goal => [msg(goalLabelKey(goal)), `/shop?goal=${goal}`]),
+  } : mobilePanel === "brands" ? {
+    title: msg("nav.brands"),
+    shopAllHref: "/brands",
+    items: Array.isArray(brands) ? brands.map(brand => [brand.name, `/shop?brand_id=${brand.id}`]) : [],
   } : null;
+  const openPanel = (key: MobileCatalogKey) => (event: MouseEvent<HTMLButtonElement>) => {
+    mobilePanelOpenerRef.current = event.currentTarget;
+    setMobilePanel(key);
+  };
 
   return (
     <>
@@ -399,30 +418,6 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
         <div className={styles.utilityStrip}>
           <div className={styles.utilityInner}>
             <div className={styles.utilityLeft}>
-              <Link href="/deals">
-                <BadgePercent
-                  size={14}
-                  strokeWidth={1.45}
-                />
-
-                <span>
-                  {t(copy.flash)}
-                </span>
-
-                <strong>{t("24H PICKS")}</strong>
-
-                <ChevronRight
-                  size={14}
-                  strokeWidth={1.5}
-                />
-              </Link>
-
-              <span
-                className={
-                  styles.utilityDivider
-                }
-              />
-
               <AnnouncementTicker />
             </div>
 
@@ -525,24 +520,30 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
 
             <div
               className={styles.accountWrap}
-              onMouseEnter={() => {
+              ref={accountWrapRef}
+              onPointerEnter={(event) => {
+                if (event.pointerType !== "mouse" || accountOpen) return;
                 setMegaOpen(null);
+                accountOpenedByHover.current = true;
                 setAccountOpen(true);
               }}
-              onMouseLeave={() =>
-                setAccountOpen(false)
-              }
+              onPointerLeave={(event) => {
+                if (event.pointerType !== "mouse") return;
+                accountOpenedByHover.current = false;
+                setAccountOpen(false);
+              }}
             >
               <button
                 type="button"
                 className={styles.account}
+                ref={accountTriggerRef}
                 aria-expanded={accountOpen}
                 aria-haspopup="dialog"
-                onClick={() => {
+                onClick={(event) => {
                   setMegaOpen(null);
-                  setAccountOpen(
-                    (current) => !current,
-                  );
+                  const pinHover = event.detail > 0 && accountOpenedByHover.current;
+                  accountOpenedByHover.current = false;
+                  setAccountOpen((current) => pinHover || !current);
                 }}
               >
                 <UserRound
@@ -658,7 +659,18 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
                 {msg("nav.brands")}
               </Link>
 
-              <Link href="/#health-goals">
+              <Link
+                href="/#health-goals"
+                onMouseEnter={() =>
+                  setMegaOpen("goals")
+                }
+                onFocus={() =>
+                  setMegaOpen("goals")
+                }
+                onClick={() =>
+                  setMegaOpen(null)
+                }
+              >
                 {msg("nav.health")}
               </Link>
               <Link
@@ -794,9 +806,13 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
 
               <nav className={styles.simpleLinks} aria-label={msg("nav.shopBy")}>
 
-                <Link
-                  href="/brands"
-                  onClick={closeMenu}
+                <button
+                  type="button"
+                  className={styles.simpleMenuButton}
+                  onClick={event => {
+                    if (brands === null || brands === "error") loadBrands();
+                    openPanel("brands")(event);
+                  }}
                 >
                   <span className={styles.linkWithIcon}>
                     <Package
@@ -810,28 +826,8 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
                     size={20}
                     strokeWidth={1.5}
                   />
-                </Link>
-                <button
-                  type="button"
-                  className={styles.simpleMenuButton}
-                  onClick={event => {
-                    mobilePanelOpenerRef.current = event.currentTarget;
-                    setMobilePanel("health");
-                  }}
-                >
-                  <span className={styles.linkWithIcon}>
-                    <Sparkles
-                      size={18}
-                      strokeWidth={1.4}
-                    />
-                    {msg("nav.health")}
-                  </span>
-
-                  <ChevronRight
-                    size={20}
-                    strokeWidth={1.5}
-                  />
                 </button>
+                <button type="button" className={styles.simpleMenuButton} onClick={openPanel("health")}><span className={styles.linkWithIcon}><Sparkles size={18} strokeWidth={1.4} />{msg("nav.health")}</span><ChevronRight size={20} strokeWidth={1.5} /></button>
 
                 <Link
                   href="/deals"
@@ -845,11 +841,6 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
                     />
                     {msg("nav.deals")}
                   </span>
-
-                  <ChevronRight
-                    size={20}
-                    strokeWidth={1.5}
-                  />
                 </Link>
               </nav>
             </section>
@@ -858,8 +849,8 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
               <Link
                 href={
                   isAuthenticated
-                    ? "/account"
-                    : "/account/sign-in?next=/account"
+                    ? "/account/information"
+                    : "/account/sign-in?next=/account/information"
                 }
                 onClick={closeMenu}
               >
@@ -873,8 +864,8 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
               <Link
                 href={
                   isAuthenticated
-                    ? "/account#orders"
-                    : "/account/sign-in?next=/account"
+                    ? "/account/orders"
+                    : "/account/sign-in?next=/account/orders"
                 }
                 onClick={closeMenu}
               >
@@ -888,8 +879,8 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
               <Link
                 href={
                   isAuthenticated
-                    ? "/account#rewards"
-                    : "/account/sign-in?next=/account%23rewards"
+                    ? "/account/points"
+                    : "/account/sign-in?next=/account/points"
                 }
                 onClick={closeMenu}
               >
@@ -1035,6 +1026,15 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
                     </Link>
                   </div>
 
+                  {mobilePanel === "brands" && !Array.isArray(brands) && (
+                    <div className={styles.subMenuStatus} role="status">
+                      <p>{msg(brands === "error" ? "nav.brandsError" : "nav.brandsLoading")}</p>
+                      {brands === "error" && <button type="button" onClick={loadBrands}>{msg("catalog.retry")}</button>}
+                    </div>
+                  )}
+                  {mobilePanel === "brands" && Array.isArray(brands) && !brands.length && (
+                    <p className={styles.subMenuStatus} role="status">{msg("shop.noBrands")}</p>
+                  )}
                   <nav className={styles.subMenuList} aria-label={activeMobilePanel.title}>
                     {t(activeMobilePanel.items.map(
                       ([label, href]) => (
@@ -1065,7 +1065,6 @@ export default function Navbar({ initialDirectory = { roots: [], error: false } 
 
       <MobileBottomNav
         hidden={menuOpen}
-        onOpenSearch={openSearch}
       />
     </>
   );

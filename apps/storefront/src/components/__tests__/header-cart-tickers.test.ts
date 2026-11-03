@@ -1,3 +1,11 @@
+import * as React from "react";
+jest.mock("react", () => ({
+  ...jest.requireActual("react"),
+  __esModule: true,
+  useState: jest.fn((...args: unknown[]) => jest.requireActual("react").useState(...args)),
+  useTransition: jest.fn(() => jest.requireActual("react").useTransition()),
+}));
+
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import Navbar from "../Navbar";
@@ -8,6 +16,7 @@ import TrendingNow from "../TrendingNow";
 import { message, type Locale } from "@/lib/i18n";
 import type { Product } from "@/types/product";
 
+jest.mock("@/components/CatalogImage.module.css", () => ({}));
 jest.mock("next/navigation", () => ({
   useRouter: () => ({ refresh: jest.fn() }),
   usePathname: () => "/en",
@@ -81,12 +90,12 @@ jest.mock("../MobileBottomNav.module.css", () => ({}));
 jest.mock("../TrendingNow.module.css", () => ({}));
 jest.mock("../BrandUniverse.module.css", () => ({}));
 jest.mock("@/hooks/use-ticker-motion", () => ({
-  useTickerMotion: () => ({
+  useTickerMotion: (_count: number, respectReducedMotion = true) => ({
     ref: { current: null },
     repetitions: 2,
-    reducedMotion: mockReducedMotion,
+    reducedMotion: mockReducedMotion && respectReducedMotion,
     manualPause: mockManualPause,
-    paused: mockReducedMotion || mockManualPause,
+    paused: (mockReducedMotion && respectReducedMotion) || mockManualPause,
     browsing: mockReducedMotion,
     interactions: {},
     togglePause: jest.fn(),
@@ -183,15 +192,17 @@ it("keeps real localized product destinations with only one keyboard stop per pr
   expect(html.match(/tabindex="-1"/g)).toHaveLength(3);
   expect(html).toContain('aria-hidden="true"');
   expect(html).toContain(">Protein</span>");
-  expect(html).toContain(message("ar", "ticker.pause"));
+  expect(html).not.toContain("<button");
+  expect(html).toContain("منتجات رائجة");
 });
-it("keeps the decorative brand names unchanged and provides a separate pause control", () => {
+it("keeps real decorative brand names and a keyboard pause target without controls", () => {
   const html = renderToStaticMarkup(
     createElement(BrandUniverse, { brands: ["Real Brand"] }),
   );
   expect(html).toContain("Real Brand");
   expect(html).toContain('aria-hidden="true"');
-  expect(html).toContain('aria-label="Pause animation"');
+  expect(html).toContain('tabindex="0"');
+  expect(html).not.toContain("<button");
   expect(
     renderToStaticMarkup(createElement(() => TrendingNow({ products: [] }))),
   ).toBe("");
@@ -234,6 +245,8 @@ it.each(["en", "ar"] as const)("hides bottom navigation while the mobile drawer 
   const html = renderToStaticMarkup(createElement(BottomNav, { hidden: false, onOpenSearch: jest.fn() }));
   expect(html).toContain(message(locale, "nav.mobile"));
   expect(html).toContain(message(locale, "nav.account"));
+  // The cart stays in the header only (Seif, 2026-10-25).
+  expect(html).not.toContain(message(locale, "nav.cart"));
 });
 it("keeps search and cart in the banner while category navigation scrolls separately", () => {
   const html = renderToStaticMarkup(createElement(Navbar));
@@ -253,26 +266,21 @@ it.each(["en", "ar"] as const)("renders truthful localized announcements and nam
   }
   expect(html).toContain('role="region" aria-label="' + message(locale, "nav.preferences") + '"');
 });
-it("announces only one message cycle, preserves duplicates visually and offers pause/resume", () => {
+it("announces one message cycle and exposes a keyboard pause target without buttons", () => {
   const html = renderToStaticMarkup(createElement(AnnouncementTicker));
   const primary = html.match(/data-ticker-base="true"[^>]*>([\s\S]*?)<\/div>/)![1];
   expect(primary.match(/Find your daily essentials/g)).toHaveLength(1);
   expect(html.match(/Find your daily essentials/g)).toHaveLength(4);
   expect(html.match(/aria-hidden="true"/g)!.length).toBeGreaterThan(3);
-  expect(html).toContain('aria-label="Pause animation"');
-  expect(html).not.toContain("aria-pressed");
-  mockManualPause = true;
-  const paused = renderToStaticMarkup(createElement(AnnouncementTicker));
-  expect(paused).toContain('aria-label="Resume animation"');
-  expect(paused).not.toContain("aria-pressed");
-  expect(paused).toContain("animation-play-state:paused");
+  expect(html).toContain('role="group" aria-label="Announcements" tabindex="0"');
+  expect(html).not.toContain("<button");
 });
-it("keeps reduced-motion announcements static and keyboard browsable", () => {
+it("autoplays announcements under reduced motion as requested, without a pause button", () => {
   mockReducedMotion = true;
   const html = renderToStaticMarkup(createElement(AnnouncementTicker));
-  expect(html).toContain('data-browsing="true"');
+  expect(html).toContain('data-autoplay="true"');
   expect(html).toContain('role="group" aria-label="Announcements" tabindex="0"');
-  expect(html).toContain("animation-play-state:paused");
+  expect(html).toContain("animation-play-state:running");
   expect(html).not.toContain("<button");
 });
 
@@ -285,14 +293,14 @@ it.each(["en", "ar"] as const)("names only language/currency preferences, exclud
   expect(preferences).not.toContain("/deals");
   expect(preferences).not.toContain(message(locale, "announcement.essentials"));
 });
-it("uses changing action labels without redundant toggle state on product and brand tickers", () => {
-  mockManualPause = true;
-  const brand = renderToStaticMarkup(createElement(BrandUniverse, { brands: ["Brand"] }));
-  const product = renderToStaticMarkup(createElement(() => TrendingNow({ products: [{ id: "p", slug: "p", name: "P" } as Product] })));
-  for (const html of [brand, product]) {
-    expect(html).toContain('aria-label="Resume animation"');
-    expect(html).not.toContain("aria-pressed");
-  }
+it("autoplays brand names with reduced motion enabled and no pause button", () => {
+  mockReducedMotion = true;
+  const html = renderToStaticMarkup(createElement(BrandUniverse, { brands: ["Real Brand"] }));
+  expect(html).toContain("Real Brand");
+  expect(html).toContain("animation-play-state:running");
+  expect(html).toContain('tabindex="0"');
+  expect(html).not.toContain("<button");
+  expect(html).not.toContain("data-browsing");
 });
 
 it.each(["en", "ar"] as const)("names the mobile drawer as a dialog and keeps the closed layer inert in %s", locale => {
@@ -304,4 +312,123 @@ it.each(["en", "ar"] as const)("names the mobile drawer as a dialog and keeps th
   expect(dialog).toContain('tabindex="-1"');
   expect(dialog).not.toContain('aria-modal="true"');
   expect(html).toMatch(/aria-hidden="true" inert=""[^>]*><aside/);
+});
+
+it.each(["en", "ar"] as const)("publishes no removed shop filters in %s navigation", locale => {
+  mockLocale = locale;
+  const html = renderToStaticMarkup(createElement(Navbar));
+  const links = Array.from(html.matchAll(/href="([^"]+)"/g), match => match[1].replaceAll("&amp;", "&"));
+  expect(links).toContain("/" + locale + "/#health-goals");
+  for (const href of links) {
+    const query = new URL(href, "https://example.test").searchParams;
+    for (const key of ["form", "diet", "allergen", "rating", "sort", "availability"]) expect(query.has(key)).toBe(false);
+  }
+});
+
+it.each(["en", "ar"] as const)("opens Brands and Health Goals as mobile sub-menus and shows Deals without an arrow in %s", locale => {
+  mockLocale = locale;
+  const html = renderToStaticMarkup(createElement(Navbar));
+  const label = 'aria-label="' + message(locale, "nav.shopBy") + '"';
+  const shopBy = html.slice(html.indexOf(label), html.indexOf("</nav>", html.indexOf(label)));
+  const buttons = Array.from(shopBy.matchAll(/<button type="button"[^>]*>(.*?)<\/button>/g), match => match[1]);
+  expect(buttons).toHaveLength(2);
+  expect(buttons[0]).toContain(message(locale, "nav.brands"));
+  expect(buttons[1]).toContain(message(locale, "nav.health"));
+  expect(shopBy).not.toContain("/brands\"");
+  expect(shopBy).not.toContain("#health-goals");
+  const deals = shopBy.slice(shopBy.indexOf('href="/' + locale + '/deals"'));
+  expect(deals).toContain(message(locale, "nav.deals"));
+  expect(deals).not.toContain("lucide-chevron-right");
+});
+
+it.each(["en", "ar"] as const)("gives the utility strip to announcements without a flash-deals promotion in %s", locale => {
+  mockLocale = locale;
+  const html = renderToStaticMarkup(createElement(Navbar));
+  const strip = html.slice(html.indexOf('class="utilityStrip"'), html.indexOf("<header"));
+  expect(strip).toContain(message(locale, "announcement.label"));
+  expect(strip).not.toContain('/deals');
+  expect(strip).not.toContain('24H PICKS');
+  // Deals remains a normal navigation destination.
+  expect(html).toContain(`href="/${locale}/deals"`);
+});
+
+it("renders the trending heading and one real cycle for two products without invented selections", () => {
+  const products = [{ id: "one", slug: "one", name: "First product", image: "" }, { id: "two", slug: "two", name: "Second product", image: "/two.png" }] as Product[];
+  const html = renderToStaticMarkup(createElement(() => TrendingNow({ products })));
+  expect(html).toContain("TRENDING PRODUCTS");
+  expect(html).not.toContain("VI2 PICKS");
+  expect(html).not.toContain("EXPLORE PRODUCTS");
+  expect(html).not.toContain('src=""');
+  expect(html).toContain('role="img" aria-label="First product"');
+  expect(html).not.toContain("<button");
+  for (const slug of ["one", "two"]) {
+    const links = [...html.matchAll(new RegExp(`<a[^>]*href="/en/products/${slug}"[^>]*>`, "g"))].map(match => match[0]);
+    expect(links).toHaveLength(4);
+    expect(links.filter(link => !link.includes('tabindex="-1"'))).toHaveLength(1);
+  }
+});
+
+it("does not close a hover-opened account on its first pointer click, while keyboard activation still toggles", () => {
+  const cells: unknown[] = [];
+  const stateSpy = jest.spyOn(React, "useState").mockImplementation(((initial?: unknown) => {
+    const index = cells.length;
+    cells.push(typeof initial === "function" ? initial() : initial);
+    return [cells[index], (value: unknown) => { cells[index] = typeof value === "function" ? value(cells[index]) : value; }];
+  }) as typeof React.useState);
+  let tree: React.ReactNode;
+  type Events = { className?: string; children?: React.ReactNode; onPointerEnter?: (event: { pointerType: string }) => void; onClick?: (event: { detail: number }) => void };
+  const find = (node: React.ReactNode, predicate: (props: Events) => boolean): React.ReactElement<Events> | undefined => {
+    for (const child of React.Children.toArray(node)) {
+      if (!React.isValidElement<Events>(child)) continue;
+      if (predicate(child.props)) return child;
+      const found = find(child.props.children, predicate);
+      if (found) return found;
+    }
+  };
+  try {
+    renderToStaticMarkup(createElement(() => { tree = Navbar({}); return tree; }));
+    const account = find(tree, props => props.className === "account")!;
+    const wrapper = find(tree, props => !!props.onPointerEnter && React.Children.toArray(props.children).some(child => React.isValidElement<Events>(child) && child.props.className === "account"))!;
+    const before = [...cells];
+    wrapper.props.onPointerEnter!({ pointerType: "mouse" });
+    const accountIndex = cells.findIndex((value, index) => value === true && before[index] !== true);
+    expect(accountIndex).toBeGreaterThanOrEqual(0);
+    account.props.onClick!({ detail: 1 });
+    expect(cells[accountIndex]).toBe(true);
+    account.props.onClick!({ detail: 1 });
+    expect(cells[accountIndex]).toBe(false);
+    wrapper.props.onPointerEnter!({ pointerType: "touch" });
+    expect(cells[accountIndex]).toBe(false);
+    account.props.onClick!({ detail: 1 });
+    expect(cells[accountIndex]).toBe(true);
+    account.props.onClick!({ detail: 1 });
+    expect(cells[accountIndex]).toBe(false);
+    account.props.onClick!({ detail: 0 });
+    expect(cells[accountIndex]).toBe(true);
+    account.props.onClick!({ detail: 0 });
+    expect(cells[accountIndex]).toBe(false);
+  } finally {
+    stateSpy.mockRestore();
+  }
+});
+
+it.each(["en", "ar"] as const)("distinguishes category retry from the homepage product retry in %s", locale => {
+  mockLocale = locale;
+  const Status = jest.requireActual("../CategoryStatus").default;
+  const html = renderToStaticMarkup(createElement(Status, { error: true }));
+  expect(html).toContain(message(locale, "catalog.categoryError"));
+  expect(html).toContain(message(locale, "catalog.categoryRetry"));
+  expect(html).not.toContain(message(locale, "catalog.error"));
+});
+
+it.each(["en", "ar"] as const)("avoids stale metadata prefetch for catalog links in %s", locale => {
+  mockLocale = locale;
+  const LocalLink = jest.requireActual("../LocaleLink").default;
+  for (const href of ["/shop", "/shop/vitamin-c?q=whey", "/shop?q=whey", "/shop#results"]) {
+    const link = LocalLink({ href, prefetch: true });
+    expect(link.props.href).toBe("/" + locale + href);
+    expect(link.props.prefetch).toBe(false);
+  }
+  expect(LocalLink({ href: "/account", prefetch: true }).props.prefetch).toBe(true);
+  expect(LocalLink({ href: "/shopping", prefetch: true }).props.prefetch).toBe(true);
 });

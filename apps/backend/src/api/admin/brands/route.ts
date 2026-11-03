@@ -25,7 +25,7 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
 export async function POST(req: MedusaRequest, res: MedusaResponse) {
   const parsed = brandSchema.safeParse(req.body)
   if (!parsed.success) return res.status(400).json({ message: "Invalid brand details" })
-  const { name, slug, description, logo, country, status } = parsed.data
+  const { name, slug, description, country, status } = parsed.data
 
   try {
     const { result: brand } = await createBrandWorkflow(req.scope).run({
@@ -33,7 +33,7 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
         name,
         slug,
         description: description || null,
-        logo: logo || null,
+        logo: null,
         country: country || null,
         status: status || "active",
       },

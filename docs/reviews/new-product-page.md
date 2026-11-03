@@ -41,8 +41,9 @@ with everything in one form and one save.
   message and marks the SKU fields it names. What the user typed is kept.
 - **Who:** admins and managers. The new path's first segment `vi2-products` is a manager area mapped
   to the product resource, so `managerAction` treats `POST /admin/vi2-products` as product create. The
-  existing guard still refuses any body that lists inventory items, and the strict schema refuses
-  stock fields for everyone. Staff without a role get 403.
+  strict schema refuses inventory items and stock fields for everyone (400). (Before `full-stack`'s
+  manager-stock change, merged here on 2026-11-03, the guard also refused inventory items for managers
+  with 403.) Staff without a role get 403.
 
 ## Files
 
@@ -77,9 +78,9 @@ manager guard would read it as product update.
 1. Delete every new file listed above: the `src/admin/routes/products-new`, `src/admin/lib` and
    `src/api/admin/vi2-products` folders, the widget, the workflow, both test files, and this review
    file.
-2. In `apps/backend/src/api/validators.ts`, delete everything from the comment
-   `// The "New product (Vi2)" admin page.` to the end of the file (`newProductSchema` and its
-   `required` helper).
+2. In `apps/backend/src/api/validators.ts`, delete the block from the comment
+   `// The "New product (Vi2)" admin page.` to the end of `newProductSchema` (its `required` helper
+   and the schema); the catalog schemas after it stay.
 3. In `apps/backend/src/lib/manager-role.ts`, delete the two lines
    `// The "New product (Vi2)" page's save route (POST is product create).` and
    `"vi2-products": full("product"),`.
@@ -101,8 +102,8 @@ ordinary Medusa products and stay.
   2. a manager creates it too; 3. only required fields; 4. a SKU that already exists: 400
      "SKU WH-CH-1 already exists" and nothing created; 5. a SKU twice in the form; 6. field errors for
      a missing name and a zero price; 7-8. inactive and unknown brand: 400 and nothing created;
-  9. inventory items and stock settings refused for admin (400) and manager (403 for inventory links,
-     400 for stock settings); 10. staff without a role: 403; 11. a failing late step (translation)
+  9. inventory items and stock settings refused for admin and manager (400; managers got 403 for
+     inventory links before the manager-stock merge); 10. staff without a role: 403; 11. a failing late step (translation)
      leaves nothing behind; 12. `GET /store/products` shows the product with brand and EDA.
 - Counterfactual: with the brand check in `prepare-vi2-product` disabled, both brand tests fail
   (201 instead of 400). Without the check an unknown brand id is linked too. Code restored and rerun.
@@ -520,3 +521,17 @@ No actionable problems found in this fix.
 GPT approved round 4 (2026-11-03): the round 3b findings are resolved and no new problems were found.
 Open checks, as stated by both sides: no real screen-reader session, and the older quick-variant route
 still has no price cap (outside this change). Ready for Seif to open a PR into `full-stack`.
+
+## Merge with `full-stack` (2026-11-03, before the PR)
+
+`full-stack` had moved to 1c09174 (PRs #30-#32). Two conflicts, both only additions on each side:
+`validators.ts` (kept `newProductSchema` and the new catalog schemas; my stale "stock comes from Odoo"
+comment now says stock is set in Medusa) and `docs/WORKBOARD.md` (kept both sections). "How to remove"
+step 2 now says where `newProductSchema` ends, since the catalog schemas follow it.
+
+The manager-stock change (3b3a2c0) lets managers edit stock, so the manager guard no longer refuses a
+body with inventory items. This page still refuses them for everyone through its strict schema (400).
+Two tests expected the old 403 for managers: the HTTP case now expects 400, and the unit case for the
+guard was removed because that rule no longer exists.
+
+Checks after the merge: `npm run check` green on the merged code (backend 440 tests, storefront 587, typechecks, lint with no errors or warnings); HTTP `new-product.spec.ts` 15/15.

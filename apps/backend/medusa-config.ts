@@ -1,9 +1,11 @@
 import { configuredSecret } from "./src/lib/secrets"
 import { notificationModule } from "./src/lib/notification-config"
 import { redisModules } from "./src/lib/redis-config"
+import { fileModules } from "./src/lib/file-config"
 import { loadEnv, defineConfig } from '@medusajs/framework/utils'
 
 loadEnv(process.env.NODE_ENV || 'development', process.cwd())
+const jwtSecret = configuredSecret("JWT_SECRET")
 
 module.exports = defineConfig({
   featureFlags: { rbac: true, translation: true },
@@ -13,7 +15,7 @@ module.exports = defineConfig({
       storeCors: process.env.STORE_CORS!,
       adminCors: process.env.ADMIN_CORS!,
       authCors: process.env.AUTH_CORS!,
-      jwtSecret: configuredSecret("JWT_SECRET"),
+      jwtSecret,
       cookieSecret: configuredSecret("COOKIE_SECRET"),
       // Medusa JWT cryptographic expiration (format: e.g. "86400s", "1d")
       jwtExpiresIn: process.env.JWT_ACCESS_TOKEN_TTL
@@ -22,12 +24,18 @@ module.exports = defineConfig({
     }
   },
   modules: [
+    { resolve: "@medusajs/medusa/auth", options: { providers: [{ resolve: "./src/modules/secure-emailpass", id: "emailpass", options: { credentialStampSecret: jwtSecret } }] } },
+    { resolve: "./src/modules/account-security" },
     { resolve: "@medusajs/medusa/translation" },
+    { resolve: "./src/modules/product-review" },
     {
       resolve: "./src/modules/brand",
     },
     {
       resolve: "./src/modules/eda",
+    },
+    {
+      resolve: "./src/modules/loyalty",
     },
     // The rbac flag above turns on role checks, but Medusa builds its default
     // module list before core flags are registered, so the default RBAC entry is
@@ -37,5 +45,6 @@ module.exports = defineConfig({
     },
     notificationModule(),
     ...redisModules(),
+    ...fileModules(),
   ],
 })

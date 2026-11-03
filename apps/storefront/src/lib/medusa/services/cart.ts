@@ -3,7 +3,7 @@ import { medusa } from "../client";
 import type { Cart, CartAddress } from "@/types/cart";
 
 export const CART_FIELDS =
-  "*items,*items.variant,*items.product,*shipping_address,*billing_address,*shipping_methods,*promotions,*payment_collection";
+  "*items,*items.variant,*items.product,*shipping_address,*billing_address,*shipping_methods,*promotions,*payment_collection,+items.adjustments.code,+items.adjustments.amount,+shipping_methods.adjustments.code,+shipping_methods.adjustments.amount";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function mapMedusaCart(c: any): Cart {
@@ -93,6 +93,7 @@ export function mapMedusaCart(c: any): Cart {
       code: p.code,
       isAutomatic: p.is_automatic,
     })),
+    promotionSavings: promotionSavings(c),
     itemSubtotal: c.item_subtotal ?? c.subtotal ?? 0,
     shippingTotal: c.shipping_total ?? 0,
     discountTotal: c.discount_total ?? 0,
@@ -177,6 +178,20 @@ export async function removeCartItem(
   return updated;
 }
 
+// Egyptian shoppers rarely know a postal code and Bosta locates by city and
+// district, so an empty one is left out rather than saved as a fake value.
+function toMedusaAddress(address: CartAddress) {
+  return {
+    first_name: address.firstName,
+    last_name: address.lastName,
+    address_1: address.address1,
+    city: address.city,
+    country_code: address.countryCode.toLowerCase(),
+    ...(address.postalCode?.trim() ? { postal_code: address.postalCode.trim() } : {}),
+    phone: address.phone || "",
+  };
+}
+
 export async function setCartAddress(
   cartId: string,
   email: string,
@@ -185,34 +200,8 @@ export async function setCartAddress(
 ): Promise<Cart> {
   const payload = {
     email,
-    shipping_address: {
-      first_name: shippingAddress.firstName,
-      last_name: shippingAddress.lastName,
-      address_1: shippingAddress.address1,
-      city: shippingAddress.city,
-      country_code: shippingAddress.countryCode.toLowerCase(),
-      postal_code: shippingAddress.postalCode || "00000",
-      phone: shippingAddress.phone || "",
-    },
-    billing_address: billingAddress
-      ? {
-          first_name: billingAddress.firstName,
-          last_name: billingAddress.lastName,
-          address_1: billingAddress.address1,
-          city: billingAddress.city,
-          country_code: billingAddress.countryCode.toLowerCase(),
-          postal_code: billingAddress.postalCode || "00000",
-          phone: billingAddress.phone || "",
-        }
-      : {
-          first_name: shippingAddress.firstName,
-          last_name: shippingAddress.lastName,
-          address_1: shippingAddress.address1,
-          city: shippingAddress.city,
-          country_code: shippingAddress.countryCode.toLowerCase(),
-          postal_code: shippingAddress.postalCode || "00000",
-          phone: shippingAddress.phone || "",
-        },
+    shipping_address: toMedusaAddress(shippingAddress),
+    billing_address: toMedusaAddress(billingAddress ?? shippingAddress),
   };
 
   const { cart } = await medusa.store.cart.update(cartId, payload, {
@@ -251,6 +240,38 @@ export async function applyCartPromotion(
     },
   );
   return mapMedusaCart(cart);
+}
+
+type Adjusted = { adjustments?: ({ code?: string | null; amount?: number | string | null } | null)[] | null };
+
+// Sums the discount each code gives across items and delivery.
+function promotionSavings(c: { items?: Adjusted[] | null; shipping_methods?: Adjusted[] | null }) {
+  const savings: Record<string, number> = {};
+  for (const line of [...(c.items ?? []), ...(c.shipping_methods ?? [])]) {
+    for (const adjustment of line?.adjustments ?? []) {
+      const code = adjustment?.code?.toUpperCase();
+      if (code) savings[code] = (savings[code] ?? 0) + Number(adjustment?.amount ?? 0);
+    }
+  }
+  return savings;
+}
+
+export type PromoResult =
+  | { ok: true }
+  | { ok: false; reason: "loading" | "invalid" | "not_applicable" | "not_eligible" | "network" };
+
+// Medusa accepts a real code that fits nothing in the cart (200) but leaves it
+// off the cart; a code it attaches can still take nothing off (for example a
+// minimum amount not reached). Only a code that lowers the total is applied.
+export function promoOutcome(cart: Cart, code: string): PromoResult {
+  const wanted = code.trim().toUpperCase();
+  if (!cart.promotions.some((promotion) => promotion.code?.toUpperCase() === wanted)) return { ok: false, reason: "not_applicable" };
+  return (cart.promotionSavings[wanted] ?? 0) > 0 ? { ok: true } : { ok: false, reason: "not_eligible" };
+}
+
+// Medusa answers 400 for a code that does not exist or has ended.
+export function promoFailure(error: unknown): PromoResult {
+  return { ok: false, reason: (error as { status?: unknown } | null)?.status === 400 ? "invalid" : "network" };
 }
 
 export async function removeCartPromotion(

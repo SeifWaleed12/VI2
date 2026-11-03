@@ -14,9 +14,14 @@ export const brandSchema = z.object({
   name: text,
   slug: text.regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
   description: z.string().max(5000).nullable().optional(),
-  logo: z.union([z.literal(""), z.url().refine((url) => ["https:", "http:"].includes(new URL(url).protocol))]).nullable().optional(),
   country: z.string().trim().max(100).nullable().optional(),
   status: z.enum(["active", "inactive"]).optional(),
+}).strict()
+
+// A logo arrives as base64 file content; its type and size are checked on the
+// decoded bytes (lib/brand-logo.ts), not on anything the browser claims.
+export const brandLogoSchema = z.object({
+  content: z.string().min(1).max(1_500_000).regex(/^[A-Za-z0-9+/]+=*$/),
 }).strict()
 
 export const quickVariantSchema = z.object({
@@ -30,6 +35,11 @@ export const quickVariantSchema = z.object({
 }).strict()
 
 // The new password's rule is checked by changePassword, which reports the reason.
+export const emailChangeSchema = z.object({
+  email: z.string().trim().pipe(z.email().max(254)).transform((value) => value.toLowerCase()),
+  password: z.string().min(1).max(1024),
+})
+
 export const changePasswordSchema = z.object({
   current_password: z.string().min(1).max(1024),
   new_password: z.string().max(1024),
@@ -53,7 +63,8 @@ export const productEdaSchema = z.object({
 }).strict()
 
 // The "New product (Vi2)" admin page. Stock fields (inventory items, quantities,
-// manage_inventory, allow_backorder) are not accepted: stock comes from Odoo.
+// manage_inventory, allow_backorder) are not accepted: stock starts at 0 and
+// is set in Medusa's stock pages.
 // Messages are shown next to the field the issue's path names.
 const required = (message: string) => z.string({ error: message }).trim().min(1, message)
 export const newProductSchema = z.object({
@@ -92,3 +103,24 @@ export const newProductSchema = z.object({
     seen.add(variant.sku)
   })
 })
+
+const searchIds = z.union([z.string(), z.array(z.string())]).transform(value => [value].flat())
+  .pipe(z.array(z.string().regex(/^[A-Za-z0-9_-]{1,128}$/)).max(50))
+export const catalogSchema = z.object({
+  q: z.string().trim().max(100).optional(),
+  offset: z.coerce.number().int().min(0).max(10000).default(0),
+  category_id: searchIds.optional(), brand_id: searchIds.optional(), tag_id: searchIds.optional(),
+  region_id: z.string().regex(/^[A-Za-z0-9_-]{1,128}$/),
+  sort: z.enum(["default", "price_asc", "price_desc", "in_stock", "newest"]).default("default"),
+  deals: z.enum(["true", "false"]).transform(value => value === "true").default(false),
+  limit: z.coerce.number().int().min(1).max(24).default(24),
+}).strict()
+
+// Fresh hydration is limited to one explicit page; it cannot browse or filter the catalog.
+export const catalogProductsSchema = z.object({
+  id: searchIds.refine(ids => ids.length >= 1 && ids.length <= 24),
+  region_id: z.string().regex(/^[A-Za-z0-9_-]{1,128}$/),
+  fields: z.string().max(3000).optional(),
+  limit: z.coerce.number().int().min(1).max(24).default(24),
+  offset: z.coerce.number().int().min(0).max(0).default(0),
+}).strict()

@@ -2,20 +2,25 @@ import path from "path";
 import { existsSync, realpathSync } from "node:fs"
 import type { NextConfig } from "next";
 
-const medusaBackendUrl = process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL;
-const medusaBackendPattern: NonNullable<NextConfig["images"]>["remotePatterns"] = [];
-if (medusaBackendUrl) {
+type RemotePattern = NonNullable<NonNullable<NextConfig["images"]>["remotePatterns"]>[number];
+
+// Images may come from the backend (local uploads) and from the upload bucket
+// (R2, the backend's S3_FILE_URL); both addresses come from settings.
+function imageHost(url: string | undefined): RemotePattern[] {
+  if (!url) return [];
   try {
-    const parsed = new URL(medusaBackendUrl);
-    medusaBackendPattern.push({
+    const parsed = new URL(url);
+    return [{
       protocol: (parsed.protocol.replace(":", "") as "http" | "https") || undefined,
       hostname: parsed.hostname,
       port: parsed.port || undefined,
-    });
+    }];
   } catch {
-    // Ignore invalid URL
+    return [];
   }
 }
+const medusaBackendPattern = imageHost(process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL);
+const mediaPattern = imageHost(process.env.NEXT_PUBLIC_MEDIA_URL);
 
 const workspaceRoot = path.resolve(__dirname, "../..")
 const storefrontModules = path.join(__dirname, "node_modules")
@@ -34,6 +39,7 @@ const nextConfig: NextConfig = {
     dangerouslyAllowLocalIP: process.env.NODE_ENV !== "production",
     remotePatterns: [
       ...medusaBackendPattern,
+      ...mediaPattern,
       {
         protocol: "http",
         hostname: "localhost",

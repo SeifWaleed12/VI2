@@ -3,7 +3,6 @@
 import {
   Home,
   Search,
-  ShoppingBag,
   Store,
   UserRound,
 } from "lucide-react";
@@ -11,7 +10,6 @@ import {
   usePathname,
 } from "next/navigation";
 
-import { useCart } from "@/context/CartContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { useAuth } from "@/context/AuthContext";
 
@@ -20,20 +18,13 @@ import styles from "./MobileBottomNav.module.css";
 
 type Props = {
   hidden?: boolean;
-  onOpenSearch: () => void;
 };
 
 export default function MobileBottomNav({
-  onOpenSearch,
   hidden = false,
 }: Props) {
   const pathname =
     usePathname().replace(/^\/(en|ar)(?=\/|$)/, "") || "/";
-
-  const {
-    itemCount,
-    openCart,
-  } = useCart();
 
   const { isArabic, language, msg } = useLanguage();
   const { isAuthenticated } = useAuth();
@@ -53,7 +44,7 @@ export default function MobileBottomNav({
     return null;
   }
 
-  const labels = { home: msg("nav.home"), shop: msg("nav.shopShort"), search: msg("nav.searchShort"), account: msg("nav.account"), cart: msg("nav.cart") };
+  const labels = { home: msg("nav.home"), shop: msg("nav.shopShort"), search: msg("nav.searchShort"), account: msg("nav.account") };
 
   /**
    * CartDrawer lives inside the shared Providers tree.
@@ -193,26 +184,6 @@ export default function MobileBottomNav({
         </span>
       </button>
 
-      <button
-        type="button"
-        className={styles.cart}
-        onClick={openCart}
-      >
-        <ShoppingBag
-          size={18}
-          strokeWidth={1.45}
-        />
-
-        {itemCount > 0 && (
-          <strong>
-            {itemCount}
-          </strong>
-        )}
-
-        <span>
-          {labels.cart}
-        </span>
-      </button>
     </nav>
   );
 }

@@ -1,46 +1,104 @@
-import { allowFields, authenticate, defineMiddlewares } from "@medusajs/framework/http"
+import { allowFields, authenticate, defineMiddlewares, type MedusaNextFunction, type MedusaRequest, type MedusaResponse } from "@medusajs/framework/http"
 import { MedusaError } from "@medusajs/framework/utils"
-import type { ActorType } from "../lib/login-attempts"
 import { adminAccess, unlessInviteAcceptance } from "./admin-access"
-import { limitLoginAttempts, limitResetRequests } from "./login-rate-limit"
+import { secureEmailpass } from "./emailpass-security"
+import { protectAdminCookieWrites, rotateLoginSession } from "./session-security"
+import { customerReturnOnly } from "./return-access"
+import { activeSecuritySession } from "./auth-session-access"
+import { limitRegistrationAttempts } from "./registration-rate-limit"
 import { managerLayoutView } from "./manager-layouts"
 import { assignOrderOwner, cartOwnerOnly, noEmailOnNewGuestCart } from "./cart-access"
 import { filterProductsByBrand } from "./catalog-filters"
-import { requireStrongPassword } from "./password-policy"
+import { storeProductRoutesMiddlewares } from "@medusajs/medusa/api/store/products/middlewares"
+import { boundCatalogHydration } from "./catalog-products"
+import { cacheStoreGet, invalidateStoreCacheAfterWrite } from "../lib/store-cache"
+import { requestPath } from "../lib/request-path"
 
 // Staff and customers sign in, reset and set passwords through the same
 // Medusa routes, so both get the same limits and password rule. Medusa signs in
 // through GET as well as POST on the same path, so both methods are limited.
-const emailPassRoutes = (["user", "customer"] as ActorType[]).flatMap((actor) => [
-  { matcher: `/auth/${actor}/emailpass`, method: ["GET", "POST"] as ("GET" | "POST")[], middlewares: [limitLoginAttempts(actor)] },
-  { matcher: `/auth/${actor}/emailpass/reset-password`, method: "POST" as const, middlewares: [limitResetRequests(actor)] },
-  { matcher: `/auth/${actor}/emailpass/register`, method: "POST" as const, middlewares: [requireStrongPassword] },
-  { matcher: `/auth/${actor}/emailpass/update`, method: "POST" as const, middlewares: [requireStrongPassword] },
-])
+const emailPassRoutes = [{
+  matcher: "/auth/:actor_type/emailpass",
+  middlewares: [secureEmailpass],
+}]
 
 // Product data the storefront may request beyond Medusa's defaults: the brand,
 // the EDA number with its approval (shown to customers by owner decision,
-// 2026-10-09), and category fields Medusa only allows as a whole relation.
-const STORE_PRODUCT_EXTRA_FIELDS = ["brand.id", "brand.name", "brand.status", "eda_registration.registration_number", "eda_registration.is_approved", "categories.id", "categories.name", "categories.handle"]
+// 2026-10-09), category fields Medusa only allows as a whole relation, and native variant order.
+const STORE_PRODUCT_EXTRA_FIELDS = ["brand.id", "brand.name", "brand.status", "eda_registration.registration_number", "eda_registration.is_approved", "categories.id", "categories.name", "categories.handle", "variants.variant_rank"]
+
+const nativeProductListMiddlewares = storeProductRoutesMiddlewares.find(route => route.matcher === "/store/products")?.middlewares
+if (!nativeProductListMiddlewares) throw new MedusaError(MedusaError.Types.UNEXPECTED_STATE, "Native product list middleware is unavailable")
+
+// Public catalog reads answered from Redis (lib/store-cache.ts). Products stay
+// short because their prices change most; the rest change rarely.
+const cachedCatalogRoutes = ([
+  ["/store/products", 60],
+  ["/store/product-categories", 300],
+  ["/store/collections", 300],
+  ["/store/regions", 600],
+  ["/store/brands", 300],
+  ["/store/product-tags", 300],
+  ["/store/deals", 60],
+] as const).flatMap(([path, ttl]) => [path, `${path}/:id`].map((matcher) => ({ matcher, method: "GET" as const, middlewares: [cacheStoreGet(ttl)] })))
+
+// The store only delivers in Egypt, so saved addresses are Egyptian too. A new
+// address must say so; an update may leave the country out.
+const egyptOnly = (required: boolean) => (req: MedusaRequest, _res: MedusaResponse, next: MedusaNextFunction) => {
+  const country = (req.body as { country_code?: unknown } | undefined)?.country_code
+  if ((required || country !== undefined) && (typeof country !== "string" || country.trim().toLowerCase() !== "eg")) {
+    throw new MedusaError(MedusaError.Types.INVALID_DATA, "We only deliver in Egypt. Set country_code to \"eg\".")
+  }
+  return next()
+}
 
 // Store cart routes do not read the customer's login on their own.
 const customerIfSignedIn = authenticate("customer", ["session", "bearer"], { allowUnauthenticated: true })
 
 export default defineMiddlewares({
   routes: [
+    // Check raw spelling before native route parameters decode the provider.
+    { matcher: "/auth/*", middlewares: [(req, _res, next) => { requestPath(req); return next() }] },
     ...emailPassRoutes,
+    { matcher: "/store/auth/register", method: "POST", middlewares: [limitRegistrationAttempts] },
+    { matcher: "/store/*", middlewares: [authenticate("customer", ["session", "bearer"], { allowUnauthenticated: true, allowUnregistered: true }), activeSecuritySession] },
+    { matcher: "/auth/token/refresh", method: "POST", middlewares: [authenticate("*", ["session", "bearer"], { allowUnregistered: true, requireMfa: false }), activeSecuritySession] },
+    { matcher: "/auth/mfa/*", middlewares: [authenticate("*", ["session", "bearer"], { allowUnregistered: true, requireMfa: false }), activeSecuritySession] },
+    // Confirmation may use its own verification code without a login. When a
+    // session is supplied, it must still be current, including after recovery.
+    { matcher: "/auth/verification/*", middlewares: [authenticate("*", ["session", "bearer"], { allowUnregistered: true, allowUnauthenticated: true, requireMfa: false }), activeSecuritySession] },
+    { matcher: "/auth/:auth_provider/user", method: "POST", middlewares: [authenticate("user", ["bearer"], { allowUnregistered: true }), activeSecuritySession] },
+    { matcher: "/auth/logout", method: "POST", middlewares: [authenticate("*", ["bearer"]), activeSecuritySession] },
+    { matcher: "/store/returns", method: "POST", middlewares: [authenticate("customer", ["session", "bearer"]), customerReturnOnly] },
+    { matcher: "/auth/session", method: "POST", middlewares: [authenticate("*", ["bearer"], { allowUnregistered: true }), activeSecuritySession, rotateLoginSession] },
+    { matcher: "/store/products/:id/reviews/me", middlewares: [authenticate("customer", ["session", "bearer"])] },
+    ...cachedCatalogRoutes,
+    { matcher: "/store/catalog-products", middlewares: [allowFields(...STORE_PRODUCT_EXTRA_FIELDS)] },
+    {
+      matcher: "/store/catalog-products", method: "GET",
+      middlewares: [boundCatalogHydration,
+        ...nativeProductListMiddlewares],
+    },
+    // A 1 MB logo is about 1.4 MB as base64; other routes keep the 100 KB default.
+    { matcher: "/admin/brands/:id/logo", method: "POST", bodyParser: { sizeLimit: "2mb" } },
     { matcher: "/store/products", middlewares: [filterProductsByBrand, allowFields(...STORE_PRODUCT_EXTRA_FIELDS)] },
     { matcher: "/store/products/:id", middlewares: [allowFields(...STORE_PRODUCT_EXTRA_FIELDS)] },
     // Without a method these also cover every path under them (src/api/cart-access.ts).
     { matcher: "/store/carts/:id", middlewares: [customerIfSignedIn, cartOwnerOnly] },
     { matcher: "/store/payment-collections", middlewares: [customerIfSignedIn, cartOwnerOnly] },
     { matcher: "/store/carts", method: "POST", middlewares: [customerIfSignedIn, noEmailOnNewGuestCart] },
+    { matcher: "/store/customers/me/addresses", method: "POST", middlewares: [egyptOnly(true)] },
+    { matcher: "/store/customers/me/addresses/:address_id", method: "POST", middlewares: [egyptOnly(false)] },
     {
       matcher: "/admin/*",
       middlewares: [
         unlessInviteAcceptance(authenticate("user", ["session", "bearer"])),
         unlessInviteAcceptance(adminAccess),
+        unlessInviteAcceptance(activeSecuritySession),
+        protectAdminCookieWrites,
         managerLayoutView,
+        // Last, so a refused request never clears the cache.
+        invalidateStoreCacheAfterWrite,
       ],
     },
     {

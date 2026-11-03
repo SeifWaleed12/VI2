@@ -42,3 +42,12 @@ it("sets a bounded timeout on backend requests", async () => {
   expect((await orders(request("/api/orders"))).status).toBe(200);
   expect(jest.mocked(fetch).mock.calls[0][1]).toMatchObject({ cache: "no-store", signal: expect.any(AbortSignal) });
 });
+it("tells the shopper an email already has an account, and keeps other refusals vague", async () => {
+  const body = { email: "taken@example.test", password: "Long-Enough-1", firstName: "A", lastName: "B" };
+  jest.mocked(fetch).mockResolvedValueOnce(Response.json({ code: "email_taken" }, { status: 409 }));
+  const taken = await register(request("/api/auth/register", body, false));
+  expect([taken.status, (await taken.json()).code]).toEqual([409, "email_taken"]);
+  jest.mocked(fetch).mockResolvedValueOnce(Response.json({ message: "nope" }, { status: 400 }));
+  const refused = await register(request("/api/auth/register", body, false));
+  expect([refused.status, (await refused.json()).code]).toEqual([400, undefined]);
+});

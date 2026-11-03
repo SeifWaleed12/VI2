@@ -59,8 +59,4 @@ describe("new product route access", () => {
   it("is product create for a manager", () => {
     expect(managerAction("POST", "/admin/vi2-products", valid)).toEqual({ resource: "product", operation: "create" })
   })
-
-  it("is closed to managers when the body links inventory items", () => {
-    expect(managerAction("POST", "/admin/vi2-products", { ...valid, variants: [{ inventory_items: [{ inventory_item_id: "inv_1" }] }] })).toBeNull()
-  })
 })

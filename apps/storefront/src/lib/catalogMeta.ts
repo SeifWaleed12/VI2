@@ -185,7 +185,7 @@ export function getStockLabel(
   }
 
   if (product.stock <= 8) {
-    return `ONLY ${product.stock} LEFT`;
+    return `ONLY ${product.stock} LEFT IN CAIRO WAREHOUSE`;
   }
 
   return "IN STOCK";

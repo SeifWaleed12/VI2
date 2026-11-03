@@ -32,6 +32,7 @@
 }
 
 .track {
+  --brand-duration: 96s;
   width: max-content;
   direction: ltr;
 
@@ -44,7 +45,7 @@
 
   animation:
     vi2BrandTicker
-    96s
+    var(--brand-duration)
     linear
     infinite;
 }
@@ -117,20 +118,11 @@
   }
 }
 
-@media (
-  prefers-reduced-motion:
-    reduce
-) {
-  .track {
-    animation: none;
-  }
-}
-
 @media (max-width: 700px) {
   .track {
     min-height: 31px;
 
-    animation-duration: 76s;
+    --brand-duration: 76s;
   }
 
   .item {
@@ -153,45 +145,15 @@
   }
 }
 
-.section {
-  position: relative;
-}
-.motionControl {
-  position: absolute;
-  inset-inline-end: 0;
-  top: 0;
-  bottom: 0;
-  width: 36px;
-  display: grid;
-  place-items: center;
-  border: 0;
-  color: #f7f3ed;
-  background: #11110f;
-  cursor: pointer;
-}
-.motionControl:focus-visible {
+.section:focus-visible {
   outline: 2px solid #f7f3ed;
   outline-offset: -3px;
 }
-.section[data-browsing="true"] .track {
-  animation: none;
-  transform: none;
-  will-change: auto;
-}
-.section[data-browsing="true"] .marquee {
-  overflow-x: auto;
-}
-.section[data-browsing="true"] [data-ticker-copy="true"] {
-  display: none;
-}
+
+/* Owner-requested motion, including reduced-motion browsers; hover/focus pause it. */
 @media (prefers-reduced-motion: reduce) {
-  .marquee {
-    overflow-x: auto;
-  }
-  .section [data-ticker-copy="true"] {
-    display: none;
-  }
-  .motionControl {
-    display: none;
+  .track {
+    animation-duration: var(--brand-duration) !important;
+    animation-iteration-count: infinite !important;
   }
 }

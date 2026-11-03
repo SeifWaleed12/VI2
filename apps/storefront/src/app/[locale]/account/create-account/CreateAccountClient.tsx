@@ -84,6 +84,8 @@ export default function CreateAccountClient() {
     useState("");
   const [success, setSuccess] =
     useState("");
+  // The error came from an email that already has an account: offer the way in.
+  const [emailTaken, setEmailTaken] = useState(false);
 
   async function submit(
     event: FormEvent,
@@ -155,6 +157,7 @@ export default function CreateAccountClient() {
     });
 
     if (!result.ok) {
+      setEmailTaken(result.emailTaken === true);
       setError(
         result.message ??
           "Could not create your account. Please try again.",
@@ -392,7 +395,15 @@ export default function CreateAccountClient() {
                   size={15}
                   strokeWidth={1.5}
                 />
-                <span>{error}</span>
+                <span>
+                  {error}
+                  {emailTaken && (
+                    <span className={styles.noticeLinks}>
+                      <Link href="/account/sign-in">Sign in</Link>
+                      <Link href="/account/forgot-password">Reset password</Link>
+                    </span>
+                  )}
+                </span>
               </div>
             )}
 

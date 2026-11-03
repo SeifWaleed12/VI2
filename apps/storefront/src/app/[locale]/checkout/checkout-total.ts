@@ -4,3 +4,11 @@ export function checkoutTotal(cartTotal: number, cartShippingTotal: number, subt
   const beforeDelivery = cartTotal > 0 ? cartTotal - cartShippingTotal : subtotal - discountTotal;
   return Math.max(0, beforeDelivery + delivery);
 }
+
+export function formatPrice(
+  value: number,
+) {
+  return new Intl.NumberFormat(
+    "en-EG",
+  ).format(value);
+}

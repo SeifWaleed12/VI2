@@ -3,7 +3,7 @@ import { ContainerRegistrationKeys, MedusaError, Modules } from "@medusajs/frame
 import { createRbacPoliciesWorkflow, createRbacRolesWorkflow, createRbacRolePoliciesWorkflow, deleteRbacRolePoliciesWorkflow, updateRbacRolesWorkflow } from "@medusajs/medusa/core-flows"
 import { managerPolicyGrants } from "../lib/manager-role"
 
-const MANAGER_DESCRIPTION = "Runs the shop: orders, catalog, brands, customers, promotions and price lists. No store settings, staff, API keys or stock settings."
+const MANAGER_DESCRIPTION = "Runs the shop: orders, catalog, stock, brands, customers, promotions and price lists. No store settings, staff or API keys."
 
 // Run after native migrations. Explicitly names the bootstrap administrator;
 // never upgrades all existing staff or silently assigns manager privileges.

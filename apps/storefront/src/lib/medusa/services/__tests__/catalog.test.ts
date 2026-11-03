@@ -1,9 +1,9 @@
-import { mapMedusaProduct, getProducts, listProducts, InvalidCatalogFilterError } from "../products";
+import { mapMedusaProduct, getProducts, listProducts, getBundles, InvalidCatalogFilterError } from "../products";
 import { mapMedusaCart } from "../cart";
 import { selectRegion } from "../regions";
 import { medusa } from "../../client";
 
-jest.mock("../../client", () => ({ medusa: { store: { product: { list: jest.fn() }, region: { list: jest.fn() } } } }));
+jest.mock("../../client", () => ({ medusa: { client: { fetch: jest.fn() }, store: { product: { list: jest.fn() }, region: { list: jest.fn() } } } }));
 const egypt = { id: "reg_eg", name: "Egypt", currency_code: "egp", countries: [{ iso_2: "eg" }] };
 beforeEach(() => { jest.resetAllMocks(); jest.mocked(medusa.store.region.list).mockResolvedValue({ regions: [egypt] } as never); });
 
@@ -15,7 +15,7 @@ it("reads brand from the active linked record", () => {
   expect(mapMedusaProduct({ id: "prod_1", brand: { name: "Confirmed", status: "active" }, variants: [] } as never).brand).toBe("Confirmed");
 });
 it.each([{ manage_inventory: false }, { manage_inventory: true, allow_backorder: true }, { manage_inventory: true, inventory_quantity: 2 }])("respects explicit Medusa availability %j", (variant) => {
-  expect(mapMedusaProduct({ id: "prod_1", variants: [{ id: "variant_1", ...variant }] } as never).inStock).toBe(true);
+  expect(mapMedusaProduct({ id: "prod_1", variants: [{ id: "variant_1", calculated_price: { calculated_amount: 10 }, ...variant }] } as never).inStock).toBe(true);
 });
 it("distinguishes an empty catalog from a backend outage", async () => {
   jest.mocked(medusa.store.product.list).mockResolvedValueOnce({ products: [] } as never).mockRejectedValueOnce(new Error("offline"));
@@ -114,4 +114,79 @@ describe("catalog contract (docs/CATALOG-CONTRACT.md)", () => {
     expect(sentQuery()).toMatchObject({ limit: 100, offset: 0 });
     expect(list().mock.calls[0][1]).toEqual({ "x-medusa-locale": "en-US" });
   });
+});
+
+it("never borrows a price or comparison from another variant", () => {
+  const product = mapMedusaProduct({
+    id: "prod", variants: [
+      { id: "priced", calculated_price: { calculated_amount: 100, original_amount: 200 } },
+      { id: "unpriced", calculated_price: { calculated_amount: null, original_amount: 300 } },
+      { id: "higher", calculated_price: { calculated_amount: 400, original_amount: 300 } },
+    ],
+  } as never);
+  const variant = (id: string) => product.variants?.find((v) => v.id === id);
+  expect(variant("unpriced")).toMatchObject({ price: 0, compareAtPrice: undefined });
+  expect(variant("higher")?.compareAtPrice).toBeUndefined();
+});
+
+it("reads bundles by the ids the backend gives, and asks nothing more when there are none", async () => {
+  jest.mocked(medusa.client.fetch).mockResolvedValueOnce({ bundle_ids: ["prod_set"] } as never);
+  jest.mocked(medusa.store.product.list).mockResolvedValueOnce({ products: [{ id: "prod_set", variants: [{ id: "v_set", calculated_price: { calculated_amount: 1500, original_amount: 1500 } }] }], count: 1 } as never);
+  expect((await getBundles("ar")).map((p) => p.id)).toEqual(["prod_set"]);
+  expect(medusa.store.product.list).toHaveBeenCalledWith(expect.objectContaining({ id: ["prod_set"], limit: 100 }), { "x-medusa-locale": "ar-EG" });
+  jest.mocked(medusa.client.fetch).mockResolvedValueOnce({ bundle_ids: [] } as never);
+  expect(await getBundles("en")).toEqual([]);
+  expect(medusa.store.product.list).toHaveBeenCalledTimes(1);
+  jest.mocked(medusa.client.fetch).mockRejectedValueOnce(new Error("offline"));
+  await expect(getBundles("en")).rejects.toThrow("Bundles temporarily unavailable.");
+});
+
+it("hydrates only the requested page through the bounded fresh endpoint, retaining locale", async () => {
+  jest.mocked(medusa.client.fetch).mockResolvedValue({ products: [{ id: "prod_1", variants: [] }], count: 1 });
+  expect(await listProducts({ locale: "ar", regionId: "reg_eg", id: ["prod_1"], limit: 1, fresh: true })).toMatchObject({ count: 1, products: [{ id: "prod_1" }] });
+  expect(medusa.client.fetch).toHaveBeenCalledWith("/store/catalog-products", expect.objectContaining({
+    cache: "no-store", headers: { "x-medusa-locale": "ar-EG" },
+    query: expect.objectContaining({ id: ["prod_1"], limit: 1, offset: 0 }),
+  }));
+  expect(medusa.store.product.list).not.toHaveBeenCalled();
+});
+
+it.each(["unpriced", "sold-out"])("shows the first purchasable variant when the first option is %s", state => {
+  const product = mapMedusaProduct({ id: "prod_1", variants: [
+    { id: "second", variant_rank: 1, manage_inventory: false, calculated_price: { calculated_amount: 50 } },
+    { id: "first", variant_rank: 0, manage_inventory: state === "sold-out", inventory_quantity: 0,
+      calculated_price: state === "unpriced" ? null : { calculated_amount: 10 } },
+  ] } as never);
+  expect(product).toMatchObject({ variantId: "second", price: 50, inStock: true });
+  expect(product.variants?.map(v => v.id)).toEqual(["first", "second"]);
+  if (state === "unpriced") expect(product.variants?.[0].price).toBe(0);
+});
+it("keeps an entirely unpriced product unavailable even with unmanaged inventory", () => {
+  expect(mapMedusaProduct({ id: "prod_1", variants: [{ id: "first", manage_inventory: false }] } as never))
+    .toMatchObject({ variantId: "first", price: 0, inStock: false });
+});
+
+it("uses exposed native rank before creation order when both options are purchasable", () => {
+  const product = mapMedusaProduct({ id: "prod_ranked", variants: [
+    { id: "first", variant_rank: 9, created_at: "2026-01-01", manage_inventory: false, calculated_price: { calculated_amount: 10 } },
+    { id: "second", variant_rank: 2, created_at: "2026-02-01", manage_inventory: false, calculated_price: { calculated_amount: 50 } },
+  ] } as never);
+  expect(product).toMatchObject({ variantId: "second", price: 50, inStock: true });
+  expect(product.variants?.map(v => v.id)).toEqual(["second", "first"]);
+});
+
+it("keeps every product photo once, the main one first, and lists them only when there are several", () => {
+  const photos = (thumbnail: string | null, urls: string[]) => mapMedusaProduct({ id: "p", thumbnail, images: urls.map((url) => ({ url })) } as never);
+  expect(photos("t.jpg", ["t.jpg", "b.jpg", "b.jpg"]).images).toEqual(["t.jpg", "b.jpg"]);
+  expect(photos(null, ["a.jpg", "b.jpg"]).images).toEqual(["a.jpg", "b.jpg"]);
+  expect(photos("t.jpg", ["t.jpg"]).images).toBeUndefined();
+});
+
+it("limits a variant to its tracked stock, and leaves untracked or backorder stock unlimited", () => {
+  const limitOf = (variant: Record<string, unknown>) => mapMedusaProduct({ id: "p", variants: [{ id: "v", calculated_price: { calculated_amount: 100 }, ...variant }] } as never).variants?.[0].maxQuantity;
+  expect(limitOf({ manage_inventory: true, inventory_quantity: 2 })).toBe(2);
+  expect(limitOf({ manage_inventory: true, inventory_quantity: -1 })).toBe(0);
+  expect(limitOf({ manage_inventory: false, inventory_quantity: 2 })).toBeUndefined();
+  expect(limitOf({ manage_inventory: true, allow_backorder: true, inventory_quantity: 0 })).toBeUndefined();
+  expect(limitOf({ manage_inventory: true })).toBeUndefined();
 });

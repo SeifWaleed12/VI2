@@ -7,7 +7,6 @@ import {
   ArrowLeft,
   ArrowRight,
   ChevronDown,
-  PackageCheck,
   ShieldCheck,
   Truck,
 } from "lucide-react";
@@ -18,114 +17,36 @@ import {
   useRef,
   useState,
 } from "react";
-import {
-  useSearchParams,
-} from "next/navigation";
 
 import { useCart } from "@/context/CartContext";
+import { useAuth } from "@/context/AuthContext";
+import { forgetDetails, forgetPendingCart, pendingCartId, rememberPendingCart, saveDetails, savedDetails } from "@/lib/pending-checkout";
 import {
   getShippingOptions,
-  getProductByHandle,
   setCartAddress,
   setCartShippingMethod,
   completeCheckout,
   createCart,
   addCartItem,
+  listAddresses,
 } from "@/lib/medusa";
 import type { ShippingOption } from "@/types/shipping";
-import type { Product } from "@/types/product";
 
 import styles from "./Checkout.module.css";
 import { deliveryStatus, type ShippingLoad } from "./delivery-status";
-import { checkoutTotal } from "./checkout-total";
-
-type CheckoutItem = {
-  product: Product;
-  quantity: number;
-};
+import { checkoutTotal, formatPrice } from "./checkout-total";
+import { governorates, initialForm, isValidEgyptPhone, normalizeEgyptPhone, type CheckoutForm } from "./checkout-details";
+import OrderSummary, { type CheckoutItem } from "./OrderSummary";
+import PromoCode from "./PromoCode";
+import CatalogImage from "@/components/CatalogImage";
 
 type CheckoutStep =
   | 1
   | 2;
 
-type CheckoutForm = {
-  name: string;
-  phone: string;
-  email: string;
-  governorate: string;
-  area: string;
-  address: string;
-  notes: string;
-};
-
-const governorates = [
-  "Cairo",
-  "Giza",
-  "Alexandria",
-  "Qalyubia",
-  "Sharqia",
-  "Dakahlia",
-  "Gharbia",
-  "Monufia",
-  "Beheira",
-  "Fayoum",
-  "Beni Suef",
-  "Minya",
-  "Assiut",
-  "Sohag",
-  "Qena",
-  "Luxor",
-  "Aswan",
-  "Red Sea",
-  "Suez",
-  "Ismailia",
-  "Port Said",
-];
-
-const initialForm: CheckoutForm = {
-  name: "",
-  phone: "",
-  email: "",
-  governorate: "",
-  area: "",
-  address: "",
-  notes: "",
-};
-
-function formatPrice(
-  value: number,
-) {
-  return new Intl.NumberFormat(
-    "en-EG",
-  ).format(value);
-}
-
-function normalizeEgyptPhone(
-  value: string,
-) {
-  return value.replace(
-    /[\s\-()]/g,
-    "",
-  );
-}
-
-function isValidEgyptPhone(
-  value: string,
-) {
-  const phone =
-    normalizeEgyptPhone(value);
-
-  return (
-    /^01[0125]\d{8}$/.test(phone) ||
-    /^\+201[0125]\d{8}$/.test(phone) ||
-    /^00201[0125]\d{8}$/.test(phone)
-  );
-}
 
 export default function CheckoutClient() {
   const router = useLocaleRouter();
-  const searchParams =
-    useSearchParams();
 
   const submissionLock = useRef(false);
   const topRef =
@@ -136,18 +57,12 @@ export default function CheckoutClient() {
     clearCart,
     cartId,
     cart,
-    promotions,
-    applyPromotion,
-    removePromotion,
     loading: cartLoading,
     refreshCart,
   } = useCart();
 
   const [shippingOptions, setShippingOptions] = useState<ShippingOption[]>([]);
   const [selectedShippingOptionId, setSelectedShippingOptionId] = useState<string>("");
-  const [promoInput, setPromoInput] = useState("");
-  const [promoMsg, setPromoMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
-  const [promoLoading, setPromoLoading] = useState(false);
 
   const [shippingLoad, setShippingLoad] = useState<ShippingLoad>("loading");
 
@@ -170,71 +85,12 @@ export default function CheckoutClient() {
   const deliveryCard = deliveryStatus(cartId, cartLoading, shippingLoad, shippingOptions.length);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- loads delivery options when the cart is known
     if (cartId) loadShippingOptions(cartId);
   }, [cartId, loadShippingOptions]);
 
   const [recovering, setRecovering] = useState(false);
-  const buyNowSlug =
-    searchParams.get("buyNow");
-
-  const requestedQuantity =
-    Number(
-      searchParams.get("quantity") ??
-        "1",
-    );
-
-  const [buyNowProduct, setBuyNowProduct] =
-    useState<Product | undefined>(undefined);
-
-  // Fetch buyNow product from Medusa using SDK service
-  useEffect(() => {
-    if (!buyNowSlug) return;
-    getProductByHandle(buyNowSlug)
-      .then((product) => {
-        if (product) {
-          const variantId = searchParams.get("variantId");
-          const variant = variantId ? product.variants?.find((v) => v.id === variantId) : product.variants?.[0];
-          if (!variant?.inStock) return;
-          setBuyNowProduct({ ...product, variantId: variant.id, price: variant.price, stock: variant.stock, inventoryKnown: variant.inventoryKnown, inStock: variant.inStock });
-        }
-      })
-      .catch(() => {});
-  }, [buyNowSlug, searchParams]);
-
-  const buyNowQuantity =
-    Number.isFinite(
-      requestedQuantity,
-    )
-      ? Math.max(
-          1,
-          Math.min(
-            Math.floor(requestedQuantity),
-            buyNowProduct?.inventoryKnown && buyNowProduct.stock > 0 ? buyNowProduct.stock : 1,
-          ),
-        )
-      : 1;
-
-  const checkoutItems =
-    useMemo<
-      CheckoutItem[]
-    >(() => {
-      if (buyNowProduct) {
-        return [
-          {
-            product:
-              buyNowProduct,
-            quantity:
-              buyNowQuantity,
-          },
-        ];
-      }
-
-      return items;
-    }, [
-      buyNowProduct,
-      buyNowQuantity,
-      items,
-    ]);
+  const checkoutItems: CheckoutItem[] = items;
 
   const cartSubtotal = cart?.itemSubtotal ?? 0;
   const cartShippingTotal = cart?.shippingTotal ?? 0;
@@ -280,19 +136,6 @@ export default function CheckoutClient() {
       1,
     );
 
-  // Resume a submitted-but-unconfirmed checkout after refresh. Runs after
-  // hydration because sessionStorage is unavailable during server render.
-  useEffect(() => {
-    try {
-      const pendingId = window.sessionStorage.getItem(`vi2-pending-checkout:${buyNowSlug || "cart"}`);
-      if (pendingId) { setRecovering(true); setStep(2); }
-    } catch { /* recovery storage unavailable */ }
-    // Sign-out removes the pending checkout; stop offering to resume it.
-    const onSignedOut = () => setRecovering(false);
-    window.addEventListener("vi2-signed-out", onSignedOut);
-    return () => window.removeEventListener("vi2-signed-out", onSignedOut);
-  }, [buyNowSlug]);
-
   const [
     form,
     setForm,
@@ -300,6 +143,58 @@ export default function CheckoutClient() {
     useState<CheckoutForm>(
       initialForm,
     );
+  // Saving starts only after the saved details are read, so the empty first
+  // render never overwrites them.
+  const [detailsRestored, setDetailsRestored] = useState(false);
+
+  // Resume a submitted-but-unconfirmed checkout and the details typed so far.
+  // Runs after hydration because sessionStorage is unavailable during server render.
+  useEffect(() => {
+    const saved = savedDetails(initialForm);
+    /* eslint-disable react-hooks/set-state-in-effect -- browser storage exists only after hydration */
+    if (saved) setForm(saved);
+    if (pendingCartId()) { setRecovering(true); setStep(2); }
+    setDetailsRestored(true);
+    /* eslint-enable react-hooks/set-state-in-effect */
+    // Sign-out removes the pending checkout and its details.
+    const onSignedOut = () => { setRecovering(false); setForm(initialForm); };
+    window.addEventListener("vi2-signed-out", onSignedOut);
+    return () => window.removeEventListener("vi2-signed-out", onSignedOut);
+  }, []);
+
+  useEffect(() => {
+    if (detailsRestored) saveDetails(form);
+  }, [detailsRestored, form]);
+
+  // A confirmed cart change drops the pending retry (cart provider); show
+  // "Place order" again instead of offering a retry that no longer exists.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- follows browser storage the cart provider changed
+    if (recovering && !pendingCartId()) setRecovering(false);
+  }, [items, recovering]);
+
+  // A signed-in customer starts with their name, contact and first saved
+  // address; only empty fields are filled, so nothing typed is replaced.
+  const { customer, isLoading: customerLoading } = useAuth();
+  useEffect(() => {
+    if (!detailsRestored || !customer) return;
+    let active = true;
+    const fill = (values: Partial<CheckoutForm>) => setForm((current) => ({
+      ...current,
+      ...Object.fromEntries(Object.entries(values).filter(([key, value]) => value && !current[key as keyof CheckoutForm])),
+    }));
+    fill({ name: `${customer.firstName} ${customer.lastName}`.trim(), email: customer.email, phone: customer.phone ?? "" });
+    void listAddresses().then((result) => {
+      const address = result.ok ? result.addresses[0] : undefined;
+      if (!active || !address) return;
+      fill({
+        governorate: address.city && governorates.includes(address.city) ? address.city : "",
+        area: address.address_2 ?? "", address: address.address_1 ?? "",
+        phone: address.phone ?? "",
+      });
+    });
+    return () => { active = false; };
+  }, [detailsRestored, customer]);
 
   const [
     submitting,
@@ -413,9 +308,7 @@ export default function CheckoutClient() {
 
   async function placeOrder() {
     if (submissionLock.current) return;
-    const recoveryKey = `vi2-pending-checkout:${buyNowSlug || "cart"}`;
-    let recoveryId: string | null = null;
-    try { recoveryId = window.sessionStorage.getItem(recoveryKey); } catch { /* optional recovery storage */ }
+    const recoveryId = pendingCartId();
     if (!recoveryId && !validateDetails()) {
       setStep(1);
       scrollToTop();
@@ -432,8 +325,7 @@ export default function CheckoutClient() {
           setError("Checkout is unavailable until payment methods are configured.");
           return;
         }
-        if (buyNowSlug && !buyNowProduct) throw new Error("Product unavailable");
-        if (!activeCartId || buyNowProduct) {
+        if (!activeCartId) {
           const created = await createCart();
           activeCartId = created.id;
           for (const item of checkoutItems) {
@@ -451,24 +343,23 @@ export default function CheckoutClient() {
         if (!selectedShippingOptionId) throw new Error("Select a shipping method");
         await setCartShippingMethod(activeCartId, selectedShippingOptionId);
         // Store only the cart capability before completion, for refresh recovery.
-        window.sessionStorage.setItem(recoveryKey, activeCartId);
+        rememberPendingCart(activeCartId);
         setRecovering(true);
       }
       if (!activeCartId) throw new Error("Cart unavailable");
       completionAttempted = true;
       const completion = await completeCheckout(activeCartId, Boolean(recoveryId));
       if (!completion.ok) {
-        if (!completion.unknown) { window.sessionStorage.removeItem(recoveryKey); setRecovering(false); }
+        if (!completion.unknown) { forgetPendingCart(); setRecovering(false); }
         setError(completion.error);
         return;
       }
-      try {
-        window.sessionStorage.removeItem(recoveryKey);
-        window.localStorage.removeItem("vi2-last-order");
-      } catch { /* confirmed order remains authoritative */ }
+      forgetPendingCart();
+      forgetDetails();
+      try { window.localStorage.removeItem("vi2-last-order"); } catch { /* confirmed order remains authoritative */ }
       // The order exists in Medusa now. A local cart-reset failure must not be
       // reported as a checkout failure, or the customer may order twice.
-      if (!buyNowSlug) await clearCart().catch(() => {});
+      await clearCart().catch(() => {});
       router.push(`/order/success?order=${encodeURIComponent(completion.orderId)}`);
     } catch {
       setError(completionAttempted
@@ -480,10 +371,7 @@ export default function CheckoutClient() {
     }
   }
 
-  const backHref =
-    buyNowProduct
-      ? `/products/${buyNowProduct.slug}`
-      : "/shop";
+  const backHref = "/shop";
 
   return (
     <>
@@ -658,6 +546,10 @@ export default function CheckoutClient() {
             </div>
           </button>
 
+          <div className={styles.mobilePromo}>
+            <PromoCode collapsible />
+          </div>
+
           {summaryOpen && (
             <div
               className={
@@ -681,14 +573,7 @@ export default function CheckoutClient() {
                         styles.mobileImage
                       }
                     >
-                      <img
-                        src={
-                          item.product.image
-                        }
-                        alt={
-                          item.product.name
-                        }
-                      />
+                      <CatalogImage src={item.product.image} alt={item.product.name} />
 
                       <span>
                         {
@@ -727,6 +612,13 @@ export default function CheckoutClient() {
                   styles.mobileTotals
                 }
               >
+                {discountTotal > 0 && (
+                  <div className={styles.discountLine}>
+                    <span>DISCOUNT</span>
+                    <strong>-{formatPrice(discountTotal)} EGP</strong>
+                  </div>
+                )}
+
                 <div>
                   <span>
                     DELIVERY
@@ -828,6 +720,14 @@ export default function CheckoutClient() {
                       DELIVERING TO?
                     </small>
                   </div>
+
+                  {!customerLoading && !customer && (
+                    <p className={styles.signInHint}>
+                      {/* Two whole phrases, so the Arabic dictionary translates each one. */}
+                      <span>Have an account?</span>{" "}
+                      <Link href="/account/sign-in?next=/checkout">Sign in to fill in your details and keep this order in your account.</Link>
+                    </p>
+                  )}
 
                   <div
                     className={
@@ -1449,274 +1349,7 @@ export default function CheckoutClient() {
             )}
           </div>
 
-          {/* =================================================
-              DESKTOP ORDER SUMMARY
-              ================================================= */}
-          <aside
-            className={
-              styles.summary
-            }
-          >
-            <div
-              className={
-                styles.summaryInner
-              }
-            >
-              <span
-                className={
-                  styles.summaryEyebrow
-                }
-              >
-                ORDER SUMMARY
-              </span>
-
-              <h2>
-                ORDER
-                <br />
-                SUMMARY
-              </h2>
-
-              <div
-                className={
-                  styles.orderItems
-                }
-              >
-                {checkoutItems.length ===
-                0 ? (
-                  <div
-                    className={
-                      styles.emptyOrder
-                    }
-                  >
-                    <PackageCheck
-                      size={26}
-                      strokeWidth={
-                        1.3
-                      }
-                    />
-
-                    <p>
-                      Your order is
-                      empty.
-                    </p>
-
-                    <Link href="/shop">
-                      RETURN TO SHOP
-                    </Link>
-                  </div>
-                ) : (
-                  checkoutItems.map(
-                    (
-                      item,
-                    ) => (
-                      <article
-                        key={
-                          item.product.id
-                        }
-                        className={
-                          styles.orderItem
-                        }
-                      >
-                        <div
-                          className={
-                            styles.orderImage
-                          }
-                        >
-                          <img
-                            src={
-                              item.product.image
-                            }
-                            alt={
-                              item.product.name
-                            }
-                          />
-
-                          <span>
-                            {
-                              item.quantity
-                            }
-                          </span>
-                        </div>
-
-                        <div
-                          className={
-                            styles.orderItemInfo
-                          }
-                        >
-                          <span>
-                            {
-                              item.product.brand
-                            }
-                          </span>
-
-                          <strong>
-                            {
-                              item.product.shortName
-                            }
-                          </strong>
-
-                          <small>
-                            {
-                              item.product.size
-                            }
-                          </small>
-                        </div>
-
-                        <strong
-                          className={
-                            styles.orderItemPrice
-                          }
-                        >
-                          {formatPrice(
-                            item.product.price *
-                              item.quantity,
-                          )}{" "}
-                          EGP
-                        </strong>
-                      </article>
-                    ),
-                  )
-                )}
-              </div>
-
-              {/* PROMO / DISCOUNT CODE BOX */}
-              <div style={{ padding: "16px 0", borderTop: "1px solid #e5e5e5", borderBottom: "1px solid #e5e5e5", margin: "16px 0" }}>
-                <span style={{ fontSize: "var(--text-ui)", fontWeight: 800, letterSpacing: "var(--tracking-ui)", display: "block", marginBottom: "8px", color: "#666" }}>
-                  PROMO CODE
-                </span>
-                <div style={{ display: "flex", gap: "6px" }}>
-                  <input
-                    type="text"
-                    placeholder="ENTER CODE"
-                    value={promoInput}
-                    onChange={(e) => setPromoInput(e.target.value.toUpperCase())}
-                    style={{ flex: 1, padding: "8px 10px", border: "1px solid #ccc", fontSize: "var(--text-body)", textTransform: "uppercase" }}
-                  />
-                  <button
-                    type="button"
-                    disabled={promoLoading || !promoInput.trim()}
-                    onClick={async () => {
-                      if (!promoInput.trim()) return;
-                      setPromoLoading(true);
-                      setPromoMsg(null);
-                      const res = await applyPromotion(promoInput.trim());
-                      setPromoLoading(false);
-                      if (res.ok) {
-                        setPromoMsg({ type: "success", text: "Promotion applied!" });
-                        setPromoInput("");
-                      } else {
-                        setPromoMsg({ type: "error", text: res.message || "Invalid promotion code." });
-                      }
-                    }}
-                    style={{ padding: "8px 14px", background: "#111", color: "#fff", border: "none", fontSize: "var(--text-ui)", fontWeight: 800, cursor: "pointer" }}
-                  >
-                    {promoLoading ? "..." : "APPLY"}
-                  </button>
-                </div>
-                {promoMsg && (
-                  <p style={{ fontSize: "var(--text-ui)", marginTop: "6px", color: promoMsg.type === "success" ? "#16a34a" : "#dc2626" }}>
-                    {promoMsg.text}
-                  </p>
-                )}
-                {promotions.map((p) => (
-                  <div key={p.code} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "8px", fontSize: "var(--text-body)", background: "#f5f5f5", padding: "6px 10px" }}>
-                    <span>🎟️ <strong>{p.code}</strong></span>
-                    <button
-                      type="button"
-                      onClick={() => removePromotion(p.code)}
-                      style={{ background: "none", border: "none", color: "#dc2626", cursor: "pointer", fontSize: "var(--text-ui)", fontWeight: 700 }}
-                    >
-                      REMOVE
-                    </button>
-                  </div>
-                ))}
-              </div>
-
-              <div
-                className={
-                  styles.totals
-                }
-              >
-                <div>
-                  <span>
-                    Subtotal
-                  </span>
-
-                  <strong>
-                    {formatPrice(
-                      subtotal,
-                    )}{" "}
-                    EGP
-                  </strong>
-                </div>
-
-                {discountTotal > 0 && (
-                  <div style={{ color: "#16a34a" }}>
-                    <span>
-                      Discount
-                    </span>
-
-                    <strong>
-                      -{formatPrice(
-                        discountTotal,
-                      )}{" "}
-                      EGP
-                    </strong>
-                  </div>
-                )}
-
-                <div>
-                  <span>
-                    Delivery
-                  </span>
-
-                  <strong>
-                    {delivery ===
-                    0
-                      ? "FREE"
-                      : `${formatPrice(
-                          delivery,
-                        )} EGP`}
-                  </strong>
-                </div>
-
-                <div
-                  className={
-                    styles.grandTotal
-                  }
-                >
-                  <span>
-                    TOTAL
-                  </span>
-
-                  <strong>
-                    {formatPrice(
-                      total,
-                    )}{" "}
-                    EGP
-                  </strong>
-                </div>
-              </div>
-
-              <div
-                className={
-                  styles.deliveryNote
-                }
-              >
-                <Truck
-                  size={18}
-                  strokeWidth={
-                    1.4
-                  }
-                />
-
-                <span>
-                  Delivery across
-                  Egypt.
-                </span>
-              </div>
-            </div>
-          </aside>
+          <OrderSummary items={checkoutItems} subtotal={subtotal} discountTotal={discountTotal} delivery={delivery} total={total} />
         </div>
       </main></LegacyTranslations>
 

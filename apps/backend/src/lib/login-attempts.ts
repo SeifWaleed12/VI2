@@ -15,13 +15,19 @@ export const LOGIN_POLICY: LoginAttemptPolicy = { maxAttempts: 5, windowSeconds:
 // flood an inbox, and so they never count as wrong passwords.
 export const RESET_REQUEST_POLICY: LoginAttemptPolicy = { maxAttempts: 5, windowSeconds: 15 * 60 }
 
-export type AttemptPurpose = "login-attempts" | "reset-requests"
+// Email-change links go to the old and new inbox; three requests an hour per
+// account keeps that from being used to flood either.
+export const EMAIL_CHANGE_POLICY: LoginAttemptPolicy = { maxAttempts: 3, windowSeconds: 60 * 60 }
+
+export type AttemptPurpose = "login-attempts" | "reset-requests" | "email-change-requests" | "review-writes" | "registration-attempts"
 
 // The key is hashed so the cache never holds email addresses, and so characters
 // the cache treats specially ("*" is a wildcard) are harmless.
 export function attemptKey(purpose: AttemptPurpose, actorType: ActorType, email: unknown) {
   const account = typeof email === "string" ? email.trim().toLowerCase() : ""
-  const digest = createHash("sha256").update(`${actorType}\n${account}`).digest("hex")
+  // Emailpass credentials are shared by staff and customer actors.
+  const identity = purpose === "login-attempts" ? "emailpass" : actorType
+  const digest = createHash("sha256").update(`${identity}\n${account}`).digest("hex")
   return `${purpose}:${digest}`
 }
 
