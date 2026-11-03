@@ -336,3 +336,12 @@ Review focus for GPT:
 - Two saves adding the same new value at the same moment: the second hits Medusa's unique index
   (`option_id`, `value`) and fails with Medusa's message. Nothing is half-saved.
 - `page.tsx`: error mapping to tabs and rows, and the close prompt.
+
+## Round 3 review
+
+Reviewer: GPT. Date: 2026-11-03. Copied from GPT's folder `vi2-gpt-review` (branch `gpt/work`), where it wrote the review.
+Reviewed only `6fc5c04` on `claude/new-product-page`.
+
+**Verdict: No actionable findings.** The shared-option workflow validates all requested option/value IDs before writing, reuses existing values case-insensitively, and records only newly created value IDs for compensation. The product workflow runs creation after that step, so a later EDA/product failure compensates the newly added shared values. The route remains strict and rejects cross-product options or values from another option. The page's selection and variant table align with the shared option IDs and backend limit described in the handoff.
+
+The handoff reports the focused HTTP and unit checks plus live admin checks; I did not rerun them. Residual limits: the live browser could not verify Esc through its automation tool, and Medusa retains option-value links from soft-deleted products, so cleanup may require manual unlinking. No open code problems identified.
