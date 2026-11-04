@@ -1,5 +1,5 @@
 import type { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
-import { ContainerRegistrationKeys, MedusaError } from "@medusajs/framework/utils"
+import { MedusaError, Modules } from "@medusajs/framework/utils"
 import { uploadFilesWorkflow } from "@medusajs/medusa/core-flows"
 import { randomUUID } from "node:crypto"
 import { rasterImage } from "../../../lib/brand-logo"
@@ -36,11 +36,15 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
   const input = await Promise.all(files.map(fileInput))
   const { result } = await uploadFilesWorkflow(req.scope).run({ input: { files: input } })
   // Tracked so the nightly cleanup can delete images no product ends up using.
+  // An untracked image could never be cleaned up, so it is removed instead.
   const images = result.filter((_file, index) => input[index].filename.startsWith(`${MEDIA_FOLDER.products}/`))
   if (images.length) {
-    await req.scope.resolve<UploadedMediaService>(UPLOADED_MEDIA_MODULE)
-      .createUploadedMedias(images.map(({ id, url }) => ({ id, url })))
-      .catch(() => req.scope.resolve(ContainerRegistrationKeys.LOGGER).warn("Could not track uploaded product images for cleanup"))
+    try {
+      await req.scope.resolve<UploadedMediaService>(UPLOADED_MEDIA_MODULE).createUploadedMedias(images.map(({ id, url }) => ({ id, url })))
+    } catch {
+      await req.scope.resolve(Modules.FILE).deleteFiles(images.map(({ id }) => id))
+      throw new MedusaError(MedusaError.Types.UNEXPECTED_STATE, "The image could not be saved. Try again.")
+    }
   }
   return res.status(200).json({ files: result })
 }

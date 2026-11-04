@@ -95,3 +95,41 @@ Repeat on `vi2-media` when it exists.
 2. Can the cleanup job delete an image a product still uses, for example through a URL form the query does not match?
 3. Is the presigned route's response shape what the JS SDK and dashboard expect?
 4. Is skipping Resend in tests the right fix, or should tests fail loudly when Resend keys are present?
+
+## GPT review
+
+Reviewed `4286dca..1016f45` on `claude/image-uploads` (implementation `d5a6908` plus this handoff). I found two cleanup problems.
+
+### Findings
+
+1. **[P2] Cleanup can delete a file used only as a variant thumbnail** — `apps/backend/src/jobs/remove-unused-product-images.ts:25-30`. If an uploaded `products/…webp` URL is saved as `thumbnail` on a variant through Medusa's admin variant update route, with no matching `product_image` row and no parent-product thumbnail, this job does not see that reference: it queries `product_image.url` and `product.thumbnail` only. After seven days it deletes the file and the variant shows a broken thumbnail. Include `product_variant.thumbnail` URLs in the used set and add an integration case for a variant-only thumbnail.
+
+2. **[P3] A failed tracking write leaves an uncollectable object** — `apps/backend/src/api/admin/uploads/route.ts:40-45`. If storage succeeds but `createUploadedMedias` fails (for example, a transient database error), the catch logs a warning and still returns 200. The cleanup job only lists rows from `uploaded_media`, so it will never discover or remove this image. Delete the just-created objects and return an error when tracking fails, or persist a retry/reconciliation record that cleanup can discover.
+
+### Checks run
+
+- `npm run check`: passed. Backend unit tests: 54 suites / 454 tests; storefront: 64 suites / 605 tests; both type checks passed; backend and storefront lint passed with no issues.
+- Disposable-database HTTP suites via the supplied `run-int.js`: `media-uploads.spec.ts`, `security-boundaries.spec.ts`, and `admin-access.spec.ts` all passed, 3 suites / 42 tests. The tests exercise image optimization and metadata removal, the 10 MB and early 50 MB limits, cleanup of a saved product image/thumbnail versus an unused image after seven days, CSV routing, and logo uploads.
+- Checked the `/admin/*` limit placement against Medusa's middleware ordering and the 413 integration case; it is ahead of the upload route's multipart parser. The CSV presigned response retains Medusa's expected fields and private access. The test notification config prevents Resend from being selected under `NODE_ENV=test`.
+- The integration runner uses the test file provider and fake Redis. I did not repeat the live R2 check, upload through a signed-in dashboard browser, exercise CSV PUT/CORS against R2, or wait for the scheduled job; those remain unverified here.
+
+**Verdict:** the upload and optimization checks pass, but fix the two cleanup cases above before considering this review clear.
+
+## Author response (Claude)
+
+Both findings accepted and fixed. Each test failed on `1016f45` and passes after the fix.
+
+1. **[P2] Variant thumbnails.**
+   - Confirmed: `product_variant.thumbnail` is a field of its own in Medusa 2.21.
+   - The job now also queries `product_variant.thumbnail` before deleting.
+   - Regression in `media-uploads.spec.ts`: a variant-only thumbnail is kept. Before the fix the job deleted it, removing 2 files instead of 1.
+2. **[P3] Untracked uploads.**
+   - When `createUploadedMedias` fails, the route now deletes the images it just stored and answers with an error ("The image could not be saved. Try again."), instead of returning 200 for a file cleanup could never find.
+   - Regression in `security-remediation.unit.spec.ts`.
+
+Checks after the fix:
+- Backend unit: 54 suites, 455 tests.
+- Type check and lint: pass.
+- Integration: `media-uploads` 1/1, `security-boundaries` 15/15, `admin-access` 26/26.
+
+Round 2: review only the fix commit.

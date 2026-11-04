@@ -8,7 +8,8 @@ import type UploadedMediaService from "../modules/uploaded-media/service"
 export const KEEP_UNUSED_DAYS = 7
 const BATCH = 200
 
-// Deletes product images this server uploaded that no product or variant uses:
+// Deletes product images this server uploaded that no product image, product
+// thumbnail or variant thumbnail uses:
 // removed from a product, never saved, or left by a deleted product. Images
 // uploaded before tracking began are not touched.
 export async function removeUnusedProductImages(container: MedusaContainer, now = new Date()) {
@@ -22,11 +23,15 @@ export async function removeUnusedProductImages(container: MedusaContainer, now 
     const batch = await media.listUploadedMedias({ created_at: { $lt: cutoff } }, { take: BATCH, skip, order: { id: "ASC" } })
     if (!batch.length) break
     const urls = batch.map((upload) => upload.url)
-    const [{ data: images }, { data: products }] = await Promise.all([
+    const [{ data: images }, { data: products }, { data: variants }] = await Promise.all([
       query.graph({ entity: "product_image", fields: ["url"], filters: { url: urls } }),
       query.graph({ entity: "product", fields: ["thumbnail"], filters: { thumbnail: urls } }),
+      query.graph({ entity: "product_variant", fields: ["thumbnail"], filters: { thumbnail: urls } }),
     ])
-    const used = new Set<string>([...images.map((image) => image.url), ...products.map((product) => product.thumbnail ?? "")])
+    const used = new Set<string>([
+      ...images.map((image) => image.url),
+      ...[...products, ...variants].map((record) => record.thumbnail ?? ""),
+    ])
     const unused = batch.filter((upload) => !used.has(upload.url)).map((upload) => upload.id)
     if (unused.length) {
       await files.deleteFiles(unused)

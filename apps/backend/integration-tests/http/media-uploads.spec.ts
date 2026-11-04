@@ -16,7 +16,7 @@ const stored = (fileId: string) => existsSync(join(process.cwd(), "static", file
 medusaIntegrationTestRunner({
   testSuite: ({ getContainer }) => {
     describe("unused product image cleanup", () => {
-      it("deletes tracked images no product uses after 7 days, and keeps images and thumbnails in use", async () => {
+      it("deletes tracked images no product uses after 7 days, and keeps images, product thumbnails and variant thumbnails in use", async () => {
         const container = getContainer()
         const media = container.resolve<UploadedMediaService>(UPLOADED_MEDIA_MODULE)
         const upload = async (name: string) => {
@@ -24,15 +24,23 @@ medusaIntegrationTestRunner({
           await media.createUploadedMedias({ id: file.id, url: file.url })
           return file
         }
-        const [unused, image, thumbnail] = await Promise.all([upload("unused"), upload("image"), upload("thumbnail")])
-        await container.resolve(Modules.PRODUCT).createProducts({ title: "Whey", thumbnail: thumbnail.url, images: [{ url: image.url }] })
+        const [unused, image, thumbnail, variantThumbnail] = await Promise.all([upload("unused"), upload("image"), upload("thumbnail"), upload("variant-thumbnail")])
+        const products = container.resolve(Modules.PRODUCT)
+        const [product] = await products.createProducts([{
+          title: "Whey", thumbnail: thumbnail.url, images: [{ url: image.url }],
+          options: [{ title: "Size", values: ["1kg"] }],
+          variants: [{ title: "1kg", options: { Size: "1kg" } }],
+        }])
+        // A variant thumbnail has no product image row of its own.
+        const [variant] = await products.listProductVariants({ product_id: product.id })
+        await products.updateProductVariants(variant.id, { thumbnail: variantThumbnail.url })
 
         expect(await removeUnusedProductImages(container, days(6))).toBe(0)
         expect(stored(unused.id)).toBe(true)
 
         expect(await removeUnusedProductImages(container, days(8))).toBe(1)
-        expect([stored(unused.id), stored(image.id), stored(thumbnail.id)]).toEqual([false, true, true])
-        expect((await media.listUploadedMedias({})).map((upload) => upload.id).sort()).toEqual([image.id, thumbnail.id].sort())
+        expect([stored(unused.id), stored(image.id), stored(thumbnail.id), stored(variantThumbnail.id)]).toEqual([false, true, true, true])
+        expect((await media.listUploadedMedias({})).map((upload) => upload.id).sort()).toEqual([image.id, thumbnail.id, variantThumbnail.id].sort())
       })
     })
   },

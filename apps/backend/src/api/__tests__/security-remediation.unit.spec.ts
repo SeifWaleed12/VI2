@@ -58,6 +58,18 @@ it("accepts real raster images above the logo cap, re-encodes them as WebP in pr
   expect(run).toHaveBeenCalledWith({ input: { files: [expect.objectContaining({ mimeType: "image/webp", filename: expect.stringMatching(/^products\/[0-9a-f-]{36}\.webp$/) })] } })
   expect(createUploadedMedias).toHaveBeenCalledWith([{ id: "products/file_1.webp", url: "http://media.test/products/file_1.webp" }])
 }, 30_000)
+it("deletes the stored images and fails when they cannot be tracked, so no file escapes cleanup", async () => {
+  const run = jest.fn(async () => ({ result: [{ id: "products/file_1.webp", url: "http://media.test/products/file_1.webp" }] }))
+  jest.mocked(uploadFilesWorkflow).mockReturnValue({ run } as never)
+  const buffer = await sharp({ create: { width: 800, height: 800, channels: 3, background: "#ffffff" } }).png().toBuffer()
+  const deleteFiles = jest.fn(async () => undefined)
+  const createUploadedMedias = jest.fn(async () => { throw new Error("database unavailable") })
+  const resolve = (key: string) => (key === "file" ? { deleteFiles } : key === "logger" ? { warn: jest.fn(), error: jest.fn() } : { createUploadedMedias })
+  const res = { status: jest.fn().mockReturnThis(), json: jest.fn() }
+  await expect(upload({ files: [{ buffer }], scope: { resolve } } as never, res as never)).rejects.toThrow("could not be saved")
+  expect(deleteFiles).toHaveBeenCalledWith(["products/file_1.webp"])
+  expect(res.json).not.toHaveBeenCalled()
+})
 it("rejects generic images above 10 MiB before any upload", async () => {
   jest.mocked(uploadFilesWorkflow).mockClear()
   const buffer = Buffer.alloc(10 * 1024 * 1024 + 1)
