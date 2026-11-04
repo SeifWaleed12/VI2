@@ -24,16 +24,6 @@ export const brandLogoSchema = z.object({
   content: z.string().min(1).max(1_500_000).regex(/^[A-Za-z0-9+/]+=*$/),
 }).strict()
 
-export const quickVariantSchema = z.object({
-  option_title: text,
-  option_value: text,
-  title: text.optional(),
-  sku: text.optional(),
-  barcode: text.optional(),
-  prices: z.array(z.object({ amount: z.number().finite().nonnegative(), currency_code: z.string().regex(/^[a-z]{3}$/) }).strict()).min(1).max(50),
-  manage_inventory: z.boolean().optional(),
-}).strict()
-
 // The new password's rule is checked by changePassword, which reports the reason.
 export const emailChangeSchema = z.object({
   email: z.string().trim().pipe(z.email().max(254)).transform((value) => value.toLowerCase()),

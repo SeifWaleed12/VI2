@@ -22,6 +22,12 @@ approval before any change.
 |---|---|---|---|
 | Bring latest reviewed RD-0 and menu fixes into reviewed-baseline | GPT, authorized by Seif | complete locally | full-stack fast-forwarded from a68cbd1 to approved candidate 43a7b97. Includes RD-0, RD-0-NAV, RD-NAV-SIMPLE and RD-REVIEW-FIX; approved RD-1 retained. Backend source is unchanged from a68cbd1. Claude approval 84f3573 is copied into the review artifact. No push, database changes or service restart. Remaining manual checks: signed-in/populated-cart states and native zoom. |
 
+## Create button redirect (requested by Seif, 2026-11-04)
+
+| Task | Author | Reviewer | Status | Branch | Notes |
+|---|---|---|---|---|---|
+| Medusa's Create button opens the "New product (Vi2)" page; our separate button and the Quick Variant Creator (widget, route, workflow, tests) removed; EDA widget kept | Claude | GPT | Awaiting live check and GPT review | `claude/create-button-redirect` (from `full-stack` 4286dca) | Handoff: `docs/reviews/create-button-redirect.md`. `npm run check` green. Admin screens only: Medusa's `POST /admin/products` stays open. Not pushed. |
+
 ## New product page (requested by Seif, 2026-10-17)
 
 | Task | Author | Reviewer | Status | Branch | Notes |
