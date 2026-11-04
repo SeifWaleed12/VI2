@@ -1,5 +1,5 @@
 import type { SelectHTMLAttributes } from "react";
-import { governorates } from "@/app/[locale]/checkout/checkout-details";
+import { governorates } from "@/lib/egypt-address";
 import type { Locale } from "@/lib/i18n";
 
 // The saved value stays the English name checkout uses; only the label changes.

@@ -11,7 +11,7 @@ import styles from "./TrendingNow.module.css";
 export default function TrendingNow({
   products = [],
 }: { products?: Product[] } = {}) {
-  const { isArabic } = useLanguage();
+  const { isArabic, t } = useLanguage();
   const {
     ref,
     repetitions,
@@ -83,7 +83,7 @@ export default function TrendingNow({
                             className={styles.image} loading="lazy" decoding="async" />
                         </div>
                         <span className={styles.productName}>
-                          {product.shortName || product.name}
+                          {t(product.shortName || product.name)}
                         </span>
                       </Link>
                     );

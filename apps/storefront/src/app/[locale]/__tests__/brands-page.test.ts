@@ -11,7 +11,7 @@ jest.mock("next/link", () => ({ __esModule: true, default: ({ href, children }: 
 
 it("keeps equal display names distinct and does not infer counts from a product page", async () => {
   jest.mocked(getBrands).mockResolvedValue([{ id: "brand_a", name: "Same", slug: "same-a" }, { id: "brand_b", name: "Same", slug: "same-b" }] as never)
-  const html = renderToStaticMarkup(await BrandsPage())
+  const html = renderToStaticMarkup(await BrandsPage({ params: Promise.resolve({ locale: "en" }) }))
   expect(html).toContain("brand_id=brand_a")
   expect(html).toContain("brand_id=brand_b")
   expect(html).not.toContain("0 products")

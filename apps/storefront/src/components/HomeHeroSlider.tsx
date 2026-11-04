@@ -7,6 +7,7 @@ import {
   useState,
 } from "react";
 
+import type { MessageKey } from "@/lib/i18n";
 import styles from "./HomeHeroSlider.module.css";
 import { useLanguage } from "@/context/LanguageContext";
 
@@ -17,7 +18,7 @@ const slides = [
     mobileImage:
       "/hero/slider-v9/performance.webp",
     alt:
-      "Vi2 performance supplement collection",
+      "home.slide.performance" as MessageKey,
   },
   {
     desktopImage:
@@ -25,7 +26,7 @@ const slides = [
     mobileImage:
       "/hero/slider-v9/daily-wellness.webp",
     alt:
-      "Vi2 daily wellness supplement collection",
+      "home.slide.daily" as MessageKey,
   },
   {
     desktopImage:
@@ -33,7 +34,7 @@ const slides = [
     mobileImage:
       "/hero/slider-v9/sports.webp",
     alt:
-      "Vi2 sports nutrition supplement collection",
+      "home.slide.sports" as MessageKey,
   },
   {
     desktopImage:
@@ -41,7 +42,7 @@ const slides = [
     mobileImage:
       "/hero/slider-v9/wellness.webp",
     alt:
-      "Vi2 everyday wellness supplement collection",
+      "home.slide.everyday" as MessageKey,
   },
 ];
 
@@ -153,7 +154,7 @@ export default function HomeHeroSlider() {
       className={
         styles.hero
       }
-      aria-label="Vi2 featured collections"
+      aria-label={msg("home.vi2FeaturedCollections")}
       aria-roledescription="carousel"
       onTouchStart={
         handleTouchStart
@@ -184,13 +185,9 @@ export default function HomeHeroSlider() {
             }
           >
             <h1>
-              <span>
-                LIVE WELL,
-              </span>
+              <span>{msg("home.liveWell")}</span>
 
-              <strong>
-                LIVE FULLY.
-              </strong>
+              <strong>{msg("home.liveFully")}</strong>
             </h1>
 
             <div
@@ -215,10 +212,7 @@ export default function HomeHeroSlider() {
               >
                 <span />
 
-                <small>
-                  SUPPLEMENTS FOR
-                  A BRIGHTER YOU
-                </small>
+                <small>{msg("home.supplementsForABrighterYou")}</small>
 
                 <span />
               </div>
@@ -273,7 +267,7 @@ export default function HomeHeroSlider() {
                 }
                 alt={
                   index === active
-                    ? slide.alt
+                    ? msg(slide.alt)
                     : ""
                 }
                 width={1916}
@@ -294,7 +288,7 @@ export default function HomeHeroSlider() {
                 }
                 alt={
                   index === active
-                    ? slide.alt
+                    ? msg(slide.alt)
                     : ""
                 }
                 width={1000}
@@ -316,7 +310,7 @@ export default function HomeHeroSlider() {
           className={
             styles.dots
           }
-          aria-label="Choose hero slide"
+          aria-label={msg("home.chooseHeroSlide")}
         >
           {slides.map(
             (

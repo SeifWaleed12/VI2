@@ -7,7 +7,7 @@ import { accountMessage, type AccountKey } from "@/lib/account-copy";
 import { emailChangeErrors, profileErrors, type EmailField, type Errors, type ProfileField } from "@/lib/account-validation";
 import type { Locale } from "@/lib/i18n";
 import { requestEmailChange, updateProfile } from "@/lib/medusa";
-import { normalizeEgyptPhone } from "@/app/[locale]/checkout/checkout-details";
+import { normalizeEgyptPhone } from "@/lib/egypt-address";
 import { AccountField, focusFirstError } from "./AccountField";
 import styles from "./Account.module.css";
 

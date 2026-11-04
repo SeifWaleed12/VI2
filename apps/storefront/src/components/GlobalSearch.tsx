@@ -350,7 +350,7 @@ export default function GlobalSearch({
                         )
                       }
                     >
-                      {item}
+                      {isArabic ? arabicPopularSearches[item] ?? item : item}
                     </button>
                   ),
                 )}
@@ -386,9 +386,8 @@ export default function GlobalSearch({
                         item,
                       )
                     }
-                    data-arabic-text={arabicPopularSearches[item]}
                   >
-                    {item}
+                    {isArabic ? arabicPopularSearches[item] ?? item : item}
                   </button>
                 ),
               )}
@@ -495,7 +494,7 @@ export default function GlobalSearch({
                         product.price,
                       )}
                     </strong>
-                    <span>EGP</span>
+                    <span>{msg("nav.egp")}</span>
                   </div>
                 </Link>
               ),

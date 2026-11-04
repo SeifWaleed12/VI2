@@ -1,5 +1,5 @@
 "use client";
-import { LegacyTranslations } from "@/context/LanguageContext";
+import { useLanguage } from "@/context/LanguageContext";
 
 import Link from "@/components/LocaleLink";
 import {
@@ -156,6 +156,7 @@ export default function BestSellersClient({
   initialCategory: string;
   initialProducts?: Product[];
 }) {
+  const { msg, language } = useLanguage();
   const safeInitial =
     categories.includes(
       initialCategory as
@@ -222,8 +223,8 @@ export default function BestSellersClient({
     );
 
   return (
-    <LegacyTranslations><main className={styles.page}>
-      {catalogError && <p role="alert">The catalog is temporarily unavailable.</p>}
+    <main className={styles.page}>
+      {catalogError && <p role="alert">{msg("bestSellers.theCatalogIsTemporarilyUnavailable")}</p>}
       <div
         className={
           styles.shell
@@ -233,11 +234,9 @@ export default function BestSellersClient({
           className={
             styles.breadcrumbs
           }
-          aria-label="Breadcrumb"
+          aria-label={msg("bestSellers.breadcrumb")}
         >
-          <Link href="/">
-            Home
-          </Link>
+          <Link href="/">{msg("bestSellers.home")}</Link>
 
           <ChevronRight
             size={13}
@@ -246,9 +245,7 @@ export default function BestSellersClient({
             }
           />
 
-          <span data-arabic-text="الأكثر مبيعًا">
-            Best Sellers
-          </span>
+          <span>{msg("bestSellers.bestSellers")}</span>
         </nav>
 
         <header
@@ -257,15 +254,9 @@ export default function BestSellersClient({
           }
         >
           <div>
-            <span>
-              MOST-LOVED AT VI2
-            </span>
+            <span>{msg("bestSellers.mostLovedAtVi2")}</span>
 
-            <h1 data-arabic-text="الأكثر مبيعًا.">
-              BEST
-              <br />
-              SELLERS.
-            </h1>
+            <h1>{msg("bestSellers.best")}<br />{msg("bestSellers.sellers")}</h1>
           </div>
 
           <div
@@ -273,13 +264,9 @@ export default function BestSellersClient({
               styles.heroCopy
             }
           >
-            <p>
-              Products selected by the Vi2 team as best sellers.
-            </p>
+            <p>{msg("bestSellers.productsSelectedByTheVi2")}</p>
 
-            <Link href="/shop">
-              SHOP ALL
-              <ArrowRight
+            <Link href="/shop">{msg("bestSellers.shopAll")}<ArrowRight
                 size={15}
               />
             </Link>
@@ -290,7 +277,7 @@ export default function BestSellersClient({
           className={
             styles.categoryBar
           }
-          aria-label="Best seller categories"
+          aria-label={msg("bestSellers.bestSellerCategories")}
         >
           {categories.map(
             (
@@ -313,7 +300,7 @@ export default function BestSellersClient({
                   )
                 }
               >
-                <span data-arabic-text={arabicCategoryLabels[category]}>{category}</span>
+                <span>{category}</span>
               </button>
             ),
           )}
@@ -324,15 +311,13 @@ export default function BestSellersClient({
             styles.resultsMeta
           }
         >
-          <span data-arabic-text={`${visibleProducts.length} منتج`}>
+          <span>
             {
               visibleProducts.length
-            }{" "}
-            PRODUCTS
-          </span>
+            }{" "}{msg("bestSellers.products")}</span>
 
           <strong>
-            <span data-arabic-text={arabicCategoryLabels[activeCategory]}>{activeCategory}</span>
+            <span>{language === "ar" ? arabicCategoryLabels[activeCategory] : activeCategory}</span>
           </strong>
         </div>
 
@@ -368,10 +353,7 @@ export default function BestSellersClient({
               styles.empty
             }
           >
-            <span>
-              NO PRODUCTS IN
-              THIS CATEGORY YET.
-            </span>
+            <span>{msg("bestSellers.noProductsInThisCategory")}</span>
 
             <button
               type="button"
@@ -380,13 +362,10 @@ export default function BestSellersClient({
                   "All",
                 )
               }
-            >
-              VIEW ALL BEST
-              SELLERS
-            </button>
+            >{msg("bestSellers.viewAllBestSellers")}</button>
           </div>
         )}
       </div>
-    </main></LegacyTranslations>
+    </main>
   );
 }

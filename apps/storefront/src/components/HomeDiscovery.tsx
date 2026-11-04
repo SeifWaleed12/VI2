@@ -18,6 +18,7 @@ import {
 
 import { useLanguage } from "@/context/LanguageContext";
 import { goalLabelKey, type HealthGoal } from "@/lib/health-goals";
+import type { MessageKey } from "@/lib/i18n";
 import styles from "./HomeDiscovery.module.css";
 
 const goals = [
@@ -25,54 +26,54 @@ const goals = [
     name: "IMMUNE SUPPORT",
     handle: "immune-support" as HealthGoal,
     description:
-      "Everyday defense",
+      "home.goal.everydayDefense" as MessageKey,
     detail:
-      "Vitamin C, D3, zinc and daily immune-support essentials.",
+      "home.goal.vitaminCD" as MessageKey,
     icon: ShieldCheck,
   },
   {
     name: "GUT HEALTH",
     handle: "gut-health" as HealthGoal,
     description:
-      "Feel better daily",
+      "home.goal.feelBetterDaily" as MessageKey,
     detail:
-      "Probiotics and digestive-support routines for everyday balance.",
+      "home.goal.probioticsAndDigestive" as MessageKey,
     icon: Activity,
   },
   {
     name: "ENERGY & FITNESS",
     handle: "energy-fitness" as HealthGoal,
     description:
-      "Fuel your day",
+      "home.goal.fuelYourDay" as MessageKey,
     detail:
-      "Performance-focused nutrition for energy, movement and daily drive.",
+      "home.goal.performanceFocusedNutrition" as MessageKey,
     icon: Zap,
   },
   {
     name: "MUSCLE & RECOVERY",
     handle: "muscle-recovery" as HealthGoal,
     description:
-      "Build. Repair. Perform.",
+      "home.goal.buildRepairPerform" as MessageKey,
     detail:
-      "Protein, creatine and recovery support for stronger training days.",
+      "home.goal.proteinCreatineAnd" as MessageKey,
     icon: Dumbbell,
   },
   {
     name: "HEART HEALTH",
     handle: "heart-health" as HealthGoal,
     description:
-      "For a healthier tomorrow",
+      "home.goal.forAHealthier" as MessageKey,
     detail:
-      "Omega support and cardiovascular wellness essentials.",
+      "home.goal.omegaSupportAnd" as MessageKey,
     icon: Heart,
   },
   {
     name: "STRESS & SLEEP",
     handle: "stress-sleep" as HealthGoal,
     description:
-      "A calmer, better you",
+      "home.goal.aCalmerBetter" as MessageKey,
     detail:
-      "Sleep and stress-support routines built around better recovery.",
+      "home.goal.sleepAndStress" as MessageKey,
     icon: Moon,
   },
 ];
@@ -112,20 +113,14 @@ export default function HomeDiscovery() {
               styles.heading
             }
           >
-            <span>
-              SHOP BY HEALTH GOAL
-            </span>
+            <span>{msg("home.shopByHealthGoal")}</span>
 
             <div
               className={
                 styles.headingLine
               }
             >
-              <h2 data-arabic-text="ابدأ بما تحتاجه.">
-                START WITH
-                <br />
-                WHAT YOU NEED.
-              </h2>
+              <h2>{msg("home.startWith")}<br />{msg("home.whatYouNeed")}</h2>
 
               <div
                 className={
@@ -135,13 +130,7 @@ export default function HomeDiscovery() {
                 <i />
 
                 <p>
-                  <span data-arabic-text="صحة حقيقية. تقدم حقيقي. نسخة أقوى منك.">
-                  Real health.
-                  <br />
-                  Real progress.
-                  <br />
-                  A stronger you.
-                  </span>
+                  <span>{msg("home.realHealth")}<br />{msg("home.realProgress")}<br />{msg("home.aStrongerYou")}</span>
                 </p>
               </div>
             </div>
@@ -152,9 +141,7 @@ export default function HomeDiscovery() {
             className={
               styles.viewAll
             }
-          >
-            VIEW ALL
-            <ArrowRight
+          >{msg("home.viewAll")}<ArrowRight
               size={17}
               strokeWidth={
                 1.45
@@ -199,7 +186,7 @@ export default function HomeDiscovery() {
                 return (
                   <button
                     key={
-                      goal.name
+                      msg(goalLabelKey(goal.handle)).toUpperCase()
                     }
                     type="button"
                     className={`${styles.goal} ${
@@ -264,12 +251,8 @@ export default function HomeDiscovery() {
                           className={
                             styles.stronger
                           }
-                          data-arabic-text="أقوى كل يوم"
-                        >
-                          STRONGER
-                          <br />
-                          EVERYDAY
-                        </span>
+                         
+                        >{msg("home.stronger")}<br />{msg("home.everyday")}</span>
                       </div>
                     )}
 
@@ -291,7 +274,7 @@ export default function HomeDiscovery() {
                     </div>
 
                     <strong>
-                      {goal.name}
+                      {msg(goalLabelKey(goal.handle)).toUpperCase()}
                     </strong>
 
                     <span
@@ -300,7 +283,7 @@ export default function HomeDiscovery() {
                       }
                     >
                       {
-                        goal.description
+                        msg(goal.description)
                       }
                     </span>
                   </button>
@@ -326,9 +309,7 @@ export default function HomeDiscovery() {
                 }
               />
 
-              <span>
-                VI2 GOAL PICK
-              </span>
+              <span>{msg("home.vi2GoalPick")}</span>
             </div>
 
             <div
@@ -345,7 +326,7 @@ export default function HomeDiscovery() {
 
               <p>
                 {
-                  activeGoal.detail
+                  msg(activeGoal.detail)
                 }
               </p>
             </div>

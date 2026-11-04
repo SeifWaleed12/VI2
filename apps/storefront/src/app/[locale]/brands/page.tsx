@@ -1,4 +1,4 @@
-import { LegacyTranslations } from "@/context/LanguageContext";
+import { isLocale, message, type MessageKey } from "@/lib/i18n";
 import type { Metadata } from "next";
 import Link from "@/components/LocaleLink";
 import {
@@ -21,7 +21,9 @@ export const metadata: Metadata = {
     "Browse every supplement and wellness brand available at Vi2.",
 };
 
-export default async function BrandsPage() {
+export default async function BrandsPage({ params }: { params: Promise<{ locale: string }> }) {
+  const { locale } = await params;
+  const msg = (key: MessageKey) => message(isLocale(locale) ? locale : "en", key);
   const medusaBrands = await getBrands();
   const brandProfiles = medusaBrands;
   const alphabetGroups = [...new Set(medusaBrands.map((brand) => brand.name[0].toUpperCase()))].sort().map((letter) => ({
@@ -29,7 +31,7 @@ export default async function BrandsPage() {
   }));
 
   return (
-    <LegacyTranslations><main
+    <main
       className={
         styles.page
       }
@@ -54,19 +56,11 @@ export default async function BrandsPage() {
                 className={
                   styles.kicker
                 }
-              >
-                THE VI2 BRAND EDIT
-              </span>
+              >{msg("brands.theVi2BrandEdit")}</span>
 
-              <h1>
-                BRANDS A–Z
-              </h1>
+              <h1>{msg("brands.brandsAZ")}</h1>
 
-              <p>
-                Browse the supplement
-                and wellness brands
-                curated for Vi2.
-              </p>
+              <p>{msg("brands.browseTheSupplementAndWellness")}</p>
             </div>
 
             <div
@@ -78,11 +72,7 @@ export default async function BrandsPage() {
                 {medusaBrands.length}
               </strong>
 
-              <span data-arabic-text="علامات مختارة">
-                CURATED
-                <br />
-                BRANDS
-              </span>
+              <span>{msg("brands.curated")}<br />{msg("brands.brands")}</span>
             </div>
           </header>
 
@@ -179,9 +169,7 @@ export default async function BrandsPage() {
                   }
                 />
 
-                <span>
-                  VIEW ALL PRODUCTS
-                </span>
+                <span>{msg("brands.viewAllProducts")}</span>
 
                 <ArrowRight
                   size={14}
@@ -202,13 +190,9 @@ export default async function BrandsPage() {
                   styles.railTitle
                 }
               >
-                <span>
-                  VI2 BRANDS
-                </span>
+                <span>{msg("brands.vi2Brands")}</span>
 
-                <small>
-                  SHOP BY BRAND
-                </small>
+                <small>{msg("brands.shopByBrand")}</small>
               </div>
 
               <div
@@ -238,9 +222,7 @@ export default async function BrandsPage() {
                           className={
                             styles.newBadge
                           }
-                        >
-                          NEW
-                        </span>
+                        >{msg("brands.new")}</span>
                       )}
                     </Link>
                   ),
@@ -252,9 +234,7 @@ export default async function BrandsPage() {
                 className={
                   styles.shopAll
                 }
-              >
-                SHOP ALL
-                <ArrowRight
+              >{msg("brands.shopAll")}<ArrowRight
                   size={14}
                   strokeWidth={
                     1.45
@@ -265,6 +245,6 @@ export default async function BrandsPage() {
           </div>
         </div>
       </section>
-    </main></LegacyTranslations>
+    </main>
   );
 }

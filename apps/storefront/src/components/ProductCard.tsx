@@ -8,8 +8,7 @@ import {
 } from "lucide-react";
 
 import type { Product } from "@/types/product";
-import { getStockLabel } from "@/lib/catalogMeta";
-import { translateArabicUi } from "@/lib/arabicLocalization";
+import { getStockLabel, isLowStock } from "@/lib/catalogMeta";
 import { useCart } from "@/context/CartContext";
 import { useLanguage } from "@/context/LanguageContext";
 import styles from "./ProductCard.module.css";
@@ -24,7 +23,7 @@ export default function ProductCard({
   product: Product;
 }) {
   const { addItem } = useCart();
-  const { t, msg, language } = useLanguage();
+  const { t, msg } = useLanguage();
 
   return (
     <article className={styles.card} data-no-translate>
@@ -34,7 +33,7 @@ export default function ProductCard({
         aria-label={`${msg("product.view")}: ${product.name}`}
       >
         {product.badge && (
-          <span className={styles.badge} data-arabic-text={t(product.badge)}>
+          <span className={styles.badge}>
             {t(product.badge)}
           </span>
         )}
@@ -106,12 +105,12 @@ export default function ProductCard({
         <div className={styles.stockLine}>
           <span
             className={
-              product.stock <= 8
+              isLowStock(product.stock)
                 ? styles.lowStock
                 : ""
             }
           />
-          {language === "ar" ? translateArabicUi(getStockLabel(product)) : getStockLabel(product)}
+          {getStockLabel(product, msg)}
         </div>
 
         <div className={styles.bottom}>

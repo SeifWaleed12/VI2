@@ -7,7 +7,7 @@ import { accountMessage, type AccountKey } from "@/lib/account-copy";
 import { addressErrors, type AddressField, type Errors } from "@/lib/account-validation";
 import type { Locale } from "@/lib/i18n";
 import { deleteAddress, listAddresses, saveAddress, type SavedAddress } from "@/lib/medusa";
-import { normalizeEgyptPhone } from "@/app/[locale]/checkout/checkout-details";
+import { normalizeEgyptPhone } from "@/lib/egypt-address";
 import { AccountField, focusFirstError } from "./AccountField";
 import GovernorateSelect, { governorateLabel } from "./GovernorateSelect";
 import styles from "./Account.module.css";

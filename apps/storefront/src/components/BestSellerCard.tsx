@@ -50,8 +50,8 @@ export default function BestSellerCard({
   compact?: boolean;
 }) {
   const { pending, added, failed, handleAdd } = useCartAdd(product);
-  const { isArabic } = useLanguage();
-  const status = pending ? (isArabic ? "جارٍ الإضافة…" : "Adding…") : failed ? (isArabic ? "تعذرت الإضافة. حاول مجددًا." : "Could not add. Try again.") : added ? (isArabic ? "تمت الإضافة" : "Added") : "";
+  const { msg, isArabic, t } = useLanguage();
+  const status = pending ? (isArabic ? "جارٍ الإضافة…" : msg("bestSellers.adding")) : failed ? (isArabic ? "تعذرت الإضافة. حاول مجددًا." : msg("bestSellers.couldNotAddTryAgain")) : added ? (isArabic ? "تمت الإضافة" : msg("bestSellers.added")) : "";
 
   return (
     <article
@@ -88,14 +88,14 @@ export default function BestSellerCard({
 
       <div className={styles.content}>
         <span className={styles.brand}>
-          {product.brand}
+          {t(product.brand)}
         </span>
 
         <Link
           href={`/products/${product.slug}`}
           className={styles.name}
         >
-          {product.shortName}
+          {t(product.shortName)}
         </Link>
 
         {product.reviewCount > 0 && (<div className={styles.rating}>
@@ -122,7 +122,7 @@ export default function BestSellerCard({
               {formatPrice(
                 product.price,
               )}{" "}
-              EGP
+{msg("nav.egp")}
             </strong>
 
             {product.compareAtPrice && (
@@ -130,7 +130,7 @@ export default function BestSellerCard({
                 {formatPrice(
                   product.compareAtPrice,
                 )}{" "}
-                EGP
+                {msg("nav.egp")}
               </span>
             )}
           </div>
@@ -151,9 +151,7 @@ export default function BestSellerCard({
                 />
 
                 {!compact && (
-                  <span>
-                    ADDED
-                  </span>
+                  <span>{msg("bestSellers.added2")}</span>
                 )}
               </>
             ) : (
@@ -164,9 +162,7 @@ export default function BestSellerCard({
                 />
 
                 {!compact && (
-                  <span>
-                    ADD
-                  </span>
+                  <span>{msg("bestSellers.add")}</span>
                 )}
               </>
             )}

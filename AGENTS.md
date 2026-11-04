@@ -179,6 +179,59 @@ When this section and existing working code disagree, do not rewrite unrelated c
 
 ---
 
+## 4.2 Where Code Goes and Which Patterns to Use
+
+Owner rule (2026-11-02): every line any agent writes or changes must follow Clean Architecture, SOLID, and this section. Reviewers report a breach as a finding, the same as a bug.
+
+### Backend
+
+| Code | Home |
+|---|---|
+| HTTP parsing, input validation, response shape | Route or middleware. Nothing else. |
+| Multi-step write that needs rollback | Workflow with compensation, never hand-written cleanup in a route. |
+| Business decision | Plain function in `src/lib`, testable without a server or database. |
+| Data for a custom feature | Medusa module. |
+| External system | Provider or adapter module. Callers never see the provider's client. |
+| Reaction to an event, scheduled work | Subscriber or job that calls the same application code as the route. |
+
+`src/lib`, `src/modules` and `src/workflows` never import from `src/api`, `src/subscribers`, `src/jobs` or `src/admin`.
+
+### Storefront
+
+| Code | Home |
+|---|---|
+| Markup and user input | Page or component. |
+| Screen state and behavior | Hook beside the screen. |
+| A customer action spanning several API calls | Named function outside the component, so it can be tested alone. |
+| Every Medusa call, and mapping Medusa data to storefront types | `src/lib/medusa/services`. |
+| Pure helpers and rule checks | `src/lib`, which never imports from `src/app`, `src/components`, `src/context` or `src/providers`. |
+| Customer-facing text | A message key in `src/lib/i18n.ts`. English wording is never a translation key. Runtime text the storefront does not write (catalog data, service messages) goes through `t()` and `src/lib/service-messages.ts`. |
+
+A value that decides behavior, such as the low-stock limit, is one named constant in one place.
+
+### Patterns that fit this project
+
+| Pattern | Use it for | Already here |
+|---|---|---|
+| Adapter / provider | External systems | `resend-notification`, `secure-emailpass` |
+| Workflow (saga) | Writes across modules | `allocate-order-line-stock`, `change-customer-email` |
+| Strategy | Two or more real ways to do one job, such as payment methods | `MANAGER_AREAS` table, as a table-driven form |
+| Decorator | Adding a check around a native handler | `withReturnMutation` |
+| State machine (`useReducer`) | Screens with several interacting states, such as checkout submission | Not yet |
+| Strangler | Replacing old code piece by piece, never in one rewrite | Not yet |
+
+Do not add a repository over Medusa's services, a factory with one product, an interface with one implementation and no testing benefit, or a pattern chosen for its name. Section 1 rule 11 and the limit in section 4.1 still apply.
+
+### Size signals
+
+A route over 50 lines, a component over 300 lines, or a function over 40 lines is a signal to check for mixed responsibilities. It is not a hard limit. Long code with one responsibility can stay.
+
+### Existing code that breaks these rules
+
+Known cases are listed under "Architecture debt" in `docs/WORKBOARD.md`. When a task changes one of those areas, fix the part it touches in the same task and update the list. Do not start a rewrite unless the owner asks.
+
+---
+
 ## 5. Security
 
 - Keep secrets server-side.

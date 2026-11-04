@@ -17,7 +17,7 @@ export const ACTIVITY_KINDS: PointsKind[] = ["earn"]
 // so their fields are loaded; item details carry the delivered quantity.
 export const POINTS_ORDER_FIELDS = ["id", "status", "customer_id", "customer.has_account", "item_total", "items.*", "items.detail.*", "shipping_methods.*"]
 
-type PointsOrder = {
+export type PointsOrder = {
   status?: string
   customer?: { has_account?: boolean } | null
   items?: { quantity?: unknown, detail?: { delivered_quantity?: unknown } | null }[] | null
@@ -62,6 +62,26 @@ const loyalty = (container: MedusaContainer) => container.resolve<LoyaltyModuleS
 export async function customerPoints(container: MedusaContainer, customerId: string, context?: Context<EntityManager>) {
   const total = await loyalty(container).pointsTotals(customerId, context)
   return { ...total, expiresAt: total.balance > 0 && total.lastActivity ? expiresAt(total.lastActivity) : null }
+}
+
+// P-6: placed orders that are not delivered (or canceled) yet show as pending.
+export async function pendingPoints(container: MedusaContainer, customerId: string) {
+  const query = container.resolve(ContainerRegistrationKeys.QUERY)
+  const service = loyalty(container)
+  let pending = 0
+  for (let skip = 0; ; skip += 100) {
+    const { data: candidates } = await query.graph({ entity: "order", fields: ["id"],
+      filters: { customer_id: customerId, status: { $ne: "canceled" } }, pagination: { skip, take: 100, order: { id: "ASC" } } })
+    if (!candidates.length) break
+    const earned = new Set((await service.listPointsEntries({ customer_id: customerId, kind: "earn", source_id: candidates.map(order => order.id) }, { select: ["source_id"], take: 100 })).map(entry => entry.source_id))
+    const ids = candidates.map(order => order.id).filter(id => !earned.has(id))
+    if (ids.length) {
+      const { data: orders } = await query.graph({ entity: "order", fields: POINTS_ORDER_FIELDS, filters: { id: ids, customer_id: customerId } })
+      pending += orders.filter(order => order.status !== "canceled" && !isFullyDelivered(order as PointsOrder)).reduce((sum, order) => sum + pointsFor(order.item_total), 0)
+    }
+    if (candidates.length < 100) break
+  }
+  return pending
 }
 
 // Points the order still holds: earned on delivery minus what its refunds removed (P-8).

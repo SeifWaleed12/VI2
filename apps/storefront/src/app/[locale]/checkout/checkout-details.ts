@@ -1,4 +1,6 @@
-// The checkout details form: its fields, Egypt's governorates and the phone check.
+import { isValidEgyptPhone } from "@/lib/egypt-address";
+
+// The checkout details form, its empty state and its checks.
 
 export type CheckoutForm = {
   name: string;
@@ -10,30 +12,6 @@ export type CheckoutForm = {
   notes: string;
 };
 
-export const governorates = [
-  "Cairo",
-  "Giza",
-  "Alexandria",
-  "Qalyubia",
-  "Sharqia",
-  "Dakahlia",
-  "Gharbia",
-  "Monufia",
-  "Beheira",
-  "Fayoum",
-  "Beni Suef",
-  "Minya",
-  "Assiut",
-  "Sohag",
-  "Qena",
-  "Luxor",
-  "Aswan",
-  "Red Sea",
-  "Suez",
-  "Ismailia",
-  "Port Said",
-];
-
 export const initialForm: CheckoutForm = {
   name: "",
   phone: "",
@@ -44,25 +22,17 @@ export const initialForm: CheckoutForm = {
   notes: "",
 };
 
+export type DetailsProblem = "empty_order" | "incomplete" | "bad_phone";
 
-export function normalizeEgyptPhone(
-  value: string,
-) {
-  return value.replace(
-    /[\s\-()]/g,
-    "",
-  );
-}
-
-export function isValidEgyptPhone(
-  value: string,
-) {
-  const phone =
-    normalizeEgyptPhone(value);
-
-  return (
-    /^01[0125]\d{8}$/.test(phone) ||
-    /^\+201[0125]\d{8}$/.test(phone) ||
-    /^00201[0125]\d{8}$/.test(phone)
-  );
+export function detailsProblem(form: CheckoutForm, itemCount: number): DetailsProblem | null {
+  if (itemCount === 0) return "empty_order";
+  if (
+    !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim()) ||
+    !form.name.trim() ||
+    !form.phone.trim() ||
+    !form.governorate.trim() ||
+    !form.area.trim() ||
+    !form.address.trim()
+  ) return "incomplete";
+  return isValidEgyptPhone(form.phone) ? null : "bad_phone";
 }

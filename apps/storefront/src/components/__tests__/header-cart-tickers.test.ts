@@ -9,6 +9,7 @@ jest.mock("react", () => ({
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import Navbar from "../Navbar";
+import NavbarAccount from "../NavbarAccount";
 import AnnouncementTicker from "../AnnouncementTicker";
 import CartDrawer from "../CartDrawer";
 import BrandUniverse from "../BrandUniverse";
@@ -369,12 +370,8 @@ it("renders the trending heading and one real cycle for two products without inv
 });
 
 it("does not close a hover-opened account on its first pointer click, while keyboard activation still toggles", () => {
-  const cells: unknown[] = [];
-  const stateSpy = jest.spyOn(React, "useState").mockImplementation(((initial?: unknown) => {
-    const index = cells.length;
-    cells.push(typeof initial === "function" ? initial() : initial);
-    return [cells[index], (value: unknown) => { cells[index] = typeof value === "function" ? value(cells[index]) : value; }];
-  }) as typeof React.useState);
+  let open = false;
+  const setOpen = (value: boolean | ((current: boolean) => boolean)) => { open = typeof value === "function" ? value(open) : value; };
   let tree: React.ReactNode;
   type Events = { className?: string; children?: React.ReactNode; onPointerEnter?: (event: { pointerType: string }) => void; onClick?: (event: { detail: number }) => void };
   const find = (node: React.ReactNode, predicate: (props: Events) => boolean): React.ReactElement<Events> | undefined => {
@@ -385,31 +382,25 @@ it("does not close a hover-opened account on its first pointer click, while keyb
       if (found) return found;
     }
   };
-  try {
-    renderToStaticMarkup(createElement(() => { tree = Navbar({}); return tree; }));
-    const account = find(tree, props => props.className === "account")!;
-    const wrapper = find(tree, props => !!props.onPointerEnter && React.Children.toArray(props.children).some(child => React.isValidElement<Events>(child) && child.props.className === "account"))!;
-    const before = [...cells];
-    wrapper.props.onPointerEnter!({ pointerType: "mouse" });
-    const accountIndex = cells.findIndex((value, index) => value === true && before[index] !== true);
-    expect(accountIndex).toBeGreaterThanOrEqual(0);
-    account.props.onClick!({ detail: 1 });
-    expect(cells[accountIndex]).toBe(true);
-    account.props.onClick!({ detail: 1 });
-    expect(cells[accountIndex]).toBe(false);
-    wrapper.props.onPointerEnter!({ pointerType: "touch" });
-    expect(cells[accountIndex]).toBe(false);
-    account.props.onClick!({ detail: 1 });
-    expect(cells[accountIndex]).toBe(true);
-    account.props.onClick!({ detail: 1 });
-    expect(cells[accountIndex]).toBe(false);
-    account.props.onClick!({ detail: 0 });
-    expect(cells[accountIndex]).toBe(true);
-    account.props.onClick!({ detail: 0 });
-    expect(cells[accountIndex]).toBe(false);
-  } finally {
-    stateSpy.mockRestore();
-  }
+  renderToStaticMarkup(createElement(() => { tree = NavbarAccount({ open, setOpen, onOpening: () => {} }); return tree; }));
+  const wrapper = { props: (tree as React.ReactElement<Events>).props };
+  const account = find(tree, props => props.className === "account")!;
+  wrapper.props.onPointerEnter!({ pointerType: "mouse" });
+  expect(open).toBe(true);
+  account.props.onClick!({ detail: 1 });
+  expect(open).toBe(true);
+  account.props.onClick!({ detail: 1 });
+  expect(open).toBe(false);
+  wrapper.props.onPointerEnter!({ pointerType: "touch" });
+  expect(open).toBe(false);
+  account.props.onClick!({ detail: 1 });
+  expect(open).toBe(true);
+  account.props.onClick!({ detail: 1 });
+  expect(open).toBe(false);
+  account.props.onClick!({ detail: 0 });
+  expect(open).toBe(true);
+  account.props.onClick!({ detail: 0 });
+  expect(open).toBe(false);
 });
 
 it.each(["en", "ar"] as const)("distinguishes category retry from the homepage product retry in %s", locale => {

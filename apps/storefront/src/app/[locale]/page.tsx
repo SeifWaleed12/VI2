@@ -1,4 +1,3 @@
-import { LegacyTranslations } from "@/context/LanguageContext";
 import { cache } from "react";
 import type { Metadata } from "next";
 import { isLocale, message, type Locale } from "@/lib/i18n";
@@ -49,7 +48,7 @@ export default async function Home({ params }: HomeProps) {
   }
 
   return (
-    <LegacyTranslations><main>
+    <main>
       {/* ======================================================
           HERO
           ====================================================== */}
@@ -74,6 +73,6 @@ export default async function Home({ params }: HomeProps) {
           4. HEALTH GOALS / DAILY DISCOVERY
           ====================================================== */}
       <HomeDiscovery />
-    </main></LegacyTranslations>
+    </main>
   );
 }

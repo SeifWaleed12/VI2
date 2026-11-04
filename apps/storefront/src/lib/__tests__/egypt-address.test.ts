@@ -1,4 +1,4 @@
-import { isValidEgyptPhone } from "../checkout-details";
+import { isValidEgyptPhone } from "../egypt-address";
 
 it("accepts Egyptian mobile numbers in local and international form", () => {
   for (const phone of ["01012345678", "0122 345 6789", "+201512345678", "00201012345678", "(010) 1234-5678"]) {

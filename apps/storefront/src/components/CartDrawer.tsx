@@ -2,7 +2,7 @@
 
 import { useRef } from "react";
 import { useDrawerFocus } from "@/hooks/use-drawer-focus";
-import { LegacyTranslations, useLanguage } from "@/context/LanguageContext";
+import { useLanguage } from "@/context/LanguageContext";
 import Link from "@/components/LocaleLink";
 import {
   Minus,
@@ -42,7 +42,7 @@ export default function CartDrawer() {
   useDrawerFocus(drawerRef, isCartOpen, closeCart);
 
   return (
-    <LegacyTranslations>
+    <>
       <button
         type="button"
         aria-label={msg("cart.close")}
@@ -72,11 +72,9 @@ export default function CartDrawer() {
       >
         <div className="cart-drawer-header">
           <div>
-            <span className="eyebrow">
-              YOUR BAG
-            </span>
+            <span className="eyebrow">{msg("cart.yourBag")}</span>
 
-            <h2 id="cart-drawer-title">Cart</h2>
+            <h2 id="cart-drawer-title">{msg("cart.cart")}</h2>
           </div>
 
           <button
@@ -96,23 +94,15 @@ export default function CartDrawer() {
               strokeWidth={1.3}
             />
 
-            <h3>
-              Your bag is empty.
-            </h3>
+            <h3>{msg("cart.yourBagIsEmpty")}</h3>
 
-            <p>
-              Discover sports nutrition,
-              wellness essentials and
-              everyday supplements.
-            </p>
+            <p>{msg("cart.discoverSportsNutritionWellnessEssentials")}</p>
 
             <Link
               href="/shop"
               className="button button-dark"
               onClick={closeCart}
-            >
-              SHOP PRODUCTS
-            </Link>
+            >{msg("cart.shopProducts")}</Link>
           </div>
         ) : (
           <>
@@ -195,7 +185,7 @@ export default function CartDrawer() {
                       <div className="quantity-control quantity-control-small">
                         <button
                           type="button"
-                          aria-label="Decrease quantity"
+                          aria-label={msg("cart.decreaseQuantity")}
                           onClick={() =>
                             updateQuantity(
                               item.id ??
@@ -218,7 +208,7 @@ export default function CartDrawer() {
 
                         <button
                           type="button"
-                          aria-label="Increase quantity"
+                          aria-label={msg("cart.increaseQuantity")}
                           disabled={item.quantity >= (limitOf(item.product.variantId) ?? Infinity)}
                           // A refusal means stock dropped while the drawer was open: read it again so + and the note match.
                           onClick={async () => {
@@ -237,7 +227,7 @@ export default function CartDrawer() {
                             .price *
                             item.quantity,
                         )}{" "}
-                        EGP
+{msg("nav.egp")}
                       </strong>
                     </div>
                     <StockNote quantity={item.quantity} limit={limitOf(item.product.variantId)} />
@@ -248,35 +238,28 @@ export default function CartDrawer() {
 
             <div className="cart-summary">
               <div className="cart-summary-row">
-                <span>
-                  Subtotal
-                </span>
+                <span>{msg("cart.subtotal")}</span>
 
                 <strong>
                   {formatPrice(
                     subtotal,
                   )}{" "}
-                  EGP
+                  {msg("nav.egp")}
                 </strong>
               </div>
 
-              <p>
-                Delivery is calculated
-                at checkout.
-              </p>
+              <p>{msg("cart.deliveryIsCalculatedAtCheckout")}</p>
 
               <Link
                 href="/checkout"
                 className="button button-dark button-full"
                 onClick={closeCart}
-              >
-                CHECKOUT
-              </Link>
+              >{msg("cart.checkout")}</Link>
             </div>
           </>
         )}
       </aside>
-    </LegacyTranslations>
+    </>
   );
 }
 
