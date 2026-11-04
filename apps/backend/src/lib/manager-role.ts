@@ -37,6 +37,8 @@ export const MANAGER_AREAS: Readonly<Record<string, ManagerArea>> = {
   "product-types": full("product_type"),
   "product-tags": full("product_tag"),
   "brands": full("brand"),
+  // The "New product (Vi2)" page's save route (POST is product create).
+  "vi2-products": full("product"),
   "uploads": full("file"),
   // Customers and marketing.
   "customers": full("customer"),

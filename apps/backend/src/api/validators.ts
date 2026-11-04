@@ -62,6 +62,53 @@ export const productEdaSchema = z.object({
   is_approved: z.boolean(),
 }).strict()
 
+// The "New product (Vi2)" admin page. Stock fields (inventory items, quantities,
+// manage_inventory, allow_backorder) are not accepted: stock starts at 0 and
+// is set in Medusa's stock pages.
+// Messages are shown next to the field the issue's path names.
+const required = (message: string) => z.string({ error: message }).trim().min(1, message)
+export const newProductSchema = z.object({
+  title: required("Enter a title").max(255),
+  subtitle: text.optional(),
+  handle: z.string().trim().regex(/^[a-z0-9]+(-[a-z0-9]+)*$/, "Use lowercase letters, numbers and dashes").max(255).optional(),
+  description: z.string().trim().max(5000).optional(),
+  category_ids: z.array(z.string().min(1), { error: "Choose at least one category" }).min(1, "Choose at least one category").max(50),
+  status: z.enum(["draft", "published"]),
+  weight: z.number().finite().positive("Weight must be more than 0").optional(),
+  discountable: z.boolean(),
+  brand_id: z.string({ error: "Choose a brand" }).min(1, "Choose a brand"),
+  eda: productEdaSchema.optional(),
+  images: z.array(z.url().refine((url) => ["https:", "http:"].includes(new URL(url).protocol))).max(20).optional(),
+  // Shared options only (Products > Options). new_values are added to the
+  // shared option when the product is saved, so every product can use them.
+  // No options means a product without variants: it gets one default variant.
+  options: z.array(z.object({
+    id: z.string().min(1),
+    value_ids: z.array(z.string().min(1)).max(100),
+    new_values: z.array(text).max(50).optional(),
+  }).strict().refine((option) => option.value_ids.length + (option.new_values?.length ?? 0) > 0, "Choose at least one value"))
+    .max(10),
+  variants: z.array(z.object({
+    options: z.record(z.string(), text),
+    title: text.optional(),
+    sku: required("Enter a SKU").max(100),
+    barcode: text.max(100).optional(),
+    price: z.number({ error: "Enter a price" }).finite().positive("Price must be more than 0").max(1_000_000, "Price must be 1,000,000 EGP or less"),
+  }).strict()).min(1, "Keep at least one variant").max(100),
+}).strict().superRefine((product, ctx) => {
+  if (new Set(product.options.map((option) => option.id)).size < product.options.length) {
+    ctx.addIssue({ code: "custom", path: ["options"], message: "Each option can be added once" })
+  }
+  if (!product.options.length && product.variants.length > 1) {
+    ctx.addIssue({ code: "custom", path: ["variants"], message: "A product without variants has one variant" })
+  }
+  const seen = new Set<string>()
+  product.variants.forEach((variant, index) => {
+    if (seen.has(variant.sku)) ctx.addIssue({ code: "custom", path: ["variants", index, "sku"], message: `SKU ${variant.sku} is used twice in this form` })
+    seen.add(variant.sku)
+  })
+})
+
 const searchIds = z.union([z.string(), z.array(z.string())]).transform(value => [value].flat())
   .pipe(z.array(z.string().regex(/^[A-Za-z0-9_-]{1,128}$/)).max(50))
 export const catalogSchema = z.object({
