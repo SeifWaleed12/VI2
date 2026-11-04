@@ -99,7 +99,7 @@ medusaIntegrationTestRunner({
       async function product(id: string) {
         const { data: [found] } = await query().graph({
           entity: "product",
-          fields: ["id", "title", "subtitle", "status", "options.id", "weight", "discountable", "thumbnail", "images.url", "categories.id", "sales_channels.id", "shipping_profile.id",
+          fields: ["id", "title", "subtitle", "status", "options.id", "options.title", "options.values.value", "weight", "discountable", "thumbnail", "images.url", "categories.id", "sales_channels.id", "shipping_profile.id",
             "brand.id", "eda_registration.registration_number", "eda_registration.is_approved",
             "variants.sku", "variants.barcode", "variants.title", "variants.manage_inventory", "variants.allow_backorder",
             "variants.prices.amount", "variants.prices.currency_code", "variants.inventory_items.inventory.id"],
@@ -203,17 +203,26 @@ medusaIntegrationTestRunner({
         await expectNothingCreated()
       })
 
-      it("creates a product with only the required fields", async () => {
+      it("creates a product without variants the way Medusa does: a default option and variant", async () => {
         const response = await create(admin, {
-          title: "Whey Test", status: "draft", discountable: false,
-          options: [{ id: size.id, value_ids: [size.values["1 kg"]] }],
-          variants: [{ options: { Size: "1 kg" }, sku: "WH-ONLY-1", price: 900 }],
+          title: "Whey Test", status: "draft", discountable: false, brand_id: brandId, category_ids: [categoryId],
+          options: [],
+          variants: [{ options: {}, sku: "WH-ONLY-1", price: 900 }],
         })
         expect(response.status).toBe(201)
         const saved = await product(response.data.product.id)
         expect(saved).toEqual(expect.objectContaining({ status: "draft", discountable: false }))
-        expect(saved.brand ?? null).toBeNull()
+        expect(saved.options).toEqual([expect.objectContaining({ title: "Default option", values: [expect.objectContaining({ value: "Default option value" })] })])
+        expect(saved.variants).toEqual([expect.objectContaining({ title: "Default variant", sku: "WH-ONLY-1" })])
         expect(saved.eda_registration ?? null).toBeNull()
+        expect(await flavorValues()).toEqual(["Chocolate", "Vanilla"])
+      })
+
+      it("refuses a product without a brand or a category", async () => {
+        const response = await create(admin, body({ brand_id: undefined, category_ids: [] }))
+        expect(response.status).toBe(400)
+        expect(response.data.errors).toEqual({ brand_id: "Choose a brand", category_ids: "Choose at least one category" })
+        await expectNothingCreated()
       })
 
       it("refuses a SKU the store already has, before creating anything", async () => {

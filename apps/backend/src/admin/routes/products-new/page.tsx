@@ -3,10 +3,10 @@ import { useEffect, useState, type ReactNode } from "react"
 import { useNavigate } from "react-router-dom"
 import { getJson } from "../../lib/get-json"
 import { combinationCount, MAX_VARIANTS, optionCombinations } from "../../lib/variant-combinations"
-import { ChipCombobox, type Choice } from "./chip-combobox"
+import { CategoryCombobox, type Category } from "./category-combobox"
+import { ChipCombobox } from "./chip-combobox"
 
 type Brand = { id: string, name: string }
-type Category = { id: string, name: string, parent_category_id: string | null }
 type SharedOption = { id: string, title: string, values: { id: string, value: string, rank: number | null }[] }
 // A shared option on this product: chosen existing values and values to add to it.
 type ChosenOption = { id: string, valueIds: string[], newValues: string[] }
@@ -18,10 +18,11 @@ const TABS: { value: Tab, label: string }[] = [
   { value: "organize", label: "Organize" },
   { value: "variants", label: "Variants" },
 ]
-const NO_BRAND = "none"
 const NEW = "new:"
 const emptyCell: Cell = { sku: "", barcode: "", price: "" }
 const rowKey = (combination: Record<string, string>) => JSON.stringify(combination)
+// Without variants Medusa creates one default variant; its row has no option values.
+const DEFAULT_ROW: Record<string, string> = {}
 const sameValue = (a: string, b: string) => a.toLowerCase() === b.toLowerCase()
 const byRank = (a: { rank: number | null, value: string }, b: { rank: number | null, value: string }) =>
   (a.rank ?? Number.MAX_VALUE) - (b.rank ?? Number.MAX_VALUE) || a.value.localeCompare(b.value)
@@ -71,10 +72,11 @@ const NewProductPage = () => {
   const [images, setImages] = useState<string[]>([])
   const [uploading, setUploading] = useState(false)
   const [chosen, setChosen] = useState<ChosenOption[]>([])
+  const [hasVariants, setHasVariants] = useState(false)
   const [skipped, setSkipped] = useState<string[]>([])
   const [discountable, setDiscountable] = useState(true)
   const [categoryIds, setCategoryIds] = useState<string[]>([])
-  const [brandId, setBrandId] = useState(NO_BRAND)
+  const [brandId, setBrandId] = useState("")
   const [weight, setWeight] = useState("")
   const [edaNumber, setEdaNumber] = useState("")
   const [edaApproved, setEdaApproved] = useState(false)
@@ -85,17 +87,12 @@ const NewProductPage = () => {
   useEffect(() => {
     getJson("/admin/brands?status=active").then((body) => setBrands(body.brands ?? []))
       .catch(() => toast.error("Could not load brands"))
-    getJson("/admin/product-categories?limit=500&fields=id,name,parent_category_id").then((body) => setCategories(body.product_categories ?? []))
+    getJson("/admin/product-categories?limit=500&fields=id,name,parent_category_id,rank").then((body) => setCategories(body.product_categories ?? []))
       .catch(() => toast.error("Could not load categories"))
     getJson("/admin/product-options?is_exclusive=false&limit=200&fields=id,title,values.id,values.value,values.rank")
       .then((body) => setSharedOptions(body.product_options ?? []))
       .catch(() => toast.error("Could not load product options"))
   }, [])
-
-  const categoryChoices: Choice[] = categories.map((category) => {
-    const parent = categories.find((candidate) => candidate.id === category.parent_category_id)
-    return { value: category.id, label: parent ? `${parent.name} › ${category.name}` : category.name }
-  }).sort((a, b) => a.label.localeCompare(b.label))
 
   // Each chosen option with its title and value names, existing values first in their shared order.
   const options = chosen.flatMap((option) => {
@@ -109,7 +106,7 @@ const NewProductPage = () => {
   // thousands of rows and freeze the page.
   const variantTotal = combinationCount(completeOptions)
   const combinations = variantTotal > MAX_VARIANTS ? [] : optionCombinations(completeOptions)
-  const rows = combinations.filter((combination) => !skipped.includes(rowKey(combination)))
+  const rows = hasVariants ? combinations.filter((combination) => !skipped.includes(rowKey(combination))) : [DEFAULT_ROW]
 
   const updateOption = (id: string, change: (option: ChosenOption) => ChosenOption) =>
     setChosen((current) => current.map((option) => (option.id === id ? change(option) : option)))
@@ -150,37 +147,53 @@ const NewProductPage = () => {
     }
   }
 
-  // What Continue checks before leaving Details; the server checks everything again.
-  const detailsErrors = () => {
+  // What Continue checks on each tab before moving on; the server checks everything again.
+  const tabErrors = (on: Tab) => {
     const found: Record<string, string> = {}
-    if (!title.trim()) found.title = "Enter a title"
-    if (!options.length) found.options = "Add at least one option"
-    options.forEach((option, index) => { if (!option.values.length) found[`options.${index}`] = "Choose at least one value" })
-    if (variantTotal > MAX_VARIANTS) found.options = `These options make ${variantTotal} variants; the most is ${MAX_VARIANTS}. Remove some values.`
-    else if (options.length && !rows.length) found.variants = "Keep at least one variant"
+    if (on === "details") {
+      if (!title.trim()) found.title = "Enter a title"
+      if (hasVariants) {
+        if (!options.length) found.options = "Add at least one option"
+        options.forEach((option, index) => { if (!option.values.length) found[`options.${index}`] = "Choose at least one value" })
+        if (variantTotal > MAX_VARIANTS) found.options = `These options make ${variantTotal} variants; the most is ${MAX_VARIANTS}. Remove some values.`
+        else if (options.length && !rows.length) found.variants = "Keep at least one variant"
+      }
+    } else if (on === "organize") {
+      if (!brandId) found.brand_id = "Choose a brand"
+      if (!categoryIds.length) found.category_ids = "Choose at least one category"
+    }
     return found
   }
-  // Shows Details with its first problem in view and focused, like Medusa's form.
-  const showDetailsErrors = (found: Record<string, string>) => {
-    setErrors(found)
-    setTab("details")
-    const first = Object.keys(found)[0]
-    const index = first.startsWith("options.") ? Number(first.split(".")[1]) : -1
-    const id = first === "title" || first === "handle" ? first : index >= 0 ? `values-${options[index].id}` : "options"
-    requestAnimationFrame(() => document.getElementById(id)?.focus())
+  const fieldId = (key: string) => {
+    const index = key.startsWith("options.") ? Number(key.split(".")[1]) : -1
+    if (key === "brand_id") return "brand"
+    if (key === "category_ids") return "categories"
+    if (key === "title" || key === "handle") return key
+    return index >= 0 ? `values-${options[index].id}` : "options"
+  }
+  // Shows the first tab before `next` that has problems, with its first problem
+  // in view and focused, like Medusa's form. Returns false when one was found.
+  const checkTabsBefore = (next: Tab) => {
+    for (const item of TABS.slice(0, TABS.findIndex((candidate) => candidate.value === next))) {
+      const found = tabErrors(item.value)
+      if (Object.keys(found).length) {
+        setErrors(found)
+        setTab(item.value)
+        requestAnimationFrame(() => document.getElementById(fieldId(Object.keys(found)[0]))?.focus())
+        return false
+      }
+    }
+    return true
   }
   const goTo = (next: Tab) => {
-    if (next !== "details") {
-      const found = detailsErrors()
-      if (Object.keys(found).length) return showDetailsErrors(found)
-      setErrors({})
-    }
+    if (!checkTabsBefore(next)) return
+    setErrors({})
     setTab(next)
   }
 
   const save = async (status: "draft" | "published") => {
-    const found = detailsErrors()
-    if (Object.keys(found).length) return showDetailsErrors(found)
+    // The variant cells are checked by the server and shown in the table.
+    if (!checkTabsBefore("variants")) return
     setSaving(true)
     setErrors({})
     const keys = rows.map(rowKey)
@@ -198,10 +211,10 @@ const NewProductPage = () => {
           status,
           weight: weight === "" ? undefined : Number(weight),
           discountable,
-          brand_id: brandId === NO_BRAND ? undefined : brandId,
+          brand_id: brandId || undefined,
           eda: edaNumber.trim() ? { registration_number: edaNumber, is_approved: edaApproved } : undefined,
           images,
-          options: options.map((option) => ({ id: option.id, value_ids: option.valueIds, new_values: option.newValues.length ? option.newValues : undefined })),
+          options: !hasVariants ? [] : options.map((option) => ({ id: option.id, value_ids: option.valueIds, new_values: option.newValues.length ? option.newValues : undefined })),
           variants: rows.map((combination) => {
             const cell = cells[rowKey(combination)] ?? emptyCell
             return { options: combination, sku: cell.sku, barcode: cell.barcode.trim() || undefined, price: cell.price === "" ? undefined : Number(cell.price) }
@@ -237,7 +250,7 @@ const NewProductPage = () => {
   // Closing with Esc, the X or Cancel asks first when something was entered, like Medusa's form.
   const close = async () => {
     const entered = [title, subtitle, handle, description, weight, edaNumber].some((value) => value.trim()) || images.length > 0 ||
-      chosen.length > 0 || categoryIds.length > 0 || brandId !== NO_BRAND || Object.values(cells).some((cell) => Object.values(cell).some(Boolean))
+      chosen.length > 0 || categoryIds.length > 0 || !!brandId || Object.values(cells).some((cell) => Object.values(cell).some(Boolean))
     if (entered && !await prompt({
       title: "Are you sure you want to leave this form?",
       description: "You have unsaved changes that will be lost if you exit this form.",
@@ -328,40 +341,47 @@ const NewProductPage = () => {
                   </div>
                   <Divider />
                   <div className="flex flex-col gap-y-8">
-                    <Heading level="h2">Variants</Heading>
-                    <div className="flex flex-col gap-y-2">
-                      <div className="flex flex-col">
-                        <Label htmlFor="options" weight="plus">Product options</Label>
-                        <Hint>Choose shared options, like Flavor or Size. They are managed in Products › Options and used by every product.</Hint>
-                      </div>
-                      <ChipCombobox id="options" placeholder="Choose options" invalid={!!errors.options}
-                        choices={sharedOptions.map((option) => ({ value: option.id, label: option.title }))}
-                        value={chosen.map((option) => option.id)}
-                        onChange={(ids) => { setOptionIds(ids); setSkipped([]); setErrors({}) }} />
-                      {errors.options && <Hint variant="error">{errors.options}</Hint>}
+                    <div className="flex flex-col gap-y-6">
+                      <Heading level="h2">Variants</Heading>
+                      <SwitchBox id="has-variants" label="Yes, this is a product with variants" checked={hasVariants}
+                        onChange={(checked) => { setHasVariants(checked); setErrors({}) }}
+                        description="When unchecked, we will create a default variant for you" />
                     </div>
-                    {options.length > 0 && (
-                      <div className="flex flex-col gap-y-4">
+                    {hasVariants && (
+                      <div className="flex flex-col gap-y-8">
+                      <div className="flex flex-col gap-y-2">
                         <div className="flex flex-col">
-                          <Label weight="plus">Values</Label>
-                          <Hint>Choose the values this product comes in. Type a new one and press Enter to add it; it is saved to the option with the product.</Hint>
+                          <Label htmlFor="options" weight="plus">Product options</Label>
+                          <Hint>Choose shared options, like Flavor or Size. They are managed in Products › Options and used by every product.</Hint>
                         </div>
-                        {options.map((option, index) => (
-                          <div key={option.id} className="flex flex-col gap-y-2">
-                            <Label htmlFor={`values-${option.id}`} size="small" weight="plus">{option.title}</Label>
-                            <ChipCombobox id={`values-${option.id}`} placeholder={`Choose ${option.title.toLowerCase()} values`}
-                              invalid={!!errors[`options.${index}`]}
-                              choices={[
-                                ...[...option.shared.values].sort(byRank).map((value) => ({ value: value.id, label: value.value })),
-                                ...option.newValues.map((name) => ({ value: `${NEW}${name}`, label: name, hint: "new" })),
-                              ]}
-                              value={[...option.valueIds, ...option.newValues.map((name) => `${NEW}${name}`)]}
-                              onChange={(keys) => { setValues(option.id, keys); setSkipped([]); edited(`options.${index}`, "options", "variants") }}
-                              onCreate={(name) => { addValue(option.shared, name); setSkipped([]); edited(`options.${index}`, "options", "variants") }} />
-                            {errors[`options.${index}`] && <Hint variant="error">{errors[`options.${index}`]}</Hint>}
-                          </div>
-                        ))}
+                        <ChipCombobox id="options" placeholder="Choose options" invalid={!!errors.options}
+                          choices={sharedOptions.map((option) => ({ value: option.id, label: option.title }))}
+                          value={chosen.map((option) => option.id)}
+                          onChange={(ids) => { setOptionIds(ids); setSkipped([]); setErrors({}) }} />
+                        {errors.options && <Hint variant="error">{errors.options}</Hint>}
                       </div>
+                      {options.length > 0 && (
+                        <div className="flex flex-col gap-y-4">
+                          <div className="flex flex-col">
+                            <Label weight="plus">Values</Label>
+                            <Hint>Choose the values this product comes in. Type a new one and press Enter to add it; it is saved to the option with the product.</Hint>
+                          </div>
+                          {options.map((option, index) => (
+                            <div key={option.id} className="flex flex-col gap-y-2">
+                              <Label htmlFor={`values-${option.id}`} size="small" weight="plus">{option.title}</Label>
+                              <ChipCombobox id={`values-${option.id}`} placeholder={`Choose ${option.title.toLowerCase()} values`}
+                                invalid={!!errors[`options.${index}`]}
+                                choices={[
+                                  ...[...option.shared.values].sort(byRank).map((value) => ({ value: value.id, label: value.value })),
+                                  ...option.newValues.map((name) => ({ value: `${NEW}${name}`, label: name, hint: "new" })),
+                                ]}
+                                value={[...option.valueIds, ...option.newValues.map((name) => `${NEW}${name}`)]}
+                                onChange={(keys) => { setValues(option.id, keys); setSkipped([]); edited(`options.${index}`, "options", "variants") }}
+                                onCreate={(name) => { addValue(option.shared, name); setSkipped([]); edited(`options.${index}`, "options", "variants") }} />
+                              {errors[`options.${index}`] && <Hint variant="error">{errors[`options.${index}`]}</Hint>}
+                            </div>
+                          ))}
+                        </div>
                     )}
                     <div className="flex flex-col gap-y-4">
                       <div className="flex flex-col">
@@ -392,6 +412,8 @@ const NewProductPage = () => {
                         </div>
                       ) : variantTotal <= MAX_VARIANTS && <Alert>Choose an option and its values to see the variants.</Alert>}
                     </div>
+                    </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -404,17 +426,16 @@ const NewProductPage = () => {
                   <SwitchBox id="discountable" label="Discountable" checked={discountable} onChange={setDiscountable}
                     description="When unchecked, discounts will not be applied to this product." />
                   <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                    <Field id="brand" label="Brand" optional error={errors.brand_id}>
+                    <Field id="brand" label="Brand" error={errors.brand_id}>
                       <Select value={brandId} onValueChange={(id) => { setBrandId(id); edited("brand_id") }}>
-                        <Select.Trigger id="brand"><Select.Value /></Select.Trigger>
+                        <Select.Trigger id="brand" aria-invalid={!!errors.brand_id}><Select.Value placeholder="Choose a brand" /></Select.Trigger>
                         <Select.Content>
-                          <Select.Item value={NO_BRAND}>No brand</Select.Item>
                           {brands.map((brand) => <Select.Item key={brand.id} value={brand.id}>{brand.name}</Select.Item>)}
                         </Select.Content>
                       </Select>
                     </Field>
-                    <Field id="categories" label="Categories" optional error={errors.category_ids}>
-                      <ChipCombobox id="categories" placeholder="Choose categories" choices={categoryChoices}
+                    <Field id="categories" label="Categories" error={errors.category_ids}>
+                      <CategoryCombobox id="categories" categories={categories}
                         value={categoryIds} onChange={(ids) => { setCategoryIds(ids); edited("category_ids") }} invalid={!!errors.category_ids} />
                     </Field>
                   </div>
@@ -439,7 +460,7 @@ const NewProductPage = () => {
               <table className="w-full border-collapse">
                 <thead>
                   <tr className="bg-ui-bg-subtle txt-compact-small-plus text-ui-fg-subtle text-left">
-                    <th className="border-ui-border-base border-b border-r px-4 py-2.5 font-medium">{completeOptions.map((option) => option.title).join(" / ")}</th>
+                    <th className="border-ui-border-base border-b border-r px-4 py-2.5 font-medium">{hasVariants ? completeOptions.map((option) => option.title).join(" / ") : "Variant"}</th>
                     <th className="border-ui-border-base border-b border-r px-4 py-2.5 font-medium">SKU</th>
                     <th className="border-ui-border-base border-b border-r px-4 py-2.5 font-medium">Barcode<span className="text-ui-fg-muted font-normal"> (Optional)</span></th>
                     <th className="border-ui-border-base border-b px-4 py-2.5 font-medium">Price EGP<span className="text-ui-fg-muted font-normal"> (incl. tax)</span></th>
@@ -449,7 +470,7 @@ const NewProductPage = () => {
                   {rows.map((combination, index) => {
                     const key = rowKey(combination)
                     const cell = cells[key] ?? emptyCell
-                    const name = Object.values(combination).join(" / ")
+                    const name = hasVariants ? Object.values(combination).join(" / ") : "Default variant"
                     const input = (field: keyof Cell, props: { type?: string, min?: string, step?: string } = {}) => (
                       <td className={clx("border-ui-border-base border-b align-top focus-within:outline focus-within:outline-2 focus-within:-outline-offset-2 focus-within:outline-ui-fg-interactive",
                         field !== "price" && "border-r", variantError(key, field) && "bg-ui-tag-red-bg")}>

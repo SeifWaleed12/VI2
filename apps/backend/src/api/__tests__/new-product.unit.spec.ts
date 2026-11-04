@@ -5,6 +5,8 @@ const valid = {
   title: "Whey Protein",
   status: "draft",
   discountable: true,
+  brand_id: "brand_1",
+  category_ids: ["pcat_1"],
   options: [{ id: "opt_flavor", value_ids: ["optval_choc"] }],
   variants: [{ options: { Flavor: "Chocolate" }, sku: "WH-CH-1", price: 1500 }],
 }
@@ -27,13 +29,19 @@ describe("new product schema", () => {
     ["price", { ...valid, variants: [{ ...valid.variants[0], price: undefined }] }, "variants.0.price", "Enter a price"],
     ["zero price", { ...valid, variants: [{ ...valid.variants[0], price: 0 }] }, "variants.0.price", "Price must be more than 0"],
     ["a price within the cap", { ...valid, variants: [{ ...valid.variants[0], price: 1_000_000.01 }] }, "variants.0.price", "Price must be 1,000,000 EGP or less"],
-    ["options", { ...valid, options: [] }, "options", "Add at least one option"],
+    ["brand", { ...valid, brand_id: undefined }, "brand_id", "Choose a brand"],
+    ["categories", { ...valid, category_ids: [] }, "category_ids", "Choose at least one category"],
+    ["one variant without options", { ...valid, options: [], variants: [{ ...valid.variants[0], options: {} }, { ...valid.variants[0], options: {}, sku: "WH-2" }] }, "variants", "A product without variants has one variant"],
     ["option values", { ...valid, options: [{ id: "opt_flavor", value_ids: [], new_values: [] }] }, "options.0", "Choose at least one value"],
     ["each option once", { ...valid, options: [valid.options[0], valid.options[0]] }, "options", "Each option can be added once"],
     ["a handle in URL form", { ...valid, handle: "Whey Protein" }, "handle", "Use lowercase letters, numbers and dashes"],
     ["variants", { ...valid, variants: [] }, "variants", "Keep at least one variant"],
   ])("requires %s", (_name, body, path, message) => {
     expect(issues(body)).toContainEqual({ path, message })
+  })
+
+  it("accepts a product without variants: no options and one variant", () => {
+    expect(issues({ ...valid, options: [], variants: [{ ...valid.variants[0], options: {} }] })).toEqual([])
   })
 
   it("refuses a SKU used twice in one form, on the second row", () => {

@@ -13,14 +13,15 @@ export type Vi2ProductInput = {
   subtitle?: string
   handle?: string
   description?: string
-  category_ids?: string[]
+  category_ids: string[]
   status: "draft" | "published"
   weight?: number
   discountable: boolean
-  brand_id?: string
+  brand_id: string
   eda?: { registration_number: string, is_approved: boolean }
   images?: string[]
-  // Shared options (Products > Options): the chosen value ids, plus values to add to the option.
+  // Shared options (Products > Options): the chosen value ids, plus values to add
+  // to the option. None means a product without variants.
   options: { id: string, value_ids: string[], new_values?: string[] }[]
   // Variant options by option title, e.g. { Flavor: "Chocolate" }.
   variants: { options: Record<string, string>, sku: string, barcode?: string, price: number }[]
@@ -30,6 +31,9 @@ type StoreDefaults = { sales_channel_id: string, shipping_profile_id: string }
 type ChosenOption = { id: string, title: string, values: { id: string, value: string }[] }
 
 const sameValue = (a: string, b: string) => a.toLowerCase() === b.toLowerCase()
+// What Medusa's own form creates for a product without variants.
+const DEFAULT_OPTION = { title: "Default option", value: "Default option value" }
+const DEFAULT_VARIANT_TITLE = "Default variant"
 
 // Refuses SKUs the store already has and an unknown or inactive brand before
 // anything is created, and finds the website's sales channel and the default
@@ -42,10 +46,8 @@ const prepareVi2ProductStep = createStep(
     if (taken.length) {
       throw new MedusaError(MedusaError.Types.INVALID_DATA, taken.map((variant) => `SKU ${variant.sku} already exists`).join(". "))
     }
-    if (input.brand_id) {
-      const [brand] = await container.resolve<BrandModuleService>(BRAND_MODULE).listBrands({ id: input.brand_id })
-      if (brand?.status !== "active") throw new MedusaError(MedusaError.Types.INVALID_DATA, "Choose an active brand")
-    }
+    const [brand] = await container.resolve<BrandModuleService>(BRAND_MODULE).listBrands({ id: input.brand_id })
+    if (brand?.status !== "active") throw new MedusaError(MedusaError.Types.INVALID_DATA, "Choose an active brand")
     const { data: [store] } = await query.graph({ entity: "store", fields: ["default_sales_channel_id"] })
     const { data: [profile] } = await query.graph({ entity: "shipping_profile", fields: ["id"], filters: { type: "default" } })
     if (!store?.default_sales_channel_id || !profile) {
@@ -63,7 +65,7 @@ const addSharedOptionValuesStep = createStep(
   "add-shared-option-values",
   async ({ options, variants }: Pick<Vi2ProductInput, "options" | "variants">, { container }) => {
     const productModule = container.resolve(Modules.PRODUCT)
-    const found = await productModule.listProductOptions({ id: options.map((option) => option.id) }, { relations: ["values"] })
+    const found = options.length ? await productModule.listProductOptions({ id: options.map((option) => option.id) }, { relations: ["values"] }) : []
     const chosen: ChosenOption[] = []
     const toCreate: { option_id: string, value: string }[] = []
     for (const option of options) {
@@ -110,20 +112,24 @@ function productData({ input, defaults, options }: { input: Vi2ProductInput, def
       status: input.status,
       weight: input.weight,
       discountable: input.discountable,
-      categories: input.category_ids?.map((id) => ({ id })),
+      categories: input.category_ids.map((id) => ({ id })),
       images: input.images?.map((url) => ({ url })),
       thumbnail: input.images?.[0],
       sales_channels: [{ id: defaults.sales_channel_id }],
       shipping_profile_id: defaults.shipping_profile_id,
-      options: options.map((option) => ({ id: option.id, value_ids: option.values.map((value) => value.id) })),
+      options: options.length
+        ? options.map((option) => ({ id: option.id, value_ids: option.values.map((value) => value.id) }))
+        : [{ title: DEFAULT_OPTION.title, values: [DEFAULT_OPTION.value] }],
       variants: input.variants.map((variant) => {
         // Spelled the way the shared option stores it, so "mango" picks "Mango".
-        const values = options.map((option) => {
-          const typed = variant.options[option.title] ?? ""
-          return [option.title, option.values.find((value) => sameValue(value.value, typed))?.value ?? typed]
-        })
+        const values = options.length
+          ? options.map((option) => {
+            const typed = variant.options[option.title] ?? ""
+            return [option.title, option.values.find((value) => sameValue(value.value, typed))?.value ?? typed]
+          })
+          : [[DEFAULT_OPTION.title, DEFAULT_OPTION.value]]
         return {
-          title: values.map(([, value]) => value).join(" / "),
+          title: options.length ? values.map(([, value]) => value).join(" / ") : DEFAULT_VARIANT_TITLE,
           sku: variant.sku,
           barcode: variant.barcode,
           options: Object.fromEntries(values),
@@ -148,12 +154,10 @@ export const createVi2ProductWorkflow = createWorkflow(
     const products = createProductsWorkflow.runAsStep({ input: transform({ input, defaults, options }, productData) })
     const productId = transform({ products }, ({ products }) => products[0].id)
 
-    when("vi2-product-has-brand", { input }, ({ input }) => !!input.brand_id).then(() => {
-      createRemoteLinkStep(transform({ input, productId }, ({ input, productId }) => [{
-        [Modules.PRODUCT]: { product_id: productId },
-        [BRAND_MODULE]: { brand_id: input.brand_id },
-      }]))
-    })
+    createRemoteLinkStep(transform({ input, productId }, ({ input, productId }) => [{
+      [Modules.PRODUCT]: { product_id: productId },
+      [BRAND_MODULE]: { brand_id: input.brand_id },
+    }]))
     when("vi2-product-has-eda", { input }, ({ input }) => !!input.eda).then(() => {
       setProductEdaWorkflow.runAsStep({
         input: transform({ input, productId }, ({ input, productId }) => ({ product_id: productId, ...input.eda! })),

@@ -72,21 +72,22 @@ export const newProductSchema = z.object({
   subtitle: text.optional(),
   handle: z.string().trim().regex(/^[a-z0-9]+(-[a-z0-9]+)*$/, "Use lowercase letters, numbers and dashes").max(255).optional(),
   description: z.string().trim().max(5000).optional(),
-  category_ids: z.array(z.string().min(1)).max(50).optional(),
+  category_ids: z.array(z.string().min(1), { error: "Choose at least one category" }).min(1, "Choose at least one category").max(50),
   status: z.enum(["draft", "published"]),
   weight: z.number().finite().positive("Weight must be more than 0").optional(),
   discountable: z.boolean(),
-  brand_id: z.string().min(1).optional(),
+  brand_id: z.string({ error: "Choose a brand" }).min(1, "Choose a brand"),
   eda: productEdaSchema.optional(),
   images: z.array(z.url().refine((url) => ["https:", "http:"].includes(new URL(url).protocol))).max(20).optional(),
   // Shared options only (Products > Options). new_values are added to the
   // shared option when the product is saved, so every product can use them.
+  // No options means a product without variants: it gets one default variant.
   options: z.array(z.object({
     id: z.string().min(1),
     value_ids: z.array(z.string().min(1)).max(100),
     new_values: z.array(text).max(50).optional(),
   }).strict().refine((option) => option.value_ids.length + (option.new_values?.length ?? 0) > 0, "Choose at least one value"))
-    .min(1, "Add at least one option").max(10),
+    .max(10),
   variants: z.array(z.object({
     options: z.record(z.string(), text),
     sku: required("Enter a SKU").max(100),
@@ -96,6 +97,9 @@ export const newProductSchema = z.object({
 }).strict().superRefine((product, ctx) => {
   if (new Set(product.options.map((option) => option.id)).size < product.options.length) {
     ctx.addIssue({ code: "custom", path: ["options"], message: "Each option can be added once" })
+  }
+  if (!product.options.length && product.variants.length > 1) {
+    ctx.addIssue({ code: "custom", path: ["variants"], message: "A product without variants has one variant" })
   }
   const seen = new Set<string>()
   product.variants.forEach((variant, index) => {
