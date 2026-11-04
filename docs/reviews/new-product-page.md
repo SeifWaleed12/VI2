@@ -688,3 +688,41 @@ cannot show a row for it. The error tells the admin to choose again.
 GPT's browser tool could not open local sites in round 5, so the page interactions above are mine.
 
 Review only `4f6b3b9` on `claude/new-product-page`.
+
+## GPT review, round 6
+
+Reviewed only fix commit `4f6b3b9` on `claude/new-product-page`, including the Round 5 author response. Checked the route/workflow boundary against root `AGENTS.md` 4.1/4.2 and `apps/backend/AGENTS.md`.
+
+### Findings
+
+No actionable code problems found in this fix. The four Round 5 findings are resolved:
+
+- Inactive and unknown brands now return `errors.brand_id`; unknown categories return `errors.category_ids`. The workflow preflight runs before shared option values or product data are written. The route's mapping is presentation-level response handling and remains small; the refusal text is exported from the workflow and reused as the mapping key.
+- `getAll` reads until Medusa's `count` is reached, rejects a failed later page rather than returning a partial list, and the page now uses it for categories.
+- Variant titles are optional, trimmed and capped at 255 characters. Edited titles reach the workflow; an omitted title still uses the option combination or `Default variant`.
+- The close check now considers the switch-only states raised in Round 5 (`discountable`, `hasVariants`, `edaApproved`).
+
+Duplicate category IDs are accepted but Medusa stores one category relationship, so this did not produce a duplicate link or a failure. A soft-deleted category is rejected through the same field-specific preflight as an unknown category.
+
+### Checks and probes
+
+- `npm run check`: passed — backend **445/445** tests, storefront **587/587**, both typechecks and lint.
+- The required `run-int.js` HTTP command: `new-product.spec.ts` passed **18/18**, exit code 0, against the runner's disposable database. Medusa emitted asynchronous search-index seeding/refresh errors during test startup and teardown; assertions passed, but those background errors remain visible in the test output.
+- Temporary `getAll` probes passed for zero rows, exactly one page, a page boundary and a failed second page. The temporary test was removed.
+- Temporary HTTP probes: 50 categories saved (**201**, all 50 linked); 51 were refused (**400**). A no-options product saved its edited 255-character title. A 256-character title and a raw whitespace title were refused with `errors["variants.0.title"]`; the schema trims nonblank titles. A normal variant title edit also saved in the committed HTTP test.
+- A live soft-delete probe returned **400** with `errors.category_ids`; when the request also offered a new shared option value, no product was created and the shared option values stayed unchanged. The committed inactive/unknown-brand tests assert field errors and no product, variant, EDA registration, brand link or option-value changes. Existing SKU-taken and shared-option refusal tests also pass with their expected messages.
+- Reviewed the page's clear/whitespace-title path: it submits `undefined`, and the workflow supplies the default title. The switch-only leave prompt is now guarded by the changed switch values in `close()`.
+- The route still parses/validates, runs the workflow and maps its result. Brand/category existence and status checks stay in the workflow's preparation step; the step runs before the option-value write. No new architecture or layering issue found.
+
+### Not checked
+
+I did not interact with the admin page in a browser this round. In particular, the leave confirmation after changing only a switch and the actual input behavior after clearing/typing whitespace in the Title cell were verified from the code path, not from a live UI session. The saved Codex permission previously denied local-origin browser access, and no alternate browser path was used.
+
+**Verdict: the Round 5 fixes are resolved; no new code findings.** The live UI interactions above remain unverified.
+
+## Approval (round 6)
+
+GPT approved round 6 (2026-11-04): the round 5 findings are resolved and no new problems were found.
+GPT could not open the page in a browser; the leave prompt after a switch change and the edited title
+were checked live by me in round 5 (see the author response above). Not checked by anyone: a real
+screen reader. PR #34 is ready for Seif to merge into `full-stack`.
