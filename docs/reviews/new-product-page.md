@@ -535,3 +535,73 @@ Two tests expected the old 403 for managers: the HTTP case now expects 400, and 
 guard was removed because that rule no longer exists.
 
 Checks after the merge: `npm run check` green on the merged code (backend 440 tests, storefront 587, typechecks, lint with no errors or warnings); HTTP `new-product.spec.ts` 15/15.
+
+## Seif's changes after the PR (2026-11-04)
+
+Seif tried the page and asked for three changes, and to mimic Medusa's form in everything:
+
+1. **Products without variants, as in Medusa.** Under Variants there is now Medusa's switch "Yes, this
+   is a product with variants" ("When unchecked, we will create a default variant for you"). It starts
+   off.
+   - **Off:** the option pickers are hidden, and the Variants tab has one "Default variant" row (SKU,
+     barcode, price).
+   - **On save:** the workflow creates what Medusa 2.21's own form sends: the product's own option
+     "Default option" with the value "Default option value", and one variant "Default variant". No
+     shared option is touched.
+   - **Server rules:** `options: []` is now allowed, with exactly one variant whose `options` is `{}`.
+     More than one variant without options is refused ("A product without variants has one
+     variant"). The variant-key check from round 3b still applies, since with no options a variant
+     must name none.
+2. **Brand and categories are required.**
+   - **Schema:** `brand_id` is required ("Choose a brand"), and `category_ids` needs at least one
+     ("Choose at least one category").
+   - **Page:** "(Optional)" and "No brand" are gone. Continue on Organize, or a save, shows both
+     errors there and focuses Brand.
+   - **Workflow:** the brand link is no longer conditional.
+3. **Medusa's category picker** (`products-new/category-combobox.tsx`, new; Medusa does not export
+   its `CategoryCombobox` to admin extensions).
+   - **Closed:** a count chip ("2 ×", which clears all) and "Selected".
+   - **Open:** the main categories only. A category with children has an arrow that opens them, with
+     a back row naming the parent. Clicking a row ticks or unticks it, marked with a dot. Typing
+     searches every level (no arrows or back row while searching).
+   - **Keyboard:** Up and Down move, Right opens a category, Enter ticks (or goes back on the back
+     row), Esc closes only the list.
+   - **Screen readers:** the input names the list and the highlighted row (`aria-controls`,
+     `aria-activedescendant`). The arrow is mouse-only and hidden from screen readers; keyboard users
+     use Right.
+   - **Data:** categories are loaded once (with `rank`) and browsed in the page, so no request is made
+     per level. Rows are ordered by rank, then name.
+   - The page's tab check now runs per tab (`tabErrors`, `checkTabsBefore`). Continue checks every
+     tab before the next one, and Save checks Details and Organize.
+
+Tests:
+- **Unit:** new cases for brand required, categories required, one variant without options, and a
+  product without variants accepted (21 tests). `valid` now has a brand and a category.
+- **HTTP:** "creates a product without variants the way Medusa does: a default option and variant"
+  (replaces "only the required fields", which created a product without a brand) and "refuses a
+  product without a brand or a category" (16 tests).
+- **Shown failing first:** 4 unit cases, and both HTTP tests on the old code (a product without
+  variants got 400; one without a brand or category got 201).
+- After the change: HTTP `new-product.spec.ts` 16/16; `npm run check` green (backend 443 tests, storefront 587, typechecks, lint clean); admin type-check
+  (`src/admin/tsconfig.json`) clean.
+
+Live check (2026-11-04, this branch on port 9000, dev database, a temporary Super Admin):
+- **Switch:** off by default, with the option pickers hidden.
+- **Organize:** Continue with nothing chosen showed "Choose a brand" and "Choose at least one category"
+  and focused Brand.
+- **Category picker:** showed the six main categories with arrows. The arrow on Sports Nutrition
+  opened its sub-categories with a back row. Ticking two showed "2 × Selected" and cleared the error.
+  The keyboard path (Down, Right, Down, Enter) ticked a sub-category. Searching "protein" listed
+  matches from the sub-level.
+- **Saved product** (draft): the Variants tab showed one "Default variant" row. The saved product has
+  the brand, both categories, the option "Default option" (product's own, `is_exclusive: true`) and
+  the variant "Default variant" with 450 EGP, like a product made in Medusa's form.
+- **Switch on:** the option pickers came back, and Continue without an option still said "Add at least
+  one option".
+- **Found and fixed during the check:** the back row's "↩" showed as a blue emoji on Windows. It is
+  now a plain line icon.
+- **Cleanup:** the test product and the temporary admin are deleted.
+
+Not checked: a real screen reader.
+
+Review only `6de2d61` on `claude/new-product-page`.
