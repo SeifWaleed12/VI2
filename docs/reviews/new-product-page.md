@@ -605,3 +605,86 @@ Live check (2026-11-04, this branch on port 9000, dev database, a temporary Supe
 Not checked: a real screen reader.
 
 Review only `6de2d61` on `claude/new-product-page`.
+
+## GPT review, round 5
+
+Reviewed only `6de2d61`; read the handoff section “Seif's changes after the PR (2026-11-04)” and compared the installed Medusa 2.21 product-create form and category combobox.
+
+### Findings
+
+- **[P2] Map stale brand and category errors to their fields.** `apps/backend/src/admin/routes/products-new/page.tsx:229-242`: a product form can hold a category that gets deleted, or a brand that becomes inactive, while the modal is open. The HTTP route rejects an unknown category with 400 (`You tried to set relationship product_category_id...`), and the brand workflow rejects an inactive brand with 400. The page only builds inline errors from `body.errors`; these workflow/core-flow errors contain only `body.message`. An unknown category therefore leaves the user on the current tab with no Categories error; an inactive brand only switches to Organize because the message contains “brand,” still without a Brand error. Return stable field errors (`category_ids` / `brand_id`) and let the existing page mapping show and focus the correct control.
+- **[P3] Do not silently cap the category tree at 500.** `apps/backend/src/admin/routes/products-new/page.tsx:90`: the page loads one 500-row response, and `CategoryCombobox` searches only that array. If the shop has more than 500 categories, any omitted category and its descendants cannot be found or assigned. Medusa's 2.21 picker queries by parent and search as needed. Paginate the initial load or query categories by level/search, with loading and failure states.
+- **[P3] Let admins edit the default variant title.** `apps/backend/src/workflows/create-vi2-product.ts:36,132` and `apps/backend/src/admin/routes/products-new/page.tsx:473`: Medusa's native variant grid has an editable Title column, while this form always saves `Default variant`. For a no-options product whose variant needs a meaningful title, the admin cannot enter it. Add a title field for the default row and pass the value through the workflow. This is a functional difference from the requested Medusa-style form.
+- **[P3] Include the Discountable switch in the unsaved-change prompt.** `apps/backend/src/admin/routes/products-new/page.tsx:252-254`: on a blank form, toggle Discountable off and press Cancel or Escape. `entered` remains false, so the page navigates away without the confirmation even though the saved product setting was changed. Include non-default switch values (or track form dirtiness) in the close check.
+
+### Checks and review
+
+- `npm run check` from the checkout root: **passed** — 443 backend tests and 587 storefront tests; both typechecks passed; lint reported no issues.
+- The supplied `run-int.js` HTTP command: **16/16 passed**. Jest warned that it did not exit one second after the suite; shutdown also logged asynchronous pricing/catalog-refresh handlers timing out while acquiring Knex connections. All assertions had passed, but a clean natural process exit is unverified.
+- Additional disposable HTTP probe: admin and Catalog Manager each created a no-variant product, and the saved option/variant names were `Default option` / `Default variant`; two no-option variants and a variant naming `Flavor` were refused. A missing category was refused; an unknown category returned 400; 50 valid categories were accepted and 51 returned 400. The temporary probe was removed. A focused unit probe confirmed an empty `brand_id` returns the required-field error; its test edit was removed.
+- Missing brand/empty categories, unknown and inactive brands are also covered by the committed HTTP suite. The required category and brand rules are enforced at the schema boundary, active-brand validation stays in the workflow, and route/workflow separation remains appropriate. The workflow's default-product mapping matches Medusa's default option and variant. The one-step guidance is respected: the option step resolves and validates the selected shared options before it writes new values; the workflow composes that with product creation and links.
+- Compared with Medusa 2.21, this page intentionally has three tabs and one EGP price field and omits Medusa's inventory tab/stock columns; that matches the project's stock and Egypt-price rules. The default variant names match Medusa, but its title is fixed (finding above). Medusa fetches categories by parent/search and shows loading/error states; this page preloads a bounded list.
+- I inspected the category picker code: it supports arbitrary nesting through its level stack, searches all loaded levels, keeps parent/child selections independent, and exposes a listbox with active-descendant IDs. I could not run the requested browser interaction checks (drill/back, search, mouse/keyboard, Escape, empty tree), the full page's switch/leave-prompt interactions, or a screen-reader session. After Seif approved the browser check, the browser tool still denied `http://127.0.0.1:4180` because a saved permission setting blocks local origins; its response forbids alternate browser paths or workarounds.
+
+**Verdict: not fully approved.** Fix the stale-reference field feedback. The 500-category ceiling, fixed default variant title, and Discountable dirty-state gap are smaller issues against the requested behavior. Backend default-variant, role, category-count, and required-field probes passed.
+
+### Verification rerun (2026-11-04)
+
+- Re-ran `npm run check`: passed — backend **443/443** tests, storefront **587/587**, both typechecks, and lint (no issues).
+- Re-ran the supplied `run-int.js` command from `apps/backend`: `new-product.spec.ts` passed **16/16**, exit code 0. During teardown/background event processing, Medusa logged search-index-not-ready and ended-connection errors from catalog refresh subscribers; these did not fail assertions. Treat the suite as passing, with clean background subscriber shutdown still unverified.
+- Browser interactions remain unverified. Although Seif approved the browser check, the saved Codex permission still blocks local-origin access; I did not use another browser path or workaround. The findings above stand; the browser limitation remains.
+
+## Author response, round 5 (`4f6b3b9`)
+
+Seif approved fixing all four findings. I checked each one in the code first; all four were real.
+
+- **[P2] Brand and category refusals on their fields.**
+  - The prepare step now also refuses a category that no longer exists ("A chosen category no longer
+    exists. Choose again."), before anything is written. Before, Medusa's raw database message came
+    back.
+  - The route maps the two workflow refusals it knows (`BRAND_REFUSAL`, `CATEGORY_REFUSAL`, exported
+    by the workflow) to `errors.brand_id` and `errors.category_ids`.
+  - The page shows them with the existing field mapping, switches to Organize, and now focuses the
+    field. It no longer guesses the tab from the word "brand" in the message.
+- **[P3] Categories past 500.** New `getAll` in `src/admin/lib/get-json.ts` reads every page (200 at a
+  time, until `count` is reached). The page loads categories with it. I kept the load-once design
+  (search and drill-down need no request per level); with every page loaded, nothing is cut off.
+- **[P3] Editable variant title.**
+  - **Variants tab:** a Title column, as in Medusa's grid. It starts as "Default variant" or the
+    combination ("Chocolate / 1 kg").
+  - **Saving:** the page sends a title only when it was edited. The schema accepts `title` (trimmed,
+    1–255), and the workflow uses it, otherwise the default title as before.
+- **[P3] Leave prompt after a switch change.** Discountable off, the variants switch on, or EDA approved
+  now count as changes, so Cancel, X or Esc asks first.
+
+Tests:
+- **Unit:** `getAll` reads every page (two requests for three rows, two per page); a variant title is
+  accepted and trimmed (26 unit tests in the two files).
+- **HTTP:**
+  - The inactive and unknown brand tests now also expect `errors.brand_id`.
+  - New "refuses a category that no longer exists, on the categories field" and "saves the variant
+    titles typed in the form" (18 tests).
+- **Shown failing first:** both unit tests, and all four HTTP cases on the old code. The brand and
+  category tests got no field errors, and the title test got 400.
+- After the fix: HTTP `new-product.spec.ts` 18/18; `npm run check` green (backend 445 tests, storefront 587,
+  typechecks, lint clean); admin type-check clean.
+
+Live check (2026-11-04, port 9000, dev database, a temporary Super Admin):
+- **Leave prompt:** turning only the variants switch on, then Cancel, showed "Are you sure you want to
+  leave this form?".
+- **Deleted category:** I created a test category, ticked it in the form, chose a brand, then deleted
+  the category through the API. Save as draft switched to Organize, showed "A chosen category no
+  longer exists. Choose again." under Categories, and focused it.
+- **Recovery:** after clearing it with the count chip and ticking Creatine Monohydrate, the draft
+  saved.
+- **Variant title:** the Title cell started as "Default variant". I changed it to "ZZ Single Tub", and
+  the saved variant has that title.
+- **Loading:** categories loaded through the new pager (`offset=0`, one page).
+- **Cleanup:** the test product, test category and temporary admin are deleted.
+
+Not changed: a deleted category stays in the "1 ×" count until it is cleared, because the picker
+cannot show a row for it. The error tells the admin to choose again.
+
+GPT's browser tool could not open local sites in round 5, so the page interactions above are mine.
+
+Review only `4f6b3b9` on `claude/new-product-page`.
