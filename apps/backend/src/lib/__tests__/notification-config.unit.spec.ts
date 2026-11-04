@@ -19,6 +19,11 @@ it("logs email locally only outside production", () => {
   expect(providers({ NODE_ENV: "production" }).map((p) => p.options.channels)).toEqual([["feed"]])
 })
 
+it("never sends real email from tests, even with Resend configured", () => {
+  expect(providers({ NODE_ENV: "test", RESEND_API_KEY: "key", RESEND_FROM: "Vi2 <orders@example.com>" }).map((p) => p.id)).toEqual(["local"])
+  expect(providers({ NODE_ENV: "test", RESEND_API_KEY: "key", RESEND_FROM: "Vi2 <orders@example.com>" })[0].options.channels).toEqual(["feed", "email"])
+})
+
 it("rejects half-configured Resend settings", () => {
   expect(() => notificationModule({ RESEND_API_KEY: "key" })).toThrow("both")
   expect(() => notificationModule({ RESEND_FROM: "orders@example.com", RESEND_API_KEY: "  " })).toThrow("both")
