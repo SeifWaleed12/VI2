@@ -40,6 +40,10 @@ describe("new product schema", () => {
     expect(issues(body)).toContainEqual({ path, message })
   })
 
+  it("accepts a variant title and trims it", () => {
+    expect(newProductSchema.parse({ ...valid, variants: [{ ...valid.variants[0], title: " Chocolate tub " }] }).variants[0].title).toBe("Chocolate tub")
+  })
+
   it("accepts a product without variants: no options and one variant", () => {
     expect(issues({ ...valid, options: [], variants: [{ ...valid.variants[0], options: {} }] })).toEqual([])
   })

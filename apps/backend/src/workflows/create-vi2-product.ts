@@ -23,8 +23,9 @@ export type Vi2ProductInput = {
   // Shared options (Products > Options): the chosen value ids, plus values to add
   // to the option. None means a product without variants.
   options: { id: string, value_ids: string[], new_values?: string[] }[]
-  // Variant options by option title, e.g. { Flavor: "Chocolate" }.
-  variants: { options: Record<string, string>, sku: string, barcode?: string, price: number }[]
+  // Variant options by option title, e.g. { Flavor: "Chocolate" }. Without a
+  // title the variant is named after its values, as in Medusa.
+  variants: { options: Record<string, string>, title?: string, sku: string, barcode?: string, price: number }[]
 }
 
 type StoreDefaults = { sales_channel_id: string, shipping_profile_id: string }
@@ -34,9 +35,12 @@ const sameValue = (a: string, b: string) => a.toLowerCase() === b.toLowerCase()
 // What Medusa's own form creates for a product without variants.
 const DEFAULT_OPTION = { title: "Default option", value: "Default option value" }
 const DEFAULT_VARIANT_TITLE = "Default variant"
+// Refusals the route shows on a form field.
+export const BRAND_REFUSAL = "Choose an active brand"
+export const CATEGORY_REFUSAL = "A chosen category no longer exists. Choose again."
 
-// Refuses SKUs the store already has and an unknown or inactive brand before
-// anything is created, and finds the website's sales channel and the default
+// Refuses SKUs the store already has, an unknown or inactive brand and a
+// category that no longer exists before anything is created, and finds the website's sales channel and the default
 // shipping profile (the 70 EGP delivery option uses it).
 const prepareVi2ProductStep = createStep(
   "prepare-vi2-product",
@@ -47,7 +51,9 @@ const prepareVi2ProductStep = createStep(
       throw new MedusaError(MedusaError.Types.INVALID_DATA, taken.map((variant) => `SKU ${variant.sku} already exists`).join(". "))
     }
     const [brand] = await container.resolve<BrandModuleService>(BRAND_MODULE).listBrands({ id: input.brand_id })
-    if (brand?.status !== "active") throw new MedusaError(MedusaError.Types.INVALID_DATA, "Choose an active brand")
+    if (brand?.status !== "active") throw new MedusaError(MedusaError.Types.INVALID_DATA, BRAND_REFUSAL)
+    const { data: categories } = await query.graph({ entity: "product_category", fields: ["id"], filters: { id: input.category_ids } })
+    if (categories.length < new Set(input.category_ids).size) throw new MedusaError(MedusaError.Types.INVALID_DATA, CATEGORY_REFUSAL)
     const { data: [store] } = await query.graph({ entity: "store", fields: ["default_sales_channel_id"] })
     const { data: [profile] } = await query.graph({ entity: "shipping_profile", fields: ["id"], filters: { type: "default" } })
     if (!store?.default_sales_channel_id || !profile) {
@@ -129,7 +135,7 @@ function productData({ input, defaults, options }: { input: Vi2ProductInput, def
           })
           : [[DEFAULT_OPTION.title, DEFAULT_OPTION.value]]
         return {
-          title: options.length ? values.map(([, value]) => value).join(" / ") : DEFAULT_VARIANT_TITLE,
+          title: variant.title ?? (options.length ? values.map(([, value]) => value).join(" / ") : DEFAULT_VARIANT_TITLE),
           sku: variant.sku,
           barcode: variant.barcode,
           options: Object.fromEntries(values),

@@ -258,7 +258,24 @@ medusaIntegrationTestRunner({
         const response = await create(admin, body({ brand_id: await brand() }))
         expect(response.status).toBe(400)
         expect(response.data.message).toBe("Choose an active brand")
+        expect(response.data.errors).toEqual({ brand_id: "Choose an active brand" })
         await expectNothingCreated()
+      })
+
+      it("refuses a category that no longer exists, on the categories field", async () => {
+        const response = await create(admin, body({ category_ids: [categoryId, "pcat_deleted"] }))
+        expect(response.status).toBe(400)
+        expect(response.data.errors).toEqual({ category_ids: "A chosen category no longer exists. Choose again." })
+        await expectNothingCreated()
+      })
+
+      it("saves the variant titles typed in the form", async () => {
+        const payload = body()
+        payload.variants[0] = { ...payload.variants[0], title: "Chocolate tub 1 kg" } as never
+        const response = await create(admin, payload)
+        expect(response.status).toBe(201)
+        const saved = await product(response.data.product.id)
+        expect(saved.variants.map((variant: { title: string }) => variant.title).sort()).toEqual(["Chocolate / 2.27 kg", "Chocolate tub 1 kg", "Vanilla / 1 kg", "Vanilla / 2.27 kg"])
       })
 
       it("refuses inventory items and stock settings from admins and managers", async () => {

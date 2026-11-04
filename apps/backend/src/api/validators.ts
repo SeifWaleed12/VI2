@@ -90,6 +90,7 @@ export const newProductSchema = z.object({
     .max(10),
   variants: z.array(z.object({
     options: z.record(z.string(), text),
+    title: text.optional(),
     sku: required("Enter a SKU").max(100),
     barcode: text.max(100).optional(),
     price: z.number({ error: "Enter a price" }).finite().positive("Price must be more than 0").max(1_000_000, "Price must be 1,000,000 EGP or less"),

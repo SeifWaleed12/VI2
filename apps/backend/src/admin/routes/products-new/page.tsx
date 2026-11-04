@@ -1,7 +1,7 @@
 import { Alert, Button, Checkbox, clx, Divider, FocusModal, Heading, Hint, Input, Label, ProgressTabs, Select, Switch, Text, Textarea, toast, usePrompt } from "@medusajs/ui"
 import { useEffect, useState, type ReactNode } from "react"
 import { useNavigate } from "react-router-dom"
-import { getJson } from "../../lib/get-json"
+import { getAll, getJson } from "../../lib/get-json"
 import { combinationCount, MAX_VARIANTS, optionCombinations } from "../../lib/variant-combinations"
 import { CategoryCombobox, type Category } from "./category-combobox"
 import { ChipCombobox } from "./chip-combobox"
@@ -10,7 +10,8 @@ type Brand = { id: string, name: string }
 type SharedOption = { id: string, title: string, values: { id: string, value: string, rank: number | null }[] }
 // A shared option on this product: chosen existing values and values to add to it.
 type ChosenOption = { id: string, valueIds: string[], newValues: string[] }
-type Cell = { sku: string, barcode: string, price: string }
+// title stays undefined until edited, so the row shows its default title.
+type Cell = { title?: string, sku: string, barcode: string, price: string }
 type Tab = "details" | "organize" | "variants"
 
 const TABS: { value: Tab, label: string }[] = [
@@ -20,6 +21,7 @@ const TABS: { value: Tab, label: string }[] = [
 ]
 const NEW = "new:"
 const emptyCell: Cell = { sku: "", barcode: "", price: "" }
+const LABELS: Record<keyof Cell, string> = { title: "Title", sku: "SKU", barcode: "Barcode", price: "Price" }
 const rowKey = (combination: Record<string, string>) => JSON.stringify(combination)
 // Without variants Medusa creates one default variant; its row has no option values.
 const DEFAULT_ROW: Record<string, string> = {}
@@ -87,7 +89,7 @@ const NewProductPage = () => {
   useEffect(() => {
     getJson("/admin/brands?status=active").then((body) => setBrands(body.brands ?? []))
       .catch(() => toast.error("Could not load brands"))
-    getJson("/admin/product-categories?limit=500&fields=id,name,parent_category_id,rank").then((body) => setCategories(body.product_categories ?? []))
+    getAll<Category>("/admin/product-categories?limit=200&fields=id,name,parent_category_id,rank", "product_categories").then(setCategories)
       .catch(() => toast.error("Could not load categories"))
     getJson("/admin/product-options?is_exclusive=false&limit=200&fields=id,title,values.id,values.value,values.rank")
       .then((body) => setSharedOptions(body.product_options ?? []))
@@ -165,11 +167,10 @@ const NewProductPage = () => {
     return found
   }
   const fieldId = (key: string) => {
-    const index = key.startsWith("options.") ? Number(key.split(".")[1]) : -1
     if (key === "brand_id") return "brand"
     if (key === "category_ids") return "categories"
-    if (key === "title" || key === "handle") return key
-    return index >= 0 ? `values-${options[index].id}` : "options"
+    if (key.startsWith("options.")) return `values-${options[Number(key.split(".")[1])]?.id}`
+    return key === "options" || key === "variants" ? "options" : key
   }
   // Shows the first tab before `next` that has problems, with its first problem
   // in view and focused, like Medusa's form. Returns false when one was found.
@@ -217,7 +218,7 @@ const NewProductPage = () => {
           options: !hasVariants ? [] : options.map((option) => ({ id: option.id, value_ids: option.valueIds, new_values: option.newValues.length ? option.newValues : undefined })),
           variants: rows.map((combination) => {
             const cell = cells[rowKey(combination)] ?? emptyCell
-            return { options: combination, sku: cell.sku, barcode: cell.barcode.trim() || undefined, price: cell.price === "" ? undefined : Number(cell.price) }
+            return { options: combination, title: cell.title?.trim() || undefined, sku: cell.sku, barcode: cell.barcode.trim() || undefined, price: cell.price === "" ? undefined : Number(cell.price) }
           }),
         }),
       })
@@ -238,7 +239,8 @@ const NewProductPage = () => {
       })
       setErrors(fieldErrors)
       const firstPath = Object.keys(body.errors ?? {})[0]
-      setTab(firstPath ? tabOf(firstPath) : /SKU/.test(body.message ?? "") ? "variants" : /brand/.test(body.message ?? "") ? "organize" : tab)
+      setTab(firstPath ? tabOf(firstPath) : /SKU/.test(body.message ?? "") ? "variants" : tab)
+      if (firstPath && tabOf(firstPath) !== "variants") requestAnimationFrame(() => document.getElementById(fieldId(firstPath))?.focus())
       toast.error(body.message || "The product could not be created.")
     } catch {
       toast.error("The product could not be created. Check your connection and try again.")
@@ -250,7 +252,7 @@ const NewProductPage = () => {
   // Closing with Esc, the X or Cancel asks first when something was entered, like Medusa's form.
   const close = async () => {
     const entered = [title, subtitle, handle, description, weight, edaNumber].some((value) => value.trim()) || images.length > 0 ||
-      chosen.length > 0 || categoryIds.length > 0 || !!brandId || Object.values(cells).some((cell) => Object.values(cell).some(Boolean))
+      chosen.length > 0 || categoryIds.length > 0 || !!brandId || !discountable || hasVariants || edaApproved || Object.values(cells).some((cell) => Object.values(cell).some(Boolean))
     if (entered && !await prompt({
       title: "Are you sure you want to leave this form?",
       description: "You have unsaved changes that will be lost if you exit this form.",
@@ -461,6 +463,7 @@ const NewProductPage = () => {
                 <thead>
                   <tr className="bg-ui-bg-subtle txt-compact-small-plus text-ui-fg-subtle text-left">
                     <th className="border-ui-border-base border-b border-r px-4 py-2.5 font-medium">{hasVariants ? completeOptions.map((option) => option.title).join(" / ") : "Variant"}</th>
+                    <th className="border-ui-border-base border-b border-r px-4 py-2.5 font-medium">Title</th>
                     <th className="border-ui-border-base border-b border-r px-4 py-2.5 font-medium">SKU</th>
                     <th className="border-ui-border-base border-b border-r px-4 py-2.5 font-medium">Barcode<span className="text-ui-fg-muted font-normal"> (Optional)</span></th>
                     <th className="border-ui-border-base border-b px-4 py-2.5 font-medium">Price EGP<span className="text-ui-fg-muted font-normal"> (incl. tax)</span></th>
@@ -474,9 +477,9 @@ const NewProductPage = () => {
                     const input = (field: keyof Cell, props: { type?: string, min?: string, step?: string } = {}) => (
                       <td className={clx("border-ui-border-base border-b align-top focus-within:outline focus-within:outline-2 focus-within:-outline-offset-2 focus-within:outline-ui-fg-interactive",
                         field !== "price" && "border-r", variantError(key, field) && "bg-ui-tag-red-bg")}>
-                        <input id={`variant-${index}-${field}`} aria-label={`${field === "sku" ? "SKU" : field === "barcode" ? "Barcode" : "Price"} for ${name}`}
+                        <input id={`variant-${index}-${field}`} aria-label={`${LABELS[field]} for ${name}`}
                           aria-invalid={!!variantError(key, field)} {...props}
-                          value={cell[field]} onChange={(e) => setCell(key, field, e.target.value)}
+                          value={field === "title" ? cell.title ?? name : cell[field]} onChange={(e) => setCell(key, field, e.target.value)}
                           className="txt-compact-small text-ui-fg-base w-full bg-transparent px-4 py-2.5 outline-none" />
                         {variantError(key, field) && <Text size="xsmall" className="text-ui-fg-error px-4 pb-2">{variantError(key, field)}</Text>}
                       </td>
@@ -484,6 +487,7 @@ const NewProductPage = () => {
                     return (
                       <tr key={key}>
                         <td className="border-ui-border-base bg-ui-bg-subtle txt-compact-small text-ui-fg-subtle border-b border-r px-4 py-2.5 align-top">{name}</td>
+                        {input("title")}
                         {input("sku")}
                         {input("barcode")}
                         {input("price", { type: "number", min: "0", step: "0.01" })}
