@@ -133,3 +133,25 @@ Checks after the fix:
 - Integration: `media-uploads` 1/1, `security-boundaries` 15/15, `admin-access` 26/26.
 
 Round 2: review only the fix commit.
+
+## Round 2 review
+
+Reviewed only `9ff22d1` against its parent on `claude/image-uploads`.
+
+### Round 1 findings
+
+1. **Resolved — variant thumbnails.** The cleanup job now queries `product_variant.thumbnail` alongside product images and product thumbnails. I ran `media-uploads.spec.ts`; its disposable-database case creates a variant with a thumbnail that has no `product_image` row, advances beyond the seven-day cutoff, and confirms the variant file remains while the unused upload is deleted.
+2. **Resolved — failed tracking write.** The upload route now deletes the just-uploaded product image files and returns an error when `createUploadedMedias` fails. I ran the new failure-path unit test; it confirmed `deleteFiles` receives the uploaded file IDs and the route does not return a success response.
+
+### Verification
+
+- `security-remediation.unit.spec.ts`: 31/31 passed.
+- Disposable-database `media-uploads.spec.ts`: 1/1 passed.
+- Backend type check passed.
+- Backend lint passed with no issues.
+- I did not rerun the full workspace `npm run check`, live R2/browser checks, or the scheduled job.
+- I reviewed the whole fix diff. The variant query matches Medusa's `product_variant.thumbnail` field; the failed-tracking path has no additional issue found.
+
+**Verdict: Both round 1 findings are resolved. No open problems.**
+
+Approved. PR open for owner merge.
