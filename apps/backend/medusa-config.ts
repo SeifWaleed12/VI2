@@ -37,6 +37,7 @@ module.exports = defineConfig({
     {
       resolve: "./src/modules/loyalty",
     },
+    { resolve: "./src/modules/uploaded-media" },
     // The rbac flag above turns on role checks, but Medusa builds its default
     // module list before core flags are registered, so the default RBAC entry is
     // always disabled. Listing it here overrides that entry and loads the module.

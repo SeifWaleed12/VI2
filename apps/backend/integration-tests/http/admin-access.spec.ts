@@ -256,7 +256,7 @@ medusaIntegrationTestRunner({
 
         const first = await api.post(`/admin/brands/${brand.id}/logo`, { content: pixel }, manager)
         expect(first.status).toBe(200)
-        expect(first.data.brand.logo).toMatch(/brand-logo-logo-brand.*\.png$/)
+        expect(first.data.brand.logo).toMatch(/\/brands\/.*brand-logo-logo-brand.*\.webp$/)
         expect(await served(first.data.brand.logo)).toBe(200)
         expect(stored(first.data.brand.logo_file_id)).toBe(true)
 
