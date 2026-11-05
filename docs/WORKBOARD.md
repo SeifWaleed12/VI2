@@ -26,7 +26,7 @@ approval before any change.
 
 | Task | Author | Reviewer | Status | Branch | Notes |
 |---|---|---|---|---|---|
-| Medusa's Create button opens the "New product (Vi2)" page; our separate button and the Quick Variant Creator (widget, route, workflow, tests) removed; EDA widget kept | Claude | GPT | Awaiting live check and GPT review | `claude/create-button-redirect` (from `full-stack` 4286dca) | Handoff: `docs/reviews/create-button-redirect.md`. `npm run check` green. Admin screens only: Medusa's `POST /admin/products` stays open. Not pushed. |
+| Medusa's Create button opens the "New product (Vi2)" page; our separate button and the Quick Variant Creator (widget, route, workflow, tests) removed; EDA widget kept | Claude | GPT | GPT round 1 (38f8d29): no findings, live check passed; **approved, ready for a PR** | `claude/create-button-redirect` (from `full-stack` 4286dca) | Handoff: `docs/reviews/create-button-redirect.md`. `npm run check` green. Admin screens only: Medusa's `POST /admin/products` stays open. Not pushed. |
 
 ## New product page (requested by Seif, 2026-10-17)
 

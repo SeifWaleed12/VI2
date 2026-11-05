@@ -44,7 +44,7 @@ Medusa 2.21 gives extensions no way to remove or change its own buttons. The opt
 - `npm run check` green: backend 426 unit tests (the quick variant tests are removed), storefront 605,
   typechecks, lint clean. Admin type-check (`src/admin/tsconfig.json`) clean.
 - `grep` finds no remaining reference to the quick variant code outside history in `docs/`.
-- Live check: not done yet; Seif will try it on this branch's backend.
+- Live check: done by GPT in round 1 (Create, Back, trailing slash and query string, EDA widget).
 
 ## Limits
 
@@ -62,3 +62,28 @@ Medusa 2.21 gives extensions no way to remove or change its own buttons. The opt
   form (the "Create" entry on other screens, keyboard shortcuts, a link with a query string).
 - That removing the quick variant code leaves no dead imports, routes or permissions behind,
   including the manager role table.
+
+## GPT review, round 1
+
+Reviewed only `38f8d29` against `4286dca` on `claude/create-button-redirect`.
+
+### Findings
+
+No code findings identified in the scoped diff.
+
+### Checks and limits
+
+- `npm run check` passed: backend 50 suites / 426 tests, storefront 64 suites / 605 tests, type checks, and lint. The type-check and lint results were served from the shared Turbo cache; both reported success.
+- I ran the requested HTTP specs (`new-product.spec.ts`, `admin-access.spec.ts`, `security-boundaries.spec.ts`) with the disposable-database runner after connecting it to the running PostgreSQL service. All three suites passed: 59/59 tests, exit code 0. The runner created isolated `medusa-…-integration-1` databases.
+- I started the local backend and checked the live dashboard after sign-in. From the product list, Medusa's Create button opened `/app/products-new`; browser Back returned to `/app/products` with the create panel closed. Directly opening `/app/products/create/?source=review` also redirected to `/app/products-new`, confirming trailing slash and query-string handling. The product list showed Medusa's Create button and no separate “New product (Vi2)” button.
+- The EDA widget remained visible on an existing product, and its read endpoint returned that product's existing registration JSON. I did not save or remove EDA data. Source search found no quick-variant imports, route, schema, tests, or manager-role permission entries left in `apps/backend`; `docs/API-REFERENCE.md` no longer lists the route. The deleted POST route itself was not called in the browser.
+- I did not try to submit Medusa's native form during the redirect window, since that could create a product in the development database. No flash was visible during normal navigation; the `useEffect` redirect still means this UI is not a security boundary, and the direct admin product API remains available by design.
+- A redirect-only admin widget is a reasonable small extension here: it changes dashboard navigation only and contains no business rule. The Medusa product form can briefly mount before the `useEffect` redirect; the documented Medusa API remains open by design, so this UI redirect is not an access-control boundary.
+
+**Verdict:** no code findings from the scoped diff. The requested checks pass, including the live redirect and Back behavior. The deleted POST endpoint was verified by source absence rather than a live request; native-form submission during the redirect window was not attempted.
+
+## Approval
+
+GPT approved round 1 (2026-11-05) with no findings. Not checked by anyone: calling the deleted
+`POST /admin/products/:id/quick-variant` live (verified by its absence from the source), and submitting
+Medusa's form during the moment before the redirect. Ready for Seif to open a PR into `full-stack`.
