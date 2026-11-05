@@ -4,6 +4,8 @@ import { customerReturnOnly } from "../return-access"
 import { POST as upload } from "../admin/uploads/route"
 import { POST as presigned } from "../admin/uploads/presigned-urls/route"
 import { MAX_CSV_UPLOAD_BYTES } from "../../lib/csv-upload"
+import sharp from "sharp"
+import { randomBytes } from "node:crypto"
 import { GET as receipt } from "../store/orders/[id]/route"
 import { POST as nativeCustomer } from "../store/customers/route"
 import { getOrderDetailWorkflow, uploadFilesWorkflow } from "@medusajs/medusa/core-flows"
@@ -43,15 +45,30 @@ it("rejects active content without uploading any files", async () => {
   await expect(upload({ files: [{ buffer: Buffer.from("<html>script</html>") }] } as never, {} as never)).rejects.toThrow("PNG, JPEG or WebP")
   expect(uploadFilesWorkflow).not.toHaveBeenCalled()
 })
-it("accepts generic raster images above the logo cap, through 10 MiB", async () => {
-  const run = jest.fn(async () => ({ result: [{ id: "file_1" }] }))
+it("accepts real raster images above the logo cap, re-encodes them as WebP in products/ and tracks them for cleanup", async () => {
+  const run = jest.fn(async () => ({ result: [{ id: "products/file_1.webp", url: "http://media.test/products/file_1.webp" }] }))
   jest.mocked(uploadFilesWorkflow).mockReturnValue({ run } as never)
-  const buffer = Buffer.alloc(10 * 1024 * 1024)
-  Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]).copy(buffer)
+  // Random pixels do not compress, so this real PNG is over the 1 MB logo cap.
+  const buffer = await sharp(randomBytes(1000 * 1000 * 3), { raw: { width: 1000, height: 1000, channels: 3 } }).png({ compressionLevel: 0 }).toBuffer()
+  expect(buffer.length).toBeGreaterThan(1024 * 1024)
+  expect(buffer.length).toBeLessThan(10 * 1024 * 1024)
+  const createUploadedMedias = jest.fn(async () => [])
   const res = { status: jest.fn().mockReturnThis(), json: jest.fn() }
-  await upload({ files: [{ buffer }] } as never, res as never)
-  expect(run).toHaveBeenCalledWith({ input: { files: [expect.objectContaining({ mimeType: "image/png", filename: expect.stringMatching(/\.png$/) })] } })
-  expect(res.json).toHaveBeenCalledWith({ files: [{ id: "file_1" }] })
+  await upload({ files: [{ buffer }], scope: { resolve: () => ({ createUploadedMedias }) } } as never, res as never)
+  expect(run).toHaveBeenCalledWith({ input: { files: [expect.objectContaining({ mimeType: "image/webp", filename: expect.stringMatching(/^products\/[0-9a-f-]{36}\.webp$/) })] } })
+  expect(createUploadedMedias).toHaveBeenCalledWith([{ id: "products/file_1.webp", url: "http://media.test/products/file_1.webp" }])
+}, 30_000)
+it("deletes the stored images and fails when they cannot be tracked, so no file escapes cleanup", async () => {
+  const run = jest.fn(async () => ({ result: [{ id: "products/file_1.webp", url: "http://media.test/products/file_1.webp" }] }))
+  jest.mocked(uploadFilesWorkflow).mockReturnValue({ run } as never)
+  const buffer = await sharp({ create: { width: 800, height: 800, channels: 3, background: "#ffffff" } }).png().toBuffer()
+  const deleteFiles = jest.fn(async () => undefined)
+  const createUploadedMedias = jest.fn(async () => { throw new Error("database unavailable") })
+  const resolve = (key: string) => (key === "file" ? { deleteFiles } : key === "logger" ? { warn: jest.fn(), error: jest.fn() } : { createUploadedMedias })
+  const res = { status: jest.fn().mockReturnThis(), json: jest.fn() }
+  await expect(upload({ files: [{ buffer }], scope: { resolve } } as never, res as never)).rejects.toThrow("could not be saved")
+  expect(deleteFiles).toHaveBeenCalledWith(["products/file_1.webp"])
+  expect(res.json).not.toHaveBeenCalled()
 })
 it("rejects generic images above 10 MiB before any upload", async () => {
   jest.mocked(uploadFilesWorkflow).mockClear()
@@ -66,7 +83,7 @@ it.each(["text/csv", "application/vnd.ms-excel"])("uploads CSV with a generated 
   const buffer = Buffer.from("Product Handle,Product Title\ndummy,Dummy\n")
   const res = { status: jest.fn().mockReturnThis(), json: jest.fn() }
   await upload({ files: [{ buffer, originalname: "../client-name.csv", mimetype }] } as never, res as never)
-  expect(run).toHaveBeenCalledWith({ input: { files: [{ filename: expect.stringMatching(/^[0-9a-f-]{36}\.csv$/), mimeType: "text/csv", access: "private", content: buffer.toString("base64") }] } })
+  expect(run).toHaveBeenCalledWith({ input: { files: [{ filename: expect.stringMatching(/^imports\/[0-9a-f-]{36}\.csv$/), mimeType: "text/csv", access: "private", content: buffer.toString("base64") }] } })
 })
 it.each([
   ["text/html", Buffer.from("<html>active</html>")],
@@ -78,12 +95,12 @@ it.each([
   await expect(upload({ files: [{ buffer, originalname: "dummy.csv", mimetype }] } as never, {} as never)).rejects.toThrow("CSV")
   expect(uploadFilesWorkflow).not.toHaveBeenCalled()
 })
-it.each(["text/csv", "application/vnd.ms-excel"])("delegates CSV presigning with a csv key and private access: %s", async mime_type => {
+it.each(["text/csv", "application/vnd.ms-excel"])("presigns CSV in the imports folder with private access: %s", async mime_type => {
   const getUploadFileUrls = jest.fn(async () => ({ url: "/admin/uploads", key: "generated.csv" }))
   const req = { validatedBody: { originalname: "client.csv", mime_type, size: 32, access: "public" }, scope: { resolve: () => ({ getUploadFileUrls }) } }
   const res = { json: jest.fn() }
   await presigned(req as never, res as never)
-  expect(getUploadFileUrls).toHaveBeenCalledWith({ filename: expect.stringMatching(/\.csv$/), mimeType: "text/csv", access: "private" })
+  expect(getUploadFileUrls).toHaveBeenCalledWith({ filename: expect.stringMatching(/^imports\/[0-9a-f-]{36}\.csv$/), mimeType: "text/csv", access: "private" })
   expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ filename: "generated.csv", mime_type: "text/csv", extension: "csv" }))
 })
 it.each([

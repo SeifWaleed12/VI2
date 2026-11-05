@@ -13,6 +13,7 @@ import { storeProductRoutesMiddlewares } from "@medusajs/medusa/api/store/produc
 import { boundCatalogHydration } from "./catalog-products"
 import { cacheStoreGet, invalidateStoreCacheAfterWrite } from "../lib/store-cache"
 import { requestPath } from "../lib/request-path"
+import { limitUploadRequest } from "./upload-limits"
 
 // Staff and customers sign in, reset and set passwords through the same
 // Medusa routes, so both get the same limits and password rule. Medusa signs in
@@ -95,6 +96,8 @@ export default defineMiddlewares({
         unlessInviteAcceptance(authenticate("user", ["session", "bearer"])),
         unlessInviteAcceptance(adminAccess),
         unlessInviteAcceptance(activeSecuritySession),
+        // Before Medusa's upload route reads the body into memory.
+        limitUploadRequest,
         protectAdminCookieWrites,
         managerLayoutView,
         // Last, so a refused request never clears the cache.

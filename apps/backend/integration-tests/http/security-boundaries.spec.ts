@@ -1,5 +1,6 @@
 import { dirname, join } from "node:path"
 import FormData from "form-data"
+import sharp from "sharp"
 import { medusaIntegrationTestRunner } from "@medusajs/test-utils"
 import { ContainerRegistrationKeys, generateJwtToken, Modules } from "@medusajs/framework/utils"
 import { createOrderWorkflow, createUsersWorkflow, generateResetPasswordTokenWorkflow } from "@medusajs/medusa/core-flows"
@@ -218,18 +219,23 @@ medusaIntegrationTestRunner({ testSuite: ({ api, getContainer }) => {
       const presigned = await api.post("/admin/uploads/presigned-urls", { originalname: "probe.html", mime_type: "text/html", size: 32 }, bearer(staff))
       expect(presigned.status).toBe(400)
       expect(presigned.data.message).toContain("content validation")
-      const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl6K2AAAAAASUVORK5CYII=", "base64")
-      const result = await upload(png, "misleading.html", "text/html")
+      const photo = await sharp({ create: { width: 3000, height: 1200, channels: 3, background: "#4a7a3b" } }).withMetadata({ exif: { IFD0: { Copyright: "private camera data" } } }).jpeg().toBuffer()
+      const result = await upload(photo, "misleading.html", "text/html")
       expect(result.status).toBe(200)
-      expect(result.data.files[0].url).toMatch(/\.png$/)
-      const file = await api.get(new URL(result.data.files[0].url).pathname, anyStatus)
+      expect(result.data.files[0].url).toMatch(/\/products\/[^/]+\.webp$/)
+      const file = await api.get(new URL(result.data.files[0].url).pathname, { ...anyStatus, responseType: "arraybuffer" })
       expect(file.status).toBe(200)
-      expect(file.headers["content-type"]).toContain("image/png")
-      const larger = await upload(Buffer.concat([png, Buffer.alloc(1536 * 1024)]), "product-photo.png", "image/png")
-      expect(larger.status).toBe(200)
+      expect(file.headers["content-type"]).toContain("image/webp")
+      const served = await sharp(Buffer.from(file.data)).metadata()
+      expect([served.format, served.width, served.height, served.exif]).toEqual(["webp", 2000, 800, undefined])
+      const tiny = await upload(Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl6K2AAAAAASUVORK5CYII=", "base64"), "tiny.png", "image/png")
+      expect([tiny.status, tiny.data.message]).toEqual([400, "Images must be at least 600 px on their shorter side."])
+      const png = await sharp({ create: { width: 800, height: 800, channels: 3, background: "#ffffff" } }).png().toBuffer()
       const oversized = await upload(Buffer.concat([png, Buffer.alloc(10 * 1024 * 1024)]), "oversized.png", "image/png")
       expect(oversized.status).toBe(400)
       expect(oversized.data.message).toContain("10 MB")
+      const huge = await upload(Buffer.alloc(51 * 1024 * 1024), "huge.png", "image/png")
+      expect([huge.status, huge.data.message]).toEqual([413, "Upload at most 50 MB at once."])
     })
 
     it("enforces cart ownership on case variants and projects public receipts", async () => {

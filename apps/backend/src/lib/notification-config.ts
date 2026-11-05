@@ -10,14 +10,14 @@ import { MedusaError } from "@medusajs/framework/utils"
 // emails run end to end and the server log records each send (without links).
 // In production without Resend no email provider exists: sends fail and are
 // logged, admins share invite and reset links from the dashboard, and customer
-// emails are not delivered.
+// emails are not delivered. Tests never send real email, whatever .env holds.
 export function notificationModule(env: NodeJS.ProcessEnv = process.env) {
   const apiKey = env.RESEND_API_KEY?.trim()
   const from = env.RESEND_FROM?.trim()
   if (Boolean(apiKey) !== Boolean(from)) {
     throw new MedusaError(MedusaError.Types.INVALID_DATA, "Set both RESEND_API_KEY and RESEND_FROM, or neither.")
   }
-  const sendsEmail = Boolean(apiKey && from)
+  const sendsEmail = Boolean(apiKey && from) && env.NODE_ENV !== "test"
   const localChannels = !sendsEmail && env.NODE_ENV !== "production" ? ["feed", "email"] : ["feed"]
   return {
     resolve: "@medusajs/medusa/notification",

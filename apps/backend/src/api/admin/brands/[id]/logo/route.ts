@@ -5,6 +5,7 @@ import { BRAND_MODULE } from "../../../../../modules/brand"
 import BrandModuleService from "../../../../../modules/brand/service"
 import { updateBrandWorkflow } from "../../../../../workflows/brand"
 import { deleteBrandLogoFile, logoImage } from "../../../../../lib/brand-logo"
+import { BRAND_LOGO_MAX_SIDE, MEDIA_FOLDER, optimizeImage } from "../../../../../lib/media"
 import { brandErrorResponse } from "../../errors"
 
 const NOT_AN_IMAGE = "The logo must be a PNG, JPG or WebP image."
@@ -18,6 +19,8 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
   const image = logoImage(Buffer.from(parsed.data.content, "base64"))
   if (image === "too_large") return res.status(400).json({ message: "The logo must be 1 MB or smaller." })
   if (image === "not_an_image") return res.status(400).json({ message: NOT_AN_IMAGE })
+  const logo = await optimizeImage(Buffer.from(parsed.data.content, "base64"), { maxSide: BRAND_LOGO_MAX_SIDE })
+  if (typeof logo === "string") return res.status(400).json({ message: NOT_AN_IMAGE })
 
   const { id } = req.params
   let previous: Awaited<ReturnType<BrandModuleService["retrieveBrand"]>>
@@ -31,9 +34,9 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
   let file: { id: string, url: string }
   try {
     file = await req.scope.resolve(Modules.FILE).createFiles({
-      filename: `brand-logo-${previous.slug}.${image.extension}`,
-      mimeType: image.mimeType,
-      content: parsed.data.content,
+      filename: `${MEDIA_FOLDER.brands}/brand-logo-${previous.slug}.${logo.extension}`,
+      mimeType: logo.mimeType,
+      content: logo.content.toString("base64"),
       access: "public",
     })
   } catch {
