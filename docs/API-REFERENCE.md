@@ -271,10 +271,6 @@ Validation (`brandSchema`): name required, `slug` lowercase-kebab (`^[a-z0-9]+(-
 | `POST /admin/products/:id/eda` | `{registration_number (<=100 chars), is_approved: boolean}` | `{eda_registration}` |
 | `DELETE /admin/products/:id/eda` | | `{eda_registration: null}` |
 
-**Quick variant** (add an option value plus its variant in one step)
-
-`POST /admin/products/:id/quick-variant`, body `{option_title, option_value, title?, sku?, barcode?, prices:[{amount, currency_code (3 lowercase letters)}] (1-50), manage_inventory?}` → `201 {variant}`. `400` on invalid body.
-
 **Staff password**
 
 `POST /admin/users/me/password` `{current_password, new_password}`, same responses and rate limit as the customer one.
@@ -308,7 +304,6 @@ Validation (`brandSchema`): name required, `slug` lowercase-kebab (`^[a-z0-9]+(-
 |---|---|
 | `routes/brands/page.tsx` | `/admin/brands`, `/admin/brands/:id` |
 | `widgets/product-eda-widget.tsx` | `/admin/products/:id/eda` |
-| `widgets/quick-add-variant-widget.tsx` | `/admin/products/:id/quick-variant` |
 | `routes/settings/change-password/page.tsx` | `/admin/users/me/password` |
 
 ## Part 5 - Configuration that drives all of this

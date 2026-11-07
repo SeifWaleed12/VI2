@@ -1,4 +1,4 @@
-import { brandSchema, productEdaSchema, quickVariantSchema, registrationSchema } from "../validators"
+import { brandSchema, productEdaSchema, registrationSchema } from "../validators"
 import { configuredSecret } from "../../lib/secrets"
 
 it.each([null, [], { email: 1 }, { email: "a@example.com", password: [], first_name: {}, last_name: "x" }])("rejects malformed registration %j", (body) => {
@@ -11,12 +11,6 @@ it("normalizes valid registration without trusting extra identity fields", () =>
 })
 it.each([{ name: [] }, { name: " ", slug: "ok" }, { name: "Brand", slug: "not valid" }, { name: "Brand", slug: "ok", logo: "javascript:alert(1)" }])("rejects malformed brands %j", (body) => {
   expect(brandSchema.safeParse(body).success).toBe(false)
-})
-it.each([-1, NaN, Infinity, "100"])("rejects invalid variant price %s", (amount) => {
-  expect(quickVariantSchema.safeParse({ option_title: "Size", option_value: "M", prices: [{ amount, currency_code: "egp" }] }).success).toBe(false)
-})
-it("rejects strings pretending to be booleans", () => {
-  expect(quickVariantSchema.safeParse({ option_title: "Size", option_value: "M", manage_inventory: "false", prices: [{ amount: 100, currency_code: "egp" }] }).success).toBe(false)
 })
 it.each([undefined, "", "supersecret", "short", "changeme".repeat(10)])("requires strong production secrets", (JWT_SECRET) => {
   expect(() => configuredSecret("JWT_SECRET", { NODE_ENV: "production", JWT_SECRET })).toThrow()
